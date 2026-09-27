@@ -102,7 +102,7 @@ class AndroidGameScanner @Inject constructor(
             metadataFetcher.fetch(gameId, app.packageName)
         }
 
-        if (added > 0) updatePlatformGameCount()
+        refreshGameCount()
         Log.d(TAG, "scanInstalledGames: added $added, enriched $enriched of ${installed.size} installed apps")
         AndroidScanResult(added = added, enriched = enriched)
     }
@@ -196,7 +196,7 @@ class AndroidGameScanner @Inject constructor(
             Log.d(TAG, "Relinked Android game '${game.title}' -> ${match.packageName}" +
                 if (holder != null) " (merged duplicate ${holder.id})" else "")
         }
-        if (relinked > 0) updatePlatformGameCount()
+        if (relinked > 0) refreshGameCount()
         relinked
     }
 
@@ -207,7 +207,11 @@ class AndroidGameScanner @Inject constructor(
 
 
 
-    private suspend fun updatePlatformGameCount() {
+    /**
+     * Recounts the Android platform, whose stored count decides whether the library lists it.
+     * Every path that adds or removes an Android game calls this.
+     */
+    suspend fun refreshGameCount() = withContext(Dispatchers.IO) {
         val count = gameDao.countByPlatform(
             LocalPlatformIds.ANDROID,
             syncPreferencesRepository.getRommUserId()

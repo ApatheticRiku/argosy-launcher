@@ -843,6 +843,7 @@ class MainActivity : ComponentActivity() {
             if (relinked > 0) {
                 Log.i(TAG, "Relinked $relinked installed RomM Android games to their packages")
             }
+            androidGameScanner.refreshGameCount()
 
             val storeSync = gameNativeStoreSync.scan()
             if (storeSync.configured) {

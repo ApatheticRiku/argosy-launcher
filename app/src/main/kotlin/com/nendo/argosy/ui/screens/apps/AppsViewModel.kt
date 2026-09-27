@@ -9,11 +9,9 @@ import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.repository.GameRepository
-import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
-import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.playstore.PlayStoreService
@@ -95,10 +93,10 @@ class AppsViewModel @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val soundManager: SoundFeedbackManager,
     private val gameRepository: GameRepository,
-    private val platformRepository: PlatformRepository,
     private val playStoreService: PlayStoreService,
     private val imageCacheManager: ImageCacheManager,
     private val metadataFetcher: com.nendo.argosy.data.scanner.AndroidAppMetadataFetcher,
+    private val androidGameScanner: com.nendo.argosy.data.scanner.AndroidGameScanner,
     private val displayAffinityHelper: com.nendo.argosy.util.DisplayAffinityHelper,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -349,7 +347,7 @@ class AppsViewModel @Inject constructor(
                 if (existing != null) {
                     gameId = existing.id
                 } else {
-                    ensureAndroidPlatformExists()
+                    androidGameScanner.ensureAndroidPlatformExists()
                     val sortTitle = label.lowercase()
                         .removePrefix("the ")
                         .removePrefix("a ")
@@ -370,6 +368,7 @@ class AppsViewModel @Inject constructor(
                 }
                 fetchMetadataForApp(gameId, packageName)
             }
+            androidGameScanner.refreshGameCount()
 
             soundManager.play(if (isCurrentlyOnHome) SoundType.UNFAVORITE else SoundType.FAVORITE)
             loadApps()
@@ -403,19 +402,6 @@ class AppsViewModel @Inject constructor(
 
     private suspend fun fetchMetadataForApp(gameId: Long, packageName: String) =
         metadataFetcher.fetch(gameId, packageName)
-
-    private suspend fun ensureAndroidPlatformExists() {
-        val existing = platformRepository.getById(LocalPlatformIds.ANDROID)
-        if (existing == null) {
-            val def = PlatformDefinitions.getBySlug("android")
-            if (def != null) {
-                val entity = PlatformDefinitions.toLocalPlatformEntity(def)
-                if (entity != null) {
-                    platformRepository.insert(entity)
-                }
-            }
-        }
-    }
 
     fun handleSecondaryAction() {
         val state = _uiState.value
