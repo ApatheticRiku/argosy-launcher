@@ -422,6 +422,7 @@ fun GameDetailScreen(
                 game = game,
                 uiState = uiState,
                 viewModel = viewModel,
+                inputHandler = inputHandler,
                 argosyViewModel = argosyViewModel,
                 scrollState = scrollState,
                 screenshotListState = screenshotListState,
@@ -457,6 +458,7 @@ private fun GameDetailContent(
     game: GameDetailUi,
     uiState: GameDetailUiState,
     viewModel: GameDetailViewModel,
+    inputHandler: com.nendo.argosy.ui.input.InputHandler,
     argosyViewModel: ArgosyViewModel,
     scrollState: ScrollState,
     screenshotListState: LazyListState,
@@ -917,7 +919,7 @@ private fun GameDetailContent(
             }
         }
 
-        GameDetailModals(game = game, uiState = uiState, viewModel = viewModel, onBack = onBack, onNavigateToPlatformSettings = onNavigateToPlatformSettings, localModifiedFocusIndex = localModifiedFocusIndex)
+        GameDetailModals(game = game, uiState = uiState, viewModel = viewModel, inputHandler = inputHandler, onBack = onBack, onNavigateToPlatformSettings = onNavigateToPlatformSettings, localModifiedFocusIndex = localModifiedFocusIndex)
 
         ReviewListOverlay(
             visible = uiState.showReviewList,
@@ -947,6 +949,7 @@ private fun GameDetailModals(
     game: GameDetailUi,
     uiState: GameDetailUiState,
     viewModel: GameDetailViewModel,
+    inputHandler: com.nendo.argosy.ui.input.InputHandler,
     onBack: () -> Unit,
     localModifiedFocusIndex: Int
 ) {
@@ -1314,12 +1317,21 @@ private fun GameDetailModals(
         onRenameTextChange = viewModel::updateRenameText,
         onRenameConfirm = viewModel::confirmRename,
         onRenameCancel = viewModel::dismissRenameDialog,
-        onSlotClick = viewModel::setSlotIndex,
-        onHistoryClick = viewModel::setHistoryIndex,
+        onSlotClick = viewModel::tapSaveSlot,
+        onHistoryClick = viewModel::tapSaveHistory,
         onTabSwitch = viewModel::switchSaveTab,
-        onStateClick = viewModel::setSaveCacheFocusIndex,
+        onStateClick = viewModel::tapSaveState,
         onDismissScreenshotPreview = viewModel::dismissScreenshotPreview,
-        onSlotPickerClick = viewModel::setSlotPickerIndex,
+        onSlotPickerClick = viewModel::tapSlotPickerItem,
+        onHintClick = { button ->
+            when (button) {
+                InputButton.A -> inputHandler.onConfirm()
+                InputButton.B -> inputHandler.onBack()
+                InputButton.X -> inputHandler.onContextMenu()
+                InputButton.Y -> inputHandler.onSecondaryAction()
+                else -> Unit
+            }
+        },
         onDismiss = viewModel::dismissSaveCacheDialog
     )
 

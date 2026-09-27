@@ -1484,18 +1484,30 @@ class GameDetailViewModel @Inject constructor(
 
     fun moveSaveCacheFocus(delta: Int) = saveManagement.saveChannelDelegate.moveFocus(delta)
 
-    fun setSaveCacheFocusIndex(index: Int) = saveManagement.saveChannelDelegate.setFocusIndex(index)
+    fun tapSaveState(index: Int) {
+        if (saveManagement.saveChannelDelegate.state.value.isStateFocused(index)) confirmSaveCacheSelection()
+        else saveManagement.saveChannelDelegate.setFocusIndex(index)
+    }
 
-    fun setSlotIndex(index: Int) = saveManagement.saveChannelDelegate.setSlotIndex(index)
+    fun tapSaveSlot(index: Int) {
+        if (saveManagement.saveChannelDelegate.state.value.isSlotFocused(index)) confirmSaveCacheSelection()
+        else saveManagement.saveChannelDelegate.setSlotIndex(index)
+    }
 
-    fun setHistoryIndex(index: Int) = saveManagement.saveChannelDelegate.setHistoryIndex(index)
+    fun tapSaveHistory(index: Int) {
+        if (saveManagement.saveChannelDelegate.state.value.isHistoryFocused(index)) confirmSaveCacheSelection()
+        else saveManagement.saveChannelDelegate.setHistoryIndex(index)
+    }
 
     fun handleSaveCacheLongPress(index: Int) =
         saveManagement.saveChannelDelegate.handleLongPress(viewModelScope, index)
 
     fun dismissSlotPicker() = saveManagement.saveChannelDelegate.dismissSlotPicker()
 
-    fun setSlotPickerIndex(index: Int) = saveManagement.saveChannelDelegate.setSlotPickerIndex(index)
+    fun tapSlotPickerItem(index: Int) {
+        if (saveManagement.saveChannelDelegate.state.value.isSlotPickerItemFocused(index)) confirmSaveCacheSelection()
+        else saveManagement.saveChannelDelegate.setSlotPickerIndex(index)
+    }
 
     fun focusSlotsColumn() = saveManagement.saveChannelDelegate.focusSlotsColumn()
 

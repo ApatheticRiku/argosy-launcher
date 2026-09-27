@@ -82,6 +82,7 @@ fun SaveChannelModal(
     onStateClick: (Int) -> Unit = {},
     onDismissScreenshotPreview: () -> Unit = {},
     onSlotPickerClick: (Int) -> Unit = {},
+    onHintClick: (InputButton) -> Unit = {},
     onDismiss: () -> Unit = {}
 ) {
     if (!state.isVisible) return
@@ -187,12 +188,12 @@ fun SaveChannelModal(
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             val hints = buildFooterHints(state)
-            FooterHintsWithState(hints = hints)
+            FooterHintsWithState(hints = hints, onHintClick = onHintClick)
         }
 
         if (state.showRestoreConfirmation &&
             state.restoreSelectedEntry != null) {
-            RestoreConfirmationOverlay()
+            RestoreConfirmationOverlay(onHintClick = onHintClick)
         }
 
         if (state.showRenameDialog) {
@@ -208,7 +209,8 @@ fun SaveChannelModal(
         if (state.showDeleteConfirmation &&
             state.deleteSelectedEntry != null) {
             DeleteConfirmationOverlay(
-                channelName = state.deleteSelectedEntry.channelName ?: ""
+                channelName = state.deleteSelectedEntry.channelName ?: "",
+                onHintClick = onHintClick
             )
         }
 
@@ -218,28 +220,32 @@ fun SaveChannelModal(
                 savedCoreId = state.versionMismatchState.coreId,
                 savedVersion = state.versionMismatchState.coreVersion,
                 currentCoreId = state.currentCoreId,
-                currentVersion = state.currentCoreVersion
+                currentVersion = state.currentCoreVersion,
+                onHintClick = onHintClick
             )
         }
 
         if (state.showStateDeleteConfirmation &&
             state.stateDeleteTarget != null) {
             StateDeleteConfirmationOverlay(
-                slotNumber = state.stateDeleteTarget.slotNumber
+                slotNumber = state.stateDeleteTarget.slotNumber,
+                onHintClick = onHintClick
             )
         }
 
         if (state.showStateReplaceAutoConfirmation &&
             state.stateReplaceAutoTarget != null) {
             StateReplaceAutoConfirmationOverlay(
-                slotNumber = state.stateReplaceAutoTarget.slotNumber
+                slotNumber = state.stateReplaceAutoTarget.slotNumber,
+                onHintClick = onHintClick
             )
         }
 
         if (state.showMigrateConfirmation &&
             state.migrateChannelName != null) {
             MigrateConfirmationOverlay(
-                channelName = state.migrateChannelName
+                channelName = state.migrateChannelName,
+                onHintClick = onHintClick
             )
         }
 
@@ -247,7 +253,8 @@ fun SaveChannelModal(
             SlotPickerOverlay(
                 items = state.slotPickerItems,
                 selectedIndex = state.slotPickerIndex,
-                onItemClick = onSlotPickerClick
+                onItemClick = onSlotPickerClick,
+                onHintClick = onHintClick
             )
         }
 
@@ -267,7 +274,8 @@ fun SaveChannelModal(
                 channelName = state.deleteLegacyChannelName,
                 saveCount = state.saveSlots.firstOrNull {
                     it.channelName == state.deleteLegacyChannelName
-                }?.saveCount ?: 0
+                }?.saveCount ?: 0,
+                onHintClick = onHintClick
             )
         }
     }
@@ -879,13 +887,14 @@ private fun buildFooterHints(state: SaveChannelState): List<FooterHintItem> {
 
 
 @Composable
-private fun RestoreConfirmationOverlay() {
+private fun RestoreConfirmationOverlay(onHintClick: (InputButton) -> Unit) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_restore_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_restore_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_restore_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_restore_message),
@@ -988,7 +997,8 @@ internal fun RenameChannelOverlay(
 private fun SlotPickerOverlay(
     items: List<SlotPickerItem>,
     selectedIndex: Int,
-    onItemClick: (Int) -> Unit
+    onItemClick: (Int) -> Unit,
+    onHintClick: (InputButton) -> Unit
 ) {
     val listState = rememberLazyListState()
     FocusedScroll(listState = listState, focusedIndex = selectedIndex)
@@ -998,7 +1008,8 @@ private fun SlotPickerOverlay(
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_slot_picker_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_slot_picker_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         LazyColumn(
             state = listState,
@@ -1076,13 +1087,14 @@ private fun SlotPickerRow(
 }
 
 @Composable
-private fun MigrateConfirmationOverlay(channelName: String) {
+private fun MigrateConfirmationOverlay(channelName: String, onHintClick: (InputButton) -> Unit) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_migrate_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_migrate_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_migrate_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_migrate_message, channelName),
@@ -1104,14 +1116,16 @@ private fun MigrateConfirmationOverlay(channelName: String) {
 @Composable
 private fun DeleteLegacyConfirmationOverlay(
     channelName: String,
-    saveCount: Int
+    saveCount: Int,
+    onHintClick: (InputButton) -> Unit
 ) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_delete_legacy_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_delete_legacy_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_delete_legacy_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = pluralStringResource(
@@ -1136,13 +1150,14 @@ private fun DeleteLegacyConfirmationOverlay(
 }
 
 @Composable
-private fun DeleteConfirmationOverlay(channelName: String) {
+private fun DeleteConfirmationOverlay(channelName: String, onHintClick: (InputButton) -> Unit) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_delete_slot_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_delete_slot_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_delete_slot_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_delete_slot_message, channelName),
@@ -1166,14 +1181,16 @@ fun VersionMismatchOverlay(
     savedCoreId: String?,
     savedVersion: String?,
     currentCoreId: String?,
-    currentVersion: String?
+    currentVersion: String?,
+    onHintClick: (InputButton) -> Unit
 ) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_version_mismatch_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_version_mismatch_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_version_mismatch_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_version_mismatch_saved_with),
@@ -1220,7 +1237,7 @@ fun VersionMismatchOverlay(
 }
 
 @Composable
-private fun StateDeleteConfirmationOverlay(slotNumber: Int) {
+private fun StateDeleteConfirmationOverlay(slotNumber: Int, onHintClick: (InputButton) -> Unit) {
     val slotLabel = if (slotNumber == -1) {
         stringResource(R.string.ui_save_channel_delete_state_target_auto)
     } else {
@@ -1231,7 +1248,8 @@ private fun StateDeleteConfirmationOverlay(slotNumber: Int) {
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_delete_state_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_delete_state_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_delete_state_message, slotLabel),
@@ -1251,13 +1269,14 @@ private fun StateDeleteConfirmationOverlay(slotNumber: Int) {
 }
 
 @Composable
-private fun StateReplaceAutoConfirmationOverlay(slotNumber: Int) {
+private fun StateReplaceAutoConfirmationOverlay(slotNumber: Int, onHintClick: (InputButton) -> Unit) {
     NestedModal(
         title = stringResource(R.string.ui_save_channel_replace_auto_title),
         footerHints = listOf(
             InputButton.A to stringResource(R.string.ui_save_channel_replace_auto_confirm),
             InputButton.B to stringResource(R.string.ui_save_channel_replace_auto_cancel)
-        )
+        ),
+        onHintClick = onHintClick
     ) {
         Text(
             text = stringResource(R.string.ui_save_channel_replace_auto_message, slotNumber),

@@ -97,6 +97,18 @@ data class SaveChannelState(
     val focusedSlotPickerItem: SlotPickerItem?
         get() = slotPickerItems.getOrNull(slotPickerIndex)
 
+    fun isSlotFocused(index: Int): Boolean =
+        saveFocusColumn == SaveFocusColumn.SLOTS && selectedSlotIndex == index
+
+    fun isHistoryFocused(index: Int): Boolean =
+        saveFocusColumn == SaveFocusColumn.HISTORY && selectedHistoryIndex == index
+
+    fun isStateFocused(index: Int): Boolean =
+        selectedTab == SaveTab.STATES && focusIndex == index
+
+    fun isSlotPickerItemFocused(index: Int): Boolean =
+        showSlotPicker && slotPickerIndex == index
+
     val canDeleteState: Boolean
         get() = selectedTab == SaveTab.STATES &&
             focusedStateEntry?.localCacheId != null
