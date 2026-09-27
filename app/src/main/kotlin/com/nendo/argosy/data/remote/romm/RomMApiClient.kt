@@ -70,10 +70,12 @@ class RomMApiClient @Inject constructor(
         orderDir: String = "asc",
         limit: Int = 100,
         offset: Int = 0,
-        includeFiles: Boolean = false
+        includeFiles: Boolean = false,
+        updatedAfter: java.time.Instant? = null
     ): Map<String, String> {
         return buildMap {
             platformId?.let { put("platform_ids", it.toString()) }
+            updatedAfter?.let { put("updated_after", it.toString()) }
             searchTerm?.let { put("search_term", it) }
             put("order_by", orderBy)
             put("order_dir", orderDir)

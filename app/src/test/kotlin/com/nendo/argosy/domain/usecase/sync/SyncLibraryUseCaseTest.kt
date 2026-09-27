@@ -113,6 +113,47 @@ class SyncLibraryUseCaseTest {
     }
 
     @Test
+    fun `a changes pass that succeeds skips the full pass`() = runTest {
+        val since = java.time.Instant.parse("2026-09-20T00:00:00Z")
+        val changes = SyncResult(2, 1, 4, 1, emptyList())
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibraryChanges(since) } returns changes
+
+        val result = useCase(changesSince = since)
+
+        assertEquals(changes, (result as SyncLibraryResult.Success).result)
+        coVerify(exactly = 0) { romMRepository.syncLibrary(any()) }
+    }
+
+    @Test
+    fun `a changes pass that fails falls back to a full pass`() = runTest {
+        val since = java.time.Instant.parse("2026-09-20T00:00:00Z")
+        val full = SyncResult(5, 0, 12, 0, emptyList())
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibraryChanges(since) } returns
+            SyncResult(0, 0, 0, 0, listOf("Failed to fetch changed ROMs: 500"))
+        coEvery { romMRepository.syncLibrary(any()) } returns full
+
+        val result = useCase(changesSince = since)
+
+        assertEquals(full, (result as SyncLibraryResult.Success).result)
+    }
+
+    @Test
+    fun `without a changes time the full pass runs`() = runTest {
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibrary(any()) } returns SyncResult(5, 0, 0, 0, emptyList())
+
+        useCase()
+
+        coVerify(exactly = 0) { romMRepository.syncLibraryChanges(any()) }
+        coVerify(exactly = 1) { romMRepository.syncLibrary(any()) }
+    }
+
+    @Test
     fun `invoke shows persistent notification during sync`() = runTest {
         every { romMRepository.isConnected() } returns true
         coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(3)

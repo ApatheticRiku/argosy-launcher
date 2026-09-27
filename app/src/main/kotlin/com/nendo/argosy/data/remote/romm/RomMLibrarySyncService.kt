@@ -52,6 +52,7 @@ private const val PLATFORM_FETCH_ATTEMPTS = 3
 private const val PLATFORM_FETCH_BACKOFF_MS = 2000L
 private const val TAG = "RomMLibrarySyncService"
 private const val ANDROID_SLUG = "android"
+private val CHANGES_OVERLAP: Duration = Duration.ofHours(1)
 
 @Singleton
 class RomMLibrarySyncService @Inject constructor(
@@ -130,6 +131,106 @@ class RomMLibrarySyncService @Inject constructor(
         } finally {
             flushDecodedImageCache()
             syncMutex.unlock()
+        }
+    }
+
+    suspend fun syncLibraryChanges(since: Instant): SyncResult =
+        withContext(NonCancellable + Dispatchers.IO) {
+            if (!syncMutex.tryLock()) {
+                return@withContext SyncResult(0, 0, 0, 0, emptyList(), alreadyInProgress = true)
+            }
+            try {
+                return@withContext doSyncLibraryChanges(since)
+            } finally {
+                flushDecodedImageCache()
+                syncMutex.unlock()
+            }
+        }
+
+    private suspend fun doSyncLibraryChanges(since: Instant): SyncResult {
+        val currentApi = api ?: return SyncResult(0, 0, 0, 0, listOf("Not connected"))
+        val prefs = userPreferencesRepository.preferences.first()
+        val filters = prefs.syncFilters
+        boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
+        val scope = resolveSyncScope(currentApi)
+        val syncStartedAt = Instant.now()
+        val queryFrom = since.minus(CHANGES_OVERLAP)
+
+        _syncProgress.value = SyncProgress(isSyncing = true)
+        try {
+            val platformsResponse = retryOnThrow(PLATFORM_FETCH_ATTEMPTS, PLATFORM_FETCH_BACKOFF_MS) {
+                currentApi.getPlatforms()
+            }
+            val platforms = platformsResponse.body()
+            if (!platformsResponse.isSuccessful || platforms.isNullOrEmpty()) {
+                return SyncResult(0, 0, 0, 0, listOf("Failed to fetch platforms: ${platformsResponse.code()}"))
+            }
+            platforms.forEach { syncPlatformMetadata(it) }
+            val enabledRemoteIds = platforms
+                .filter { platformDao.getById(storagePlatformId(it))?.syncEnabled != false }
+                .associateBy { it.id }
+
+            val batch = RomBatch()
+            val touchedStorageIds = mutableSetOf<Long>()
+            var offset = 0
+            var fetched = 0
+            while (true) {
+                val response = currentApi.getRoms(
+                    apiClient.buildRomsQueryParams(
+                        limit = SYNC_PAGE_SIZE,
+                        offset = offset,
+                        includeFiles = true,
+                        updatedAfter = queryFrom
+                    )
+                )
+                if (!response.isSuccessful) {
+                    return SyncResult(0, batch.added, batch.updated, 0, listOf("Failed to fetch changed ROMs: ${response.code()}"))
+                }
+                val page = response.body()
+                if (page == null || page.items.isEmpty()) break
+                fetched += page.items.size
+                for (rom in page.items) {
+                    val platform = enabledRemoteIds[rom.platformId] ?: continue
+                    _syncProgress.update {
+                        it.copy(
+                            currentPlatform = platform.name,
+                            currentPlatformSlug = platform.slug,
+                            gamesDone = batch.added + batch.updated,
+                            gamesTotal = page.total ?: fetched
+                        )
+                    }
+                    touchedStorageIds += storagePlatformId(platform)
+                    syncRomInBatch(rom, filters, scope, batch)
+                }
+                if (page.items.size < SYNC_PAGE_SIZE) break
+                val total = page.total
+                if (total != null && fetched >= total) break
+                offset += SYNC_PAGE_SIZE
+            }
+
+            consolidateMultiDiscGames(currentApi, batch.multiDiscGroups, scope)
+            for (storageId in touchedStorageIds) {
+                platformDao.updateGameCount(storageId, gameDao.countByPlatform(storageId, scope.ownerUserId))
+            }
+
+            val gamesDeleted = if (filters.deleteOrphans) reconcileDeletedRoms(scope) else 0
+
+            androidGameScanner.get().relinkInstalledRommAndroidApps()
+            playSessionDao.relinkOrphans(scope.ownerUserId)
+            userPreferencesRepository.setLastRommSyncTime(syncStartedAt)
+            syncVirtualCollectionsUseCase.get()()
+            attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
+
+            Logger.info(
+                TAG,
+                "syncLibraryChanges: since=$queryFrom fetched=$fetched added=${batch.added} " +
+                    "updated=${batch.updated} deleted=$gamesDeleted platforms=${touchedStorageIds.size}"
+            )
+            return SyncResult(touchedStorageIds.size, batch.added, batch.updated, gamesDeleted, emptyList())
+        } catch (e: Exception) {
+            return SyncResult(0, 0, 0, 0, listOf(e.message ?: "Sync failed"))
+        } finally {
+            _syncProgress.update { it.copy(isSyncing = false) }
         }
     }
 
@@ -1163,40 +1264,91 @@ class RomMLibrarySyncService @Inject constructor(
         val decidedRomIds: Set<Long> = emptySet()
     )
 
-    private suspend fun syncPlatformRoms(
-        api: RomMApi,
-        platform: RomMPlatform,
-        filters: SyncFilterPreferences,
-        scope: SyncScope
-    ): PlatformSyncResult {
+    private class RomBatch {
         var added = 0
         var updated = 0
         val multiDiscGroups = mutableListOf<MultiDiscGroup>()
         val processedDiscIds = mutableSetOf<Long>()
         val skipIndividualDiscIds = mutableSetOf<Long>()
         val decidedRomIds = mutableSetOf<Long>()
+    }
+
+    private fun trackSiblingMultiDisc(rom: RomMRom, batch: RomBatch) {
+        val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
+        if (isSiblingBasedMultiDisc && rom.id !in batch.processedDiscIds) {
+            val siblingIds = rom.sameGameSiblings.filter { it.isDiscVariant }.map { it.id }
+            batch.processedDiscIds.add(rom.id)
+            batch.processedDiscIds.addAll(siblingIds)
+            batch.multiDiscGroups.add(
+                MultiDiscGroup(
+                    primaryRommId = rom.id,
+                    siblingRommIds = siblingIds,
+                    platformSlug = rom.platformSlug
+                )
+            )
+        }
+    }
+
+    private suspend fun syncRomInBatch(
+        rom: RomMRom,
+        filters: SyncFilterPreferences,
+        scope: SyncScope,
+        batch: RomBatch
+    ) {
+        batch.decidedRomIds.add(rom.id)
+
+        if (!RomMSyncFilter.shouldSyncRom(rom, filters)) return
+
+        if (rom.id in batch.skipIndividualDiscIds) {
+            Logger.debug(TAG, "syncRomInBatch: skipping individual disc ${rom.name} - folder-based version preferred")
+            return
+        }
+
+        if (rom.id in batch.processedDiscIds) {
+            Logger.debug(TAG, "syncRomInBatch: skipping disc ${rom.name} - registered on its multi-disc game")
+            return
+        }
+
+        if (rom.isFolderMultiDisc) {
+            val discSiblings = rom.sameGameSiblings.filter { it.isDiscVariant }
+            if (discSiblings.isNotEmpty()) {
+                val siblingIds = discSiblings.map { it.id }
+                batch.skipIndividualDiscIds.addAll(siblingIds)
+                Logger.info(TAG, "syncRomInBatch: ${rom.name} is folder-based multi-disc, marking ${siblingIds.size} individual disc siblings to skip")
+                for (siblingId in siblingIds) {
+                    val existingGame = gameDao.getByRommId(siblingId) ?: continue
+                    if (hasLocalContent(existingGame)) {
+                        Logger.info(TAG, "syncRomInBatch: keeping redundant individual disc game ${existingGame.title}, it holds local content")
+                        continue
+                    }
+                    Logger.info(TAG, "syncRomInBatch: deleting redundant individual disc game: ${existingGame.title}")
+                    gameDao.delete(existingGame.id)
+                }
+            }
+        }
+
+        try {
+            val (isNew, _) = syncRom(rom, scope)
+            if (isNew) batch.added++ else batch.updated++
+            trackSiblingMultiDisc(rom, batch)
+        } catch (e: Exception) {
+            batch.decidedRomIds.remove(rom.id)
+            Logger.warn(TAG, "syncRomInBatch: failed to sync ROM ${rom.id} (${rom.name}): ${e.message}")
+        }
+    }
+
+    private suspend fun syncPlatformRoms(
+        api: RomMApi,
+        platform: RomMPlatform,
+        filters: SyncFilterPreferences,
+        scope: SyncScope
+    ): PlatformSyncResult {
+        val batch = RomBatch()
         var offset = 0
         var totalFetched = 0
         var processedRoms = 0
         var platformTotal: Int? = platform.romCount.takeIf { it > 0 }
         val storageId = storagePlatformId(platform)
-
-        fun trackSiblingMultiDisc(rom: RomMRom) {
-            val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
-            if (isSiblingBasedMultiDisc && rom.id !in processedDiscIds) {
-                val discSiblings = rom.sameGameSiblings.filter { it.isDiscVariant }
-                val siblingIds = discSiblings.map { it.id }
-
-                processedDiscIds.add(rom.id)
-                processedDiscIds.addAll(siblingIds)
-
-                multiDiscGroups.add(MultiDiscGroup(
-                    primaryRommId = rom.id,
-                    siblingRommIds = siblingIds,
-                    platformSlug = platform.slug
-                ))
-            }
-        }
 
         while (true) {
             val romsResponse = api.getRoms(
@@ -1210,9 +1362,9 @@ class RomMLibrarySyncService @Inject constructor(
 
             if (!romsResponse.isSuccessful) {
                 return PlatformSyncResult(
-                    added, updated, multiDiscGroups,
+                    batch.added, batch.updated, batch.multiDiscGroups,
                     error = "Failed to fetch ROMs for ${platform.name}: ${romsResponse.code()}",
-                    decidedRomIds = decidedRomIds
+                    decidedRomIds = batch.decidedRomIds
                 )
             }
 
@@ -1225,48 +1377,9 @@ class RomMLibrarySyncService @Inject constructor(
             publishGameProgress(storageId, processedRoms, platformTotal ?: totalFetched)
 
             for (rom in romsPage.items) {
-                decidedRomIds.add(rom.id)
                 processedRoms++
                 publishGameProgress(storageId, processedRoms, platformTotal ?: totalFetched)
-
-                if (!RomMSyncFilter.shouldSyncRom(rom, filters)) continue
-
-                if (rom.id in skipIndividualDiscIds) {
-                    Logger.debug(TAG, "syncPlatformRoms: skipping individual disc ${rom.name} - folder-based version preferred")
-                    continue
-                }
-
-                if (rom.id in processedDiscIds) {
-                    Logger.debug(TAG, "syncPlatformRoms: skipping disc ${rom.name} - registered on its multi-disc game")
-                    continue
-                }
-
-                if (rom.isFolderMultiDisc) {
-                    val discSiblings = rom.sameGameSiblings.filter { it.isDiscVariant }
-                    if (discSiblings.isNotEmpty()) {
-                        val siblingIds = discSiblings.map { it.id }
-                        skipIndividualDiscIds.addAll(siblingIds)
-                        Logger.info(TAG, "syncPlatformRoms: ${rom.name} is folder-based multi-disc, marking ${siblingIds.size} individual disc siblings to skip")
-                        for (siblingId in siblingIds) {
-                            val existingGame = gameDao.getByRommId(siblingId) ?: continue
-                            if (hasLocalContent(existingGame)) {
-                                Logger.info(TAG, "syncPlatformRoms: keeping redundant individual disc game ${existingGame.title}, it holds local content")
-                                continue
-                            }
-                            Logger.info(TAG, "syncPlatformRoms: deleting redundant individual disc game: ${existingGame.title}")
-                            gameDao.delete(existingGame.id)
-                        }
-                    }
-                }
-
-                try {
-                    val (isNew, _) = syncRom(rom, scope)
-                    if (isNew) added++ else updated++
-                    trackSiblingMultiDisc(rom)
-                } catch (e: Exception) {
-                    decidedRomIds.remove(rom.id)
-                    Logger.warn(TAG, "syncPlatformRoms: failed to sync ROM ${rom.id} (${rom.name}): ${e.message}")
-                }
+                syncRomInBatch(rom, filters, scope, batch)
             }
 
             if (pageCount < SYNC_PAGE_SIZE) break
@@ -1276,8 +1389,8 @@ class RomMLibrarySyncService @Inject constructor(
         }
 
         return PlatformSyncResult(
-            added, updated, multiDiscGroups,
-            decidedRomIds = decidedRomIds
+            batch.added, batch.updated, batch.multiDiscGroups,
+            decidedRomIds = batch.decidedRomIds
         )
     }
 

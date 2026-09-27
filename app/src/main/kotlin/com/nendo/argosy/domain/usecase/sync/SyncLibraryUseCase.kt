@@ -50,11 +50,16 @@ class SyncLibraryUseCase @Inject constructor(
     private val copy: SyncNotificationCopy
 ) {
     internal var progressDispatcher: CoroutineDispatcher = Dispatchers.IO
+    /**
+     * Runs a library pass. With [changesSince] it syncs only what the server changed after that
+     * time, and falls back to a full pass if that fails.
+     */
     suspend operator fun invoke(
         initializeFirst: Boolean = false,
+        changesSince: java.time.Instant? = null,
         onProgress: ((current: Int, total: Int, platform: String) -> Unit)? = null
     ): SyncLibraryResult {
-        Logger.info(TAG, "invoke: starting, initializeFirst=$initializeFirst")
+        Logger.info(TAG, "invoke: starting, initializeFirst=$initializeFirst, changesSince=$changesSince")
 
         if (initializeFirst) {
             romMRepository.initialize()
@@ -117,10 +122,15 @@ class SyncLibraryUseCase @Inject constructor(
                                 }
                             }
                         }
-                        val result = romMRepository.syncLibrary { current, total, platform ->
-                            Logger.info(TAG, "invoke: progress $current/$total - $platform")
-                            onProgress?.invoke(current, total, platform)
+                        val changes = changesSince?.let { romMRepository.syncLibraryChanges(it) }
+                        if (changes != null && changes.errors.isNotEmpty()) {
+                            Logger.warn(TAG, "invoke: changes pass failed (${changes.errors}), running a full pass")
                         }
+                        val result = changes?.takeIf { it.errors.isEmpty() || it.alreadyInProgress }
+                            ?: romMRepository.syncLibrary { current, total, platform ->
+                                Logger.info(TAG, "invoke: progress $current/$total - $platform")
+                                onProgress?.invoke(current, total, platform)
+                            }
                         progressJob.cancel()
 
                         Logger.info(TAG, "invoke: syncLibrary returned - added=${result.gamesAdded}, updated=${result.gamesUpdated}, deleted=${result.gamesDeleted}, errors=${result.errors}")

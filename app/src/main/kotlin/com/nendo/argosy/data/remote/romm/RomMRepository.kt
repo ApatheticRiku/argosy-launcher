@@ -193,6 +193,9 @@ class RomMRepository @Inject constructor(
         onProgress: ((current: Int, total: Int, platformName: String) -> Unit)? = null
     ): SyncResult = librarySyncService.syncLibrary(onProgress)
 
+    suspend fun syncLibraryChanges(since: java.time.Instant): SyncResult =
+        librarySyncService.syncLibraryChanges(since)
+
     suspend fun syncPlatform(platformId: Long): SyncResult = librarySyncService.syncPlatform(platformId)
 
     suspend fun syncPlatformsOnly(): Result<Int> = librarySyncService.syncPlatformsOnly()

@@ -23,7 +23,7 @@ class PlatformSyncQueue @Inject constructor(
     private val syncLibraryUseCase: dagger.Lazy<SyncLibraryUseCase>
 ) {
     sealed interface Job {
-        data class Library(val initializeFirst: Boolean) : Job
+        data class Library(val initializeFirst: Boolean, val changesSince: java.time.Instant? = null) : Job
         data class Platform(val id: Long, val name: String) : Job
     }
 
@@ -81,11 +81,12 @@ class PlatformSyncQueue @Inject constructor(
 
     fun enqueueLibrary(
         initializeFirst: Boolean = false,
+        changesSince: java.time.Instant? = null,
         onComplete: (() -> Unit)? = null
     ): Boolean {
         synchronized(lock) {
             if (isLibraryBusyNow()) return false
-            pending.addLast(Pending(Job.Library(initializeFirst), onComplete))
+            pending.addLast(Pending(Job.Library(initializeFirst, changesSince), onComplete))
             _libraryQueued.value = true
         }
         scope.launch { drain() }
@@ -103,7 +104,7 @@ class PlatformSyncQueue @Inject constructor(
                     when (job) {
                         is Job.Platform -> syncPlatformUseCase.get().invoke(job.id, job.name)
                         is Job.Library -> syncLibraryUseCase.get()
-                            .invoke(initializeFirst = job.initializeFirst)
+                            .invoke(initializeFirst = job.initializeFirst, changesSince = job.changesSince)
                     }
                 } finally {
                     synchronized(lock) {

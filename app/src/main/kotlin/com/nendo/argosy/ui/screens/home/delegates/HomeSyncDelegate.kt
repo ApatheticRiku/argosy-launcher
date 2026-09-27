@@ -50,7 +50,11 @@ class HomeSyncDelegate @Inject constructor(
                 val isStale = lastSync == null || lastSync.isBefore(oneWeekAgo)
 
                 if (isStale && !platformSyncQueue.isLibraryBusyNow()) {
-                    syncFromRomm(scope, onSyncComplete)
+                    platformSyncQueue.enqueueLibrary(
+                        initializeFirst = true,
+                        changesSince = lastSync,
+                        onComplete = onSyncComplete
+                    )
                 } else {
                     romMRepository.refreshFavoritesIfNeeded()
                     onFavoritesRefreshed()
