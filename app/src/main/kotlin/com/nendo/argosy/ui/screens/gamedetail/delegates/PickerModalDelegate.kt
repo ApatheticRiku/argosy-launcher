@@ -8,6 +8,7 @@ import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.RetroArchCore
 import com.nendo.argosy.data.launcher.SteamLauncher
 import com.nendo.argosy.data.launcher.SteamLaunchers
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.allSelectableSelected
 import com.nendo.argosy.data.model.selectableFileIds
 import com.nendo.argosy.data.model.visibleWithCollapsed
@@ -15,6 +16,9 @@ import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.ui.screens.gamedetail.ArtCandidate
+import com.nendo.argosy.ui.screens.gamedetail.artGridStep
+import com.nendo.argosy.ui.screens.gamedetail.pickerConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -51,21 +55,23 @@ data class PickerModalState(
     val filePickerManageMode: Boolean = false,
     val filePickerCollapsed: Set<String> = emptySet(),
 
-    val showCoverPicker: Boolean = false,
-    val coverCandidates: List<com.nendo.argosy.ui.screens.gamedetail.CoverCandidate> = emptyList(),
-    val coverPickerFocusIndex: Int = 0,
-    val coverPickerLoading: Boolean = false,
-    val coverPickerError: String? = null,
+    val showArtPicker: Boolean = false,
+    val artPickerSlot: ArtSlot = ArtSlot.COVER,
+    val artPickerCanSearch: Boolean = false,
+    val artCandidates: List<ArtCandidate> = emptyList(),
+    val artPickerFocusIndex: Int = 0,
+    val artPickerLoading: Boolean = false,
+    val artPickerError: String? = null,
     /**
-     * What the artwork search is actually looking for. Seeded from the title but the user's to
-     * change, because a stored title is often not what the artwork is filed under.
+     * What the artwork search is looking for. Seeded from the title and editable by the user,
+     * whose stored title is often not what the artwork is filed under.
      */
-    val coverPickerQuery: String = "",
-    val showCoverFileBrowser: Boolean = false
+    val artPickerQuery: String = "",
+    val showArtFileBrowser: Boolean = false
 ) {
     val hasAnyPickerOpen: Boolean
         get() = showEmulatorPicker || showCorePicker || showSteamLauncherPicker ||
-                showDiscPicker || showVariantPicker || showFilePicker || showCoverPicker
+                showDiscPicker || showVariantPicker || showFilePicker || showArtPicker
 
     val visibleFilePickerRows: List<com.nendo.argosy.data.model.FilePickerRow>
         get() = filePickerRows.visibleWithCollapsed(filePickerCollapsed)
@@ -96,68 +102,71 @@ class PickerModalDelegate @Inject constructor(
         _selection.value = null
     }
 
-    fun showCoverPicker(query: String = "") {
+    fun showArtPicker(slot: ArtSlot, query: String, canSearch: Boolean) {
         _state.update {
             it.copy(
-                showCoverPicker = true,
-                coverCandidates = emptyList(),
-                coverPickerFocusIndex = 0,
-                coverPickerLoading = true,
-                coverPickerError = null,
-                coverPickerQuery = query
+                showArtPicker = true,
+                artPickerSlot = slot,
+                artPickerCanSearch = canSearch,
+                artCandidates = emptyList(),
+                artPickerFocusIndex = 0,
+                artPickerLoading = false,
+                artPickerError = null,
+                artPickerQuery = query,
+                showArtFileBrowser = false
             )
         }
         soundManager.play(SoundType.OPEN_MODAL)
     }
 
-    fun setCoverPickerQuery(query: String) {
-        _state.update { it.copy(coverPickerQuery = query) }
+    fun setArtPickerQuery(query: String) {
+        _state.update { it.copy(artPickerQuery = query) }
     }
 
-    fun openCoverFileBrowser() {
-        _state.update { it.copy(showCoverFileBrowser = true) }
+    fun openArtFileBrowser() {
+        _state.update { it.copy(showArtFileBrowser = true) }
     }
 
-    fun closeCoverFileBrowser() {
-        _state.update { it.copy(showCoverFileBrowser = false) }
-    }
-
-    fun setCoverPickerSearching() {
+    fun setArtPickerSearching() {
         _state.update {
-            it.copy(coverPickerLoading = true, coverPickerError = null, coverCandidates = emptyList())
+            it.copy(artPickerLoading = true, artPickerError = null, artCandidates = emptyList())
         }
     }
 
-    fun setCoverCandidates(candidates: List<com.nendo.argosy.ui.screens.gamedetail.CoverCandidate>) {
+    fun setArtCandidates(candidates: List<ArtCandidate>, error: String? = null) {
         _state.update {
             it.copy(
-                coverCandidates = candidates,
-                coverPickerFocusIndex = 0,
-                coverPickerLoading = false,
-                coverPickerError = null
+                artCandidates = candidates.distinctBy { candidate -> candidate.source },
+                artPickerFocusIndex = 0,
+                artPickerLoading = false,
+                artPickerError = error
             )
         }
     }
 
-    fun setCoverPickerError(message: String) {
+    fun dismissArtPicker() {
         _state.update {
-            it.copy(coverPickerLoading = false, coverPickerError = message)
-        }
-    }
-
-    fun dismissCoverPicker() {
-        _state.update {
-            it.copy(showCoverPicker = false, coverCandidates = emptyList(), coverPickerError = null)
+            it.copy(
+                showArtPicker = false,
+                showArtFileBrowser = false,
+                artCandidates = emptyList(),
+                artPickerError = null
+            )
         }
         soundManager.play(SoundType.CLOSE_MODAL)
     }
 
-    /** Grid navigation: [delta] of +/-1 steps within a row, +/-columns moves between rows. */
-    fun moveCoverPickerFocus(delta: Int) {
+    fun moveArtPickerFocus(delta: Int) {
         _state.update { state ->
-            if (state.coverCandidates.isEmpty()) return@update state
-            val target = state.coverPickerFocusIndex + delta
-            state.copy(coverPickerFocusIndex = target.coerceIn(0, state.coverCandidates.lastIndex))
+            if (state.artCandidates.isEmpty()) return@update state
+            state.copy(
+                artPickerFocusIndex = artGridStep(
+                    index = state.artPickerFocusIndex,
+                    delta = delta,
+                    size = state.artCandidates.size,
+                    columns = state.artPickerSlot.pickerConfig.columns
+                )
+            )
         }
     }
 

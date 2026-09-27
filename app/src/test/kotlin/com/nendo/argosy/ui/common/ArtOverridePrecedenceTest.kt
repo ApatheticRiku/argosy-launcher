@@ -9,7 +9,6 @@ import com.nendo.argosy.ui.screens.gamedetail.toGameDetailUi
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -117,7 +116,7 @@ class ArtOverridePrecedenceTest {
     }
 
     @Test
-    fun `game detail reads the overrides and flags the cover override`() {
+    fun `game detail reads the overrides and flags each overridden slot`() {
         val detail = game(userCover, userBackground).toGameDetailUi(
             platformName = "SNES",
             emulatorName = null,
@@ -126,7 +125,18 @@ class ArtOverridePrecedenceTest {
 
         assertEquals(userCover, detail.coverPath)
         assertEquals(userBackground, detail.backgroundPath)
-        assertTrue(detail.coverSetManually)
+        assertEquals(setOf(ArtSlot.COVER, ArtSlot.BACKGROUND), detail.overriddenArtSlots)
+    }
+
+    @Test
+    fun `game detail flags a logo override on its own`() {
+        val detail = game(logoOverridePath = userLogo).toGameDetailUi(
+            platformName = "SNES",
+            emulatorName = null,
+            canPlay = false
+        )
+
+        assertEquals(setOf(ArtSlot.LOGO), detail.overriddenArtSlots)
     }
 
     @Test
@@ -139,7 +149,7 @@ class ArtOverridePrecedenceTest {
 
         assertEquals(serverCover, detail.coverPath)
         assertEquals(serverBackground, detail.backgroundPath)
-        assertFalse(detail.coverSetManually)
+        assertTrue(detail.overriddenArtSlots.isEmpty())
     }
 
     @Test

@@ -863,11 +863,6 @@
     <!-- Row of the options tab. Verb phrase: fetches this game's metadata from the server
          again. -->
     <string name="dual_detail_option_refresh_metadata">Refresh Metadata</string>
-    <!-- Row of the options tab. Verb phrase: picks a different picture for the game's box art. -->
-    <string name="dual_detail_option_change_cover">Change Cover Art</string>
-    <!-- Row of the options tab. Verb phrase: puts the box art back to the one the server
-         supplies. -->
-    <string name="dual_detail_option_reset_cover">Reset Cover Art</string>
     <!-- Row of the options tab. Verb phrase: removes the game from Argosy's library entirely. -->
     <string name="dual_detail_option_delete">Delete from Library</string>
     <!-- Row of the options tab, for a game already hidden. Verb phrase: puts it back in the

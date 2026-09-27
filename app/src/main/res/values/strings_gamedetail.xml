@@ -546,11 +546,9 @@
     <!-- Row in the options menu. Verb phrase: opens the list of the user's collections so the game
          can be put in one. -->
     <string name="gamedetail_more_options_add_to_collection">Add to Collection</string>
-    <!-- Row in the options menu. Verb phrase: picks a different picture for the game's box art. -->
-    <string name="gamedetail_more_options_change_cover">Change Cover Art</string>
-    <!-- Row in the options menu. Verb phrase: puts the box art back to the one the server
-         supplies. -->
-    <string name="gamedetail_more_options_reset_cover">Reset Cover Art</string>
+    <!-- Row in the options menu. Noun: opens a menu for replacing the game's pictures (box art,
+         backdrop, logo). -->
+    <string name="gamedetail_more_options_artwork">Artwork</string>
     <!-- Row in the options menu for an installed Android app. Verb: removes the app from the
          device. -->
     <string name="gamedetail_more_options_uninstall">Uninstall</string>
@@ -599,6 +597,27 @@
     <string name="gamedetail_ratings_status_set_status">Set Status</string>
     <!-- Value beside the status row before the user has recorded one. Adjective phrase. -->
     <string name="gamedetail_ratings_status_status_unset">Not set</string>
+
+    <!-- ================================= Artwork menu ================================== -->
+
+    <!-- Heading of the artwork menu. Noun: the game's pictures. Rendered in caps in English. -->
+    <string name="gamedetail_artwork_title">ARTWORK</string>
+    <!-- Row in the artwork menu. Noun: the game's box art; opens a picker to replace it. -->
+    <string name="gamedetail_artwork_row_cover">Cover</string>
+    <!-- Row in the artwork menu. Noun: the wide picture behind the game page; opens a picker to
+         replace it. Not a colour or a process running in the background. -->
+    <string name="gamedetail_artwork_row_background">Background</string>
+    <!-- Row in the artwork menu. Noun: the game's title logo; opens a picker to replace it. -->
+    <string name="gamedetail_artwork_row_logo">Logo</string>
+    <!-- Row in the artwork menu, shown only after the user replaced the box art. Verb phrase: goes
+         back to the box art the server supplies. -->
+    <string name="gamedetail_artwork_row_revert_cover">Revert cover</string>
+    <!-- Row in the artwork menu, shown only after the user replaced the backdrop picture. Verb
+         phrase: goes back to the backdrop the server supplies. -->
+    <string name="gamedetail_artwork_row_revert_background">Revert background</string>
+    <!-- Row in the artwork menu, shown only after the user replaced the title logo. Verb phrase:
+         goes back to the logo the server supplies. -->
+    <string name="gamedetail_artwork_row_revert_logo">Revert logo</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -751,30 +770,35 @@
          alternate edition was added. Noun phrase. -->
     <string name="gamedetail_variant_picker_original">Default (Original)</string>
 
-    <!-- ================================ Cover picker ================================== -->
+    <!-- ================================ Artwork picker ================================= -->
 
     <!-- Heading of the picker for the game's box art. Noun phrase. Rendered in caps in English. -->
-    <string name="gamedetail_cover_picker_title">COVER ART</string>
-    <!-- Footer hint in the cover picker. Verb: the directions move between the pictures. -->
-    <string name="gamedetail_cover_picker_footer_navigate">Navigate</string>
-    <!-- Footer hint in the cover picker. Verb: takes the picture under the cursor. -->
-    <string name="gamedetail_cover_picker_footer_select">Select</string>
-    <!-- Footer hint in the cover picker. Verb: runs the search again with what is typed. -->
-    <string name="gamedetail_cover_picker_footer_search">Search</string>
-    <!-- Footer hint in the cover picker. Adverb phrase: takes the picture from the device's own
+    <string name="gamedetail_art_picker_title_cover">COVER ART</string>
+    <!-- Heading of the picker for the wide picture behind the game page. Noun. Rendered in caps in
+         English. Not a colour or a process running in the background. -->
+    <string name="gamedetail_art_picker_title_background">BACKGROUND</string>
+    <!-- Heading of the picker for the game's title logo. Noun. Rendered in caps in English. -->
+    <string name="gamedetail_art_picker_title_logo">LOGO</string>
+    <!-- Footer hint in the artwork picker. Verb: runs the search again with what is typed. -->
+    <string name="gamedetail_art_picker_footer_search">Search</string>
+    <!-- Footer hint in the artwork picker. Adverb phrase: takes the picture from the device's own
          storage instead of the server. -->
-    <string name="gamedetail_cover_picker_footer_from_file">From file</string>
-    <!-- Footer hint in the cover picker. Verb: leaves the box art as it was. -->
-    <string name="gamedetail_cover_picker_footer_cancel">Cancel</string>
-    <!-- Grey text inside the cover picker's empty search field. Verb phrase addressed to the
+    <string name="gamedetail_art_picker_footer_from_file">From file</string>
+    <!-- Grey text inside the artwork picker's empty search field. Verb phrase addressed to the
          user. -->
-    <string name="gamedetail_cover_picker_search_placeholder">Search artwork...</string>
-    <!-- Shown in the cover picker when the search came back with nothing. "Title" here is the game,
-         not a heading. -->
-    <string name="gamedetail_cover_picker_empty">No cover art found for this title.</string>
-    <!-- Shown in the cover picker when the search itself failed. %1$s is the reason the server
+    <string name="gamedetail_art_picker_search_placeholder">Search artwork...</string>
+    <!-- Shown in the artwork picker when the search came back with nothing. "Title" here is the
+         game, not a heading. -->
+    <string name="gamedetail_art_picker_empty">No artwork found for this title.</string>
+    <!-- Shown in the box art picker when the server cannot search for artwork. "SteamGridDB" is an
+         artwork website and "RomM" the server software; leave both untranslated. -->
+    <string name="gamedetail_art_picker_search_unavailable">Artwork search needs SteamGridDB enabled on the RomM server.</string>
+    <!-- Shown in the artwork picker when the search itself failed. %1$s is the reason the server
          gave. -->
-    <string name="gamedetail_cover_picker_error">Could not search cover art. %1$s</string>
+    <string name="gamedetail_art_picker_error">Could not search artwork. %1$s</string>
+    <!-- Row in the artwork picker when there is nothing to pick from. Verb phrase: opens the file
+         browser to take a picture from the device. -->
+    <string name="gamedetail_art_picker_choose_file">Choose a file</string>
 
     <!-- ================================= File picker ================================== -->
 
@@ -917,7 +941,13 @@
 
     <!-- Heading of the file browser opened to pick box art from the device. Verb phrase addressed
          to the user. -->
-    <string name="gamedetail_cover_file_browser_title">Choose cover art</string>
+    <string name="gamedetail_art_picker_file_browser_title_cover">Choose cover art</string>
+    <!-- Heading of the file browser opened to pick the game page's backdrop picture from the
+         device. Verb phrase addressed to the user. -->
+    <string name="gamedetail_art_picker_file_browser_title_background">Choose a background</string>
+    <!-- Heading of the file browser opened to pick the game's title logo from the device. Verb
+         phrase addressed to the user. -->
+    <string name="gamedetail_art_picker_file_browser_title_logo">Choose a logo</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 
@@ -1042,6 +1072,9 @@
     <string name="gamedetail_notice_background_updated">Background updated</string>
     <!-- Brief message when that replacement did not work. Past tense statement. -->
     <string name="gamedetail_notice_background_failed">Failed to set background</string>
+    <!-- Brief message when a picture picked in the artwork menu could not be downloaded or read.
+         Past tense statement. -->
+    <string name="gamedetail_notice_artwork_failed">Could not apply the artwork</string>
     <!-- Brief message after the user's score for the game reached the server. "Rating" is a noun,
          "saved" means recorded. -->
     <string name="gamedetail_notice_rating_saved">Rating saved</string>

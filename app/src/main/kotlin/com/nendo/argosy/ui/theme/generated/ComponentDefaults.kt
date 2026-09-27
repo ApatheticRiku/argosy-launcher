@@ -305,4 +305,9 @@ object ComponentDefaults {
         const val entryStepMs = 20
     }
 
+    object ArtPicker {
+        const val stateHeightDp = 160
+        const val checkerCellDp = 8
+    }
+
 }

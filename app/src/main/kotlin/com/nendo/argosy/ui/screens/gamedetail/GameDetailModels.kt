@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.gamedetail
 
 import android.content.Intent
 import com.nendo.argosy.core.game.AchievementUi
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.ui.common.savechannel.SaveChannelState
@@ -64,7 +65,7 @@ data class GameDetailUi(
     val platformSlug: String,
     val platformName: String,
     val coverPath: String?,
-    val coverSetManually: Boolean = false,
+    val overriddenArtSlots: Set<ArtSlot> = emptySet(),
     val backgroundPath: String?,
     val boxBackPath: String? = null,
     val boxSpinePath: String? = null,
@@ -137,8 +138,12 @@ enum class GameDownloadStatus {
 
 enum class RatingType { OPINION, DIFFICULTY }
 
-data class CoverCandidate(
-    val url: String,
+/**
+ * A picture offered in the artwork picker. [source] is either a remote url or an absolute local
+ * path; [thumbUrl] is what the tile shows when it differs.
+ */
+data class ArtCandidate(
+    val source: String,
     val thumbUrl: String? = null,
     val width: Int? = null,
     val height: Int? = null
@@ -178,8 +183,6 @@ data class MoreOptionsContext(
     val hasUpdates: Boolean = false,
     val hasManageableFiles: Boolean = false,
     val platformSlug: String? = null,
-    val canSearchCovers: Boolean = false,
-    val coverSetManually: Boolean = false,
     val launchDisplayCount: Int = 0
 )
 
@@ -203,8 +206,7 @@ fun buildMoreOptions(ctx: MoreOptionsContext): List<MoreOptionAction> = buildLis
     if ((ctx.hasManageableFiles || ctx.hasUpdates) && ctx.isDownloaded) add(MoreOptionAction.Files)
     if (canTrackProgress) add(MoreOptionAction.RefreshData)
     add(MoreOptionAction.AddToCollection)
-    if (ctx.canSearchCovers) add(MoreOptionAction.ChangeCover)
-    if (ctx.coverSetManually) add(MoreOptionAction.ResetCover)
+    add(MoreOptionAction.Artwork)
     if (ctx.isDownloaded || ctx.isAndroidApp) add(MoreOptionAction.Delete)
     if (ctx.isSteamGame) add(MoreOptionAction.RemoveFromLibrary)
     add(MoreOptionAction.ToggleHide)
@@ -228,8 +230,7 @@ sealed class MoreOptionAction {
     data object AddToCollection : MoreOptionAction()
     data object RefreshTitleId : MoreOptionAction()
     data object SpeedrunSplits : MoreOptionAction()
-    data object ChangeCover : MoreOptionAction()
-    data object ResetCover : MoreOptionAction()
+    data object Artwork : MoreOptionAction()
     data object Delete : MoreOptionAction()
     data object RemoveFromLibrary : MoreOptionAction()
     data object ToggleHide : MoreOptionAction()
@@ -275,6 +276,8 @@ data class GameDetailUiState(
     val statusPickerValue: String? = null,
     val showRatingsStatusMenu: Boolean = false,
     val ratingsStatusFocusIndex: Int = 0,
+    val showArtworkMenu: Boolean = false,
+    val artworkFocusIndex: Int = 0,
     val showMissingDiscPrompt: Boolean = false,
     val missingDiscNumbers: List<Int> = emptyList(),
     val updateFiles: List<UpdateFileUi> = emptyList(),

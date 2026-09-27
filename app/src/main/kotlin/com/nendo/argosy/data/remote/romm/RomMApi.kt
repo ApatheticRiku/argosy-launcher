@@ -52,7 +52,8 @@ interface RomMApi {
 
     @GET("api/search/cover")
     suspend fun searchCovers(
-        @Query("search_term") searchTerm: String
+        @Query("search_term") searchTerm: String,
+        @Query("art_type") artType: String
     ): Response<List<RomMCoverSearchResult>>
 
     @GET("api/platforms")

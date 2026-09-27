@@ -376,8 +376,6 @@
     <string name="dual_detail_option_files">文件</string>
     <string name="dual_detail_option_add_to_collection">添加到合集</string>
     <string name="dual_detail_option_refresh_metadata">刷新元数据</string>
-    <string name="dual_detail_option_change_cover">更改封面</string>
-    <string name="dual_detail_option_reset_cover">重置封面</string>
     <string name="dual_detail_option_delete">从游戏库中删除</string>
     <string name="dual_detail_option_unhide">取消隐藏游戏</string>
     <string name="dual_detail_option_hide">隐藏游戏</string>

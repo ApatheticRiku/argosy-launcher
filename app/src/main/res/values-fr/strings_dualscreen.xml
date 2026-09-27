@@ -429,8 +429,6 @@
     <string name="dual_detail_option_files">Fichiers</string>
     <string name="dual_detail_option_add_to_collection">Ajouter à une collection</string>
     <string name="dual_detail_option_refresh_metadata">Actualiser les métadonnées</string>
-    <string name="dual_detail_option_change_cover">Changer la jaquette</string>
-    <string name="dual_detail_option_reset_cover">Réinitialiser la jaquette</string>
     <string name="dual_detail_option_delete">Supprimer de la bibliothèque</string>
     <string name="dual_detail_option_unhide">Réafficher le jeu</string>
     <string name="dual_detail_option_hide">Masquer le jeu</string>

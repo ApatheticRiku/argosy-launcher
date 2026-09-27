@@ -184,8 +184,7 @@
     <string name="gamedetail_more_options_files">Файлы</string>
     <string name="gamedetail_more_options_refresh_data">Обновить данные игры</string>
     <string name="gamedetail_more_options_add_to_collection">Добавить в коллекцию</string>
-    <string name="gamedetail_more_options_change_cover">Сменить обложку</string>
-    <string name="gamedetail_more_options_reset_cover">Сбросить обложку</string>
+    <string name="gamedetail_more_options_artwork">Оформление</string>
     <string name="gamedetail_more_options_uninstall">Удалить приложение</string>
     <string name="gamedetail_more_options_unlink_from_launcher">Отвязать от %1$s</string>
     <string name="gamedetail_more_options_unlink_launcher_fallback">Лаунчер</string>
@@ -205,6 +204,13 @@
     <string name="gamedetail_ratings_status_difficulty_unset">Не задано</string>
     <string name="gamedetail_ratings_status_set_status">Задать статус</string>
     <string name="gamedetail_ratings_status_status_unset">Не задано</string>
+    <string name="gamedetail_artwork_title">ОФОРМЛЕНИЕ</string>
+    <string name="gamedetail_artwork_row_cover">Обложка</string>
+    <string name="gamedetail_artwork_row_background">Фон</string>
+    <string name="gamedetail_artwork_row_logo">Логотип</string>
+    <string name="gamedetail_artwork_row_revert_cover">Вернуть обложку</string>
+    <string name="gamedetail_artwork_row_revert_background">Вернуть фон</string>
+    <string name="gamedetail_artwork_row_revert_logo">Вернуть логотип</string>
 
     <string name="gamedetail_status_picker_title">ЗАДАТЬ СТАТУС</string>
     <string name="gamedetail_status_picker_footer_navigate">Навигация</string>
@@ -270,15 +276,16 @@
     <string name="gamedetail_variant_picker_subtitle">Выберите версию для запуска</string>
     <string name="gamedetail_variant_picker_original">По умолчанию (Оригинал)</string>
 
-    <string name="gamedetail_cover_picker_title">ОБЛОЖКА</string>
-    <string name="gamedetail_cover_picker_footer_navigate">Навигация</string>
-    <string name="gamedetail_cover_picker_footer_select">Выбрать</string>
-    <string name="gamedetail_cover_picker_footer_search">Поиск</string>
-    <string name="gamedetail_cover_picker_footer_from_file">Из файла</string>
-    <string name="gamedetail_cover_picker_footer_cancel">Отмена</string>
-    <string name="gamedetail_cover_picker_search_placeholder">Поиск обложек...</string>
-    <string name="gamedetail_cover_picker_empty">Обложки для этой игры не найдены.</string>
-    <string name="gamedetail_cover_picker_error">Не удалось найти обложки. %1$s</string>
+    <string name="gamedetail_art_picker_title_cover">ОБЛОЖКА</string>
+    <string name="gamedetail_art_picker_title_background">ФОН</string>
+    <string name="gamedetail_art_picker_title_logo">ЛОГОТИП</string>
+    <string name="gamedetail_art_picker_footer_search">Поиск</string>
+    <string name="gamedetail_art_picker_footer_from_file">Из файла</string>
+    <string name="gamedetail_art_picker_search_placeholder">Поиск изображений...</string>
+    <string name="gamedetail_art_picker_empty">Изображения для этой игры не найдены.</string>
+    <string name="gamedetail_art_picker_search_unavailable">Для поиска изображений на сервере RomM должен быть включён SteamGridDB.</string>
+    <string name="gamedetail_art_picker_error">Не удалось найти изображения. %1$s</string>
+    <string name="gamedetail_art_picker_choose_file">Выбрать файл</string>
 
     <string name="gamedetail_file_picker_title_manage">Файлы</string>
     <string name="gamedetail_file_picker_title_choose">Выберите файлы</string>
@@ -334,7 +341,9 @@
     <string name="gamedetail_per_game_save_path_browser_title">Путь сохранения</string>
     <string name="gamedetail_per_game_save_path_content_dir">(папка ROM)</string>
 
-    <string name="gamedetail_cover_file_browser_title">Выберите обложку</string>
+    <string name="gamedetail_art_picker_file_browser_title_cover">Выберите обложку</string>
+    <string name="gamedetail_art_picker_file_browser_title_background">Выберите фон</string>
+    <string name="gamedetail_art_picker_file_browser_title_logo">Выберите логотип</string>
 
     <string name="gamedetail_speedrun_segments_title">%1$s - Сегменты</string>
     <string name="gamedetail_speedrun_title">Сплиты спидрана</string>
@@ -387,6 +396,7 @@
     <string name="gamedetail_notice_launch_failed">Не удалось запустить: %1$s</string>
     <string name="gamedetail_notice_background_updated">Фон обновлён</string>
     <string name="gamedetail_notice_background_failed">Не удалось обновить фон</string>
+    <string name="gamedetail_notice_artwork_failed">Не удалось применить изображение</string>
     <string name="gamedetail_notice_rating_saved">Оценка сохранена</string>
     <string name="gamedetail_notice_difficulty_saved">Сложность сохранена</string>
     <string name="gamedetail_notice_status_saved">Статус сохранён</string>

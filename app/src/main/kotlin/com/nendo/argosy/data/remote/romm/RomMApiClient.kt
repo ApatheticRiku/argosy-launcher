@@ -272,16 +272,15 @@ class RomMApiClient @Inject constructor(
         }
     }
 
-    suspend fun searchCovers(searchTerm: String): RomMResult<List<RomMCoverResource>> {
+    suspend fun searchCovers(
+        searchTerm: String,
+        artType: RomMCoverArtType
+    ): RomMResult<List<RomMCoverResource>> {
         val currentApi = api ?: return RomMResult.Error("Not connected")
         return try {
-            val response = currentApi.searchCovers(searchTerm)
+            val response = currentApi.searchCovers(searchTerm, artType.wireName)
             if (response.isSuccessful) {
-                val covers = response.body()
-                    ?.flatMap { it.resources ?: emptyList() }
-                    ?.filter { it.fullResUrl != null }
-                    ?: emptyList()
-                RomMResult.Success(covers)
+                RomMResult.Success(response.body().orEmpty().usableResources(artType))
             } else {
                 RomMResult.Error("Cover search failed", response.code())
             }

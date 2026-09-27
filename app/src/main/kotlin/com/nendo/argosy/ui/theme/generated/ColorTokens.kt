@@ -138,6 +138,10 @@ object ColorTokens {
                 val light = Color(0xFFE34948)
             }
         }
+        object ArtChecker {
+            val lightTile = Color(0xFFB4B6BE)
+            val darkTile = Color(0xFF7A7C85)
+        }
     }
 
     val accentPresets: List<AccentPreset> = listOf(

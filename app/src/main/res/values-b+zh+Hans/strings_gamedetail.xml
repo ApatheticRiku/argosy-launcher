@@ -174,8 +174,7 @@
     <string name="gamedetail_more_options_files">文件</string>
     <string name="gamedetail_more_options_refresh_data">刷新游戏数据</string>
     <string name="gamedetail_more_options_add_to_collection">添加到合集</string>
-    <string name="gamedetail_more_options_change_cover">更改封面</string>
-    <string name="gamedetail_more_options_reset_cover">重置封面</string>
+    <string name="gamedetail_more_options_artwork">美术图</string>
     <string name="gamedetail_more_options_uninstall">卸载</string>
     <string name="gamedetail_more_options_unlink_from_launcher">取消与%1$s的关联</string>
     <string name="gamedetail_more_options_unlink_launcher_fallback">启动器</string>
@@ -195,6 +194,13 @@
     <string name="gamedetail_ratings_status_difficulty_unset">未设置</string>
     <string name="gamedetail_ratings_status_set_status">设置状态</string>
     <string name="gamedetail_ratings_status_status_unset">未设置</string>
+    <string name="gamedetail_artwork_title">美术图</string>
+    <string name="gamedetail_artwork_row_cover">封面</string>
+    <string name="gamedetail_artwork_row_background">背景</string>
+    <string name="gamedetail_artwork_row_logo">标志</string>
+    <string name="gamedetail_artwork_row_revert_cover">恢复封面</string>
+    <string name="gamedetail_artwork_row_revert_background">恢复背景</string>
+    <string name="gamedetail_artwork_row_revert_logo">恢复标志</string>
 
     <string name="gamedetail_status_picker_title">设置状态</string>
     <string name="gamedetail_status_picker_footer_navigate">导航</string>
@@ -257,15 +263,16 @@
     <string name="gamedetail_variant_picker_subtitle">选择要启动的版本</string>
     <string name="gamedetail_variant_picker_original">默认（原版）</string>
 
-    <string name="gamedetail_cover_picker_title">封面</string>
-    <string name="gamedetail_cover_picker_footer_navigate">导航</string>
-    <string name="gamedetail_cover_picker_footer_select">选择</string>
-    <string name="gamedetail_cover_picker_footer_search">搜索</string>
-    <string name="gamedetail_cover_picker_footer_from_file">从文件选择</string>
-    <string name="gamedetail_cover_picker_footer_cancel">取消</string>
-    <string name="gamedetail_cover_picker_search_placeholder">搜索美术图...</string>
-    <string name="gamedetail_cover_picker_empty">未找到此游戏的封面。</string>
-    <string name="gamedetail_cover_picker_error">无法搜索封面。%1$s</string>
+    <string name="gamedetail_art_picker_title_cover">封面</string>
+    <string name="gamedetail_art_picker_title_background">背景</string>
+    <string name="gamedetail_art_picker_title_logo">标志</string>
+    <string name="gamedetail_art_picker_footer_search">搜索</string>
+    <string name="gamedetail_art_picker_footer_from_file">从文件选择</string>
+    <string name="gamedetail_art_picker_search_placeholder">搜索美术图...</string>
+    <string name="gamedetail_art_picker_empty">未找到此游戏的美术图。</string>
+    <string name="gamedetail_art_picker_search_unavailable">搜索美术图需要在 RomM 服务器上启用 SteamGridDB。</string>
+    <string name="gamedetail_art_picker_error">无法搜索美术图。%1$s</string>
+    <string name="gamedetail_art_picker_choose_file">选择文件</string>
 
     <string name="gamedetail_file_picker_title_manage">文件</string>
     <string name="gamedetail_file_picker_title_choose">选择文件</string>
@@ -321,7 +328,9 @@
     <string name="gamedetail_per_game_save_path_browser_title">存档路径</string>
     <string name="gamedetail_per_game_save_path_content_dir">（ROM所在目录）</string>
 
-    <string name="gamedetail_cover_file_browser_title">选择封面</string>
+    <string name="gamedetail_art_picker_file_browser_title_cover">选择封面</string>
+    <string name="gamedetail_art_picker_file_browser_title_background">选择背景</string>
+    <string name="gamedetail_art_picker_file_browser_title_logo">选择标志</string>
 
     <string name="gamedetail_speedrun_segments_title">%1$s - 分段</string>
     <string name="gamedetail_speedrun_title">速通分段</string>
@@ -374,6 +383,7 @@
     <string name="gamedetail_notice_launch_failed">启动失败：%1$s</string>
     <string name="gamedetail_notice_background_updated">背景已更新</string>
     <string name="gamedetail_notice_background_failed">设置背景失败</string>
+    <string name="gamedetail_notice_artwork_failed">无法应用美术图</string>
     <string name="gamedetail_notice_rating_saved">评分已保存</string>
     <string name="gamedetail_notice_difficulty_saved">难度已保存</string>
     <string name="gamedetail_notice_status_saved">状态已保存</string>

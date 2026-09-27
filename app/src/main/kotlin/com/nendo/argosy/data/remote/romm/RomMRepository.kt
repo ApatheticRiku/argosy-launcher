@@ -168,8 +168,10 @@ class RomMRepository @Inject constructor(
 
     suspend fun getPlatformCount(): RomMResult<Int> = apiClient.getPlatformCount()
 
-    suspend fun searchCovers(searchTerm: String): RomMResult<List<RomMCoverResource>> =
-        apiClient.searchCovers(searchTerm)
+    suspend fun searchCovers(
+        searchTerm: String,
+        artType: RomMCoverArtType
+    ): RomMResult<List<RomMCoverResource>> = apiClient.searchCovers(searchTerm, artType)
 
     fun getCapabilities(): RomMCapabilities = apiClient.getCapabilities()
 

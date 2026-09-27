@@ -205,8 +205,7 @@
     <string name="gamedetail_more_options_files">Archivos</string>
     <string name="gamedetail_more_options_refresh_data">Actualizar datos del juego</string>
     <string name="gamedetail_more_options_add_to_collection">Agregar a colección</string>
-    <string name="gamedetail_more_options_change_cover">Cambiar portada</string>
-    <string name="gamedetail_more_options_reset_cover">Restablecer portada</string>
+    <string name="gamedetail_more_options_artwork">Imágenes</string>
     <string name="gamedetail_more_options_uninstall">Desinstalar</string>
     <string name="gamedetail_more_options_unlink_from_launcher">Desvincular de %1$s</string>
     <string name="gamedetail_more_options_unlink_launcher_fallback">Launcher</string>
@@ -228,6 +227,13 @@
     <string name="gamedetail_ratings_status_difficulty_unset">Sin definir</string>
     <string name="gamedetail_ratings_status_set_status">Definir estado</string>
     <string name="gamedetail_ratings_status_status_unset">Sin definir</string>
+    <string name="gamedetail_artwork_title">IMÁGENES</string>
+    <string name="gamedetail_artwork_row_cover">Portada</string>
+    <string name="gamedetail_artwork_row_background">Fondo</string>
+    <string name="gamedetail_artwork_row_logo">Logotipo</string>
+    <string name="gamedetail_artwork_row_revert_cover">Restaurar portada</string>
+    <string name="gamedetail_artwork_row_revert_background">Restaurar fondo</string>
+    <string name="gamedetail_artwork_row_revert_logo">Restaurar logotipo</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -306,17 +312,18 @@
     <string name="gamedetail_variant_picker_subtitle">Elige qué versión iniciar</string>
     <string name="gamedetail_variant_picker_original">Predeterminada (Original)</string>
 
-    <!-- ================================ Cover picker ================================== -->
+    <!-- ================================ Artwork picker ================================= -->
 
-    <string name="gamedetail_cover_picker_title">PORTADA</string>
-    <string name="gamedetail_cover_picker_footer_navigate">Navegar</string>
-    <string name="gamedetail_cover_picker_footer_select">Seleccionar</string>
-    <string name="gamedetail_cover_picker_footer_search">Buscar</string>
-    <string name="gamedetail_cover_picker_footer_from_file">Desde archivo</string>
-    <string name="gamedetail_cover_picker_footer_cancel">Cancelar</string>
-    <string name="gamedetail_cover_picker_search_placeholder">Buscar portada...</string>
-    <string name="gamedetail_cover_picker_empty">No se encontró portada para este título.</string>
-    <string name="gamedetail_cover_picker_error">No se pudo buscar la portada. %1$s</string>
+    <string name="gamedetail_art_picker_title_cover">PORTADA</string>
+    <string name="gamedetail_art_picker_title_background">FONDO</string>
+    <string name="gamedetail_art_picker_title_logo">LOGOTIPO</string>
+    <string name="gamedetail_art_picker_footer_search">Buscar</string>
+    <string name="gamedetail_art_picker_footer_from_file">Desde archivo</string>
+    <string name="gamedetail_art_picker_search_placeholder">Buscar imágenes...</string>
+    <string name="gamedetail_art_picker_empty">No se encontraron imágenes para este título.</string>
+    <string name="gamedetail_art_picker_search_unavailable">La búsqueda de imágenes requiere SteamGridDB activado en el servidor RomM.</string>
+    <string name="gamedetail_art_picker_error">No se pudieron buscar imágenes. %1$s</string>
+    <string name="gamedetail_art_picker_choose_file">Elegir un archivo</string>
 
     <!-- ================================= File picker ================================== -->
 
@@ -376,7 +383,9 @@
     <string name="gamedetail_per_game_save_path_browser_title">Ruta de guardado</string>
     <string name="gamedetail_per_game_save_path_content_dir">(directorio de la ROM)</string>
 
-    <string name="gamedetail_cover_file_browser_title">Elegir portada</string>
+    <string name="gamedetail_art_picker_file_browser_title_cover">Elegir portada</string>
+    <string name="gamedetail_art_picker_file_browser_title_background">Elegir un fondo</string>
+    <string name="gamedetail_art_picker_file_browser_title_logo">Elegir un logotipo</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 
@@ -433,6 +442,7 @@
     <string name="gamedetail_notice_launch_failed">Error al iniciar: %1$s</string>
     <string name="gamedetail_notice_background_updated">Fondo actualizado</string>
     <string name="gamedetail_notice_background_failed">No se pudo establecer el fondo</string>
+    <string name="gamedetail_notice_artwork_failed">No se pudo aplicar la imagen</string>
     <string name="gamedetail_notice_rating_saved">Calificación guardada</string>
     <string name="gamedetail_notice_difficulty_saved">Dificultad guardada</string>
     <string name="gamedetail_notice_status_saved">Estado guardado</string>

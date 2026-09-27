@@ -420,8 +420,6 @@
     <string name="dual_detail_option_files">फ़ाइलें</string>
     <string name="dual_detail_option_add_to_collection">कलेक्शन में जोड़ें</string>
     <string name="dual_detail_option_refresh_metadata">मेटाडेटा रीफ्रेश करें</string>
-    <string name="dual_detail_option_change_cover">कवर आर्ट बदलें</string>
-    <string name="dual_detail_option_reset_cover">कवर आर्ट रीसेट करें</string>
     <string name="dual_detail_option_delete">लाइब्रेरी से हटाएं</string>
     <string name="dual_detail_option_unhide">गेम दिखाएं</string>
     <string name="dual_detail_option_hide">गेम छिपाएं</string>

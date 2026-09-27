@@ -94,6 +94,9 @@ import com.nendo.argosy.ui.screens.gamedetail.modals.MoreOptionsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.PerGameSettingsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingsStatusModal
+import com.nendo.argosy.ui.screens.gamedetail.modals.ArtPickerModal
+import com.nendo.argosy.ui.screens.gamedetail.modals.ArtworkModal
+import com.nendo.argosy.ui.screens.gamedetail.modals.fileBrowserTitleRes
 import com.nendo.argosy.ui.screens.gamedetail.modals.PermissionRequiredModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.FilePickerModal
@@ -474,7 +477,7 @@ private fun GameDetailContent(
     val downloadProgressState = viewModel.downloadProgress.collectAsState()
     val isAnySyncing = uiState.isSyncing || uiState.syncOverlayState != null
     val showAnyOverlay = uiState.showMoreOptions || uiState.showPlayOptions ||
-        uiState.showRatingsStatusMenu || pickerState.hasAnyPickerOpen ||
+        uiState.showRatingsStatusMenu || uiState.showArtworkMenu || pickerState.hasAnyPickerOpen ||
         uiState.showRatingPicker || uiState.showMissingDiscPrompt || isAnySyncing ||
         uiState.showSaveCacheDialog || uiState.showRenameDialog || uiState.showScreenshotViewer ||
         uiState.showExtractionFailedPrompt || uiState.showAchievementList ||
@@ -961,7 +964,6 @@ private fun GameDetailModals(
             hasVariants = uiState.hasVariants,
             updateCount = uiState.updateFiles.size + uiState.dlcFiles.size,
             hasManageableFiles = uiState.hasManageableFiles,
-            canSearchCovers = uiState.canSearchCovers,
             launchDisplayNumbers = uiState.launchDisplayNumbers,
             launchDisplayIndex = uiState.launchDisplayIndex,
             onAction = { action -> viewModel.handleMoreOptionAction(action, onBack, onNavigateToPlatformSettings) },
@@ -1049,6 +1051,19 @@ private fun GameDetailModals(
             focusIndex = uiState.ratingsStatusFocusIndex,
             onAction = { action -> viewModel.handleMoreOptionAction(action, onBack) },
             onDismiss = viewModel::dismissRatingsStatusMenu
+        )
+    }
+
+    AnimatedVisibility(
+        visible = uiState.showArtworkMenu,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        ArtworkModal(
+            game = game,
+            focusIndex = uiState.artworkFocusIndex,
+            onRowClick = viewModel::tapArtworkRow,
+            onDismiss = viewModel::dismissArtworkMenu
         )
     }
 
@@ -1205,33 +1220,35 @@ private fun GameDetailModals(
     }
 
     AnimatedVisibility(
-        visible = pickerState.showCoverPicker,
+        visible = pickerState.showArtPicker,
         enter = fadeIn(),
         exit = fadeOut()
     ) {
-        com.nendo.argosy.ui.screens.gamedetail.modals.CoverPickerModal(
-            gameTitle = uiState.game?.title ?: "",
-            covers = pickerState.coverCandidates,
-            focusIndex = pickerState.coverPickerFocusIndex,
-            isLoading = pickerState.coverPickerLoading,
-            errorMessage = pickerState.coverPickerError,
-            onSelect = viewModel::selectCover,
-            onDismiss = viewModel::dismissCoverPicker,
-            query = pickerState.coverPickerQuery,
-            onQueryChange = viewModel::setCoverPickerQuery,
-            onSearch = { viewModel.searchCoverArt() },
-            onChooseFile = viewModel::openCoverFileBrowser
+        ArtPickerModal(
+            gameTitle = game.title,
+            slot = pickerState.artPickerSlot,
+            candidates = pickerState.artCandidates,
+            focusIndex = pickerState.artPickerFocusIndex,
+            isLoading = pickerState.artPickerLoading,
+            errorMessage = pickerState.artPickerError,
+            canSearch = pickerState.artPickerCanSearch,
+            query = pickerState.artPickerQuery,
+            onQueryChange = viewModel::setArtPickerQuery,
+            onSearch = { viewModel.searchArtwork() },
+            onChooseFile = viewModel::openArtFileBrowser,
+            onSelect = viewModel::selectArtCandidate,
+            onDismiss = viewModel::dismissArtPicker
         )
     }
-    if (pickerState.showCoverFileBrowser) {
+    if (pickerState.showArtFileBrowser) {
         com.nendo.argosy.ui.filebrowser.FileBrowserScreen(
             mode = com.nendo.argosy.ui.filebrowser.FileBrowserMode.FILE_SELECTION,
-            title = stringResource(R.string.gamedetail_cover_file_browser_title),
+            title = stringResource(pickerState.artPickerSlot.fileBrowserTitleRes),
             fileFilter = com.nendo.argosy.ui.filebrowser.FileFilter(
                 extensions = setOf("png", "jpg", "jpeg", "webp")
             ),
-            onPathSelected = viewModel::selectCoverFile,
-            onDismiss = viewModel::closeCoverFileBrowser
+            onPathSelected = viewModel::selectArtFile,
+            onDismiss = viewModel::dismissArtPicker
         )
     }
 

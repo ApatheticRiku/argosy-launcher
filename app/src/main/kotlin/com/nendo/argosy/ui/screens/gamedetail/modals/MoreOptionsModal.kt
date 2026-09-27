@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
@@ -117,14 +116,9 @@ private fun MoreOptionAction.toMenuEntry(
         context.getString(R.string.gamedetail_more_options_add_to_collection),
         action = this
     )
-    MoreOptionAction.ChangeCover -> MoreMenuEntry.Option(
+    MoreOptionAction.Artwork -> MoreMenuEntry.Option(
         Icons.Default.Image,
-        context.getString(R.string.gamedetail_more_options_change_cover),
-        action = this
-    )
-    MoreOptionAction.ResetCover -> MoreMenuEntry.Option(
-        Icons.Default.Restore,
-        context.getString(R.string.gamedetail_more_options_reset_cover),
+        context.getString(R.string.gamedetail_more_options_artwork),
         action = this
     )
     MoreOptionAction.Delete -> MoreMenuEntry.Option(
@@ -169,7 +163,6 @@ fun MoreOptionsModal(
     hasVariants: Boolean = false,
     updateCount: Int = 0,
     hasManageableFiles: Boolean = false,
-    canSearchCovers: Boolean = false,
     launchDisplayNumbers: List<Int> = emptyList(),
     launchDisplayIndex: Int = 0,
     onAction: (MoreOptionAction) -> Unit,
@@ -188,8 +181,6 @@ fun MoreOptionsModal(
             hasUpdates = updateCount > 0,
             hasManageableFiles = hasManageableFiles,
             platformSlug = game.platformSlug,
-            canSearchCovers = canSearchCovers,
-            coverSetManually = game.coverSetManually,
             launchDisplayCount = launchDisplayNumbers.size
         )
     )

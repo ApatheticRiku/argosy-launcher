@@ -420,8 +420,6 @@
     <string name="dual_detail_option_files">Dateien</string>
     <string name="dual_detail_option_add_to_collection">Zur Sammlung hinzufügen</string>
     <string name="dual_detail_option_refresh_metadata">Metadaten aktualisieren</string>
-    <string name="dual_detail_option_change_cover">Cover ändern</string>
-    <string name="dual_detail_option_reset_cover">Cover zurücksetzen</string>
     <string name="dual_detail_option_delete">Aus Bibliothek entfernen</string>
     <string name="dual_detail_option_unhide">Spiel einblenden</string>
     <string name="dual_detail_option_hide">Spiel ausblenden</string>

@@ -420,10 +420,14 @@ data class RomMHeartbeatResponse(
 @JsonClass(generateAdapter = true)
 data class RomMCoverSearchResult(
     @Json(name = "name") val name: String? = null,
+    @Json(name = "art_type") val artType: String? = null,
     @Json(name = "resources") val resources: List<RomMCoverResource>? = null
 )
 
-/** SteamGridDB grid. Fields beyond thumb/url/type only exist on newer servers. */
+/**
+ * One SteamGridDB image: a grid, hero or logo. Fields beyond thumb/url/type only exist on newer
+ * servers.
+ */
 @JsonClass(generateAdapter = true)
 data class RomMCoverResource(
     @Json(name = "url") val url: String? = null,
@@ -435,10 +439,7 @@ data class RomMCoverResource(
     @Json(name = "nsfw") val nsfw: Boolean? = null,
     @Json(name = "humor") val humor: Boolean? = null,
     @Json(name = "epilepsy") val epilepsy: Boolean? = null
-) {
-    /** SteamGridDB serves full resolution under /grids/; thumbs are the same url under /thumb/. */
-    val fullResUrl: String? get() = url ?: thumb?.replace("/thumb/", "/grid/")
-}
+)
 
 @JsonClass(generateAdapter = true)
 data class RomMSystem(

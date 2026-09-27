@@ -429,8 +429,6 @@
     <string name="dual_detail_option_files">Archivos</string>
     <string name="dual_detail_option_add_to_collection">Agregar a colección</string>
     <string name="dual_detail_option_refresh_metadata">Actualizar metadatos</string>
-    <string name="dual_detail_option_change_cover">Cambiar portada</string>
-    <string name="dual_detail_option_reset_cover">Restablecer portada</string>
     <string name="dual_detail_option_delete">Eliminar de la biblioteca</string>
     <string name="dual_detail_option_unhide">Mostrar juego</string>
     <string name="dual_detail_option_hide">Ocultar juego</string>
