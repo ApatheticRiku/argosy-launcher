@@ -683,6 +683,20 @@ object EmulatorRegistry {
             downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy"
         ),
         EmulatorDef(
+            id = "pizza_boy_gba_pro",
+            packageName = "it.dbtecno.pizzaboygbapro",
+            displayName = "Pizza Boy GBA Pro",
+            supportedPlatforms = setOf("gba"),
+            downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboygbapro"
+        ),
+        EmulatorDef(
+            id = "pizza_boy_gb_pro",
+            packageName = "it.dbtecno.pizzaboypro",
+            displayName = "Pizza Boy GB Pro",
+            supportedPlatforms = setOf("gb", "gbc"),
+            downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboypro"
+        ),
+        EmulatorDef(
             id = "linkboy",
             packageName = "com.pixelrespawn.linkboy",
             displayName = "LinkBoy",
@@ -1084,9 +1098,9 @@ object EmulatorRegistry {
         "wii" to listOf("dolphin", "dolphin_handheld", "dolphin_cs", "retroarch", "retroarch_64", "retroarch_32"),
         "wiiu" to listOf("cemu", "cemu_dualscreen"),
         "switch" to listOf("eden", "citron", "sudachi", "ryujinx", "yuzu", "strato", "skyline"),
-        "gba" to listOf(BUILTIN_ID, "pizza_boy_gba", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
-        "gb" to listOf(BUILTIN_ID, "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
-        "gbc" to listOf(BUILTIN_ID, "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
+        "gba" to listOf(BUILTIN_ID, "pizza_boy_gba_pro", "pizza_boy_gba", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
+        "gb" to listOf(BUILTIN_ID, "pizza_boy_gb_pro", "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
+        "gbc" to listOf(BUILTIN_ID, "pizza_boy_gb_pro", "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
         "nes" to listOf(BUILTIN_ID, "retroarch", "retroarch_64", "retroarch_32"),
         "snes" to listOf(BUILTIN_ID, "retroarch", "retroarch_64", "retroarch_32"),
         "genesis" to listOf(BUILTIN_ID, "md_emu", "retroarch", "retroarch_64", "retroarch_32"),

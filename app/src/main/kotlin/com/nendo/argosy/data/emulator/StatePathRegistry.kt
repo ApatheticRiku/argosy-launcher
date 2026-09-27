@@ -311,6 +311,30 @@ object StatePathRegistry {
                 extension = "state"
             ),
             maxSlots = 10
+        ),
+        "pizza_boy_gba_pro" to StatePathConfig(
+            emulatorId = "pizza_boy_gba_pro",
+            defaultPaths = listOf(
+                "{extStorage}/PizzaBoyGBA/states",
+                "{extStorage}/Android/data/it.dbtecno.pizzaboygbapro/files/states"
+            ),
+            slotPattern = StateSlotPattern.NameAndSlot(
+                separator = "_",
+                extension = "state"
+            ),
+            maxSlots = 10
+        ),
+        "pizza_boy_gb_pro" to StatePathConfig(
+            emulatorId = "pizza_boy_gb_pro",
+            defaultPaths = listOf(
+                "{extStorage}/PizzaBoy/states",
+                "{extStorage}/Android/data/it.dbtecno.pizzaboypro/files/states"
+            ),
+            slotPattern = StateSlotPattern.NameAndSlot(
+                separator = "_",
+                extension = "state"
+            ),
+            maxSlots = 10
         )
     )
 
