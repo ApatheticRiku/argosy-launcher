@@ -2048,46 +2048,50 @@ class DownloadManager @Inject constructor(
                 completed = _state.value.completed.filter { it.id != downloadId }
             )
 
-            when {
-                item.isDiscDownload -> enqueueDiscDownload(
-                    gameId = item.gameId,
-                    discId = item.discId!!,
-                    discNumber = item.discNumber ?: 1,
-                    rommId = item.rommId,
-                    fileName = item.fileName,
-                    gameTitle = item.gameTitle,
-                    gameFolderName = item.gameFolderName,
-                    platformSlug = item.platformSlug,
-                    coverPath = item.coverPath,
-                    expectedSizeBytes = item.totalBytes,
-                    startNow = true
-                )
-                item.isGameFileDownload -> enqueueGameFileDownload(
-                    gameId = item.gameId,
-                    gameFileId = item.gameFileId!!,
-                    rommFileId = item.rommId,
-                    fileName = item.fileName,
-                    category = item.fileCategory ?: "unknown",
-                    gameTitle = item.gameTitle,
-                    platformSlug = item.platformSlug,
-                    coverPath = item.coverPath,
-                    expectedSizeBytes = item.totalBytes,
-                    gameFolderName = item.gameFolderName,
-                    startNow = true
-                )
-                else -> enqueueDownload(
-                    gameId = item.gameId,
-                    rommId = item.rommId,
-                    fileName = item.fileName,
-                    gameTitle = item.gameTitle,
-                    platformSlug = item.platformSlug,
-                    coverPath = item.coverPath,
-                    expectedSizeBytes = item.totalBytes,
-                    isMultiFileRom = item.isMultiFileRom,
-                    selectedFileIds = item.selectedFileIds,
-                    startNow = true
-                )
-            }
+            requeueFailed(item)
+        }
+    }
+
+    internal suspend fun requeueFailed(item: DownloadProgress) {
+        when {
+            item.isDiscDownload -> enqueueDiscDownload(
+                gameId = item.gameId,
+                discId = item.discId!!,
+                discNumber = item.discNumber ?: 1,
+                rommId = item.rommId,
+                fileName = item.fileName,
+                gameTitle = item.gameTitle,
+                gameFolderName = item.gameFolderName,
+                platformSlug = item.platformSlug,
+                coverPath = item.coverPath,
+                expectedSizeBytes = item.totalBytes,
+                startNow = true
+            )
+            item.isGameFileDownload -> enqueueGameFileDownload(
+                gameId = item.gameId,
+                gameFileId = item.gameFileId!!,
+                rommFileId = item.rommId,
+                fileName = item.fileName,
+                category = item.fileCategory ?: "unknown",
+                gameTitle = item.gameTitle,
+                platformSlug = item.platformSlug,
+                coverPath = item.coverPath,
+                expectedSizeBytes = item.totalBytes,
+                gameFolderName = item.gameFolderName,
+                startNow = true
+            )
+            else -> enqueueDownload(
+                gameId = item.gameId,
+                rommId = item.rommId,
+                fileName = item.fileName,
+                gameTitle = item.gameTitle,
+                platformSlug = item.platformSlug,
+                coverPath = item.coverPath,
+                expectedSizeBytes = item.totalBytes,
+                isMultiFileRom = item.isMultiFileRom,
+                selectedFileIds = item.selectedFileIds,
+                startNow = true
+            )
         }
     }
 

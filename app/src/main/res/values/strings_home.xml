@@ -123,6 +123,8 @@
     <string name="home_footer_game_play">Play</string>
     <!-- Footer hint on a game that is not on the device yet. Verb: fetches it from the server. -->
     <string name="home_footer_game_download">Download</string>
+    <!-- Footer hint on a game whose download is paused in the queue. Verb: starts that download. -->
+    <string name="home_footer_game_resume_download">Resume</string>
     <!-- Footer hint on a game that is not a favourite. Verb: marks it as one. -->
     <string name="home_footer_game_favorite">Favorite</string>
     <!-- Footer hint on a game that is already a favourite. Verb: takes it back out. -->
@@ -194,6 +196,9 @@
     <!-- Row in that menu, for a game that is not on the device. Verb: fetches it from the
          server. -->
     <string name="home_quick_actions_download">Download</string>
+    <!-- Row in that menu, for a game whose download is paused in the queue. Verb: starts that
+         download. -->
+    <string name="home_quick_actions_resume_download">Resume</string>
     <!-- Row in that menu. Verb: marks the game as a favourite. -->
     <string name="home_quick_actions_favorite">Favorite</string>
     <!-- Row in that menu. Verb: takes the game back out of the favourites. -->

@@ -1096,6 +1096,8 @@ fun HomeScreen(
                                         stringResource(R.string.home_footer_game_install)
                                     focusedGame.isDownloaded ->
                                         stringResource(R.string.home_footer_game_play)
+                                    downloadIndicators.value[focusedGame.id]?.isPaused == true ->
+                                        stringResource(R.string.home_footer_game_resume_download)
                                     else -> stringResource(R.string.home_footer_game_download)
                                 },
                                 InputButton.Y to if (focusedGame.isFavorite) {
@@ -1346,17 +1348,13 @@ fun HomeScreen(
             if (focusedGame != null) {
                 GameSelectOverlay(
                     game = focusedGame,
+                    isDownloadPaused = downloadIndicators.value[focusedGame.id]?.isPaused == true,
                     isPlatformRow = uiState.currentRow is HomeRow.Platform,
                     focusIndex = uiState.gameMenuFocusIndex,
                     onDismiss = { viewModel.toggleGameMenu() },
                     onPrimaryAction = {
                         viewModel.toggleGameMenu()
-                        when {
-                            focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
-                            focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
-                            focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
-                            else -> viewModel.queueDownload(focusedGame.id)
-                        }
+                        viewModel.activateGame(focusedGame)
                     },
                     playDisplays = uiState.gameMenuDisplays,
                     onPlayOnDisplay = { index ->
@@ -2056,6 +2054,7 @@ private fun EmptyState(
 @Composable
 private fun GameSelectOverlay(
     game: HomeGameUi,
+    isDownloadPaused: Boolean,
     isPlatformRow: Boolean,
     focusIndex: Int,
     onDismiss: () -> Unit,
@@ -2079,6 +2078,7 @@ private fun GameSelectOverlay(
     val primaryLabel = when {
         game.needsInstall -> stringResource(R.string.home_quick_actions_install)
         game.isDownloaded -> stringResource(R.string.home_quick_actions_play)
+        isDownloadPaused -> stringResource(R.string.home_quick_actions_resume_download)
         else -> stringResource(R.string.home_quick_actions_download)
     }
 

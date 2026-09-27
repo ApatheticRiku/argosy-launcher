@@ -233,7 +233,8 @@ class NetplayJoinService @Inject constructor(
             platformSlug = game.platformSlug,
             coverPath = game.coverPath,
             expectedSizeBytes = game.fileSizeBytes ?: 0L,
-            isMultiFileRom = game.isMultiDisc
+            isMultiFileRom = game.isMultiDisc,
+            startNow = true
         )
         while (true) {
             val current = _state.value as? NetplayJoinState.VerifyingGame ?: return

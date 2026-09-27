@@ -92,14 +92,13 @@ class DownloadManagerAutoStartTest {
         )
     }
 
-    private suspend fun DownloadManager.enqueueRom(startNow: Boolean = false) = enqueueDownload(
+    private suspend fun DownloadManager.enqueueRom() = enqueueDownload(
         gameId = GAME_ID,
         rommId = ROMM_ID,
         fileName = "game.nes",
         gameTitle = "Test Game",
         platformSlug = "nes",
-        coverPath = null,
-        startNow = startNow
+        coverPath = null
     )
 
     @Test
@@ -141,14 +140,45 @@ class DownloadManagerAutoStartTest {
     }
 
     @Test
-    fun `a retry starts immediately with auto start off`() = runTest {
+    fun `a retried rom starts immediately with auto start off`() = runTest {
         val manager = manager(autoStart = false)
 
-        manager.enqueueRom(startNow = true)
+        manager.requeueFailed(failed())
 
         assertEquals(DownloadState.QUEUED.name, inserted.captured.state)
         assertEquals(DownloadState.QUEUED, manager.state.value.queue.single().state)
     }
+
+    @Test
+    fun `a retried disc starts immediately with auto start off`() = runTest {
+        val manager = manager(autoStart = false)
+
+        manager.requeueFailed(failed().copy(discId = 7L, discNumber = 1, fileName = "disc1.chd"))
+
+        assertEquals(DownloadState.QUEUED.name, inserted.captured.state)
+    }
+
+    @Test
+    fun `a retried game file starts immediately with auto start off`() = runTest {
+        val manager = manager(autoStart = false)
+
+        manager.requeueFailed(failed().copy(gameFileId = 8L, fileCategory = "update"))
+
+        assertEquals(DownloadState.QUEUED.name, inserted.captured.state)
+    }
+
+    private fun failed() = DownloadProgress(
+        id = 5L,
+        gameId = GAME_ID,
+        rommId = ROMM_ID,
+        fileName = "game.nes",
+        gameTitle = "Test Game",
+        platformSlug = "nes",
+        coverPath = null,
+        bytesDownloaded = 0L,
+        totalBytes = 0L,
+        state = DownloadState.FAILED
+    )
 
     @Test
     fun `resume all paused resumes only paused downloads`() = runTest {
