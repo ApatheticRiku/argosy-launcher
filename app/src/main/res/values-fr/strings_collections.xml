@@ -170,6 +170,7 @@
     <string name="downloads_hint_remove">Retirer</string>
     <string name="downloads_hint_cancel">Annuler</string>
     <string name="downloads_hint_clear_finished">Effacer les terminés</string>
+    <string name="downloads_hint_start_all">Tout démarrer</string>
     <string name="downloads_hint_back">Retour</string>
     <string name="downloads_failed_dialog_title">Échec du téléchargement</string>
     <string name="downloads_failed_dialog_message">Le téléchargement de \"%1$s\" a échoué. Que voulez-vous faire ?</string>
@@ -201,6 +202,7 @@
     <string name="downloads_action_remove">Effacer</string>
     <string name="downloads_action_retry">Réessayer</string>
     <string name="downloads_action_clear_finished">Effacer les terminés</string>
+    <string name="downloads_action_start_all">Tout démarrer</string>
 
     <string name="downloads_steam_status_preparing">Préparation…</string>
     <string name="downloads_steam_status_connecting">Connexion à Steam…</string>

@@ -138,6 +138,9 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var accountSwitchCoordinator: com.nendo.argosy.data.sync.AccountSwitchCoordinator
 
+    @Inject
+    lateinit var pushInstallCoordinator: com.nendo.argosy.data.install.PushInstallCoordinator
+
     private val quayPassForegroundObserver = object : androidx.lifecycle.DefaultLifecycleObserver {
         override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
             appScope.launch { quayPassCredentialManager.refreshIfNeeded() }
@@ -159,6 +162,7 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         titleIdDownloadObserver.start()
         downloadServiceController.start()
         syncServiceController.start()
+        pushInstallCoordinator.start()
         appScope.launch {
             val storedOverride = builtinPrefs.getArchitectureOverride().first()
             if (storedOverride != null) {

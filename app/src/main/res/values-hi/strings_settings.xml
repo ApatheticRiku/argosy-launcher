@@ -788,6 +788,12 @@
     <string name="settings_storage_builtin_state_path_internal">इंटरनल (डिफ़ॉल्ट)</string>
 
     <string name="settings_storage_max_downloads_title">अधिकतम सक्रिय डाउनलोड</string>
+    <string name="settings_storage_remote_installs_title">रिमोट इंस्टॉल की अनुमति दें</string>
+    <string name="settings_storage_remote_installs_subtitle">RomM से इस डिवाइस पर भेजे गए गेम यहां डाउनलोड होते हैं</string>
+    <string name="settings_storage_remote_installs_locked_value">अनुपलब्ध</string>
+    <string name="settings_storage_remote_installs_locked_subtitle">RomM %1$s या नया आवश्यक है</string>
+    <string name="settings_storage_auto_start_title">डाउनलोड अपने आप शुरू करें</string>
+    <string name="settings_storage_auto_start_subtitle">बंद होने पर, नए डाउनलोड तब तक कतार में रहते हैं जब तक आप उन्हें शुरू नहीं करते</string>
     <string name="settings_storage_threshold_title">तुरंत डाउनलोड सीमा</string>
     <string name="settings_storage_threshold_value">%1$d MB</string>
     <string name="settings_storage_threshold_subtitle">इस आकार से छोटी फ़ाइलें तुरंत डाउनलोड होती हैं</string>

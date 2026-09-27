@@ -1515,6 +1515,19 @@
 
     <!-- Row title. Noun phrase: how many downloads may run at once. -->
     <string name="settings_storage_max_downloads_title">Max Active Downloads</string>
+    <!-- Row title. Verb phrase: let games sent from the RomM web page download to this device. -->
+    <string name="settings_storage_remote_installs_title">Allow Remote Installs</string>
+    <!-- Second line of that row. "RomM" is the server product name; leave it untranslated. -->
+    <string name="settings_storage_remote_installs_subtitle">Games sent to this device from RomM download here</string>
+    <!-- Value shown in place of the switch when the connected server is too old. Adjective. -->
+    <string name="settings_storage_remote_installs_locked_value">Unavailable</string>
+    <!-- Second line of that row when locked. %1$s is a version number such as "5.4.0".
+         "RomM" is the server product name; leave it untranslated. -->
+    <string name="settings_storage_remote_installs_locked_subtitle">Requires RomM %1$s or newer</string>
+    <!-- Row title. Verb phrase: begin new downloads as soon as they are added. -->
+    <string name="settings_storage_auto_start_title">Start Downloads Automatically</string>
+    <!-- Second line of that row. -->
+    <string name="settings_storage_auto_start_subtitle">When off, new downloads wait in the queue until you start them</string>
     <!-- Row title. Noun phrase: the size under which a download starts without asking. -->
     <string name="settings_storage_threshold_title">Instant Download Threshold</string>
     <!-- Value of that row. %1$d is a number and "MB" the symbol for megabytes. -->

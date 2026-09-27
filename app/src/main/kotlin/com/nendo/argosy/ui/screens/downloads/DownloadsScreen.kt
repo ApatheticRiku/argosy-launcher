@@ -163,6 +163,16 @@ fun DownloadsScreen(
             val activeGroups = uiState.activeGroups
             val queuedGroups = uiState.queuedGroups
             val completedGroups = uiState.completedGroups
+            val startAllAction: (@Composable () -> Unit)? = if (uiState.isTouchMode && uiState.canStartAll) {
+                {
+                    ActionButton(
+                        label = stringResource(R.string.downloads_action_start_all),
+                        onClick = viewModel::startAllPaused
+                    )
+                }
+            } else {
+                null
+            }
 
             if (activeGroups.isNotEmpty()) {
                 val hasExtracting = activeGroups.any { it.aggregate(context).state == DownloadState.EXTRACTING }
@@ -177,7 +187,11 @@ fun DownloadsScreen(
                             else -> R.string.downloads_section_header_active
                         }
                     )
-                    SectionHeader(headerText, if (totalSpeed > 0) formatSpeed(totalSpeed) else null)
+                    SectionHeader(
+                        title = headerText,
+                        speedSuffix = if (totalSpeed > 0) formatSpeed(totalSpeed) else null,
+                        action = if (queuedGroups.isEmpty()) startAllAction else null
+                    )
                 }
                 itemsIndexed(activeGroups, key = { _, g -> g.primary.id }) { index, group ->
                     val isFocused = index == uiState.focusedIndex
@@ -196,7 +210,12 @@ fun DownloadsScreen(
             }
 
             if (queuedGroups.isNotEmpty()) {
-                item { SectionHeader(stringResource(R.string.downloads_section_header_queued)) }
+                item {
+                    SectionHeader(
+                        title = stringResource(R.string.downloads_section_header_queued),
+                        action = startAllAction
+                    )
+                }
                 itemsIndexed(queuedGroups, key = { _, g -> g.primary.id }) { index, group ->
                     val isFocused = (activeGroups.size + index) == uiState.focusedIndex
                     Column {
@@ -256,6 +275,9 @@ fun DownloadsScreen(
                 if (uiState.hasFinishedItems) {
                     add(InputButton.Y to stringResource(R.string.downloads_hint_clear_finished))
                 }
+                if (uiState.canStartAll) {
+                    add(InputButton.RT to stringResource(R.string.downloads_hint_start_all))
+                }
                 add(InputButton.B to stringResource(R.string.downloads_hint_back))
             }
 
@@ -266,6 +288,7 @@ fun DownloadsScreen(
                         InputButton.A -> { inputHandler.onConfirm() }
                         InputButton.X -> { inputHandler.onContextMenu() }
                         InputButton.Y -> { inputHandler.onSecondaryAction() }
+                        InputButton.RT -> { inputHandler.onNextTrigger() }
                         InputButton.B -> { inputHandler.onBack() }
                         else -> Unit
                     }

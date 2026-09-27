@@ -1,7 +1,9 @@
 package com.nendo.argosy.data.remote.romm
 
+import com.nendo.argosy.BuildConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -101,5 +103,50 @@ class RomMCapabilitiesTest {
     fun `libretro thumbnails honors explicit flag over version default`() {
         assertTrue(RomMCapabilities.from("4.7.0", libretroEnabled = true).supportsLibretroThumbnails)
         assertFalse(RomMCapabilities.from("4.9.0", libretroEnabled = false).supportsLibretroThumbnails)
+    }
+
+    @Test
+    fun `device install is gated at 5_4_0`() {
+        assertEquals("5.4.0", RomMCapabilities.DEVICE_INSTALL_MIN_VERSION)
+    }
+
+    @Test
+    fun `5_3_9 is below the device install gate`() {
+        assertFalse(RomMCapabilities.from("5.3.9").supportsDeviceInstall)
+    }
+
+    @Test
+    fun `5_4_0 and 5_4_1 support device install`() {
+        for (version in listOf("5.4.0", "5.4.1")) {
+            assertTrue(version, RomMCapabilities.from(version).supportsDeviceInstall)
+        }
+    }
+
+    @Test
+    fun `an unreadable version does not support device install`() {
+        assertFalse(RomMCapabilities.from(null).supportsDeviceInstall)
+        assertFalse(RomMCapabilities.from("unknown").supportsDeviceInstall)
+    }
+
+    @Test
+    fun `a development server passes the device install gate in a debug build`() {
+        assertTrue("unit tests run against the debug variant", BuildConfig.DEBUG)
+        val caps = RomMCapabilities.from("development")
+        assertTrue(caps.supportsDeviceInstall)
+        assertTrue(caps.isSupportedVersion)
+    }
+
+    @Test
+    fun `a development server keeps its raw version string`() {
+        assertTrue("unit tests run against the debug variant", BuildConfig.DEBUG)
+        val caps = RomMCapabilities.from("development")
+        assertEquals("development", caps.serverVersion)
+        assertNotEquals("development", RomMCapabilities.comparableVersion("development"))
+    }
+
+    @Test
+    fun `a release version compares as itself`() {
+        assertEquals("5.3.9", RomMCapabilities.comparableVersion("5.3.9"))
+        assertEquals("5.4.0", RomMCapabilities.from("5.4.0").serverVersion)
     }
 }

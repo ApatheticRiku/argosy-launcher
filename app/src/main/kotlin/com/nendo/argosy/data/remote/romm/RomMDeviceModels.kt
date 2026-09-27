@@ -11,8 +11,19 @@ data class RomMDeviceRegistration(
     @Json(name = "client_version") val clientVersion: String,
     @Json(name = "hostname") val hostname: String? = null,
     @Json(name = "sync_mode") val syncMode: String? = null,
-    @Json(name = "sync_config") val syncConfig: Map<String, Any>? = null
+    @Json(name = "sync_config") val syncConfig: Map<String, Any>? = null,
+    @Json(name = "capabilities") val capabilities: Map<String, Boolean>? = null
 )
+
+@JsonClass(generateAdapter = true)
+data class RomMDeviceCapabilitiesUpdate(
+    @Json(name = "capabilities") val capabilities: Map<String, Boolean>
+)
+
+private const val DEVICE_CAPABILITY_INSTALL = "install"
+
+fun deviceCapabilities(allowRemoteInstalls: Boolean): Map<String, Boolean> =
+    mapOf(DEVICE_CAPABILITY_INSTALL to allowRemoteInstalls)
 
 @JsonClass(generateAdapter = true)
 data class RomMDevice(
@@ -39,6 +50,22 @@ data class RomMDeviceSync(
     @Json(name = "last_synced_at") val lastSyncedAt: String? = null,
     @Json(name = "is_untracked") val isUntracked: Boolean = false,
     @Json(name = "is_current") val isCurrent: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMInstallRequest(
+    @Json(name = "id") val id: String,
+    @Json(name = "device_id") val deviceId: String,
+    @Json(name = "rom_id") val romId: Long,
+    @Json(name = "file_ids") val fileIds: List<Long> = emptyList(),
+    @Json(name = "rom_updated_at") val romUpdatedAt: String? = null,
+    @Json(name = "status") val status: String
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMInstallReport(
+    @Json(name = "status") val status: String,
+    @Json(name = "reason") val reason: String? = null
 )
 
 @JsonClass(generateAdapter = true)

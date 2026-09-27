@@ -276,11 +276,14 @@ internal fun routeObserveConnectionState(vm: SettingsViewModel) {
             ?.capabilities?.supportsScreenshotUpload == true
         val musicApi = (connectionState as? ConnectionState.Connected)
             ?.capabilities?.supportsMusicApi == true
+        val deviceInstall = (connectionState as? ConnectionState.Connected)
+            ?.capabilities?.supportsDeviceInstall == true
         vm.serverDelegate.updateState(vm._uiState.value.server.copy(
             connectionStatus = status,
             rommVersion = version,
             screenshotUploadSupported = screenshotUpload,
-            musicApiSupported = musicApi
+            musicApiSupported = musicApi,
+            deviceInstallSupported = deviceInstall
         ))
         vm.soundsDelegate.setMusicApiSupported(musicApi)
     }.launchIn(vm.viewModelScope)
@@ -682,7 +685,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             screenshotUploadSupported = (connectionState as? ConnectionState.Connected)
                 ?.capabilities?.supportsScreenshotUpload == true,
             musicApiSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsMusicApi == true
+                ?.capabilities?.supportsMusicApi == true,
+            deviceInstallSupported = (connectionState as? ConnectionState.Connected)
+                ?.capabilities?.supportsDeviceInstall == true
         ))
 
         val jellyfinInFlight = vm.jellyfinDelegate.state.value
@@ -727,6 +732,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             downloadedGamesCount = downloadedCount,
             adoptedGamesCount = adoptedCount,
             maxConcurrentDownloads = prefs.maxConcurrentDownloads,
+            allowRemoteInstalls = prefs.allowRemoteInstalls,
+            autoStartDownloads = prefs.autoStartDownloads,
             instantDownloadThresholdMb = prefs.instantDownloadThresholdMb,
             stageDownloadsInternally = prefs.stageDownloadsInternally,
             folderNameFromRom = prefs.folderNameFromRom,

@@ -40,6 +40,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -552,12 +553,14 @@ class DownloadManager @Inject constructor(
         coverPath: String?,
         expectedSizeBytes: Long = 0,
         isMultiFileRom: Boolean = false,
-        selectedFileIds: List<Long>? = null
+        selectedFileIds: List<Long>? = null,
+        startNow: Boolean = false
     ) {
         val effectiveMultiFile = isMultiFileRom || (selectedFileIds?.size ?: 0) > 1
         val currentState = _state.value
         if (currentState.activeDownloads.any { it.gameId == gameId }) return
         if (currentState.queue.any { it.gameId == gameId }) return
+        val initialState = initialQueueState(startNow)
 
         val existing = downloadQueueDao.getByGameId(gameId)
         if (existing != null) {
@@ -583,7 +586,7 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED.name,
+            state = initialState.name,
             errorReason = null,
             tempFilePath = tempFilePath,
             createdAt = Instant.now(),
@@ -609,18 +612,29 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED,
+            state = initialState,
             isMultiFileRom = effectiveMultiFile,
             selectedFileIds = selectedFileIds
         )
 
-        if (isInstantDownload(expectedSizeBytes)) {
-            startDownloadJob(progress)
+        admitEnqueued(progress, expectedSizeBytes)
+    }
+
+    private suspend fun initialQueueState(startNow: Boolean): DownloadState =
+        if (startNow || preferencesRepository.userPreferences.first().autoStartDownloads) {
+            DownloadState.QUEUED
         } else {
-            _state.value = _state.value.copy(
-                queue = _state.value.queue + progress
-            )
-            processQueue()
+            DownloadState.PAUSED
+        }
+
+    private suspend fun admitEnqueued(progress: DownloadProgress, expectedSizeBytes: Long) {
+        when {
+            progress.state == DownloadState.PAUSED -> _state.update { it.copy(queue = it.queue + progress) }
+            isInstantDownload(expectedSizeBytes) -> startDownloadJob(progress)
+            else -> {
+                _state.update { it.copy(queue = it.queue + progress) }
+                processQueue()
+            }
         }
     }
 
@@ -634,11 +648,13 @@ class DownloadManager @Inject constructor(
         gameFolderName: String? = null,
         platformSlug: String,
         coverPath: String?,
-        expectedSizeBytes: Long = 0
+        expectedSizeBytes: Long = 0,
+        startNow: Boolean = false
     ) {
         val currentState = _state.value
         if (currentState.activeDownloads.any { it.discId == discId }) return
         if (currentState.queue.any { it.discId == discId }) return
+        val initialState = initialQueueState(startNow)
 
         val platformDir = getDownloadDir(platformSlug)
         val diskFileName = FileNames.sanitize(fileName)
@@ -656,7 +672,7 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED.name,
+            state = initialState.name,
             errorReason = null,
             tempFilePath = tempFilePath,
             createdAt = Instant.now(),
@@ -678,17 +694,10 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED
+            state = initialState
         )
 
-        if (isInstantDownload(expectedSizeBytes)) {
-            startDownloadJob(progress)
-        } else {
-            _state.value = _state.value.copy(
-                queue = _state.value.queue + progress
-            )
-            processQueue()
-        }
+        admitEnqueued(progress, expectedSizeBytes)
     }
 
     suspend fun enqueueGameFileDownload(
@@ -701,11 +710,13 @@ class DownloadManager @Inject constructor(
         platformSlug: String,
         coverPath: String?,
         expectedSizeBytes: Long = 0,
-        gameFolderName: String? = null
+        gameFolderName: String? = null,
+        startNow: Boolean = false
     ) {
         val currentState = _state.value
         if (currentState.activeDownloads.any { it.gameFileId == gameFileId }) return
         if (currentState.queue.any { it.gameFileId == gameFileId }) return
+        val initialState = initialQueueState(startNow)
 
         val gameFolder = resolveAddonFolder(gameId, platformSlug, gameFolderName, gameTitle, category)
         val categoryFolder = resolveGameFileDir(gameId, gameFileId, platformSlug, category, gameFolder)
@@ -729,7 +740,7 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED.name,
+            state = initialState.name,
             errorReason = null,
             tempFilePath = tempFilePath,
             createdAt = Instant.now(),
@@ -751,17 +762,10 @@ class DownloadManager @Inject constructor(
             coverPath = coverPath,
             bytesDownloaded = 0,
             totalBytes = expectedSizeBytes,
-            state = DownloadState.QUEUED
+            state = initialState
         )
 
-        if (isInstantDownload(expectedSizeBytes)) {
-            startDownloadJob(progress)
-        } else {
-            _state.value = _state.value.copy(
-                queue = _state.value.queue + progress
-            )
-            processQueue()
-        }
+        admitEnqueued(progress, expectedSizeBytes)
     }
 
     private suspend fun romFileFolderName(gameId: Long): String? {
@@ -1914,6 +1918,23 @@ class DownloadManager @Inject constructor(
         }
     }
 
+    fun resumeAllPaused() {
+        val paused = _state.value.queue.filter { it.state == DownloadState.PAUSED }
+        if (paused.isEmpty()) return
+        val pausedIds = paused.map { it.id }.toSet()
+        _state.update { current ->
+            current.copy(
+                queue = current.queue.map {
+                    if (it.id in pausedIds) it.copy(state = DownloadState.QUEUED) else it
+                }
+            )
+        }
+        scope.launch {
+            pausedIds.forEach { downloadQueueDao.updateState(it, DownloadState.QUEUED.name) }
+            processQueue()
+        }
+    }
+
     suspend fun recheckStorageAndResume() {
         val waiting = _state.value.queue.filter { it.state == DownloadState.WAITING_FOR_STORAGE }
         if (waiting.isEmpty()) {
@@ -2030,7 +2051,8 @@ class DownloadManager @Inject constructor(
                     gameFolderName = item.gameFolderName,
                     platformSlug = item.platformSlug,
                     coverPath = item.coverPath,
-                    expectedSizeBytes = item.totalBytes
+                    expectedSizeBytes = item.totalBytes,
+                    startNow = true
                 )
                 item.isGameFileDownload -> enqueueGameFileDownload(
                     gameId = item.gameId,
@@ -2042,7 +2064,8 @@ class DownloadManager @Inject constructor(
                     platformSlug = item.platformSlug,
                     coverPath = item.coverPath,
                     expectedSizeBytes = item.totalBytes,
-                    gameFolderName = item.gameFolderName
+                    gameFolderName = item.gameFolderName,
+                    startNow = true
                 )
                 else -> enqueueDownload(
                     gameId = item.gameId,
@@ -2053,7 +2076,8 @@ class DownloadManager @Inject constructor(
                     coverPath = item.coverPath,
                     expectedSizeBytes = item.totalBytes,
                     isMultiFileRom = item.isMultiFileRom,
-                    selectedFileIds = item.selectedFileIds
+                    selectedFileIds = item.selectedFileIds,
+                    startNow = true
                 )
             }
         }

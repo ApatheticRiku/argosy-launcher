@@ -729,6 +729,12 @@
     <string name="settings_storage_builtin_state_path_internal">內部儲存空間（預設）</string>
 
     <string name="settings_storage_max_downloads_title">最大同時下載數</string>
+    <string name="settings_storage_remote_installs_title">允許遠端安裝</string>
+    <string name="settings_storage_remote_installs_subtitle">從 RomM 傳送到此裝置的遊戲會下載到這裡</string>
+    <string name="settings_storage_remote_installs_locked_value">無法使用</string>
+    <string name="settings_storage_remote_installs_locked_subtitle">需要 RomM %1$s 或更新版本</string>
+    <string name="settings_storage_auto_start_title">自動開始下載</string>
+    <string name="settings_storage_auto_start_subtitle">關閉後，新下載會在佇列中等待，直到你手動開始</string>
     <string name="settings_storage_threshold_title">立即下載門檻</string>
     <string name="settings_storage_threshold_value">%1$d MB</string>
     <string name="settings_storage_threshold_subtitle">小於此大小的檔案會立即下載</string>

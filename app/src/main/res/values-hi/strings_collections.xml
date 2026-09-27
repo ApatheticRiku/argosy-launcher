@@ -162,6 +162,7 @@
     <string name="downloads_hint_remove">हटाएं</string>
     <string name="downloads_hint_cancel">रद्द करें</string>
     <string name="downloads_hint_clear_finished">पूर्ण साफ़ करें</string>
+    <string name="downloads_hint_start_all">सभी शुरू करें</string>
     <string name="downloads_hint_back">वापस</string>
     <string name="downloads_failed_dialog_title">डाउनलोड विफल</string>
     <string name="downloads_failed_dialog_message">\"%1$s\" डाउनलोड नहीं हो सका। आप क्या करना चाहेंगे?</string>
@@ -193,6 +194,7 @@
     <string name="downloads_action_remove">साफ़ करें</string>
     <string name="downloads_action_retry">पुनः प्रयास करें</string>
     <string name="downloads_action_clear_finished">पूर्ण साफ़ करें</string>
+    <string name="downloads_action_start_all">सभी शुरू करें</string>
 
     <string name="downloads_steam_status_preparing">तैयारी हो रही है…</string>
     <string name="downloads_steam_status_connecting">Steam से कनेक्ट हो रहा है…</string>

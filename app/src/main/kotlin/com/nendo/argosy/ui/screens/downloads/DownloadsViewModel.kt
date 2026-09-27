@@ -177,6 +177,9 @@ data class DownloadsUiState(
     val hasFinishedItems: Boolean
         get() = completedItems.isNotEmpty()
 
+    val canStartAll: Boolean
+        get() = downloadState.queue.any { it.id > 0 && it.state == DownloadState.PAUSED }
+
     @get:StringRes
     val toggleLabelRes: Int
         get() = when (focusedItem?.state) {
@@ -569,6 +572,10 @@ class DownloadsViewModel @Inject constructor(
         downloadManager.retryDownload(downloadId)
     }
 
+    fun startAllPaused() {
+        downloadManager.resumeAllPaused()
+    }
+
     fun showFailedActionDialog() {
         _uiState.value = _uiState.value.copy(showFailedActionDialog = true)
     }
@@ -634,6 +641,12 @@ class DownloadsViewModel @Inject constructor(
                 return InputResult.HANDLED
             }
             return InputResult.UNHANDLED
+        }
+        override fun onNextTrigger(): InputResult {
+            exitTouchMode()
+            if (!_uiState.value.canStartAll) return InputResult.UNHANDLED
+            startAllPaused()
+            return InputResult.HANDLED
         }
         override fun onContextMenu(): InputResult {
             exitTouchMode()

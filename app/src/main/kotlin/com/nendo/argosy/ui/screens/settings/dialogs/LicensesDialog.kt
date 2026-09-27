@@ -58,6 +58,7 @@ private val licenses = listOf(
     LicenseEntry("Retrofit", "Apache 2.0", "github.com/square/retrofit"),
     LicenseEntry("OkHttp", "Apache 2.0", "github.com/square/okhttp"),
     LicenseEntry("Moshi", "Apache 2.0", "github.com/square/moshi"),
+    LicenseEntry("Socket.IO Java Client", "MIT", "github.com/socketio/socket.io-client-java"),
     LicenseEntry("Coil", "Apache 2.0", "github.com/coil-kt/coil"),
     LicenseEntry("Hilt", "Apache 2.0", "dagger.dev/hilt"),
     LicenseEntry("Room", "Apache 2.0", "developer.android.com/training/data-storage/room")

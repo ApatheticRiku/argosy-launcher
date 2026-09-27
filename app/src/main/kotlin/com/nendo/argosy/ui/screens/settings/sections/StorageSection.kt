@@ -39,6 +39,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.R
+import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.data.storage.StorageSnapshot
@@ -46,6 +47,7 @@ import com.nendo.argosy.data.storage.WalkState
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CategoryTile
 import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.InfoPreference
 import com.nendo.argosy.ui.components.ListSection
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
@@ -60,10 +62,12 @@ import com.nendo.argosy.ui.components.storageComputedLabel
 import com.nendo.argosy.ui.components.volumeMeterCategoryColors
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
+import com.nendo.argosy.ui.screens.settings.ConnectionStatus
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
+import com.nendo.argosy.ui.screens.settings.menu.DisabledBehavior
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -71,14 +75,22 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.pressScale
 import com.nendo.argosy.util.formatBytes
 
-internal data class StorageLayoutState(val steamVisible: Boolean, val mediaVisible: Boolean) {
+internal data class StorageLayoutState(
+    val steamVisible: Boolean,
+    val mediaVisible: Boolean,
+    val remoteInstallsLocked: Boolean
+) {
     companion object {
         fun from(state: SettingsUiState) = StorageLayoutState(
             steamVisible = storageSteamVisible(state),
-            mediaVisible = storageMediaVisible(state)
+            mediaVisible = storageMediaVisible(state),
+            remoteInstallsLocked = storageRemoteInstallsLocked(state)
         )
     }
 }
+
+internal fun storageRemoteInstallsLocked(state: SettingsUiState): Boolean =
+    state.server.connectionStatus == ConnectionStatus.ONLINE && !state.server.deviceInstallSupported
 
 internal fun storageSteamVisible(state: SettingsUiState): Boolean =
     state.attribution.steamTileLatched
@@ -124,6 +136,8 @@ internal sealed class StorageItem(
     data object BuiltinStatePath : StorageItem("builtinStatePath", "locations")
 
     data object MaxDownloads : StorageItem("maxDownloads", "downloads")
+    data object RemoteInstalls : StorageItem("remoteInstalls", "downloads")
+    data object AutoStartDownloads : StorageItem("autoStartDownloads", "downloads")
     data object Threshold : StorageItem("threshold", "downloads")
     data object InternalStaging : StorageItem("internalStaging", "downloads")
     data object FolderNameFromRom : StorageItem("folderNameFromRom", "downloads")
@@ -146,17 +160,22 @@ internal sealed class StorageItem(
                 VolumeHero, RecomputeRow, GamesTile, MediaTile, MusicTile, CachesTile, SteamTile,
                 LocationsSpacer, LocationsHeader,
                 GlobalRomPath, ImageCache, MusicLocation, BiosFolder, BuiltinSavePath, BuiltinStatePath,
-                DownloadsSpacer, DownloadsHeader, MaxDownloads, Threshold, InternalStaging,
+                DownloadsSpacer, DownloadsHeader, MaxDownloads, RemoteInstalls, AutoStartDownloads,
+                Threshold, InternalStaging,
                 FolderNameFromRom,
                 DangerSpacer, DangerHeader, ResetLibrary, HardReset
             )
     }
 }
 
-private val storageLayout = SettingsLayout<StorageItem, StorageLayoutState>(
+private fun createStorageLayout(state: StorageLayoutState) = SettingsLayout<StorageItem, StorageLayoutState>(
     allItems = StorageItem.ALL,
-    isFocusable = { it.isFocusable },
-    visibleWhen = { item, state -> item.visibleWhen(state) },
+    isFocusable = { it.isFocusable && !(it == StorageItem.RemoteInstalls && state.remoteInstallsLocked) },
+    visibleWhen = { item, s -> item.visibleWhen(s) },
+    disabledBehavior = { item ->
+        if (item == StorageItem.RemoteInstalls && state.remoteInstallsLocked) DisabledBehavior.LOCKED
+        else DisabledBehavior.HIDDEN
+    },
     sectionOf = { it.section },
     sectionTitleRes = {
         when (it) {
@@ -174,8 +193,10 @@ internal data class StorageLayoutInfo(
     val state: StorageLayoutState
 )
 
-internal fun createStorageLayoutInfo(state: SettingsUiState): StorageLayoutInfo =
-    StorageLayoutInfo(storageLayout, StorageLayoutState.from(state))
+internal fun createStorageLayoutInfo(state: SettingsUiState): StorageLayoutInfo {
+    val layoutState = StorageLayoutState.from(state)
+    return StorageLayoutInfo(createStorageLayout(layoutState), layoutState)
+}
 
 internal fun storageItemAtFocusIndex(index: Int, info: StorageLayoutInfo): StorageItem? =
     info.layout.itemAtFocusIndex(index, info.state)
@@ -341,9 +362,13 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val context = LocalContext.current
     val steamVisible = storageSteamVisible(uiState)
     val mediaVisible = storageMediaVisible(uiState)
-    val layoutState = remember(steamVisible, mediaVisible) { StorageLayoutState(steamVisible, mediaVisible) }
-    val visibleItems = remember(layoutState) { storageLayout.visibleItems(layoutState) }
-    val sections = remember(layoutState, context) { storageLayout.buildSections(layoutState, context) }
+    val remoteInstallsLocked = storageRemoteInstallsLocked(uiState)
+    val layoutState = remember(steamVisible, mediaVisible, remoteInstallsLocked) {
+        StorageLayoutState(steamVisible, mediaVisible, remoteInstallsLocked)
+    }
+    val storageLayout = remember(layoutState) { createStorageLayout(layoutState) }
+    val visibleItems = remember(storageLayout) { storageLayout.visibleItems(layoutState) }
+    val sections = remember(storageLayout, context) { storageLayout.buildSections(layoutState, context) }
 
     val gamesBytes = remember(snapshot, walkProgress) {
         displayBytes(snapshot, walkProgress[StorageCategory.GAMES], setOf(StorageCategory.GAMES))
@@ -630,6 +655,34 @@ fun StorageSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 maxValue = 5,
                 isFocused = isFocused(item),
                 onAdjust = { viewModel.adjustMaxConcurrentDownloads(it) }
+            )
+
+            StorageItem.RemoteInstalls -> if (remoteInstallsLocked) {
+                InfoPreference(
+                    title = stringResource(R.string.settings_storage_remote_installs_title),
+                    value = stringResource(R.string.settings_storage_remote_installs_locked_value),
+                    subtitle = stringResource(
+                        R.string.settings_storage_remote_installs_locked_subtitle,
+                        RomMCapabilities.DEVICE_INSTALL_MIN_VERSION
+                    ),
+                    isFocused = false
+                )
+            } else {
+                SwitchPreference(
+                    title = stringResource(R.string.settings_storage_remote_installs_title),
+                    subtitle = stringResource(R.string.settings_storage_remote_installs_subtitle),
+                    isEnabled = storage.allowRemoteInstalls,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.toggleAllowRemoteInstalls() }
+                )
+            }
+
+            StorageItem.AutoStartDownloads -> SwitchPreference(
+                title = stringResource(R.string.settings_storage_auto_start_title),
+                subtitle = stringResource(R.string.settings_storage_auto_start_subtitle),
+                isEnabled = storage.autoStartDownloads,
+                isFocused = isFocused(item),
+                onToggle = { viewModel.toggleAutoStartDownloads() }
             )
 
             StorageItem.Threshold -> {

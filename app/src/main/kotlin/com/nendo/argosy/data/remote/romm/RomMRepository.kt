@@ -195,6 +195,9 @@ class RomMRepository @Inject constructor(
 
     suspend fun syncPlatformsOnly(): Result<Int> = librarySyncService.syncPlatformsOnly()
 
+    suspend fun syncSingleRom(romId: Long): RomMResult<com.nendo.argosy.data.local.entity.GameEntity> =
+        librarySyncService.syncSingleRom(romId)
+
     // --- Collections ---
 
     suspend fun syncCollections(): RomMResult<Unit> = collectionSyncService.syncCollections()

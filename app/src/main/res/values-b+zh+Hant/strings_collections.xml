@@ -154,6 +154,7 @@
     <string name="downloads_hint_remove">移除</string>
     <string name="downloads_hint_cancel">取消</string>
     <string name="downloads_hint_clear_finished">清除已完成</string>
+    <string name="downloads_hint_start_all">全部開始</string>
     <string name="downloads_hint_back">返回</string>
     <string name="downloads_failed_dialog_title">下載失敗</string>
     <string name="downloads_failed_dialog_message">「%1$s」下載失敗，您要如何處理？</string>
@@ -185,6 +186,7 @@
     <string name="downloads_action_remove">清除</string>
     <string name="downloads_action_retry">重試</string>
     <string name="downloads_action_clear_finished">清除已完成</string>
+    <string name="downloads_action_start_all">全部開始</string>
 
     <string name="downloads_steam_status_preparing">準備中&#8230;</string>
     <string name="downloads_steam_status_connecting">正在連線至Steam&#8230;</string>

@@ -269,6 +269,8 @@
     <string name="downloads_hint_cancel">Cancel</string>
     <!-- Footer hint. Verb: clear every finished download from the list. -->
     <string name="downloads_hint_clear_finished">Clear Finished</string>
+    <!-- Footer hint. Verb: start every paused download in the queue. -->
+    <string name="downloads_hint_start_all">Start All</string>
     <string name="downloads_hint_back">Back</string>
     <string name="downloads_failed_dialog_title">Download Failed</string>
     <!-- %1$s is the download's display title. -->
@@ -328,6 +330,9 @@
     <!-- Inline section-header button. Verb: clear every finished download from the list.
          Distinct key from downloads_hint_clear_finished (footer hint). -->
     <string name="downloads_action_clear_finished">Clear Finished</string>
+    <!-- Inline section-header button. Verb: start every paused download in the queue.
+         Distinct key from downloads_hint_start_all (footer hint). -->
+    <string name="downloads_action_start_all">Start All</string>
 
     <!-- === downloads/DownloadsViewModel.kt: Steam status messages === -->
     <string name="downloads_steam_status_preparing">Preparing&#8230;</string>

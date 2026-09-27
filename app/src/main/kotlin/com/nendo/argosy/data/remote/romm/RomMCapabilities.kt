@@ -12,6 +12,7 @@ data class RomMCapabilities(
     val supportsScreenshotUpload: Boolean,
     val supportsMusicApi: Boolean,
     val supportsCoverSearch: Boolean = false,
+    val supportsDeviceInstall: Boolean = false,
 ) {
     companion object {
         /**
@@ -27,6 +28,7 @@ data class RomMCapabilities(
         const val DEVICE_AUTH_MIN_VERSION = "5.0.0"
         const val SCREENSHOT_UPLOAD_MIN_VERSION = "5.0.0"
         const val MUSIC_API_MIN_VERSION = "5.0.0"
+        const val DEVICE_INSTALL_MIN_VERSION = "5.4.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -47,22 +49,39 @@ data class RomMCapabilities(
             steamGridDbEnabled: Boolean? = null
         ): RomMCapabilities {
             if (version.isNullOrBlank() || version == "unknown") return NONE
-            val syncEngine = compareVersions(version, SYNC_ENGINE_MIN_VERSION) >= 0
-            val deviceSync = compareVersions(version, DEVICE_SYNC_MIN_VERSION) >= 0
+            val gate = comparableVersion(version)
+            val syncEngine = compareVersions(gate, SYNC_ENGINE_MIN_VERSION) >= 0
+            val deviceSync = compareVersions(gate, DEVICE_SYNC_MIN_VERSION) >= 0
             return RomMCapabilities(
                 serverVersion = version,
-                isSupportedVersion = compareVersions(version, MIN_SUPPORTED_VERSION) >= 0,
+                isSupportedVersion = compareVersions(gate, MIN_SUPPORTED_VERSION) >= 0,
                 supportsSyncNegotiate = syncEngine,
                 supportsPlaySessionIngest = syncEngine,
                 supportsDeviceSyncMode = deviceSync,
                 supportsLibretroThumbnails = libretroEnabled ?: syncEngine,
-                trustsServerHash = compareVersions(version, HASH_TRUST_MIN_VERSION) >= 0,
-                supportsDeviceAuth = compareVersions(version, DEVICE_AUTH_MIN_VERSION) >= 0,
-                supportsScreenshotUpload = compareVersions(version, SCREENSHOT_UPLOAD_MIN_VERSION) >= 0,
-                supportsMusicApi = compareVersions(version, MUSIC_API_MIN_VERSION) >= 0,
+                trustsServerHash = compareVersions(gate, HASH_TRUST_MIN_VERSION) >= 0,
+                supportsDeviceAuth = compareVersions(gate, DEVICE_AUTH_MIN_VERSION) >= 0,
+                supportsScreenshotUpload = compareVersions(gate, SCREENSHOT_UPLOAD_MIN_VERSION) >= 0,
+                supportsMusicApi = compareVersions(gate, MUSIC_API_MIN_VERSION) >= 0,
                 supportsCoverSearch = steamGridDbEnabled == true,
+                supportsDeviceInstall = compareVersions(gate, DEVICE_INSTALL_MIN_VERSION) >= 0,
             )
         }
+
+        /**
+         * The version to compare feature gates against. A RomM source checkout reports
+         * [DEVELOPMENT_VERSION]; debug builds read it as newer than any release so a local dev
+         * server exercises every gate, while release builds keep treating it as unversioned.
+         */
+        fun comparableVersion(version: String): String =
+            if (com.nendo.argosy.BuildConfig.DEBUG && version == DEVELOPMENT_VERSION) {
+                DEVELOPMENT_COMPARABLE_VERSION
+            } else {
+                version
+            }
+
+        private const val DEVELOPMENT_VERSION = "development"
+        private const val DEVELOPMENT_COMPARABLE_VERSION = "9999.0.0"
 
         fun compareVersions(v1: String, v2: String): Int {
             val parts1 = v1.split("-")[0].split(".").mapNotNull { it.toIntOrNull() }

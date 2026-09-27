@@ -18,6 +18,8 @@ data class StoragePreferences(
     val musicStoragePath: String? = null,
     val mediaStoragePath: String? = null,
     val maxConcurrentDownloads: Int = 1,
+    val allowRemoteInstalls: Boolean = true,
+    val autoStartDownloads: Boolean = true,
     val instantDownloadThresholdMb: Int = 50,
     val stageDownloadsInternally: Boolean = true,
     val folderNameFromRom: Boolean = false,
@@ -37,6 +39,8 @@ class StoragePreferencesRepository @Inject constructor(
         val MUSIC_STORAGE_PATH = stringPreferencesKey("music_storage_path")
         val MEDIA_STORAGE_PATH = stringPreferencesKey("media_storage_path")
         val MAX_CONCURRENT_DOWNLOADS = intPreferencesKey("max_concurrent_downloads")
+        val ALLOW_REMOTE_INSTALLS = booleanPreferencesKey("allow_remote_installs")
+        val AUTO_START_DOWNLOADS = booleanPreferencesKey("auto_start_downloads")
         val INSTANT_DOWNLOAD_THRESHOLD_MB = intPreferencesKey("instant_download_threshold_mb")
         val STAGE_DOWNLOADS_INTERNALLY = booleanPreferencesKey("stage_downloads_internally")
         val FOLDER_NAME_FROM_ROM = booleanPreferencesKey("folder_name_from_rom")
@@ -56,6 +60,8 @@ class StoragePreferencesRepository @Inject constructor(
             musicStoragePath = prefs[Keys.MUSIC_STORAGE_PATH],
             mediaStoragePath = prefs[Keys.MEDIA_STORAGE_PATH],
             maxConcurrentDownloads = prefs[Keys.MAX_CONCURRENT_DOWNLOADS] ?: 1,
+            allowRemoteInstalls = prefs[Keys.ALLOW_REMOTE_INSTALLS] ?: true,
+            autoStartDownloads = prefs[Keys.AUTO_START_DOWNLOADS] ?: true,
             instantDownloadThresholdMb = prefs[Keys.INSTANT_DOWNLOAD_THRESHOLD_MB] ?: 50,
             stageDownloadsInternally = prefs[Keys.STAGE_DOWNLOADS_INTERNALLY] ?: true,
             folderNameFromRom = prefs[Keys.FOLDER_NAME_FROM_ROM] ?: false,
@@ -89,6 +95,14 @@ class StoragePreferencesRepository @Inject constructor(
 
     suspend fun setMaxConcurrentDownloads(count: Int) {
         dataStore.edit { it[Keys.MAX_CONCURRENT_DOWNLOADS] = count.coerceIn(1, 5) }
+    }
+
+    suspend fun setAllowRemoteInstalls(enabled: Boolean) {
+        dataStore.edit { it[Keys.ALLOW_REMOTE_INSTALLS] = enabled }
+    }
+
+    suspend fun setAutoStartDownloads(enabled: Boolean) {
+        dataStore.edit { it[Keys.AUTO_START_DOWNLOADS] = enabled }
     }
 
     suspend fun setInstantDownloadThresholdMb(value: Int) {

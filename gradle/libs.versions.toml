@@ -32,6 +32,7 @@ spongycastle = "1.58.0.0"
 bouncycastle = "1.80"
 protobuf = "4.30.2"
 upokecenterCbor = "4.5.4"
+socketIoClient = "2.1.1"
 
 [libraries]
 # Core Android
@@ -79,6 +80,7 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 moshi = { group = "com.squareup.moshi", name = "moshi", version.ref = "moshi" }
 moshi-kotlin = { group = "com.squareup.moshi", name = "moshi-kotlin-codegen", version.ref = "moshi" }
+socketio-client = { group = "io.socket", name = "socket.io-client", version.ref = "socketIoClient" }
 
 # Media playback
 media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "media3" }

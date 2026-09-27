@@ -119,6 +119,8 @@ class UserPreferencesRepository @Inject constructor(
             visibleSystemApps = app.visibleSystemApps,
             appOrder = app.appOrder,
             maxConcurrentDownloads = storage.maxConcurrentDownloads,
+            allowRemoteInstalls = storage.allowRemoteInstalls,
+            autoStartDownloads = storage.autoStartDownloads,
             instantDownloadThresholdMb = storage.instantDownloadThresholdMb,
             stageDownloadsInternally = storage.stageDownloadsInternally,
             folderNameFromRom = storage.folderNameFromRom,
@@ -443,6 +445,8 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setRomStoragePath(path: String) = storagePrefs.setRomStoragePath(path)
     suspend fun setMaxConcurrentDownloads(count: Int) = storagePrefs.setMaxConcurrentDownloads(count)
+    suspend fun setAllowRemoteInstalls(enabled: Boolean) = storagePrefs.setAllowRemoteInstalls(enabled)
+    suspend fun setAutoStartDownloads(enabled: Boolean) = storagePrefs.setAutoStartDownloads(enabled)
     suspend fun setInstantDownloadThresholdMb(value: Int) = storagePrefs.setInstantDownloadThresholdMb(value)
     suspend fun setStageDownloadsInternally(enabled: Boolean) = storagePrefs.setStageDownloadsInternally(enabled)
 
@@ -756,6 +760,8 @@ data class UserPreferences(
     val visibleSystemApps: Set<String> = emptySet(),
     val appOrder: List<String> = emptyList(),
     val maxConcurrentDownloads: Int = 1,
+    val allowRemoteInstalls: Boolean = true,
+    val autoStartDownloads: Boolean = true,
     val instantDownloadThresholdMb: Int = 50,
     val stageDownloadsInternally: Boolean = true,
     val folderNameFromRom: Boolean = false,

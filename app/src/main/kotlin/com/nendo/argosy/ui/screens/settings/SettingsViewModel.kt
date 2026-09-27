@@ -1612,6 +1612,10 @@ class SettingsViewModel @Inject constructor(
 
     fun cycleInstantDownloadThreshold(direction: Int = 1) = storageDelegate.cycleInstantDownloadThreshold(viewModelScope, direction)
 
+    fun toggleAllowRemoteInstalls() = storageDelegate.toggleAllowRemoteInstalls(viewModelScope)
+
+    fun toggleAutoStartDownloads() = storageDelegate.toggleAutoStartDownloads(viewModelScope)
+
     fun toggleStageDownloadsInternally() = storageDelegate.toggleStageDownloadsInternally(viewModelScope)
     fun toggleFolderNameFromRom() = storageDelegate.toggleFolderNameFromRom(viewModelScope)
 

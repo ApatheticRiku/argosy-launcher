@@ -848,6 +848,8 @@ data class StorageState(
     val downloadedGamesCount: Int = 0,
     val adoptedGamesCount: Int = 0,
     val maxConcurrentDownloads: Int = 1,
+    val allowRemoteInstalls: Boolean = true,
+    val autoStartDownloads: Boolean = true,
     val instantDownloadThresholdMb: Int = 50,
     val stageDownloadsInternally: Boolean = true,
     val folderNameFromRom: Boolean = false,
@@ -1155,7 +1157,8 @@ data class ServerState(
     val uploadScreenshotsEnabled: Boolean = true,
     val boxArtCacheEnabled: Boolean = true,
     val screenshotUploadSupported: Boolean = false,
-    val musicApiSupported: Boolean = false
+    val musicApiSupported: Boolean = false,
+    val deviceInstallSupported: Boolean = false
 )
 
 /**

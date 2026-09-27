@@ -170,6 +170,47 @@ class RomMLibrarySyncService @Inject constructor(
         }
     }
 
+    /**
+     * Stores one rom from a single `GET api/roms/{id}`, creating its platform row first when the
+     * device has none. Waits for a running library pass to finish. Never relinks an older rom id
+     * onto this one.
+     */
+    suspend fun syncSingleRom(romId: Long): RomMResult<GameEntity> =
+        withContext(NonCancellable + Dispatchers.IO) {
+            val currentApi = api ?: return@withContext RomMResult.Error("Not connected")
+            val rom = when (val fetched = apiClient.getRom(romId)) {
+                is RomMResult.Success -> fetched.data
+                is RomMResult.Error -> return@withContext fetched
+            }
+            syncMutex.withLock {
+                boxArtCacheEnabledForSync = userPreferencesRepository.preferences.first().boxArtCacheEnabled
+                try {
+                    if (!ensurePlatformRow(currentApi, rom.platformId)) {
+                        return@withLock RomMResult.Error("Platform ${rom.platformId} not found on the server")
+                    }
+                    syncRom(rom, singleRomScope())
+                    gameDao.getByRommId(rom.id)
+                        ?.let { RomMResult.Success(it) }
+                        ?: RomMResult.Error("Rom ${rom.id} was not stored")
+                } finally {
+                    flushDecodedImageCache()
+                }
+            }
+        }
+
+    private suspend fun ensurePlatformRow(api: RomMApi, remotePlatformId: Long): Boolean {
+        if (platformDao.getById(remotePlatformId) != null) return true
+        val remote = api.getPlatform(remotePlatformId).takeIf { it.isSuccessful }?.body() ?: return false
+        syncPlatformMetadata(remote)
+        return true
+    }
+
+    private suspend fun singleRomScope(): SyncScope {
+        val ownerUserId = overlayWriter.activeOwnerId()
+        if (ownerUserId != null) overlayWriter.adoptLibraryIfUnclaimed(ownerUserId)
+        return SyncScope(ownerUserId, RomMVisibility.Unavailable, ServerRomIds { null })
+    }
+
     private suspend fun doSyncPlatform(platformId: Long): SyncResult {
         val currentApi = api ?: return SyncResult(0, 0, 0, 0, listOf("Not connected"))
 

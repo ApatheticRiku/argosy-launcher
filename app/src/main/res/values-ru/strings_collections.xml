@@ -178,6 +178,7 @@
     <string name="downloads_hint_remove">Удалить</string>
     <string name="downloads_hint_cancel">Отмена</string>
     <string name="downloads_hint_clear_finished">Очистить завершённые</string>
+    <string name="downloads_hint_start_all">Запустить все</string>
     <string name="downloads_hint_back">Назад</string>
     <string name="downloads_failed_dialog_title">Ошибка загрузки</string>
     <string name="downloads_failed_dialog_message">Не удалось загрузить \"%1$s\". Что вы хотите сделать?</string>
@@ -209,6 +210,7 @@
     <string name="downloads_action_remove">Очистить</string>
     <string name="downloads_action_retry">Повторить</string>
     <string name="downloads_action_clear_finished">Очистить завершённые</string>
+    <string name="downloads_action_start_all">Запустить все</string>
 
     <string name="downloads_steam_status_preparing">Подготовка…</string>
     <string name="downloads_steam_status_connecting">Подключение к Steam…</string>

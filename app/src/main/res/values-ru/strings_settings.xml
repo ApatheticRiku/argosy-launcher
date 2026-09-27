@@ -819,6 +819,12 @@
     <string name="settings_storage_builtin_state_path_internal">Внутреннее (по умолчанию)</string>
 
     <string name="settings_storage_max_downloads_title">Макс. активных загрузок</string>
+    <string name="settings_storage_remote_installs_title">Разрешить удалённую установку</string>
+    <string name="settings_storage_remote_installs_subtitle">Игры, отправленные на это устройство из RomM, загружаются сюда</string>
+    <string name="settings_storage_remote_installs_locked_value">Недоступно</string>
+    <string name="settings_storage_remote_installs_locked_subtitle">Требуется RomM %1$s или новее</string>
+    <string name="settings_storage_auto_start_title">Запускать загрузки автоматически</string>
+    <string name="settings_storage_auto_start_subtitle">Если выключено, новые загрузки ждут в очереди, пока вы их не запустите</string>
     <string name="settings_storage_threshold_title">Порог мгновенной загрузки</string>
     <string name="settings_storage_threshold_value">%1$d MB</string>
     <string name="settings_storage_threshold_subtitle">Файлы меньше этого размера загружаются сразу</string>

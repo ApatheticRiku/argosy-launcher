@@ -805,6 +805,12 @@
     <string name="settings_storage_builtin_state_path_internal">Interne (par défaut)</string>
 
     <string name="settings_storage_max_downloads_title">Téléchargements actifs max</string>
+    <string name="settings_storage_remote_installs_title">Autoriser les installations à distance</string>
+    <string name="settings_storage_remote_installs_subtitle">Les jeux envoyés à cet appareil depuis RomM se téléchargent ici</string>
+    <string name="settings_storage_remote_installs_locked_value">Indisponible</string>
+    <string name="settings_storage_remote_installs_locked_subtitle">Nécessite RomM %1$s ou plus récent</string>
+    <string name="settings_storage_auto_start_title">Démarrer les téléchargements automatiquement</string>
+    <string name="settings_storage_auto_start_subtitle">Désactivé, les nouveaux téléchargements attendent dans la file jusqu\'à ce que vous les lanciez</string>
     <string name="settings_storage_threshold_title">Seuil de téléchargement instantané</string>
     <string name="settings_storage_threshold_value">%1$d MB</string>
     <string name="settings_storage_threshold_subtitle">Les fichiers sous cette taille se téléchargent immédiatement</string>

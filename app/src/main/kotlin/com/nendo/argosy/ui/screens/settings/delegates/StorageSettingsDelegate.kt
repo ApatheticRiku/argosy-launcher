@@ -137,6 +137,22 @@ class StorageSettingsDelegate @Inject constructor(
         }
     }
 
+    fun toggleAllowRemoteInstalls(scope: CoroutineScope) {
+        scope.launch {
+            val next = !_state.value.allowRemoteInstalls
+            preferencesRepository.setAllowRemoteInstalls(next)
+            _state.update { it.copy(allowRemoteInstalls = next) }
+        }
+    }
+
+    fun toggleAutoStartDownloads(scope: CoroutineScope) {
+        scope.launch {
+            val next = !_state.value.autoStartDownloads
+            preferencesRepository.setAutoStartDownloads(next)
+            _state.update { it.copy(autoStartDownloads = next) }
+        }
+    }
+
     fun toggleStageDownloadsInternally(scope: CoroutineScope) {
         scope.launch {
             val next = !_state.value.stageDownloadsInternally

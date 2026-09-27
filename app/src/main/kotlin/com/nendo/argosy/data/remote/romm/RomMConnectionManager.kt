@@ -96,7 +96,13 @@ class RomMConnectionManager @Inject constructor(
     private var api: RomMApi? = null
     private var baseUrl: String = ""
     private var accessToken: String? = null
-    private var cachedDeviceId: String? = null
+    private val _deviceId = MutableStateFlow<String?>(null)
+    val deviceIdState: StateFlow<String?> = _deviceId.asStateFlow()
+    private var cachedDeviceId: String?
+        get() = _deviceId.value
+        set(value) {
+            _deviceId.value = value
+        }
     private var deviceAuthApi: RomMApi? = null
     private var deviceAuthBaseUrl: String? = null
     private val detailAdapter by lazy { Moshi.Builder().build().adapter(RomMDetailResponse::class.java) }
@@ -131,7 +137,7 @@ class RomMConnectionManager @Inject constructor(
 
     fun isVersionAtLeast(minVersion: String): Boolean {
         val current = getConnectedVersion() ?: return false
-        return RomMCapabilities.compareVersions(current, minVersion) >= 0
+        return RomMCapabilities.compareVersions(RomMCapabilities.comparableVersion(current), minVersion) >= 0
     }
 
     suspend fun initialize() {
@@ -821,7 +827,12 @@ class RomMConnectionManager @Inject constructor(
             val registration = RomMDeviceRegistration(
                 name = deviceName,
                 clientVersion = clientVersion,
-                syncMode = if (caps.supportsDeviceSyncMode) "api" else null
+                syncMode = if (caps.supportsDeviceSyncMode) "api" else null,
+                capabilities = if (caps.supportsDeviceInstall) {
+                    deviceCapabilities(prefs.allowRemoteInstalls)
+                } else {
+                    null
+                }
             )
 
             if (existingDeviceId != null) {

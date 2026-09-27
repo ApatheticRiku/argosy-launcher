@@ -162,6 +162,7 @@
     <string name="downloads_hint_remove">Entfernen</string>
     <string name="downloads_hint_cancel">Abbrechen</string>
     <string name="downloads_hint_clear_finished">Abgeschlossene entfernen</string>
+    <string name="downloads_hint_start_all">Alle starten</string>
     <string name="downloads_hint_back">Zurück</string>
     <string name="downloads_failed_dialog_title">Download fehlgeschlagen</string>
     <string name="downloads_failed_dialog_message">\"%1$s\" konnte nicht heruntergeladen werden. Was möchten Sie tun?</string>
@@ -193,6 +194,7 @@
     <string name="downloads_action_remove">Entfernen</string>
     <string name="downloads_action_retry">Wiederholen</string>
     <string name="downloads_action_clear_finished">Abgeschlossene entfernen</string>
+    <string name="downloads_action_start_all">Alle starten</string>
 
     <string name="downloads_steam_status_preparing">Wird vorbereitet…</string>
     <string name="downloads_steam_status_connecting">Verbindung zu Steam wird hergestellt…</string>

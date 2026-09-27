@@ -554,6 +554,14 @@ private fun routeStorageConfirm(vm: SettingsViewModel, state: SettingsUiState): 
         StorageItem.BuiltinSavePath -> vm.openBuiltinSavePathBrowser()
         StorageItem.BuiltinStatePath -> vm.openBuiltinStatePathBrowser()
         StorageItem.MaxDownloads -> vm.cycleMaxConcurrentDownloads()
+        StorageItem.RemoteInstalls -> {
+            vm.toggleAllowRemoteInstalls()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
+        StorageItem.AutoStartDownloads -> {
+            vm.toggleAutoStartDownloads()
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         StorageItem.Threshold -> {
             vm.requestEnumPicker(StorageItem.Threshold.key)
             return InputResult.handled(SoundType.OPEN_MODAL)

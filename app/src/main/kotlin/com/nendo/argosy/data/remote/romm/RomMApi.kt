@@ -259,6 +259,24 @@ interface RomMApi {
         @Body device: RomMDeviceRegistration
     ): Response<RomMDevice>
 
+    @PUT("api/devices/{id}")
+    suspend fun updateDeviceCapabilities(
+        @Path("id") deviceId: String,
+        @Body update: RomMDeviceCapabilitiesUpdate
+    ): Response<RomMDevice>
+
+    @POST("api/devices/{id}/installs/claim")
+    suspend fun claimInstallRequests(
+        @Path("id") deviceId: String
+    ): Response<List<RomMInstallRequest>>
+
+    @PUT("api/devices/{id}/installs/{requestId}")
+    suspend fun reportInstallRequest(
+        @Path("id") deviceId: String,
+        @Path("requestId") requestId: String,
+        @Body report: RomMInstallReport
+    ): Response<RomMInstallRequest>
+
     // Device-aware save endpoints (RomM 4.7.0+)
 
     @Multipart

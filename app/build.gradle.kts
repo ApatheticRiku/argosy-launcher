@@ -256,6 +256,9 @@ dependencies {
     // Network
     implementation(libs.bundles.network)
     ksp(libs.moshi.kotlin)
+    implementation(libs.socketio.client) {
+        exclude(group = "org.json", module = "json")
+    }
 
     // CBOR (QuayPass BLE wire format)
     implementation(libs.upokecenter.cbor)
