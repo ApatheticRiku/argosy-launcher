@@ -59,7 +59,7 @@ RULES = {
         "wearing a docblock. Delete it.",
     ),
     "kdoc-on-non-public": (
-        "KDoc on a private or protected declaration",
+        "KDoc on a private, protected or internal declaration",
         "KDoc is for non-obvious PUBLIC contracts. A private declaration explains itself "
         "in code or needs a better name. Delete it.",
     ),
@@ -154,7 +154,7 @@ def kdoc_findings(lines, touched=None):
             if not m:
                 out.append(finding("kdoc-not-on-declaration", decl.strip()[:110], start))
                 continue
-            if m.group("vis") in ("private", "protected"):
+            if m.group("vis") in ("private", "protected", "internal"):
                 out.append(finding("kdoc-on-non-public", decl.strip()[:110], start))
                 continue
 

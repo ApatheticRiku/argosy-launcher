@@ -678,11 +678,6 @@ object ZipExtractor {
         return target
     }
 
-    /**
-     * The single folder an archive wraps all of its files in, which extraction drops; null when
-     * files sit at the root, several top-level folders exist, or the folder belongs to the game's
-     * own layout.
-     */
     internal fun wrapperFolderOf(entryPaths: List<String>): String? {
         val tops = entryPaths
             .map { it.replace('\\', '/') }
