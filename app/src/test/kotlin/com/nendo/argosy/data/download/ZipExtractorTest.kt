@@ -418,7 +418,7 @@ class ZipExtractorTest {
 
         val result = ZipExtractor.extractFolderRom(zipFile, "Tetris", tempDir, "nes")
 
-        assertNull(result.primaryFile)
+        assertEquals(File(File(tempDir, "Tetris"), "tetris.nes").absolutePath, result.primaryFile?.absolutePath)
         assertTrue(result.discFiles.isEmpty())
         assertTrue(
             "launchPath should end with .nes but was ${result.launchPath}",
@@ -638,6 +638,92 @@ class ZipExtractorTest {
     fun `rom formats are never companions`() {
         listOf("Game.xci", "Game.nsp", "Game.bin", "Game.cue", "Game.chd", "Game.iso")
             .forEach { assertFalse(it, ZipExtractor.isCompanionFileName(it)) }
+    }
+
+    @Test
+    fun `a single folder wrapping every file is the wrapper`() {
+        assertEquals(
+            "Day of the Tentacle",
+            ZipExtractor.wrapperFolderOf(
+                listOf("Day of the Tentacle/TENTACLE.000", "Day of the Tentacle/sub/MONSTER.SOU")
+            )
+        )
+    }
+
+    @Test
+    fun `mac metadata beside the wrapper does not break it`() {
+        assertEquals(
+            "Game",
+            ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", "__MACOSX/Game/._a.bin"))
+        )
+    }
+
+    @Test
+    fun `a file at the root means there is no wrapper`() {
+        assertNull(ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", "readme.txt")))
+    }
+
+    @Test
+    fun `two top level folders mean there is no wrapper`() {
+        assertNull(ZipExtractor.wrapperFolderOf(listOf("code/a.rpx", "content/b.bin")))
+    }
+
+    @Test
+    fun `a layout folder is never treated as a wrapper`() {
+        listOf("PS3_GAME", "psp_game", "USRDIR", "dlc", "updates", "extcontent").forEach { top ->
+            assertNull(top, ZipExtractor.wrapperFolderOf(listOf("$top/a.bin", "$top/b/c.bin")))
+        }
+    }
+
+    @Test
+    fun `a wrapped archive extracts its files into the game folder itself`() {
+        val platformDir = File(tempDir, "scummvm").apply { mkdirs() }
+        val zipFile = File(tempDir, "dott.zip")
+        createTestZip(
+            zipFile,
+            mapOf(
+                "Day of the Tentacle/TENTACLE.000" to "data",
+                "Day of the Tentacle/MONSTER.SOU" to "sound"
+            )
+        )
+
+        val result = ZipExtractor.extractFolderRom(zipFile, "Day of the Tentacle", platformDir, "scummvm")
+
+        val gameFolder = File(platformDir, "Day of the Tentacle")
+        assertEquals(gameFolder.absolutePath, result.gameFolder.absolutePath)
+        assertTrue(File(gameFolder, "TENTACLE.000").isFile)
+        assertTrue(File(gameFolder, "MONSTER.SOU").isFile)
+        assertFalse(File(gameFolder, "Day of the Tentacle").exists())
+    }
+
+    @Test
+    fun `wrapped disc images are found at the game folder root`() {
+        val platformDir = File(tempDir, "psx").apply { mkdirs() }
+        val zipFile = File(tempDir, "ff7.zip")
+        createTestZip(
+            zipFile,
+            mapOf(
+                "Final Fantasy VII/Disc 1.cue" to "cue",
+                "Final Fantasy VII/Disc 1.bin" to "bin"
+            )
+        )
+
+        val result = ZipExtractor.extractFolderRom(zipFile, "Final Fantasy VII", platformDir, "psx")
+
+        assertEquals(listOf("Disc 1.bin", "Disc 1.cue"), result.discFiles.map { it.name })
+    }
+
+    @Test
+    fun `an unwrapped archive keeps its layout`() {
+        val platformDir = File(tempDir, "scummvm").apply { mkdirs() }
+        val zipFile = File(tempDir, "loom.zip")
+        createTestZip(zipFile, mapOf("LOOM.000" to "data", "extra/notes.txt" to "notes"))
+
+        ZipExtractor.extractFolderRom(zipFile, "Loom", platformDir, "scummvm")
+
+        val gameFolder = File(platformDir, "Loom")
+        assertTrue(File(gameFolder, "LOOM.000").isFile)
+        assertTrue(File(gameFolder, "extra/notes.txt").isFile)
     }
 
     private fun createTestZip(zipFile: File, entries: Map<String, String>) {

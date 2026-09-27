@@ -59,6 +59,8 @@ private val NSW_PLATFORM_SLUGS = setOf("switch", "nsw")
 private val UPDATE_FILENAME_PATTERNS = listOf("[UPD]", "[UPDATE]")
 private val DLC_FILENAME_PATTERNS = listOf("[DLC]")
 private val DISC_EXTENSIONS = setOf("bin", "cue", "chd", "iso", "img", "mdf", "gdi", "cdi")
+private const val MAC_METADATA_FOLDER = "__MACOSX"
+private val DISC_LAYOUT_FOLDERS = setOf("ps3_game", "psp_game", "usrdir")
 private val ZIP_MAGIC_BYTES = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 private val SEVEN_Z_MAGIC_BYTES = byteArrayOf(0x37, 0x7A, 0xBC.toByte(), 0xAF.toByte(), 0x27, 0x1C)
 private val CHD_MAGIC_BYTES = "MComprHD".toByteArray(Charsets.US_ASCII)
@@ -676,6 +678,29 @@ object ZipExtractor {
         return target
     }
 
+    /**
+     * The single folder an archive wraps all of its files in, which extraction drops; null when
+     * files sit at the root, several top-level folders exist, or the folder belongs to the game's
+     * own layout.
+     */
+    internal fun wrapperFolderOf(entryPaths: List<String>): String? {
+        val tops = entryPaths
+            .map { it.replace('\\', '/') }
+            .filterNot { it.startsWith("$MAC_METADATA_FOLDER/") }
+            .map { it.substringBefore('/', missingDelimiterValue = "") }
+        val top = tops.firstOrNull() ?: return null
+        if (top.isEmpty() || tops.any { it != top }) return null
+        val folder = top.lowercase()
+        if (folder in ADDON_FOLDERS || folder in DISC_LAYOUT_FOLDERS) return null
+        return top
+    }
+
+    internal fun withoutWrapper(entryPath: String, wrapper: String?): String {
+        if (wrapper == null) return entryPath
+        val normalized = entryPath.replace('\\', '/')
+        return if (normalized.startsWith("$wrapper/")) normalized.removePrefix("$wrapper/") else entryPath
+    }
+
     private fun rebase(file: File, from: File, to: File): File {
         if (from.absolutePath == to.absolutePath) return file
         val prefix = from.absolutePath + File.separator
@@ -704,6 +729,7 @@ object ZipExtractor {
 
         ZipFile.builder().setFile(zipFile).get().use { zip ->
             val entries = zip.entries.toList().filter { !it.isDirectory }
+            val wrapper = wrapperFolderOf(entries.map { FileNames.sanitizeRelativePath(it.name) })
             val totalBytes = entries.sumOf { it.size }
             var bytesWritten = 0L
             var lastReportedBytes = 0L
@@ -712,7 +738,7 @@ object ZipExtractor {
             Log.d(TAG, "Total entries found: ${entries.size}, total bytes: $totalBytes")
 
             entries.forEach { entry ->
-                val entryPath = FileNames.sanitizeRelativePath(entry.name)
+                val entryPath = withoutWrapper(FileNames.sanitizeRelativePath(entry.name), wrapper)
                 val fileName = File(entryPath).name
                 val ext = fileName.substringAfterLast('.', "").lowercase()
                 val isRootFile = !entryPath.contains("/") && !entryPath.contains("\\")
@@ -766,8 +792,9 @@ object ZipExtractor {
         var existingM3u: File? = null
 
         SevenZFile.builder().setFile(sevenZFile).get().use { sevenZ ->
-            // getEntries() returns metadata from header without decompressing content
-            val totalBytes = sevenZ.entries.filter { !it.isDirectory }.sumOf { it.size }
+            val fileEntries = sevenZ.entries.filter { !it.isDirectory }
+            val wrapper = wrapperFolderOf(fileEntries.map { FileNames.sanitizeRelativePath(it.name) })
+            val totalBytes = fileEntries.sumOf { it.size }
             var bytesWritten = 0L
             var lastReportedBytes = 0L
             val progressThreshold = 1024 * 1024L
@@ -779,7 +806,7 @@ object ZipExtractor {
             while (entry != null) {
                 if (!entry.isDirectory) {
                     entryCount++
-                    val entryPath = FileNames.sanitizeRelativePath(entry.name)
+                    val entryPath = withoutWrapper(FileNames.sanitizeRelativePath(entry.name), wrapper)
                     val fileName = File(entryPath).name
                     val ext = fileName.substringAfterLast('.', "").lowercase()
                     val isRootFile = !entryPath.contains("/") && !entryPath.contains("\\")
