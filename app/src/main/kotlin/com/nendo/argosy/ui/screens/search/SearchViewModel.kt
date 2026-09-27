@@ -273,7 +273,7 @@ class SearchViewModel @Inject constructor(
         title = title,
         gameId = id,
         platformName = platformName,
-        coverPath = coverPath,
+        coverPath = displayCoverPath,
         developer = developer,
         releaseYear = releaseYear
     )

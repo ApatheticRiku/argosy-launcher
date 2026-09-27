@@ -369,7 +369,7 @@ class SaveSyncOrchestrator @Inject constructor(
                 SyncOperation(
                     gameId = entity.gameId,
                     gameName = game.title,
-                    coverPath = game.coverPath,
+                    coverPath = game.displayCoverPath,
                     direction = SyncDirection.DOWNLOAD,
                     status = SyncStatus.PENDING
                 )

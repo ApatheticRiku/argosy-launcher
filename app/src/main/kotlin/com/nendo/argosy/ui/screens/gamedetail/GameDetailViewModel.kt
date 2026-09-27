@@ -19,6 +19,7 @@ import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.repository.PlatformRepository
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.remote.ra.RAConsoleIds
 import com.nendo.argosy.data.remote.romm.RomMCapabilities
@@ -216,11 +217,12 @@ class GameDetailViewModel @Inject constructor(
         modalResetSignal.signal.onEach { resetAllModals() }.launchIn(viewModelScope)
 
         viewModelScope.launch {
-            var publishedGameId: Long? = null
+            var publishedArt: Triple<Long, String?, String?>? = null
             _uiState.collect { state ->
                 val game = state.game
-                if (game?.id != publishedGameId) {
-                    publishedGameId = game?.id
+                val art = game?.let { Triple(it.id, it.coverPath, it.backgroundPath) }
+                if (art != publishedArt) {
+                    publishedArt = art
                     publishCompanionDetail(game)
                 }
             }
@@ -1754,7 +1756,7 @@ class GameDetailViewModel @Inject constructor(
         pickerModalDelegate.closeCoverFileBrowser()
         pickerModalDelegate.dismissCoverPicker()
         viewModelScope.launch {
-            imageCacheManager.applyManualCoverFromFile(gameId, path)
+            imageCacheManager.applyArtOverrideFromFile(gameId, ArtSlot.COVER, path)
             loadGame(gameId)
         }
     }
@@ -1794,7 +1796,7 @@ class GameDetailViewModel @Inject constructor(
         val gameId = currentGameId
         pickerModalDelegate.dismissCoverPicker()
         viewModelScope.launch {
-            imageCacheManager.applyManualCover(gameId, candidate.url)
+            imageCacheManager.applyArtOverride(gameId, ArtSlot.COVER, candidate.url)
             loadGame(gameId)
         }
     }
@@ -1803,7 +1805,7 @@ class GameDetailViewModel @Inject constructor(
         val gameId = currentGameId
         moreOptionsDelegate.reset()
         viewModelScope.launch {
-            imageCacheManager.resetManualCover(gameId)
+            imageCacheManager.clearArtOverride(gameId, ArtSlot.COVER)
             loadGame(gameId)
         }
     }
@@ -1870,7 +1872,7 @@ class GameDetailViewModel @Inject constructor(
                 category = file.category,
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
-                coverPath = game.coverPath,
+                coverPath = game.displayCoverPath,
                 expectedSizeBytes = file.fileSize,
                 gameFolderName = game.rommFileName
             )

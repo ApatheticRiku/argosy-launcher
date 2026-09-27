@@ -92,7 +92,7 @@ class DownloadGameUseCase @Inject constructor(
 
         if (game.isMultiDisc) {
             Log.d(TAG, "invoke: taking multi-disc download path")
-            return downloadMultiDiscGame(gameId, game.title, game.rommFileName, game.coverPath, game.platformSlug)
+            return downloadMultiDiscGame(gameId, game.title, game.rommFileName, game.displayCoverPath, game.platformSlug)
         }
 
         Log.d(TAG, "invoke: taking single ROM download path")
@@ -138,7 +138,7 @@ class DownloadGameUseCase @Inject constructor(
                     fileName = fileName,
                     gameTitle = game.title,
                     platformSlug = game.platformSlug,
-                    coverPath = game.coverPath,
+                    coverPath = game.displayCoverPath,
                     expectedSizeBytes = expectedSize,
                     isMultiFileRom = rom.needsServerBuiltZipExtraction && selection == null,
                     selectedFileIds = selection
@@ -247,7 +247,7 @@ class DownloadGameUseCase @Inject constructor(
             return DownloadResult.Error(DownloadGameFailureReason.NotMultiDisc)
         }
 
-        return downloadMultiDiscGame(gameId, game.title, game.rommFileName, game.coverPath, game.platformSlug)
+        return downloadMultiDiscGame(gameId, game.title, game.rommFileName, game.displayCoverPath, game.platformSlug)
     }
 
     suspend fun retryExtraction(gameId: Long): DownloadResult {

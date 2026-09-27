@@ -46,7 +46,7 @@ class PlayTimeSettingsDelegate @Inject constructor(
             )
             val platformNames = platformRepository.getAllPlatforms().associate { it.slug to it.name }
             val coverPaths = gameRepository.getByIds(snapshot.games.map { it.gameId })
-                .mapNotNull { game -> game.coverPath?.let { game.id to it } }
+                .mapNotNull { game -> game.displayCoverPath?.let { game.id to it } }
                 .toMap()
             _state.update { it.apply(snapshot, platformNames, coverPaths) }
         }

@@ -2,6 +2,8 @@ package com.nendo.argosy.domain.usecase.cache
 
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.clearArtOverride
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import java.io.File
@@ -16,9 +18,13 @@ class RepairImageCacheUseCase @Inject constructor(
         if (localPath == null) return null
         if (!localPath.startsWith("/")) return localPath
         if (File(localPath).exists()) return localPath
-        if (!romMRepository.isConnected()) return null
 
         val game = gameDao.getById(gameId) ?: return null
+        if (game.coverOverridePath == localPath) {
+            gameDao.clearArtOverride(gameId, ArtSlot.COVER)
+            return game.coverPath
+        }
+        if (!romMRepository.isConnected()) return null
         val rommId = game.rommId ?: return null
 
         return when (val result = romMRepository.getRom(rommId)) {
@@ -37,9 +43,13 @@ class RepairImageCacheUseCase @Inject constructor(
         if (localPath == null) return null
         if (!localPath.startsWith("/")) return localPath
         if (File(localPath).exists()) return localPath
-        if (!romMRepository.isConnected()) return null
 
         val game = gameDao.getById(gameId) ?: return null
+        if (game.backgroundOverridePath == localPath) {
+            gameDao.clearArtOverride(gameId, ArtSlot.BACKGROUND)
+            return game.backgroundPath
+        }
+        if (!romMRepository.isConnected()) return null
         val rommId = game.rommId ?: return null
 
         return when (val result = romMRepository.getRom(rommId)) {

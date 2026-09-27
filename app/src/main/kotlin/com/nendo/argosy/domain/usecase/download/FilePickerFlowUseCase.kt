@@ -243,7 +243,7 @@ class FilePickerFlowUseCase @Inject constructor(
                         category = db.category,
                         gameTitle = game.title,
                         platformSlug = game.platformSlug,
-                        coverPath = game.coverPath,
+                        coverPath = game.displayCoverPath,
                         expectedSizeBytes = db.fileSize,
                         gameFolderName = game.rommFileName
                     )

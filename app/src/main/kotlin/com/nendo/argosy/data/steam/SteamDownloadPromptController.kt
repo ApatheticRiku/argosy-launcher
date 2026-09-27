@@ -44,7 +44,7 @@ class SteamDownloadPromptController @Inject constructor(
             _prompt.value = SteamDownloadLocationPrompt(
                 gameId = gameId,
                 title = game.title,
-                coverPath = game.coverPath
+                coverPath = game.displayCoverPath
             )
         }
     }
@@ -78,7 +78,7 @@ class SteamDownloadPromptController @Inject constructor(
             if (game.isExternallyManaged) {
                 gameDao.setSteamLauncher(p.gameId, null)
             }
-            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)
+            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.displayCoverPath)
             clearPrompt()
         }
     }

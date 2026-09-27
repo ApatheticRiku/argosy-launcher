@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.util.SearchNormalizer
@@ -60,8 +61,6 @@ data class GameEntity(
     val source: GameSource,
 
     val coverPath: String? = null,
-    val originalCoverPath: String? = null,
-    val coverSetManually: Boolean = false,
     val coverAspectRatio: Float? = null,
     val gradientColors: String? = null,
     val backgroundPath: String? = null,
@@ -70,6 +69,9 @@ data class GameEntity(
     val boxBackPath: String? = null,
     val boxSpinePath: String? = null,
     val logoPath: String? = null,
+    val coverOverridePath: String? = null,
+    val backgroundOverridePath: String? = null,
+    val logoOverridePath: String? = null,
 
     val developer: String? = null,
     val publisher: String? = null,
@@ -165,6 +167,18 @@ data class GameEntity(
     val syncDirty: Boolean = false
 ) {
     val effectiveRaId: Long? get() = if (raIdVerified) verifiedRaId else (verifiedRaId ?: raId)
+
+    val displayCoverPath: String? get() = coverOverridePath ?: coverPath
+
+    val displayBackgroundPath: String? get() = backgroundOverridePath ?: backgroundPath
+
+    val displayLogoPath: String? get() = logoOverridePath ?: logoPath
+
+    fun overridePath(slot: ArtSlot): String? = when (slot) {
+        ArtSlot.COVER -> coverOverridePath
+        ArtSlot.BACKGROUND -> backgroundOverridePath
+        ArtSlot.LOGO -> logoOverridePath
+    }
 
     val isExternallyManaged: Boolean
         get() = steamLauncher != null && steamLauncher != LAUNCHER_UNSPECIFIED

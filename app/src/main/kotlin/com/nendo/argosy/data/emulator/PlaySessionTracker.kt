@@ -324,7 +324,7 @@ class PlaySessionTracker @Inject constructor(
                             title = NotificationText.Res(R.string.sync_session_save_uploaded_orphan),
                             subtitle = NotificationText.Raw(game.title),
                             type = NotificationType.SUCCESS,
-                            imagePath = game.coverPath,
+                            imagePath = game.displayCoverPath,
                             duration = NotificationDuration.MEDIUM,
                             key = "sync-${orphaned.gameId}",
                             immediate = true
@@ -1025,7 +1025,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_uploaded),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.SUCCESS,
-                    imagePath = game?.coverPath,
+                    imagePath = game?.displayCoverPath,
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -1037,7 +1037,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_unchanged),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.INFO,
-                    imagePath = game?.coverPath,
+                    imagePath = game?.displayCoverPath,
                     duration = NotificationDuration.SHORT,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -1065,7 +1065,7 @@ class PlaySessionTracker @Inject constructor(
                         )
                     ),
                     type = NotificationType.ERROR,
-                    imagePath = game?.coverPath,
+                    imagePath = game?.displayCoverPath,
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true

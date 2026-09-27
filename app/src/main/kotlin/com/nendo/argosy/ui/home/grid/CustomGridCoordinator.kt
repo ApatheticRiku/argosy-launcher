@@ -1035,6 +1035,12 @@ class CustomGridCoordinator(
                 closePageChooser()
             }
 
+            PageChooserAction.UseGameBackground -> {
+                val gameId = chooser.gameId ?: return
+                applyBackdrop(chooser.page, PageBackgroundKind.GAME_ART, null, gameId)
+                closePageChooser()
+            }
+
             PageChooserAction.ClearBackdrop -> {
                 applyBackdrop(chooser.page, PageBackgroundKind.NONE, null, null)
                 closePageChooser()

@@ -485,7 +485,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = item.gameId,
                 gameName = game.title,
                 channelName = payload.channelName,
-                coverPath = game.coverPath,
+                coverPath = game.displayCoverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             )
@@ -853,7 +853,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = cache.channelName,
-                coverPath = game.coverPath,
+                coverPath = game.displayCoverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             ))
@@ -966,7 +966,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = null,
-                coverPath = game.coverPath,
+                coverPath = game.displayCoverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.PENDING
             ))

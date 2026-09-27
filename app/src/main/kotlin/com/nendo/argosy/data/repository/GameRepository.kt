@@ -17,6 +17,7 @@ import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.dao.PlatformShowcaseStats
 import com.nendo.argosy.data.local.dao.SearchCandidate
 import com.nendo.argosy.data.local.dao.UserRomsHiddenDao
+import com.nendo.argosy.data.local.dao.clearArtOverride
 import com.nendo.argosy.data.local.dao.coverPathsForGamesChunked
 import com.nendo.argosy.data.local.dao.getByIdsChunked
 import com.nendo.argosy.data.local.dao.statsForGamesChunked
@@ -25,6 +26,7 @@ import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.platform.platformRomRoots
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.VariantCategory
@@ -803,6 +805,13 @@ class GameRepository @Inject constructor(
         if (game.backgroundPath?.startsWith("/") == true && probe.isGenuinelyAbsent(game.backgroundPath)) {
             gameDao.clearBackgroundPath(gameId)
             changed = true
+        }
+        for (slot in ArtSlot.entries) {
+            val override = game.overridePath(slot) ?: continue
+            if (override.startsWith("/") && probe.isGenuinelyAbsent(override)) {
+                gameDao.clearArtOverride(gameId, slot)
+                changed = true
+            }
         }
 
         if (changed) gameDao.getById(gameId) else game

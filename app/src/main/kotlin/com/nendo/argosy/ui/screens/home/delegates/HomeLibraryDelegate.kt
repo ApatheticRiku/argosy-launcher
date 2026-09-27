@@ -687,7 +687,7 @@ class HomeLibraryDelegate @Inject constructor(
                 target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(game.id),
                 title = game.title,
                 subtitle = cachedPlatformDisplayNames[game.platformId].orEmpty(),
-                coverPath = game.coverPath
+                coverPath = game.displayCoverPath
             )
         }
     }
@@ -711,7 +711,7 @@ class HomeLibraryDelegate @Inject constructor(
                         game.earnedAchievementCount,
                         game.achievementCount
                     ),
-                    coverPath = game.coverPath,
+                    coverPath = game.displayCoverPath,
                     isLocal = game.isDownloaded
                 )
             }
@@ -811,7 +811,7 @@ class HomeLibraryDelegate @Inject constructor(
             target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(game.id),
             title = game.title,
             subtitle = cachedPlatformDisplayNames[game.platformId].orEmpty(),
-            coverPath = game.coverPath
+            coverPath = game.displayCoverPath
         )
     }
 

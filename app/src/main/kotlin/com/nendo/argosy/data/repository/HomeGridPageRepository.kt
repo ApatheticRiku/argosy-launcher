@@ -1,10 +1,15 @@
 package com.nendo.argosy.data.repository
 
+import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.HomeGridPageDao
 import com.nendo.argosy.data.local.entity.HomeGridPageEntity
 import com.nendo.argosy.data.local.entity.PageAudioKind
 import com.nendo.argosy.data.local.entity.PageBackgroundKind
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -14,11 +19,40 @@ import javax.inject.Singleton
  */
 @Singleton
 class HomeGridPageRepository @Inject constructor(
-    private val pageDao: HomeGridPageDao
+    private val pageDao: HomeGridPageDao,
+    private val gameDao: GameDao
 ) {
 
+    /**
+     * A [PageBackgroundKind.GAME_ART] page with a game and no stored path follows that game's
+     * displayed background; the emitted row carries the resolved path.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
     fun observePages(ownerUserId: Long?): Flow<List<HomeGridPageEntity>> =
-        pageDao.observeAll(ownerUserId)
+        pageDao.observeAll(ownerUserId).flatMapLatest { pages ->
+            val followedGameIds = pages.filter { it.followsGameBackground }
+                .mapNotNull { it.backgroundGameId }
+                .distinct()
+            if (followedGameIds.isEmpty()) {
+                flowOf(pages)
+            } else {
+                combine(followedGameIds.map { gameDao.observeById(it) }) { games ->
+                    val backgrounds = games.filterNotNull().associate { it.id to it.displayBackgroundPath }
+                    pages.map { page ->
+                        if (page.followsGameBackground) {
+                            page.copy(backgroundPath = backgrounds[page.backgroundGameId])
+                        } else {
+                            page
+                        }
+                    }
+                }
+            }
+        }
+
+    private val HomeGridPageEntity.followsGameBackground: Boolean
+        get() = backgroundKind == PageBackgroundKind.GAME_ART.name &&
+            backgroundGameId != null &&
+            backgroundPath == null
 
     suspend fun pageAt(ownerUserId: Long?, sortOrder: Int): HomeGridPageEntity? =
         pageDao.getAt(ownerUserId, sortOrder)

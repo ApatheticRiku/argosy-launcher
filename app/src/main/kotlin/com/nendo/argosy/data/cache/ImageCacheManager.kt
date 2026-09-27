@@ -11,10 +11,15 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 import coil.imageLoader
 import com.nendo.argosy.data.local.dao.AchievementDao
+import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.storage.StorageVolumeHealth
 import com.nendo.argosy.data.storage.VolumeProbe
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.GameImageCacheInfo
 import com.nendo.argosy.data.local.dao.PlatformDao
+import com.nendo.argosy.data.local.dao.clearArtOverride
+import com.nendo.argosy.data.local.dao.setArtOverride
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.nendo.argosy.util.Logger
@@ -114,7 +119,8 @@ class ImageCacheManager @Inject constructor(
     private val gameDao: GameDao,
     private val platformDao: PlatformDao,
     private val achievementDao: AchievementDao,
-    private val volumeHealth: StorageVolumeHealth
+    private val volumeHealth: StorageVolumeHealth,
+    private val fileAccessLayer: FileAccessLayer
 ) {
     private val _localCoverWritten = MutableSharedFlow<Pair<Long, String>>(extraBufferCapacity = 64)
     val localCoverWritten: SharedFlow<Pair<Long, String>> = _localCoverWritten.asSharedFlow()
@@ -168,6 +174,10 @@ class ImageCacheManager @Inject constructor(
         private const val LOGOS_DIR = "_logos"
         private const val BOX_FACE_MAX_WIDTH = 400
         private const val LOGO_MAX_WIDTH = 1000
+        private const val COVER_MAX_WIDTH = 400
+        private const val BACKGROUND_MAX_WIDTH = 1280
+        private const val BACKGROUND_JPEG_QUALITY = 87
+        private val LEGACY_OVERRIDE_FILE_PREFIXES = listOf("cover_manual_", "bg_custom_")
         private const val VALIDATION_MARKER = ".validated"
     }
 
@@ -414,12 +424,6 @@ class ImageCacheManager @Inject constructor(
      * while that happens; anything past [MAX_IN_MEMORY_IMAGE_BYTES] spills to a temp file
      * so an unexpectedly huge response cannot be turned into a heap spike.
      */
-    private fun decodeAndResize(file: File, maxWidth: Int): Bitmap? = runCatching {
-        decodeSampled(maxWidth) { options ->
-            BitmapFactory.decodeFile(file.absolutePath, options)
-        }
-    }.getOrNull()
-
     private fun downloadAndResize(url: String, maxWidth: Int): Bitmap? {
         return try {
             val connection = URL(url).openConnection()
@@ -526,14 +530,11 @@ class ImageCacheManager @Inject constructor(
     }
 
     /**
-     * Drops the cached artwork for one platform and forgets where it was, so the next sync fetches
-     * it again. Covers the user chose themselves are kept: they live in the same folder but they are
-     * the user's work rather than something that can be fetched back.
-     *
-     * Returns the number of bytes reclaimed.
+     * Drops the cached server artwork for one platform and forgets where it was, so the next sync
+     * fetches it again. Artwork overrides and their files are kept. Returns the bytes reclaimed.
      */
     suspend fun clearPlatformCache(platformSlug: String): Long = withContext(Dispatchers.IO) {
-        val keep = gameDao.getManualCoverPathsForPlatform(platformSlug).toSet()
+        val keep = gameDao.getArtOverridePathsForPlatform(platformSlug).toSet()
         val root = File(cacheDir, platformSlug)
         if (!root.exists()) return@withContext 0L
         var reclaimed = 0L
@@ -750,8 +751,11 @@ class ImageCacheManager @Inject constructor(
 
             if (changed) {
                 gameDao.updateImagePaths(info.id, newCoverPath, newBackgroundPath, newCachedScreenshotPaths)
-                updated++
             }
+            val artChanged = writeRelocatedArtPaths(info) { path ->
+                if (path.startsWith(oldBasePath)) path.replace(oldBasePath, newBasePath) else path
+            }
+            if (changed || artChanged) updated++
         }
 
         val platforms = platformDao.getAllPlatforms()
@@ -764,6 +768,23 @@ class ImageCacheManager @Inject constructor(
         }
 
         Log.d(TAG, "Updated $updated database paths from $oldBasePath to $newBasePath")
+    }
+
+    private suspend fun writeRelocatedArtPaths(
+        info: GameImageCacheInfo,
+        relocate: suspend (String) -> String
+    ): Boolean {
+        val logoPath = info.logoPath?.let { relocate(it) }
+        val coverOverride = info.coverOverridePath?.let { relocate(it) }
+        val backgroundOverride = info.backgroundOverridePath?.let { relocate(it) }
+        val logoOverride = info.logoOverridePath?.let { relocate(it) }
+        val unchanged = logoPath == info.logoPath &&
+            coverOverride == info.coverOverridePath &&
+            backgroundOverride == info.backgroundOverridePath &&
+            logoOverride == info.logoOverridePath
+        if (unchanged) return false
+        gameDao.updateRelocatedArtPaths(info.id, logoPath, coverOverride, backgroundOverride, logoOverride)
+        return true
     }
 
     fun getPendingCount(): Int = queue.isEmpty.let { if (it) 0 else -1 }
@@ -1258,7 +1279,9 @@ class ImageCacheManager @Inject constructor(
     private suspend fun applyCachedCover(request: ImageCacheRequest, localPath: String) {
         if (request.gameId != null) {
             gameDao.updateCoverPath(request.gameId, localPath)
-            _localCoverWritten.tryEmit(request.gameId to localPath)
+            if (gameDao.getById(request.gameId)?.coverOverridePath == null) {
+                _localCoverWritten.tryEmit(request.gameId to localPath)
+            }
         } else {
             updateGameCover(request.id, localPath)
         }
@@ -1406,82 +1429,128 @@ class ImageCacheManager @Inject constructor(
         return null
     }
 
-    /**
-     * Downloads a user-chosen cover and records it as the manual override, preserving the
-     * previous art so it can be restored. Returns the cached file path, or null on failure.
-     */
-    suspend fun applyManualCover(gameId: Long, url: String): String? = withContext(Dispatchers.IO) {
-        val slug = resolveGamePlatformSlug(gameId)
-        val coverDir = platformDir(slug, "covers")
-        val baseName = "cover_manual_${gameId}_${url.md5Hash()}"
-
-        val bitmap = downloadAndResize(url, 400) ?: return@withContext null
-        val hasTransparency = hasTransparentPixels(bitmap)
-        val cachedFile = File(coverDir, "$baseName.${if (hasTransparency) "png" else "jpg"}")
-        FileOutputStream(cachedFile).use { out ->
-            if (hasTransparency) {
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-            } else {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-            }
-        }
-        bitmap.recycle()
-
-        if (!isValidImageFile(cachedFile)) {
-            cachedFile.delete()
-            Log.w(TAG, "Manual cover download produced an invalid image: $url")
-            return@withContext null
-        }
-
-        gameDao.setManualCover(gameId, cachedFile.absolutePath)
-        _localCoverWritten.tryEmit(gameId to cachedFile.absolutePath)
-        cachedFile.absolutePath
-    }
-
-    /**
-     * Takes a picture the user already has as the cover. Copied into the cache rather than pointed
-     * at where it sits, so moving or deleting the original does not leave the game without art.
-     */
-    suspend fun applyManualCoverFromFile(gameId: Long, path: String): String? =
+    suspend fun applyArtOverride(gameId: Long, slot: ArtSlot, url: String): Boolean =
         withContext(Dispatchers.IO) {
-            val source = File(path)
-            if (!source.isFile || !source.canRead()) return@withContext null
-            val slug = resolveGamePlatformSlug(gameId)
-            val coverDir = platformDir(slug, "covers")
-            val baseName = "cover_manual_${gameId}_${path.md5Hash()}"
-
-            val bitmap = decodeAndResize(source, 400) ?: return@withContext null
-            val hasTransparency = hasTransparentPixels(bitmap)
-            val cachedFile = File(coverDir, "$baseName.${if (hasTransparency) "png" else "jpg"}")
-            FileOutputStream(cachedFile).use { out ->
-                if (hasTransparency) {
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                } else {
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, out)
-                }
-            }
-            bitmap.recycle()
-
-            if (!isValidImageFile(cachedFile)) {
-                cachedFile.delete()
-                return@withContext null
-            }
-
-            gameDao.setManualCover(gameId, cachedFile.absolutePath)
-            _localCoverWritten.tryEmit(gameId to cachedFile.absolutePath)
-            cachedFile.absolutePath
+            val bitmap = downloadAndResize(url, slot.maxWidth) ?: return@withContext false
+            storeArtOverride(gameId, slot, url.md5Hash(), bitmap)
         }
 
-    suspend fun resetManualCover(gameId: Long) = withContext(Dispatchers.IO) {
-        gameDao.resetManualCover(gameId)
+    /**
+     * Copies a picture the user already has into the cache as [slot]'s override, read through
+     * [FileAccessLayer] so restricted storage paths resolve.
+     */
+    suspend fun applyArtOverrideFromFile(gameId: Long, slot: ArtSlot, path: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val bytes = fileAccessLayer.readBytes(path) ?: return@withContext false
+            val bitmap = runCatching {
+                decodeSampled(slot.maxWidth) { options ->
+                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+                }
+            }.getOrNull() ?: return@withContext false
+            storeArtOverride(gameId, slot, path.md5Hash(), bitmap)
+        }
+
+    suspend fun clearArtOverride(gameId: Long, slot: ArtSlot): Unit = withContext(Dispatchers.IO) {
+        val game = gameDao.getById(gameId) ?: return@withContext
+        val previous = game.overridePath(slot) ?: return@withContext
+        gameDao.clearArtOverride(gameId, slot)
+        deleteOverrideFile(previous)
+        val sourceCover = game.coverPath
+        if (slot == ArtSlot.COVER && sourceCover?.startsWith("/") == true) {
+            _localCoverWritten.tryEmit(gameId to sourceCover)
+        }
     }
+
+    private suspend fun storeArtOverride(
+        gameId: Long,
+        slot: ArtSlot,
+        sourceKey: String,
+        bitmap: Bitmap
+    ): Boolean {
+        val game = gameDao.getById(gameId)
+        if (game == null) {
+            bitmap.recycle()
+            return false
+        }
+        val dir = platformDir(game.platformSlug.ifBlank { FALLBACK_PLATFORM }, slot.directoryName)
+        val baseName = "${slot.filePrefix}${gameId}_$sourceKey"
+        val written: File? = try {
+            when (slot) {
+                ArtSlot.COVER -> writeCoverBitmap(bitmap, dir, baseName)
+                ArtSlot.BACKGROUND -> writeValidatedBitmap(
+                    bitmap, File(dir, "$baseName.jpg"), Bitmap.CompressFormat.JPEG, BACKGROUND_JPEG_QUALITY
+                )
+                ArtSlot.LOGO -> writeValidatedBitmap(
+                    bitmap, File(dir, "$baseName.png"), Bitmap.CompressFormat.PNG, 100
+                )
+            }
+        } catch (e: java.io.IOException) {
+            Logger.warn(TAG, "Failed to write $slot override for gameId $gameId: ${e.message}")
+            null
+        }
+        val file = written ?: return false
+
+        val previous = game.overridePath(slot)
+        gameDao.setArtOverride(gameId, slot, file.absolutePath)
+        if (previous != null && previous != file.absolutePath) deleteOverrideFile(previous)
+        if (slot == ArtSlot.COVER) _localCoverWritten.tryEmit(gameId to file.absolutePath)
+        return true
+    }
+
+    private fun writeValidatedBitmap(
+        bitmap: Bitmap,
+        target: File,
+        format: Bitmap.CompressFormat,
+        quality: Int
+    ): File? {
+        try {
+            FileOutputStream(target).use { out -> bitmap.compress(format, quality, out) }
+        } finally {
+            bitmap.recycle()
+        }
+        if (!isValidImageFile(target)) {
+            target.delete()
+            return null
+        }
+        return target
+    }
+
+    private fun deleteOverrideFile(path: String) {
+        val file = File(path)
+        val ownedByOverride = ArtSlot.entries.any { file.name.startsWith(it.filePrefix) } ||
+            LEGACY_OVERRIDE_FILE_PREFIXES.any { file.name.startsWith(it) }
+        if (!ownedByOverride) return
+        if (!file.delete() && file.exists()) {
+            Logger.warn(TAG, "Could not delete replaced artwork override: $path")
+        }
+    }
+
+    private val ArtSlot.maxWidth: Int
+        get() = when (this) {
+            ArtSlot.COVER -> COVER_MAX_WIDTH
+            ArtSlot.BACKGROUND -> BACKGROUND_MAX_WIDTH
+            ArtSlot.LOGO -> LOGO_MAX_WIDTH
+        }
+
+    private val ArtSlot.directoryName: String
+        get() = when (this) {
+            ArtSlot.COVER -> "covers"
+            ArtSlot.BACKGROUND -> "backgrounds"
+            ArtSlot.LOGO -> "logos"
+        }
+
+    private val ArtSlot.filePrefix: String
+        get() = when (this) {
+            ArtSlot.COVER -> "cover_override_"
+            ArtSlot.BACKGROUND -> "bg_override_"
+            ArtSlot.LOGO -> "logo_override_"
+        }
 
     private suspend fun updateGameCover(rommId: Long, localPath: String) {
         val game = gameDao.getByRommId(rommId) ?: return
-        if (game.coverSetManually) return
         if (game.coverPath?.startsWith("/") == true && File(game.coverPath).exists()) return
         gameDao.updateCoverPath(game.id, localPath)
-        _localCoverWritten.tryEmit(game.id to localPath)
+        if (game.coverOverridePath == null) _localCoverWritten.tryEmit(game.id to localPath)
     }
 
     fun resumePendingCoverCache() {
@@ -1646,43 +1715,12 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    suspend fun setScreenshotAsBackground(gameId: Long, screenshotPath: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            try {
-                val sourceBitmap = if (screenshotPath.startsWith("/")) {
-                    BitmapFactory.decodeFile(screenshotPath)
-                } else {
-                    downloadBitmap(screenshotPath)
-                } ?: return@withContext false
-
-                val resizedBitmap = if (sourceBitmap.width > 640) {
-                    val ratio = 640f / sourceBitmap.width
-                    val newHeight = (sourceBitmap.height * ratio).toInt()
-                    val scaled = Bitmap.createScaledBitmap(sourceBitmap, 640, newHeight, true)
-                    if (scaled != sourceBitmap) sourceBitmap.recycle()
-                    scaled
-                } else {
-                    sourceBitmap
-                }
-
-                val slug = resolveGamePlatformSlug(gameId)
-                val fileName = "bg_custom_${gameId}_${System.currentTimeMillis()}.jpg"
-                val cachedFile = File(platformDir(slug, "backgrounds"), fileName)
-
-                FileOutputStream(cachedFile).use { out ->
-                    resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-                }
-                resizedBitmap.recycle()
-
-                gameDao.updateBackgroundPath(gameId, cachedFile.absolutePath)
-                Log.d(TAG, "Set screenshot as background for game $gameId: ${cachedFile.length() / 1024}KB")
-                true
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to set screenshot as background: ${e.message}", e)
-                false
-            }
+    suspend fun setScreenshotAsBackground(gameId: Long, screenshotPath: String): Boolean =
+        if (screenshotPath.startsWith("/")) {
+            applyArtOverrideFromFile(gameId, ArtSlot.BACKGROUND, screenshotPath)
+        } else {
+            applyArtOverride(gameId, ArtSlot.BACKGROUND, screenshotPath)
         }
-    }
 
     private val appIconQueue = Channel<AppIconCacheRequest>(256)
     private var isProcessingAppIcons = false
@@ -1880,6 +1918,13 @@ class ImageCacheManager @Inject constructor(
                 if (info.backgroundPath != null && shouldClearMissingPath(info.backgroundPath, probe)) {
                     gameDao.clearBackgroundPath(info.id)
                     cleared++
+                }
+                for (slot in ArtSlot.entries) {
+                    val override = info.overridePath(slot) ?: continue
+                    if (shouldClearMissingPath(override, probe)) {
+                        gameDao.clearArtOverride(info.id, slot)
+                        cleared++
+                    }
                 }
                 if (info.cachedScreenshotPaths != null) {
                     val paths = info.cachedScreenshotPaths.split(",")
@@ -2115,8 +2160,18 @@ class ImageCacheManager @Inject constructor(
 
             if (changed) {
                 gameDao.updateImagePaths(info.id, newCoverPath, newBackgroundPath, newCachedScreenshotPaths)
-                updated++
             }
+            val artChanged = writeRelocatedArtPaths(info) { path ->
+                if (path.startsWith(cachePath) && !File(path).exists()) {
+                    resolveShardedDestination(File(path).name)
+                        ?.takeIf { it.exists() }
+                        ?.absolutePath
+                        ?: path
+                } else {
+                    path
+                }
+            }
+            if (changed || artChanged) updated++
         }
 
         platformDao.getAllPlatforms().forEach { platform ->

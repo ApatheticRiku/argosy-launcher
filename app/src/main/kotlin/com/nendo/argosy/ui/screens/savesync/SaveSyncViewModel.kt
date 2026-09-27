@@ -230,7 +230,7 @@ class SaveSyncViewModel @Inject constructor(
                     gameId = gameId,
                     title = game.title,
                     platformDisplayName = game.platformSlug,
-                    coverPath = game.coverPath,
+                    coverPath = game.displayCoverPath,
                     slots = entities
                         .map { buildSaveSlotEntry(it, game, prefs.rommDeviceId) }
                         .sortedByDescending { it.lastSyncedAt ?: Instant.MIN }
@@ -445,7 +445,7 @@ class SaveSyncViewModel @Inject constructor(
             gameId = conflict.gameId,
             title = game.title,
             platformDisplayName = game.platformSlug,
-            coverPath = game.coverPath,
+            coverPath = game.displayCoverPath,
             channelName = conflict.slot,
             channelDisplay = effectiveChannelLabel(conflict.slot, game),
             localTime = conflict.localUpdatedAt,

@@ -1952,7 +1952,7 @@ class DualScreenManager(
                     com.nendo.argosy.hardware.CompanionInGameState(
                         gameId = gameId,
                         title = game.title,
-                        coverPath = game.coverPath,
+                        coverPath = game.displayCoverPath,
                         platformName = platform?.getDisplayName() ?: game.platformSlug,
                         developer = game.developer,
                         releaseYear = game.releaseYear,
@@ -1965,7 +1965,7 @@ class DualScreenManager(
                         isHardcore = sessionStateStore.isHardcore(),
                         isDirty = sessionStateStore.isSaveDirty(),
                         isLoaded = true,
-                        backgroundPath = game.backgroundPath,
+                        backgroundPath = game.displayBackgroundPath,
                         manual = documents.firstOrNull {
                             it.category == com.nendo.argosy.data.model.VariantCategory.MANUAL.key
                         },

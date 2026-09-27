@@ -35,7 +35,7 @@ suspend fun GameEntity.toHomeGameUi(
     newThreshold: Instant = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
 ): HomeGameUi {
     val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
-    val effectiveBackground = backgroundPath ?: firstScreenshot ?: coverPath
+    val effectiveBackground = displayBackgroundPath ?: firstScreenshot ?: displayCoverPath
     val downloaded = resolveDownloaded(downloadStatus)
     return HomeGameUi(
         id = id,
@@ -43,13 +43,13 @@ suspend fun GameEntity.toHomeGameUi(
         platformId = platformId,
         platformSlug = platformSlug,
         platformDisplayName = platformDisplayName ?: platformSlug,
-        coverPath = coverPath,
+        coverPath = displayCoverPath,
         coverAspectRatio = coverAspectRatio,
         gradientColors = gradientColors,
         backgroundPath = effectiveBackground,
         boxBackPath = boxBackPath?.takeIf { it.startsWith("/") },
         boxSpinePath = boxSpinePath?.takeIf { it.startsWith("/") },
-        logoPath = logoPath?.takeIf { it.startsWith("/") },
+        logoPath = displayLogoPath?.takeIf { it.startsWith("/") },
         developer = developer,
         releaseYear = releaseYear,
         genre = genre,
@@ -102,7 +102,7 @@ suspend fun GameEntity.toLibraryGameUi(
     platformId = platformId,
     platformSlug = platformSlug,
     platformDisplayName = platformDisplayName ?: platformSlug,
-    coverPath = coverPath,
+    coverPath = displayCoverPath,
     gradientColors = gradientColors,
     source = source,
     isFavorite = isFavorite,

@@ -63,7 +63,7 @@ class PageChooserEntrySource @Inject constructor(
                 } else {
                     null
                 },
-                previewPath = game.coverPath,
+                previewPath = game.displayCoverPath,
                 action = PageChooserAction.UseFocusGame(game.id)
             )
         }
@@ -102,7 +102,7 @@ class PageChooserEntrySource @Inject constructor(
             PageChooserEntry(
                 label = game.title,
                 subtitle = platformNames[game.platformId].orEmpty(),
-                previewPath = game.coverPath,
+                previewPath = game.displayCoverPath,
                 action = PageChooserAction.OpenGameArt(gameId = game.id, title = game.title)
             )
         }
@@ -114,17 +114,23 @@ class PageChooserEntrySource @Inject constructor(
             PageChooserEntry(
                 label = art.label,
                 previewPath = art.path,
-                action = PageChooserAction.UseArt(art.path)
+                action = art.action
             )
         }
     }
 
     private fun artworkOf(game: GameEntity): List<PageArtwork> = buildList {
-        game.backgroundPath?.takeIf { it.startsWith("/") }?.let {
-            add(PageArtwork(context.getString(R.string.ui_page_chooser_art_background), it))
+        game.displayBackgroundPath?.takeIf { it.startsWith("/") }?.let {
+            add(
+                PageArtwork(
+                    context.getString(R.string.ui_page_chooser_art_background),
+                    it,
+                    PageChooserAction.UseGameBackground
+                )
+            )
         }
-        game.coverPath?.takeIf { it.startsWith("/") }?.let {
-            add(PageArtwork(context.getString(R.string.ui_page_chooser_art_cover), it))
+        game.displayCoverPath?.takeIf { it.startsWith("/") }?.let {
+            add(PageArtwork(context.getString(R.string.ui_page_chooser_art_cover), it, PageChooserAction.UseArt(it)))
         }
         game.cachedScreenshotPaths
             ?.split(",")
@@ -132,7 +138,7 @@ class PageChooserEntrySource @Inject constructor(
             ?.forEachIndexed { index, path ->
                 val number: Int = index + 1
                 val label = context.getString(R.string.ui_page_chooser_art_screenshot, number)
-                add(PageArtwork(label, path))
+                add(PageArtwork(label, path, PageChooserAction.UseArt(path)))
             }
     }.distinctBy { it.path }
 
@@ -168,4 +174,4 @@ class PageChooserEntrySource @Inject constructor(
     }
 }
 
-private data class PageArtwork(val label: String, val path: String)
+private data class PageArtwork(val label: String, val path: String, val action: PageChooserAction)

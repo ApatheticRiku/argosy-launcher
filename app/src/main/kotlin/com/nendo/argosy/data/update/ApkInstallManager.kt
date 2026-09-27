@@ -160,7 +160,10 @@ class ApkInstallManager @Inject constructor(
                         playCount = game.playCount + (holder?.playCount ?: 0),
                         playTimeMinutes = game.playTimeMinutes + (holder?.playTimeMinutes ?: 0),
                         lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull(),
-                        coverPath = game.coverPath ?: holder?.coverPath
+                        coverPath = game.coverPath ?: holder?.coverPath,
+                        coverOverridePath = game.coverOverridePath ?: holder?.coverOverridePath,
+                        backgroundOverridePath = game.backgroundOverridePath ?: holder?.backgroundOverridePath,
+                        logoOverridePath = game.logoOverridePath ?: holder?.logoOverridePath
                     )
                     gameDao.update(updatedGame)
 

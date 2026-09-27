@@ -36,15 +36,15 @@ fun GameEntity.toGameDetailUi(
             cachedPath = cachedPaths.getOrNull(index)
         )
     }
-    val effectiveBackground = backgroundPath ?: remoteUrls.firstOrNull()
+    val effectiveBackground = displayBackgroundPath ?: remoteUrls.firstOrNull()
     return GameDetailUi(
         id = id,
         title = title,
         platformId = platformId,
         platformSlug = platformSlug,
         platformName = platformName,
-        coverPath = coverPath,
-        coverSetManually = coverSetManually,
+        coverPath = displayCoverPath,
+        coverSetManually = coverOverridePath != null,
         backgroundPath = effectiveBackground,
         boxBackPath = boxBackPath?.takeIf { it.startsWith("/") },
         boxSpinePath = boxSpinePath?.takeIf { it.startsWith("/") },

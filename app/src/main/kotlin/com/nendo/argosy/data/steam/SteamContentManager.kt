@@ -239,7 +239,7 @@ class SteamContentManager @Inject constructor(
                 steamDownloadQueueDao.insert(SteamDownloadQueueEntity(
                     appId = appId,
                     gameName = game.title,
-                    coverPath = game.coverPath,
+                    coverPath = game.displayCoverPath,
                     installDir = null,
                     installPath = localPath,
                     totalBytes = 0L,
@@ -1607,7 +1607,7 @@ class SteamContentManager @Inject constructor(
         try {
             Log.d(TAG, "Recovering download for ${game.title} (appId: $appId)")
             val appInfo = fetchAppInfo(appId.toInt())
-            queueDownload(appId, game.title, appInfo, game.coverPath)
+            queueDownload(appId, game.title, appInfo, game.displayCoverPath)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to recover download for $appId", e)

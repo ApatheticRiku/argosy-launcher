@@ -146,7 +146,7 @@ class RaTileContentRepository @Inject constructor(
             latestUnlock = unlocked.firstOrNull(),
             gameId = game.id,
             gameTitle = game.title,
-            gameCoverPath = game.coverPath,
+            gameCoverPath = game.displayCoverPath,
             total = total,
             nextLocked = achievementDao
                 .getNextLocked(game.id, owner, hardcoreOnly, RA_NEXT_LOCKED_CAP)

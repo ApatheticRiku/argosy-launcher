@@ -76,7 +76,7 @@ interface GameFileDao {
         SELECT
             g.id AS gameId,
             g.title AS title,
-            g.coverPath AS coverPath,
+            COALESCE(g.coverOverridePath, g.coverPath) AS coverPath,
             g.platformSlug AS platformSlug,
             SUM(CASE WHEN gf.category = 'update' THEN 1 ELSE 0 END) AS updateCount,
             SUM(CASE WHEN gf.category = 'dlc' THEN 1 ELSE 0 END) AS dlcCount,

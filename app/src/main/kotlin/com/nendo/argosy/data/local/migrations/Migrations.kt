@@ -3660,3 +3660,121 @@ object Migration_194_195 : Migration(194, 195) {
         db.execSQL("ALTER TABLE games ADD COLUMN logoPath TEXT")
     }
 }
+
+/**
+ * Moves manual covers and `bg_custom_` backgrounds into the override columns, restores
+ * `originalCoverPath` as the server cover, and rebuilds `games` without the two manual-cover columns.
+ * Grid pages that stored a copy of their game's background path follow the game instead.
+ */
+object Migration_195_196 : Migration(195, 196) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "UPDATE `home_grid_pages` SET `backgroundPath` = NULL " +
+                "WHERE `backgroundKind` = 'GAME_ART' AND `backgroundGameId` IS NOT NULL " +
+                "AND `backgroundPath` = (SELECT g.`backgroundPath` FROM `games` g " +
+                "WHERE g.`id` = `home_grid_pages`.`backgroundGameId`)"
+        )
+
+        db.execSQL("PRAGMA foreign_keys=OFF")
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `games_new` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `platformId` INTEGER NOT NULL, " +
+                "`platformSlug` TEXT NOT NULL, `title` TEXT NOT NULL, `sortTitle` TEXT NOT NULL, " +
+                "`searchTitle` TEXT NOT NULL, `localPath` TEXT, " +
+                "`fileOrigin` TEXT NOT NULL DEFAULT 'ADOPTED', `rommId` INTEGER, " +
+                "`rommFileName` TEXT, `igdbId` INTEGER, `raId` INTEGER, `steamAppId` INTEGER, " +
+                "`steamLauncher` TEXT, `steamInstallDir` TEXT, `packageName` TEXT, " +
+                "`launcherSetManually` INTEGER NOT NULL, `source` TEXT NOT NULL, `coverPath` TEXT, " +
+                "`coverAspectRatio` REAL, `gradientColors` TEXT, `backgroundPath` TEXT, " +
+                "`screenshotPaths` TEXT, `cachedScreenshotPaths` TEXT, `boxBackPath` TEXT, " +
+                "`boxSpinePath` TEXT, `logoPath` TEXT, `coverOverridePath` TEXT, " +
+                "`backgroundOverridePath` TEXT, `logoOverridePath` TEXT, " +
+                "`developer` TEXT, `publisher` TEXT, `releaseYear` INTEGER, `genre` TEXT, " +
+                "`description` TEXT, `players` TEXT, `rating` REAL, `regions` TEXT, " +
+                "`languages` TEXT, `gameModes` TEXT, `franchises` TEXT, `genres` TEXT, " +
+                "`collections` TEXT, `alternativeNames` TEXT, `ageRatings` TEXT, `mobyId` INTEGER, " +
+                "`sgdbId` INTEGER, `ssId` INTEGER, `launchboxId` INTEGER, `hasheousId` INTEGER, " +
+                "`tgdbId` INTEGER, `hltbId` INTEGER, `timeToBeatMainSec` INTEGER, " +
+                "`timeToBeatExtraSec` INTEGER, `timeToBeatCompletionistSec` INTEGER, " +
+                "`flashpointId` TEXT, `gamelistId` TEXT, `libretroId` TEXT, `crcHash` TEXT, " +
+                "`md5Hash` TEXT, `sha1Hash` TEXT, `raHash` TEXT, `hasManual` INTEGER NOT NULL, " +
+                "`manualPath` TEXT, `remoteHasSoundtrack` INTEGER NOT NULL, " +
+                "`isIdentified` INTEGER NOT NULL, `userRating` INTEGER NOT NULL, " +
+                "`userDifficulty` INTEGER NOT NULL, `completion` INTEGER NOT NULL, `status` TEXT, " +
+                "`backlogged` INTEGER NOT NULL, `nowPlaying` INTEGER NOT NULL, " +
+                "`isFavorite` INTEGER NOT NULL, `playCount` INTEGER NOT NULL, " +
+                "`playTimeMinutes` INTEGER NOT NULL, " +
+                "`lastPlayed` INTEGER, `addedAt` INTEGER NOT NULL, `isMultiDisc` INTEGER NOT NULL, " +
+                "`lastPlayedDiscId` INTEGER, `m3uPath` TEXT, `activeVariantFileId` INTEGER, " +
+                "`lastPlayedFileId` INTEGER, `achievementCount` INTEGER NOT NULL, " +
+                "`earnedAchievementCount` INTEGER NOT NULL, `titleId` TEXT, " +
+                "`titleIdLocked` INTEGER NOT NULL, `saveTarget` TEXT, `saveTargetLayout` TEXT, " +
+                "`hasFileOnDisk` INTEGER NOT NULL, `storeEnrichStatus` INTEGER NOT NULL, " +
+                "`titleIdCandidates` TEXT, `saveId` TEXT, `saveFeatures` INTEGER, " +
+                "`youtubeVideoId` TEXT, " +
+                "`cheatsFetched` INTEGER NOT NULL, `cheatsFetchedAt` INTEGER, " +
+                "`cheatsSelectedRegion` TEXT, `cheatsSelectedVersion` TEXT, " +
+                "`achievementsFetchedAt` INTEGER, `romHash` TEXT, `verifiedRaId` INTEGER, " +
+                "`raIdVerified` INTEGER NOT NULL, `fileSizeBytes` INTEGER, " +
+                "`perGameSettingsEnabled` INTEGER NOT NULL, " +
+                "`perGameControlsEnabled` INTEGER NOT NULL, `syncDirty` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`platformId`) REFERENCES `platforms`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+
+        val carriedColumns = "`id`, `platformId`, `platformSlug`, `title`, `sortTitle`, " +
+            "`searchTitle`, `localPath`, `fileOrigin`, `rommId`, `rommFileName`, `igdbId`, " +
+            "`raId`, `steamAppId`, `steamLauncher`, `steamInstallDir`, `packageName`, " +
+            "`launcherSetManually`, `source`, `coverAspectRatio`, `gradientColors`, " +
+            "`screenshotPaths`, `cachedScreenshotPaths`, `boxBackPath`, `boxSpinePath`, " +
+            "`logoPath`, `developer`, `publisher`, " +
+            "`releaseYear`, `genre`, `description`, `players`, `rating`, `regions`, " +
+            "`languages`, `gameModes`, `franchises`, `genres`, `collections`, " +
+            "`alternativeNames`, `ageRatings`, `mobyId`, `sgdbId`, `ssId`, `launchboxId`, " +
+            "`hasheousId`, `tgdbId`, `hltbId`, `timeToBeatMainSec`, `timeToBeatExtraSec`, " +
+            "`timeToBeatCompletionistSec`, `flashpointId`, `gamelistId`, `libretroId`, " +
+            "`crcHash`, `md5Hash`, `sha1Hash`, `raHash`, `hasManual`, `manualPath`, " +
+            "`remoteHasSoundtrack`, `isIdentified`, `userRating`, `userDifficulty`, " +
+            "`completion`, `status`, `backlogged`, `nowPlaying`, `isFavorite`, " +
+            "`playCount`, `playTimeMinutes`, `lastPlayed`, `addedAt`, `isMultiDisc`, " +
+            "`lastPlayedDiscId`, `m3uPath`, `activeVariantFileId`, `lastPlayedFileId`, " +
+            "`achievementCount`, `earnedAchievementCount`, `titleId`, `titleIdLocked`, " +
+            "`saveTarget`, `saveTargetLayout`, `hasFileOnDisk`, " +
+            "`storeEnrichStatus`, `titleIdCandidates`, `saveId`, `saveFeatures`, " +
+            "`youtubeVideoId`, `cheatsFetched`, `cheatsFetchedAt`, `cheatsSelectedRegion`, " +
+            "`cheatsSelectedVersion`, `achievementsFetchedAt`, `romHash`, `verifiedRaId`, " +
+            "`raIdVerified`, `fileSizeBytes`, `perGameSettingsEnabled`, " +
+            "`perGameControlsEnabled`, `syncDirty`"
+
+        val customBackground = "`backgroundPath` LIKE '%/bg_custom_%'"
+
+        db.execSQL(
+            "INSERT INTO `games_new` ($carriedColumns, `coverPath`, `backgroundPath`, " +
+                "`coverOverridePath`, `backgroundOverridePath`, `logoOverridePath`) " +
+                "SELECT $carriedColumns, " +
+                "CASE WHEN `coverSetManually` = 1 THEN `originalCoverPath` ELSE `coverPath` END, " +
+                "CASE WHEN $customBackground THEN NULL ELSE `backgroundPath` END, " +
+                "CASE WHEN `coverSetManually` = 1 THEN `coverPath` ELSE NULL END, " +
+                "CASE WHEN $customBackground THEN `backgroundPath` ELSE NULL END, " +
+                "NULL " +
+                "FROM `games`"
+        )
+        db.execSQL("DROP TABLE `games`")
+        db.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_platformId` ON `games` (`platformId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_title` ON `games` (`title`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_lastPlayed` ON `games` (`lastPlayed`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_source` ON `games` (`source`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_rommId` ON `games` (`rommId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_steamAppId` ON `games` (`steamAppId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_packageName` ON `games` (`packageName`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_regions` ON `games` (`regions`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_gameModes` ON `games` (`gameModes`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_franchises` ON `games` (`franchises`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_genres` ON `games` (`genres`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_collections` ON `games` (`collections`)")
+
+        db.execSQL("PRAGMA foreign_keys=ON")
+    }
+}

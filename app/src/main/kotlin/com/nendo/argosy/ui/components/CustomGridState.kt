@@ -74,6 +74,7 @@ sealed interface PageChooserAction {
     data object BrowseGameArt : PageChooserAction
     data class OpenGameArt(val gameId: Long, val title: String) : PageChooserAction
     data class UseArt(val path: String) : PageChooserAction
+    data object UseGameBackground : PageChooserAction
     data class UseTrack(val path: String) : PageChooserAction
     data class UseFocusGame(val gameId: Long) : PageChooserAction
     data object UseTileAudio : PageChooserAction

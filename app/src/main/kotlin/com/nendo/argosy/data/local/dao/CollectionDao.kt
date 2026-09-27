@@ -93,9 +93,9 @@ interface CollectionDao {
     suspend fun clearCollectionGames(collectionId: Long)
 
     @Query("""
-        SELECT g.coverPath FROM games g
+        SELECT COALESCE(g.coverOverridePath, g.coverPath) FROM games g
         INNER JOIN collection_games cg ON g.id = cg.gameId
-        WHERE cg.collectionId = :collectionId AND g.coverPath IS NOT NULL
+        WHERE cg.collectionId = :collectionId AND COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL
         ORDER BY cg.addedAt DESC
         LIMIT 4
     """)
@@ -110,11 +110,11 @@ interface CollectionDao {
     fun observeLocalGameCountInCollection(collectionId: Long): Flow<Int>
 
     @Query("""
-        SELECT g.coverPath FROM games g
+        SELECT COALESCE(g.coverOverridePath, g.coverPath) FROM games g
         INNER JOIN collection_games cg ON g.id = cg.gameId
         INNER JOIN platforms p ON g.platformId = p.id
         WHERE cg.collectionId = :collectionId
-            AND g.coverPath IS NOT NULL
+            AND COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL
             AND p.syncEnabled = 1
         ORDER BY cg.addedAt DESC
         LIMIT 4
@@ -133,11 +133,11 @@ interface CollectionDao {
 
     @Transaction
     @Query("""
-        SELECT cg.collectionId AS collectionId, g.coverPath AS coverPath
+        SELECT cg.collectionId AS collectionId, COALESCE(g.coverOverridePath, g.coverPath) AS coverPath
         FROM games g
         INNER JOIN collection_games cg ON g.id = cg.gameId
         INNER JOIN platforms p ON g.platformId = p.id
-        WHERE g.coverPath IS NOT NULL AND p.syncEnabled = 1
+        WHERE COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL AND p.syncEnabled = 1
         ORDER BY cg.collectionId ASC, cg.addedAt DESC
     """)
     fun observeLocalCoverPaths(): Flow<List<CollectionCoverPath>>

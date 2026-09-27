@@ -306,7 +306,7 @@ class DownloadDelegate @Inject constructor(
             val game = gameRepository.getById(gameId)
             val steamAppId = game?.steamAppId
             if (game != null && steamAppId != null && steamContentManager.activeDownload.value?.appId == steamAppId) {
-                steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.coverPath)
+                steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.displayCoverPath)
             } else {
                 downloadManager.resumeDownload(gameId)
             }
