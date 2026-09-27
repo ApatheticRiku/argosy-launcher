@@ -170,7 +170,9 @@ class DualScreenManager(
         com.nendo.argosy.ui.screens.media.delegates.MediaSeriesDelegate? = null,
     internal val mediaSiblingsDelegate:
         com.nendo.argosy.ui.screens.media.delegates.MediaSiblingsDelegate? = null,
-    initialRolesSwapped: Boolean = false
+    initialRolesSwapped: Boolean = false,
+    private val gameWindowMover: com.nendo.argosy.hardware.GameWindowMover =
+        com.nendo.argosy.hardware.ThorGameWindowMover(context)
 ) {
 
     private val appContext: Context = context.applicationContext
@@ -1531,13 +1533,17 @@ class DualScreenManager(
         fun displayMoveAbandoned()
     }
 
-    private val thorTaskMover = com.nendo.argosy.hardware.ThorTaskMover()
+    private class AbandonedMove(val from: Int, val target: Int, val commit: () -> Unit)
+
     private val _taskMoveCapable = MutableStateFlow(false)
     private val _liveMoveHost = MutableStateFlow<LiveMoveHost?>(null)
     private val _gameWindowDisplay = MutableStateFlow<Int?>(null)
 
     @Volatile
     private var gameMoveInProgress = false
+
+    @Volatile
+    private var abandonedMove: AbandonedMove? = null
 
     /**
      * True from the moment a role swap starts carrying the game to another display until the game
@@ -1554,8 +1560,20 @@ class DualScreenManager(
         _liveMoveHost.compareAndSet(host, null)
     }
 
+    /**
+     * Records where the game's window now sits. A move that lands after [relocateGame] gave up on it
+     * still commits its roles, since the game is on that display whether or not the wait saw it.
+     */
     fun onGameMovedToDisplay(displayId: Int) {
         _gameWindowDisplay.value = displayId
+        if (gameMoveInProgress) return
+        val late = abandonedMove?.takeIf { it.target == displayId } ?: return
+        abandonedMove = null
+        if (emulatorDisplayId != late.from) return
+        Log.i(TAG, "Game reached display $displayId after the move was abandoned, committing roles")
+        emulatorDisplayId = displayId
+        late.commit()
+        focusGameDisplay(displayId)
     }
 
     /**
@@ -1575,9 +1593,7 @@ class DualScreenManager(
 
     private fun probeTaskMover() {
         if (_taskMoveCapable.value) return
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return
-        if (!DisplayAffinityHelper.isKnownDualScreenDevice()) return
-        activityIndependentScope.launch { _taskMoveCapable.value = thorTaskMover.isAvailable() }
+        activityIndependentScope.launch { _taskMoveCapable.value = gameWindowMover.isAvailable() }
     }
 
     private fun liveMoveTarget(gameDisplay: Int?, swapped: Boolean, newSwapped: Boolean): Int? {
@@ -1601,9 +1617,13 @@ class DualScreenManager(
         val from = emulatorDisplayId ?: return
         val target = liveMoveTarget(from, _isRolesSwapped.value, newSwapped) ?: return
         gameMoveInProgress = true
+        abandonedMove = null
         activityIndependentScope.launch {
             try {
-                if (!relocateGame(host, from, target)) return@launch
+                if (!relocateGame(host, from, target)) {
+                    abandonedMove = AbandonedMove(from, target, commit)
+                    return@launch
+                }
                 commit()
                 focusGameDisplay(target)
             } finally {
@@ -1616,10 +1636,7 @@ class DualScreenManager(
         host.beforeDisplayMove()
         _gameWindowDisplay.value = null
         emulatorDisplayId = target
-        val requested = withContext(Dispatchers.IO) {
-            val taskId = builtInGameTaskId(appContext)
-            taskId != null && thorTaskMover.moveTask(taskId, target)
-        }
+        val requested = gameWindowMover.moveGame(target)
         val arrived = requested && withTimeoutOrNull(GAME_MOVE_CONFIRM_MS) {
             _gameWindowDisplay.first { it == target }
         } != null
@@ -1761,24 +1778,7 @@ class DualScreenManager(
     private fun isBuiltInGameAlive(context: Context): Boolean {
         val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
             ?: return true
-        return builtInGameTask(activityManager) != null
-    }
-
-    private fun builtInGameTaskId(context: Context): Int? {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return null
-        val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
-            ?: return null
-        return builtInGameTask(activityManager)?.taskId
-    }
-
-    private fun builtInGameTask(
-        activityManager: android.app.ActivityManager
-    ): android.app.ActivityManager.RecentTaskInfo? {
-        val gameActivity = com.nendo.argosy.libretro.LibretroActivity::class.java.name
-        return activityManager.appTasks.firstNotNullOfOrNull { task ->
-            runCatching { task.taskInfo }.getOrNull()
-                ?.takeIf { it.topActivity?.className == gameActivity }
-        }
+        return com.nendo.argosy.hardware.builtInGameTask(activityManager) != null
     }
 
     /**
