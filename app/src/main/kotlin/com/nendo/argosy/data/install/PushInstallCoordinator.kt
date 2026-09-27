@@ -22,6 +22,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -34,6 +35,7 @@ import javax.inject.Singleton
 
 private const val TAG = "PushInstallCoordinator"
 private const val HTTP_NOT_FOUND = 404
+internal const val DRAIN_SETTLE_MS = 500L
 
 /**
  * Sole sender of this device's install capability; drains the claim endpoint on start, foreground,
@@ -85,7 +87,11 @@ class PushInstallCoordinator @Inject constructor(
     fun start() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(foregroundObserver)
         scope.launch {
-            drainRequests.consumeEach { drainSafely() }
+            drainRequests.consumeEach {
+                delay(DRAIN_SETTLE_MS)
+                drainRequests.tryReceive()
+                drainSafely()
+            }
         }
         scope.launch {
             combine(

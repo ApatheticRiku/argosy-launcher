@@ -196,6 +196,18 @@ class PushInstallCoordinatorTest {
     }
 
     @Test
+    fun `the startup refresh and the socket connecting share one claim`() = runBlocking {
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+        awaitSocketSubscriber()
+        socketEvents.emit(RomMDeviceSocket.Event.Connected)
+
+        coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
+        delay(SETTLE_MS)
+
+        coVerify(exactly = 1) { api.claimInstallRequests(DEVICE_ID) }
+    }
+
+    @Test
     fun `triggers during a claim coalesce into one follow up claim and never overlap`() = runBlocking {
         val claimEntered = CompletableDeferred<Unit>()
         val releaseClaim = CompletableDeferred<Unit>()
@@ -292,7 +304,7 @@ class PushInstallCoordinatorTest {
         const val DEVICE_ID = "device-1"
         const val OTHER_DEVICE_ID = "device-2"
         const val WAIT_MS = 5_000L
-        const val SETTLE_MS = 300L
+        const val SETTLE_MS = DRAIN_SETTLE_MS + 300L
         const val OVERLAPPING_TRIGGERS = 5
     }
 }
