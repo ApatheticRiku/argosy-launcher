@@ -473,7 +473,7 @@ class MainActivity : ComponentActivity() {
 
         if (hasResumedBefore) {
             romMRepository.onAppResumed()
-            activityScope.launch { romMRepository.initialize() }
+            activityScope.launch { romMRepository.initialize(reprobe = true) }
             activityScope.launch { jellyfinConnectionManager.initialize() }
             ambientAudioManager.fadeIn()
         } else {

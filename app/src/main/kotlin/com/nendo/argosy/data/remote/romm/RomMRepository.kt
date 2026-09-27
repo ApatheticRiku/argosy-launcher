@@ -27,9 +27,9 @@ class RomMRepository @Inject constructor(
 
     // --- Connection ---
 
-    suspend fun initialize() {
-        connectionManager.initialize()
-        if (connectionManager.isConnected()) {
+    suspend fun initialize(reprobe: Boolean = false) {
+        val connectedNow = connectionManager.initialize(reprobe)
+        if (connectedNow && connectionManager.isConnected()) {
             val prefs = userPreferencesRepository.preferences.first()
             val hasRAAuth = !prefs.raUsername.isNullOrBlank() && !prefs.raToken.isNullOrBlank()
             if (prefs.rommToken != null && !hasRAAuth) {

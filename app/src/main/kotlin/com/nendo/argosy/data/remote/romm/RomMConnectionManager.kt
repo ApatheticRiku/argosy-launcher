@@ -17,7 +17,9 @@ import com.nendo.argosy.util.Logger
 import com.squareup.moshi.Moshi
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -109,6 +111,9 @@ class RomMConnectionManager @Inject constructor(
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val connectMutex = Mutex()
+    private val initializeGate = Mutex()
+    private var initializing: Deferred<Boolean>? = null
+    private var connectedWith: StoredConnection? = null
     private var reconnectJob: Job? = null
     private var networkCallbackRegistered = false
     @Volatile private var reconnectPending = false
@@ -140,19 +145,40 @@ class RomMConnectionManager @Inject constructor(
         return RomMCapabilities.compareVersions(RomMCapabilities.comparableVersion(current), minVersion) >= 0
     }
 
-    suspend fun initialize() {
+    /**
+     * Connects with the stored credentials. Overlapping calls share one attempt, and a call made
+     * while already connected with the same credentials returns without reconnecting unless
+     * [reprobe] asks for the addresses to be checked again. Returns whether this call established
+     * a new connection.
+     */
+    suspend fun initialize(reprobe: Boolean = false): Boolean {
+        val attempt = initializeGate.withLock {
+            initializing?.takeIf { it.isActive }
+                ?: scope.async { initializeOnce(reprobe) }.also { initializing = it }
+        }
+        return attempt.await()
+    }
+
+    private suspend fun initializeOnce(reprobe: Boolean): Boolean {
         rommAccountRepository.get().adoptLegacyCredentialsIfNeeded()
         val stored = storedConnection()
-        Logger.info(TAG, "initialize: candidates=${stored.candidates.map { it.take(30) }}, hasToken=${stored.token != null}")
+        Logger.info(TAG, "initialize: candidates=${stored.candidates.map { it.take(30) }}, hasToken=${stored.token != null}, reprobe=$reprobe")
         cachedDeviceId = stored.deviceId
         if (cachedDeviceId != null) {
             saveSyncRepository.get().setDeviceId(cachedDeviceId)
         }
-        if (stored.candidates.isEmpty()) return
+        if (stored.candidates.isEmpty()) return false
+        if (!reprobe && isConnected() && stored == connectedWith) return false
         registerNetworkCallback()
         val result = attemptConnection(stored.candidates, stored.token)
         Logger.info(TAG, "initialize: connect result=$result, state=${_connectionState.value}")
-        if (result is RomMResult.Error) scheduleReconnect() else backfillIdentityIfMissing(stored.token)
+        if (result is RomMResult.Error) {
+            scheduleReconnect()
+            return false
+        }
+        connectedWith = stored
+        backfillIdentityIfMissing(stored.token)
+        return true
     }
 
     private data class StoredConnection(
