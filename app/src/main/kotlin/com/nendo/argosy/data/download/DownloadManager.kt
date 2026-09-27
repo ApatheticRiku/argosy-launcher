@@ -142,7 +142,12 @@ data class DownloadQueueState(
     @Deprecated("Use activeDownloads instead", ReplaceWith("activeDownloads.firstOrNull()"))
     val activeDownload: DownloadProgress?
         get() = activeDownloads.firstOrNull()
+
+    val hasPaused: Boolean
+        get() = queue.any { it.isPausedQueueRow() }
 }
+
+private fun DownloadProgress.isPausedQueueRow(): Boolean = id > 0 && state == DownloadState.PAUSED
 
 data class DownloadCompletionEvent(
     val gameId: Long,
@@ -1919,9 +1924,12 @@ class DownloadManager @Inject constructor(
     }
 
     fun resumeAllPaused() {
-        val paused = _state.value.queue.filter { it.state == DownloadState.PAUSED }
-        if (paused.isEmpty()) return
-        val pausedIds = paused.map { it.id }.toSet()
+        val snapshot = _state.value
+        if (!snapshot.hasPaused) return
+        val pausedIds = snapshot.queue
+            .filter { it.isPausedQueueRow() }
+            .map { it.id }
+            .toSet()
         _state.update { current ->
             current.copy(
                 queue = current.queue.map {

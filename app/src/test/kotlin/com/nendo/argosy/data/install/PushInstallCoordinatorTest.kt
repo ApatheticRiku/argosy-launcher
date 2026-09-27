@@ -3,8 +3,8 @@ package com.nendo.argosy.data.install
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.nendo.argosy.data.local.entity.RomMAccountEntity
-import com.nendo.argosy.data.preferences.UserPreferences
-import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.preferences.StoragePreferences
+import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMConnectionManager
@@ -43,11 +43,13 @@ class PushInstallCoordinatorTest {
 
     private val api: RomMApi = mockk(relaxed = true)
     private val connectionManager: RomMConnectionManager = mockk(relaxed = true)
-    private val preferencesRepository: UserPreferencesRepository = mockk(relaxed = true)
+    private val storagePreferences: StoragePreferencesRepository = mockk(relaxed = true)
     private val accountRepository: RomMAccountRepository = mockk(relaxed = true)
     private val deviceSocket: RomMDeviceSocket = mockk(relaxed = true)
     private val pushInstall: PushInstallUseCase = mockk()
     private val socketEvents = MutableSharedFlow<RomMDeviceSocket.Event>()
+    private val deviceIdState = MutableStateFlow<String?>(DEVICE_ID)
+    private val preferences = MutableStateFlow(StoragePreferences())
     private val account = RomMAccountEntity(
         rommUserId = 7,
         username = "player",
@@ -61,11 +63,12 @@ class PushInstallCoordinatorTest {
     fun setup() {
         mockkObject(ProcessLifecycleOwner.Companion)
         every { ProcessLifecycleOwner.get() } returns mockk<LifecycleOwner>(relaxed = true)
-        every { connectionManager.deviceIdState } returns MutableStateFlow(DEVICE_ID)
-        every { connectionManager.getDeviceId() } returns DEVICE_ID
+        every { connectionManager.deviceIdState } returns deviceIdState
+        every { connectionManager.getDeviceId() } answers { deviceIdState.value }
         every { connectionManager.getAccessToken() } returns "token"
         every { connectionManager.getBaseUrl() } returns "http://romm.local/"
         every { connectionManager.getApi() } returns api
+        every { storagePreferences.preferences } returns preferences
         every { accountRepository.observeActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.activeAccount() } returns account
         every { deviceSocket.events } returns socketEvents
@@ -81,15 +84,13 @@ class PushInstallCoordinatorTest {
 
     private fun coordinator(serverVersion: String, allowRemoteInstalls: Boolean): PushInstallCoordinator {
         every { connectionManager.connectionState } returns MutableStateFlow(ConnectionState.Connected(serverVersion))
-        every { preferencesRepository.preferences } returns flowOf(
-            UserPreferences(allowRemoteInstalls = allowRemoteInstalls)
-        )
+        preferences.value = StoragePreferences(allowRemoteInstalls = allowRemoteInstalls)
         return PushInstallCoordinator(
             connectionManager,
-            preferencesRepository,
+            storagePreferences,
             accountRepository,
             deviceSocket,
-            dagger.Lazy { pushInstall }
+            pushInstall
         )
     }
 
@@ -111,10 +112,11 @@ class PushInstallCoordinatorTest {
     }
 
     @Test
-    fun `with remote installs on the install queue is claimed`() = runBlocking {
+    fun `a 5_4_0 server with remote installs on reports the capability, connects and claims`() = runBlocking {
         coordinator("5.4.0", allowRemoteInstalls = true).start()
 
         coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
+        coVerify { api.updateDeviceCapabilities(DEVICE_ID, any()) }
         verify { deviceSocket.connect(RomMDeviceSocket.Target("http://romm.local/", "token")) }
     }
 
@@ -132,11 +134,33 @@ class PushInstallCoordinatorTest {
     }
 
     @Test
-    fun `a 5_4_0 server is claimed from`() = runBlocking {
+    fun `a new device id gets its capability reported`() = runBlocking {
         coordinator("5.4.0", allowRemoteInstalls = true).start()
+        coVerify(timeout = WAIT_MS) { api.updateDeviceCapabilities(DEVICE_ID, any()) }
 
-        coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
-        coVerify { api.updateDeviceCapabilities(DEVICE_ID, any()) }
+        deviceIdState.value = OTHER_DEVICE_ID
+
+        coVerify(timeout = WAIT_MS) { api.updateDeviceCapabilities(OTHER_DEVICE_ID, any()) }
+    }
+
+    @Test
+    fun `a refused socket is not reopened until the device id changes`() = runBlocking {
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+        verify(timeout = WAIT_MS, exactly = 1) { deviceSocket.connect(any()) }
+        awaitSocketSubscriber()
+
+        socketEvents.emit(RomMDeviceSocket.Event.Refused("unauthorized"))
+        delay(SETTLE_MS)
+        preferences.value = StoragePreferences(allowRemoteInstalls = false)
+        delay(SETTLE_MS)
+        preferences.value = StoragePreferences(allowRemoteInstalls = true)
+        delay(SETTLE_MS)
+
+        verify(exactly = 1) { deviceSocket.connect(any()) }
+
+        deviceIdState.value = OTHER_DEVICE_ID
+
+        verify(timeout = WAIT_MS, exactly = 2) { deviceSocket.connect(any()) }
     }
 
     @Test
@@ -205,6 +229,25 @@ class PushInstallCoordinatorTest {
         coVerify(exactly = 4) { api.reportInstallRequest(any(), any(), any()) }
     }
 
+    @Test
+    fun `a report answered 404 is not retried and the drain carries on`() = runBlocking {
+        coEvery { api.claimInstallRequests(DEVICE_ID) } returnsMany listOf(
+            Response.success(listOf(request("r1", 1L), request("r2", 2L))),
+            Response.success(emptyList())
+        )
+        coEvery { api.reportInstallRequest(DEVICE_ID, "r1", any()) } returns
+            Response.error(404, ResponseBody.create(null, ""))
+        coEvery { pushInstall(any(), any()) } returns PushInstallOutcome.Queued
+
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+
+        coVerify(timeout = WAIT_MS) { api.reportInstallRequest(DEVICE_ID, "r2", any()) }
+        delay(SETTLE_MS)
+
+        coVerify(exactly = 1) { api.reportInstallRequest(DEVICE_ID, "r1", any()) }
+        coVerify(exactly = 1) { pushInstall(1L, any()) }
+    }
+
     private fun request(id: String, romId: Long) = RomMInstallRequest(
         id = id,
         deviceId = DEVICE_ID,
@@ -215,6 +258,7 @@ class PushInstallCoordinatorTest {
 
     private companion object {
         const val DEVICE_ID = "device-1"
+        const val OTHER_DEVICE_ID = "device-2"
         const val WAIT_MS = 5_000L
         const val SETTLE_MS = 300L
         const val OVERLAPPING_TRIGGERS = 5

@@ -106,11 +106,6 @@ class RomMCapabilitiesTest {
     }
 
     @Test
-    fun `device install is gated at 5_4_0`() {
-        assertEquals("5.4.0", RomMCapabilities.DEVICE_INSTALL_MIN_VERSION)
-    }
-
-    @Test
     fun `5_3_9 is below the device install gate`() {
         assertFalse(RomMCapabilities.from("5.3.9").supportsDeviceInstall)
     }

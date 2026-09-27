@@ -57,6 +57,9 @@ class PlatformRepository @Inject constructor(
     suspend fun getAllPlatforms(): List<PlatformEntity> =
         platformDao.getAllPlatforms()
 
+    suspend fun getAllPlatformIds(): Set<Long> =
+        platformDao.getAllPlatforms().mapTo(HashSet()) { it.id }
+
     suspend fun getAllPlatformsOrdered(): List<PlatformEntity> =
         platformDao.getAllPlatformsOrdered()
 
@@ -74,6 +77,9 @@ class PlatformRepository @Inject constructor(
 
     suspend fun updateSyncEnabled(platformId: Long, enabled: Boolean) =
         platformDao.updateSyncEnabled(platformId, enabled)
+
+    suspend fun updateVisibility(platformId: Long, visible: Boolean) =
+        platformDao.updateVisibility(platformId, visible)
 
     suspend fun updateCustomRomPath(platformId: Long, path: String?) =
         platformDao.updateCustomRomPath(platformId, path)

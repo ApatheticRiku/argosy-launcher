@@ -178,7 +178,7 @@ data class DownloadsUiState(
         get() = completedItems.isNotEmpty()
 
     val canStartAll: Boolean
-        get() = downloadState.queue.any { it.id > 0 && it.state == DownloadState.PAUSED }
+        get() = downloadState.hasPaused
 
     @get:StringRes
     val toggleLabelRes: Int

@@ -4,7 +4,8 @@ enum class VariantCategory(
     val key: String,
     val displayLabel: String,
     val sortOrder: Int,
-    val isLaunchTarget: Boolean
+    val isLaunchTarget: Boolean,
+    val isInstallable: Boolean = true
 ) {
     GAME("game", "Game", 0, true),
     PATCH("patch", "Versions / Patches", 1, true),
@@ -17,9 +18,9 @@ enum class VariantCategory(
     DLC("dlc", "DLC", 11, false),
     MANUAL("manual", "Manuals", 20, false),
     WALKTHROUGH("walkthrough", "Walkthroughs", 21, false),
-    CHEAT("cheat", "Cheats", 22, false),
-    SOUNDTRACK("soundtrack", "Soundtracks", 23, false),
-    SCREENSHOT("screenshot", "Screenshots", 24, false),
+    CHEAT("cheat", "Cheats", 22, false, isInstallable = false),
+    SOUNDTRACK("soundtrack", "Soundtracks", 23, false, isInstallable = false),
+    SCREENSHOT("screenshot", "Screenshots", 24, false, isInstallable = false),
     UNKNOWN("unknown", "Other", 99, true);
 
     companion object {

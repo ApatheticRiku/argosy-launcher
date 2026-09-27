@@ -1,24 +1,25 @@
 package com.nendo.argosy.domain.usecase.download
 
 import com.nendo.argosy.data.emulator.EmulatorDetector
-import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.local.dao.GameFileDao
-import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.platform.LocalPlatformIds
+import com.nendo.argosy.data.preferences.BuiltinEmulatorPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.data.repository.PlatformRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -28,39 +29,40 @@ import java.io.IOException
 class PushInstallUseCaseTest {
 
     private lateinit var romMRepository: RomMRepository
-    private lateinit var gameDao: GameDao
     private lateinit var gameFileDao: GameFileDao
-    private lateinit var platformDao: PlatformDao
+    private lateinit var platformRepository: PlatformRepository
     private lateinit var gameRepository: GameRepository
     private lateinit var emulatorDetector: EmulatorDetector
+    private lateinit var builtinPreferences: BuiltinEmulatorPreferencesRepository
     private lateinit var downloadGameUseCase: DownloadGameUseCase
     private lateinit var useCase: PushInstallUseCase
+    private val emulator: InstalledEmulator = mockk(relaxed = true)
 
     @Before
     fun setup() {
         romMRepository = mockk(relaxed = true)
-        gameDao = mockk(relaxed = true)
         gameFileDao = mockk(relaxed = true)
-        platformDao = mockk(relaxed = true)
+        platformRepository = mockk(relaxed = true)
         gameRepository = mockk(relaxed = true)
         emulatorDetector = mockk(relaxed = true)
+        builtinPreferences = mockk(relaxed = true)
         downloadGameUseCase = mockk(relaxed = true)
         useCase = PushInstallUseCase(
             romMRepository,
-            gameDao,
             gameFileDao,
-            platformDao,
+            platformRepository,
             gameRepository,
             emulatorDetector,
+            builtinPreferences,
             downloadGameUseCase
         )
 
         coEvery { romMRepository.syncSingleRom(ROM_ID) } returns RomMResult.Success(game())
+        coEvery { platformRepository.getAllPlatformIds() } returns setOf(PLATFORM_ID)
         coEvery { gameRepository.validateAndDiscoverGame(GAME_ID) } returns false
-        coEvery { gameRepository.getAvailableStorageBytes() } returns 1_000_000L
-        every { emulatorDetector.installedEmulators } returns MutableStateFlow(emptyList())
+        every { builtinPreferences.isBuiltinLibretroEnabled() } returns flowOf(true)
         coEvery { emulatorDetector.detectEmulators() } returns emptyList()
-        every { emulatorDetector.hasAnyEmulator("nes") } returns true
+        every { emulatorDetector.getPreferredEmulator("nes", true) } returns emulator
         coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns emptyList()
         coEvery { downloadGameUseCase(any(), any()) } returns DownloadResult.Queued
     }
@@ -74,9 +76,7 @@ class PushInstallUseCaseTest {
     }
 
     @Test
-    fun `a game not on disk is queued`() = runTest {
-        coEvery { gameRepository.validateAndDiscoverGame(GAME_ID) } returns false
-
+    fun `a game not on disk is queued with the default selection`() = runTest {
         assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
         coVerify(exactly = 1) { downloadGameUseCase(GAME_ID, null) }
     }
@@ -97,42 +97,55 @@ class PushInstallUseCaseTest {
     }
 
     @Test
-    fun `a platform with no emulator fails without queueing`() = runTest {
-        every { emulatorDetector.hasAnyEmulator("nes") } returns false
+    fun `a platform with no emulator after a fresh detection fails without queueing`() = runTest {
+        every { emulatorDetector.getPreferredEmulator("nes", true) } returns null
 
         assertEquals(
             PushInstallOutcome.Failed(PushInstallFailure.NO_EMULATOR),
             useCase(ROM_ID, emptyList())
         )
+        coVerify(exactly = 1) { emulatorDetector.detectEmulators() }
         coVerify(exactly = 0) { downloadGameUseCase(any(), any()) }
     }
 
     @Test
-    fun `a platform with an emulator passes the emulator check`() = runTest {
-        every { emulatorDetector.hasAnyEmulator("nes") } returns true
+    fun `a cached emulator skips detection`() = runTest {
+        useCase(ROM_ID, emptyList())
 
-        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
+        coVerify(exactly = 0) { emulatorDetector.detectEmulators() }
     }
 
     @Test
-    fun `emulators are detected once when none have been detected yet`() = runTest {
-        useCase(ROM_ID, emptyList())
+    fun `an emulator installed after the cache was filled is found by re-detecting`() = runTest {
+        every { emulatorDetector.getPreferredEmulator("nes", true) } returnsMany listOf(null, emulator)
 
+        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
         coVerify(exactly = 1) { emulatorDetector.detectEmulators() }
+    }
+
+    @Test
+    fun `the emulator check honours a disabled built-in emulator`() = runTest {
+        every { builtinPreferences.isBuiltinLibretroEnabled() } returns flowOf(false)
+        every { emulatorDetector.getPreferredEmulator("nes", false) } returns null
+
+        assertEquals(
+            PushInstallOutcome.Failed(PushInstallFailure.NO_EMULATOR),
+            useCase(ROM_ID, emptyList())
+        )
+        verify(exactly = 0) { emulatorDetector.getPreferredEmulator(any(), true) }
     }
 
     @Test
     fun `an android game skips the emulator check`() = runTest {
         val android = game(platformId = LocalPlatformIds.ANDROID, platformSlug = "android")
         coEvery { romMRepository.syncSingleRom(ROM_ID) } returns RomMResult.Success(android)
-        every { emulatorDetector.hasAnyEmulator(any()) } returns false
 
         assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
-        verify(exactly = 0) { emulatorDetector.hasAnyEmulator(any()) }
+        verify(exactly = 0) { emulatorDetector.getPreferredEmulator(any(), any()) }
     }
 
     @Test
-    fun `non install categories are dropped and the rest are queued`() = runTest {
+    fun `media and cheats are dropped while documents ride along`() = runTest {
         coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
             file(rommFileId = 10L, category = VariantCategory.GAME),
             file(rommFileId = 11L, category = VariantCategory.SOUNDTRACK),
@@ -144,134 +157,69 @@ class PushInstallUseCaseTest {
             file(rommFileId = 17L, category = VariantCategory.DLC)
         )
 
-        val outcome = useCase(ROM_ID, listOf(10L, 11L, 12L, 13L, 14L, 15L, 16L, 17L))
+        val outcome = useCase(ROM_ID, listOf(10L, 11L, 12L, 13L, 16L, 17L))
 
         assertEquals(PushInstallOutcome.Queued, outcome)
-        coVerify(exactly = 1) { downloadGameUseCase(GAME_ID, listOf(10L, 16L, 17L)) }
+        coVerify(exactly = 1) { downloadGameUseCase(GAME_ID, listOf(10L, 16L, 17L, 14L, 15L)) }
     }
 
     @Test
-    fun `a request holding only non install categories fails`() = runTest {
+    fun `a request holding only media and cheats fails`() = runTest {
         coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
             file(rommFileId = 10L, category = VariantCategory.GAME),
             file(rommFileId = 11L, category = VariantCategory.SOUNDTRACK),
-            file(rommFileId = 14L, category = VariantCategory.MANUAL)
+            file(rommFileId = 13L, category = VariantCategory.CHEAT)
         )
 
         assertEquals(
             PushInstallOutcome.Failed(PushInstallFailure.NO_INSTALLABLE_FILES),
-            useCase(ROM_ID, listOf(11L, 14L))
+            useCase(ROM_ID, listOf(11L, 13L))
         )
         coVerify(exactly = 0) { downloadGameUseCase(any(), any()) }
     }
 
     @Test
-    fun `a rom the server does not know fails unresolved without a local fallback`() = runTest {
+    fun `a rom the server does not know fails unresolved`() = runTest {
         coEvery { romMRepository.syncSingleRom(ROM_ID) } returns RomMResult.Error("not found", code = 404)
-        coEvery { gameDao.getByRommId(ROM_ID) } returns game()
 
         assertEquals(
             PushInstallOutcome.Failed(PushInstallFailure.ROM_UNRESOLVED),
             useCase(ROM_ID, emptyList())
         )
-        coVerify(exactly = 0) { gameDao.getByRommId(any()) }
         coVerify(exactly = 0) { downloadGameUseCase(any(), any()) }
     }
 
     @Test
-    fun `an unreachable server with no stored rom fails unresolved`() = runTest {
-        coEvery { romMRepository.syncSingleRom(ROM_ID) } returns RomMResult.Error("timeout", code = 503)
-        coEvery { gameDao.getByRommId(ROM_ID) } returns null
-
-        assertEquals(
-            PushInstallOutcome.Failed(PushInstallFailure.ROM_UNRESOLVED),
-            useCase(ROM_ID, emptyList())
-        )
-    }
-
-    @Test
-    fun `an unreachable server falls back to a stored rom that lists every requested file`() = runTest {
+    fun `an unreachable server fails unresolved`() = runTest {
         coEvery { romMRepository.syncSingleRom(ROM_ID) } throws IOException("offline")
-        coEvery { gameDao.getByRommId(ROM_ID) } returns game()
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME)
-        )
-
-        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, listOf(10L)))
-        coVerify(exactly = 1) { downloadGameUseCase(GAME_ID, listOf(10L)) }
-    }
-
-    @Test
-    fun `a stored rom missing a requested file is unresolved`() = runTest {
-        coEvery { romMRepository.syncSingleRom(ROM_ID) } returns RomMResult.Error("timeout", code = 503)
-        coEvery { gameDao.getByRommId(ROM_ID) } returns game()
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME)
-        )
 
         assertEquals(
             PushInstallOutcome.Failed(PushInstallFailure.ROM_UNRESOLVED),
-            useCase(ROM_ID, listOf(10L, 11L))
-        )
-    }
-
-    @Test
-    fun `less free space than the install needs fails for storage`() = runTest {
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME, size = 1_000L)
-        )
-        coEvery { gameRepository.getAvailableStorageBytes() } returns 999L
-
-        assertEquals(
-            PushInstallOutcome.Failed(PushInstallFailure.INSUFFICIENT_STORAGE),
             useCase(ROM_ID, listOf(10L))
         )
         coVerify(exactly = 0) { downloadGameUseCase(any(), any()) }
     }
 
     @Test
-    fun `free space equal to the install size is enough`() = runTest {
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME, size = 1_000L)
-        )
-        coEvery { gameRepository.getAvailableStorageBytes() } returns 1_000L
-
-        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, listOf(10L)))
-    }
-
-    @Test
-    fun `dropped categories do not count against free space`() = runTest {
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME, size = 1_000L),
-            file(rommFileId = 11L, category = VariantCategory.SOUNDTRACK, size = 50_000L)
-        )
-        coEvery { gameRepository.getAvailableStorageBytes() } returns 1_000L
-
-        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
-    }
-
-    @Test
-    fun `an unreadable free space figure does not block the install`() = runTest {
-        coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
-            file(rommFileId = 10L, category = VariantCategory.GAME, size = 1_000L)
-        )
-        coEvery { gameRepository.getAvailableStorageBytes() } returns 0L
-
-        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, listOf(10L)))
-    }
-
-    @Test
-    fun `the happy path syncs the rom, shows its platform, then queues`() = runTest {
+    fun `a platform created by the push is shown before queueing`() = runTest {
+        coEvery { platformRepository.getAllPlatformIds() } returns emptySet()
         coEvery { gameFileDao.getFilesForGame(GAME_ID) } returns listOf(
             file(rommFileId = 10L, category = VariantCategory.GAME)
         )
 
         assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, listOf(10L)))
         coVerifyOrder {
+            platformRepository.getAllPlatformIds()
             romMRepository.syncSingleRom(ROM_ID)
-            platformDao.updateVisibility(PLATFORM_ID, true)
+            platformRepository.updateVisibility(PLATFORM_ID, true)
             downloadGameUseCase(GAME_ID, listOf(10L))
         }
+    }
+
+    @Test
+    fun `an existing platform keeps the visibility the user gave it`() = runTest {
+        assertEquals(PushInstallOutcome.Queued, useCase(ROM_ID, emptyList()))
+        coVerify(exactly = 0) { platformRepository.updateVisibility(any(), any()) }
     }
 
     @Test

@@ -827,12 +827,7 @@ class RomMConnectionManager @Inject constructor(
             val registration = RomMDeviceRegistration(
                 name = deviceName,
                 clientVersion = clientVersion,
-                syncMode = if (caps.supportsDeviceSyncMode) "api" else null,
-                capabilities = if (caps.supportsDeviceInstall) {
-                    deviceCapabilities(prefs.allowRemoteInstalls)
-                } else {
-                    null
-                }
+                syncMode = if (caps.supportsDeviceSyncMode) "api" else null
             )
 
             if (existingDeviceId != null) {

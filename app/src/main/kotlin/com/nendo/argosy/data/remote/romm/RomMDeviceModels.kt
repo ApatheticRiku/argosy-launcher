@@ -11,8 +11,7 @@ data class RomMDeviceRegistration(
     @Json(name = "client_version") val clientVersion: String,
     @Json(name = "hostname") val hostname: String? = null,
     @Json(name = "sync_mode") val syncMode: String? = null,
-    @Json(name = "sync_config") val syncConfig: Map<String, Any>? = null,
-    @Json(name = "capabilities") val capabilities: Map<String, Boolean>? = null
+    @Json(name = "sync_config") val syncConfig: Map<String, Any>? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -58,7 +57,6 @@ data class RomMInstallRequest(
     @Json(name = "device_id") val deviceId: String,
     @Json(name = "rom_id") val romId: Long,
     @Json(name = "file_ids") val fileIds: List<Long> = emptyList(),
-    @Json(name = "rom_updated_at") val romUpdatedAt: String? = null,
     @Json(name = "status") val status: String
 )
 
@@ -66,7 +64,14 @@ data class RomMInstallRequest(
 data class RomMInstallReport(
     @Json(name = "status") val status: String,
     @Json(name = "reason") val reason: String? = null
-)
+) {
+    companion object {
+        const val STATUS_DONE = "done"
+        const val STATUS_ALREADY_INSTALLED = "already_installed"
+        const val STATUS_FAILED = "failed"
+        const val REASON_MAX_LENGTH = 500
+    }
+}
 
 @JsonClass(generateAdapter = true)
 data class RomMDeviceIdRequest(

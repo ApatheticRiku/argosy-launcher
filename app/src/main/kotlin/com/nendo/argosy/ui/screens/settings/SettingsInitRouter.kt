@@ -271,13 +271,12 @@ internal fun routeObserveConnectionState(vm: SettingsViewModel) {
                 else ConnectionStatus.OFFLINE
             }
         }
-        val version = (connectionState as? ConnectionState.Connected)?.version
-        val screenshotUpload = (connectionState as? ConnectionState.Connected)
-            ?.capabilities?.supportsScreenshotUpload == true
-        val musicApi = (connectionState as? ConnectionState.Connected)
-            ?.capabilities?.supportsMusicApi == true
-        val deviceInstall = (connectionState as? ConnectionState.Connected)
-            ?.capabilities?.supportsDeviceInstall == true
+        val connected = connectionState as? ConnectionState.Connected
+        val version = connected?.version
+        val capabilities = connected?.capabilities
+        val screenshotUpload = capabilities?.supportsScreenshotUpload == true
+        val musicApi = capabilities?.supportsMusicApi == true
+        val deviceInstall = capabilities?.supportsDeviceInstall == true
         vm.serverDelegate.updateState(vm._uiState.value.server.copy(
             connectionStatus = status,
             rommVersion = version,
@@ -499,6 +498,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             else -> ConnectionStatus.OFFLINE
         }
         val rommVersion = (connectionState as? ConnectionState.Connected)?.version
+        val rommCapabilities = (connectionState as? ConnectionState.Connected)?.capabilities
 
         val downloadedSize = vm.gameRepository.getDownloadedGamesSize()
         val downloadedCount = vm.gameRepository.getDownloadedGamesCount()
@@ -621,8 +621,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             enabled = prefs.soundEnabled,
             volume = prefs.soundVolume,
             soundConfigs = prefs.soundConfigs,
-            musicApiSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsMusicApi == true
+            musicApiSupported = rommCapabilities?.supportsMusicApi == true
         ))
 
         vm.ambientAudioDelegate.updateState(AmbientAudioState(
@@ -682,12 +681,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             syncScreenshotsEnabled = prefs.syncScreenshotsEnabled,
             uploadScreenshotsEnabled = prefs.uploadScreenshotsEnabled,
             boxArtCacheEnabled = prefs.boxArtCacheEnabled,
-            screenshotUploadSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsScreenshotUpload == true,
-            musicApiSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsMusicApi == true,
-            deviceInstallSupported = (connectionState as? ConnectionState.Connected)
-                ?.capabilities?.supportsDeviceInstall == true
+            screenshotUploadSupported = rommCapabilities?.supportsScreenshotUpload == true,
+            musicApiSupported = rommCapabilities?.supportsMusicApi == true,
+            deviceInstallSupported = rommCapabilities?.supportsDeviceInstall == true
         ))
 
         val jellyfinInFlight = vm.jellyfinDelegate.state.value

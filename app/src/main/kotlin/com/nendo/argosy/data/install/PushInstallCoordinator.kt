@@ -3,7 +3,7 @@ package com.nendo.argosy.data.install
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMConnectionManager
 import com.nendo.argosy.data.remote.romm.RomMDeviceCapabilitiesUpdate
@@ -19,6 +19,8 @@ import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -26,43 +28,49 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "PushInstallCoordinator"
-private const val STATUS_DONE = "done"
-private const val STATUS_ALREADY_INSTALLED = "already_installed"
-private const val STATUS_FAILED = "failed"
-private const val REASON_MAX_LENGTH = 500
+private const val HTTP_NOT_FOUND = 404
 
 /**
- * Receives installs pushed from RomM: reports this device's install capability, holds the
- * `/devices` socket while remote installs are allowed, and drains the claim endpoint on app
- * start, on every return to the foreground, on socket (re)connect and on `install:queued`.
- * Nothing runs against a server older than
- * [com.nendo.argosy.data.remote.romm.RomMCapabilities.DEVICE_INSTALL_MIN_VERSION].
+ * Sole sender of this device's install capability; drains the claim endpoint on start, foreground,
+ * socket connect and `install:queued`. A refused socket stays closed until the token or device id
+ * changes. Inert below [com.nendo.argosy.data.remote.romm.RomMCapabilities.DEVICE_INSTALL_MIN_VERSION].
  */
 @Singleton
 class PushInstallCoordinator @Inject constructor(
     private val connectionManager: RomMConnectionManager,
-    private val preferencesRepository: UserPreferencesRepository,
+    private val storagePreferences: StoragePreferencesRepository,
     private val accountRepository: RomMAccountRepository,
     private val deviceSocket: RomMDeviceSocket,
-    private val pushInstall: dagger.Lazy<PushInstallUseCase>
+    private val pushInstall: PushInstallUseCase
 ) {
     private data class Session(
         val baseUrl: String,
         val token: String,
         val deviceId: String,
         val allowRemoteInstalls: Boolean
+    ) {
+        val credentials: SocketCredentials get() = SocketCredentials(token, deviceId)
+    }
+
+    private data class SocketCredentials(val token: String, val deviceId: String)
+
+    private data class RefreshKey(
+        val connectionState: ConnectionState,
+        val deviceId: String?,
+        val allowRemoteInstalls: Boolean,
+        val accountId: Long?
     )
 
     private val scope = SafeCoroutineScope(Dispatchers.IO, TAG)
     private val refreshMutex = Mutex()
-    private val drainMutex = Mutex()
-    private val drainRequested = AtomicBoolean(false)
+    private val drainRequests = Channel<Unit>(Channel.CONFLATED)
     private var reportedCapability: Pair<String, Boolean>? = null
+    private var socketCredentials: SocketCredentials? = null
+    private var refusedCredentials: SocketCredentials? = null
 
     private val foregroundObserver = object : DefaultLifecycleObserver {
         override fun onStart(owner: LifecycleOwner) {
@@ -73,12 +81,15 @@ class PushInstallCoordinator @Inject constructor(
     fun start() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(foregroundObserver)
         scope.launch {
+            drainRequests.consumeEach { drainSafely() }
+        }
+        scope.launch {
             combine(
                 connectionManager.connectionState,
                 connectionManager.deviceIdState,
-                preferencesRepository.preferences.map { it.allowRemoteInstalls }.distinctUntilChanged(),
+                storagePreferences.preferences.map { it.allowRemoteInstalls }.distinctUntilChanged(),
                 accountRepository.observeActiveAccount().map { it?.id }.distinctUntilChanged()
-            ) { state, deviceId, allow, accountId -> listOf(state, deviceId, allow, accountId) }
+            ) { state, deviceId, allow, accountId -> RefreshKey(state, deviceId, allow, accountId) }
                 .distinctUntilChanged()
                 .collect { refresh() }
         }
@@ -86,7 +97,7 @@ class PushInstallCoordinator @Inject constructor(
             deviceSocket.events.collect { event ->
                 when (event) {
                     RomMDeviceSocket.Event.Connected, RomMDeviceSocket.Event.InstallQueued -> requestDrain()
-                    is RomMDeviceSocket.Event.Refused -> Unit
+                    is RomMDeviceSocket.Event.Refused -> onRefused(event.reason)
                 }
             }
         }
@@ -99,7 +110,7 @@ class PushInstallCoordinator @Inject constructor(
         val deviceId = connectionManager.getDeviceId() ?: return null
         val token = connectionManager.getAccessToken() ?: return null
         val baseUrl = connectionManager.getBaseUrl().takeIf { it.isNotBlank() } ?: return null
-        val allow = preferencesRepository.preferences.first().allowRemoteInstalls
+        val allow = storagePreferences.preferences.first().allowRemoteInstalls
         return Session(baseUrl, token, deviceId, allow)
     }
 
@@ -107,18 +118,35 @@ class PushInstallCoordinator @Inject constructor(
         val session = refreshMutex.withLock {
             val current = currentSession()
             if (current == null) {
-                deviceSocket.disconnect()
+                closeSocket()
                 return@withLock null
             }
             reportCapability(current)
-            if (current.allowRemoteInstalls) {
-                deviceSocket.connect(RomMDeviceSocket.Target(current.baseUrl, current.token))
-            } else {
-                deviceSocket.disconnect()
+            when {
+                !current.allowRemoteInstalls -> closeSocket()
+                current.credentials == refusedCredentials -> closeSocket()
+                else -> {
+                    refusedCredentials = null
+                    socketCredentials = current.credentials
+                    deviceSocket.connect(RomMDeviceSocket.Target(current.baseUrl, current.token))
+                }
             }
             current
         }
         if (session?.allowRemoteInstalls == true) requestDrain()
+    }
+
+    private fun closeSocket() {
+        socketCredentials = null
+        deviceSocket.disconnect()
+    }
+
+    private suspend fun onRefused(reason: String) {
+        refreshMutex.withLock {
+            refusedCredentials = socketCredentials
+            socketCredentials = null
+        }
+        Logger.warn(TAG, "socket refused ($reason); holding off until the token or device id changes")
     }
 
     private suspend fun reportCapability(session: Session) {
@@ -141,16 +169,16 @@ class PushInstallCoordinator @Inject constructor(
     }
 
     private fun requestDrain() {
-        drainRequested.set(true)
-        scope.launch {
-            while (drainRequested.get()) {
-                if (!drainMutex.tryLock()) return@launch
-                try {
-                    while (drainRequested.getAndSet(false)) drainOnce()
-                } finally {
-                    drainMutex.unlock()
-                }
-            }
+        drainRequests.trySend(Unit)
+    }
+
+    private suspend fun drainSafely() {
+        try {
+            drainOnce()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.warn(TAG, "drain: failed", e)
         }
     }
 
@@ -179,7 +207,7 @@ class PushInstallCoordinator @Inject constructor(
     }
 
     private suspend fun install(request: RomMInstallRequest): PushInstallOutcome = try {
-        pushInstall.get()(request.romId, request.fileIds)
+        pushInstall(request.romId, request.fileIds)
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
@@ -189,16 +217,19 @@ class PushInstallCoordinator @Inject constructor(
 
     private suspend fun report(deviceId: String, request: RomMInstallRequest, outcome: PushInstallOutcome) {
         val body = when (outcome) {
-            PushInstallOutcome.Queued -> RomMInstallReport(STATUS_DONE)
-            PushInstallOutcome.AlreadyInstalled -> RomMInstallReport(STATUS_ALREADY_INSTALLED)
-            is PushInstallOutcome.Failed -> RomMInstallReport(STATUS_FAILED, failureReason(outcome))
+            PushInstallOutcome.Queued -> RomMInstallReport(RomMInstallReport.STATUS_DONE)
+            PushInstallOutcome.AlreadyInstalled -> RomMInstallReport(RomMInstallReport.STATUS_ALREADY_INSTALLED)
+            is PushInstallOutcome.Failed -> RomMInstallReport(RomMInstallReport.STATUS_FAILED, failureReason(outcome))
         }
         Logger.info(TAG, "report: request ${request.id} rom ${request.romId} -> ${body.status} ${body.reason.orEmpty()}")
         val api = connectionManager.getApi() ?: return
         try {
             val response = api.reportInstallRequest(deviceId, request.id, body)
-            if (!response.isSuccessful) {
-                Logger.warn(TAG, "report: request ${request.id} returned ${response.code()}")
+            when {
+                response.isSuccessful -> Unit
+                response.code() == HTTP_NOT_FOUND ->
+                    Logger.debug(TAG, "report: request ${request.id} already handled on the server")
+                else -> Logger.warn(TAG, "report: request ${request.id} returned ${response.code()}")
             }
         } catch (e: CancellationException) {
             throw e
@@ -211,11 +242,10 @@ class PushInstallCoordinator @Inject constructor(
         val base = when (outcome.failure) {
             PushInstallFailure.ROM_UNRESOLVED -> "rom could not be resolved"
             PushInstallFailure.NO_EMULATOR -> "no emulator for this platform"
-            PushInstallFailure.INSUFFICIENT_STORAGE -> "insufficient storage"
             PushInstallFailure.NO_INSTALLABLE_FILES -> "no installable files requested"
             PushInstallFailure.DOWNLOAD_ERROR -> "download error"
         }
         val full = outcome.detail?.let { "$base: $it" } ?: base
-        return full.take(REASON_MAX_LENGTH)
+        return full.take(RomMInstallReport.REASON_MAX_LENGTH)
     }
 }

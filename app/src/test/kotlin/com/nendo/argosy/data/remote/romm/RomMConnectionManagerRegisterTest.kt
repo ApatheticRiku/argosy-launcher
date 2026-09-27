@@ -9,11 +9,9 @@ import com.nendo.argosy.data.repository.SaveSyncRepository
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Response
@@ -21,13 +19,10 @@ import retrofit2.Response
 class RomMConnectionManagerRegisterTest {
 
     private val api: RomMApi = mockk(relaxed = true)
-    private val registration = slot<RomMDeviceRegistration>()
 
-    private fun manager(serverVersion: String, allowRemoteInstalls: Boolean): RomMConnectionManager {
+    private fun manager(serverVersion: String): RomMConnectionManager {
         val preferences: UserPreferencesRepository = mockk(relaxed = true)
-        every { preferences.preferences } returns flowOf(
-            UserPreferences(allowRemoteInstalls = allowRemoteInstalls)
-        )
+        every { preferences.preferences } returns flowOf(UserPreferences())
         val apiFactory: RomMApiFactory = mockk()
         every { apiFactory.create(any(), any(), any()) } returns api
         coEvery { api.heartbeat() } returns Response.success(
@@ -36,7 +31,7 @@ class RomMConnectionManagerRegisterTest {
         coEvery { api.getCurrentUser() } returns Response.success(
             RomMUser(id = 1L, username = "player", enabled = true, role = "admin")
         )
-        coEvery { api.registerDevice(capture(registration)) } returns Response.success(
+        coEvery { api.registerDevice(any()) } returns Response.success(
             RomMDeviceRegistrationResponse(deviceId = "device-1")
         )
         val saveSyncRepository: SaveSyncRepository = mockk(relaxed = true)
@@ -55,38 +50,13 @@ class RomMConnectionManagerRegisterTest {
         )
     }
 
-    private suspend fun registerAgainst(serverVersion: String, allowRemoteInstalls: Boolean): RomMDeviceRegistration {
-        val result = manager(serverVersion, allowRemoteInstalls).connect("http://romm.local/", "token")
+    @Test
+    fun `a fresh registration publishes its device id`() = runTest {
+        val manager = manager("5.4.0")
+
+        val result = manager.connect("http://romm.local/", "token")
+
         assertTrue("connect: $result", result is RomMResult.Success)
-        assertTrue("registerDevice was not called", registration.isCaptured)
-        return registration.captured
-    }
-
-    @Test
-    fun `5_4_0 registers the install capability with the setting on`() = runTest {
-        val sent = registerAgainst("5.4.0", allowRemoteInstalls = true)
-
-        assertEquals(mapOf("install" to true), sent.capabilities)
-    }
-
-    @Test
-    fun `5_4_0 registers the install capability with the setting off`() = runTest {
-        val sent = registerAgainst("5.4.0", allowRemoteInstalls = false)
-
-        assertEquals(mapOf("install" to false), sent.capabilities)
-    }
-
-    @Test
-    fun `5_4_1 registers the install capability`() = runTest {
-        val sent = registerAgainst("5.4.1", allowRemoteInstalls = true)
-
-        assertEquals(mapOf("install" to true), sent.capabilities)
-    }
-
-    @Test
-    fun `5_3_9 registers without capabilities`() = runTest {
-        val sent = registerAgainst("5.3.9", allowRemoteInstalls = true)
-
-        assertNull(sent.capabilities)
+        assertEquals("device-1", manager.deviceIdState.value)
     }
 }

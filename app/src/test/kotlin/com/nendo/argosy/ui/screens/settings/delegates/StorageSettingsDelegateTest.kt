@@ -22,6 +22,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -132,6 +134,50 @@ class StorageSettingsDelegateTest {
         advanceUntilIdle()
 
         assertEquals(100, delegate.state.value.instantDownloadThresholdMb)
+    }
+
+    @Test
+    fun `toggling remote installs off stores and shows off`() = testScope.runTest {
+        delegate.updateState(StorageState(allowRemoteInstalls = true))
+
+        delegate.toggleAllowRemoteInstalls(this)
+        advanceUntilIdle()
+
+        assertFalse(delegate.state.value.allowRemoteInstalls)
+        coVerify(exactly = 1) { preferencesRepository.setAllowRemoteInstalls(false) }
+    }
+
+    @Test
+    fun `toggling remote installs on stores and shows on`() = testScope.runTest {
+        delegate.updateState(StorageState(allowRemoteInstalls = false))
+
+        delegate.toggleAllowRemoteInstalls(this)
+        advanceUntilIdle()
+
+        assertTrue(delegate.state.value.allowRemoteInstalls)
+        coVerify(exactly = 1) { preferencesRepository.setAllowRemoteInstalls(true) }
+    }
+
+    @Test
+    fun `toggling auto start downloads off stores and shows off`() = testScope.runTest {
+        delegate.updateState(StorageState(autoStartDownloads = true))
+
+        delegate.toggleAutoStartDownloads(this)
+        advanceUntilIdle()
+
+        assertFalse(delegate.state.value.autoStartDownloads)
+        coVerify(exactly = 1) { preferencesRepository.setAutoStartDownloads(false) }
+    }
+
+    @Test
+    fun `toggling auto start downloads on stores and shows on`() = testScope.runTest {
+        delegate.updateState(StorageState(autoStartDownloads = false))
+
+        delegate.toggleAutoStartDownloads(this)
+        advanceUntilIdle()
+
+        assertTrue(delegate.state.value.autoStartDownloads)
+        coVerify(exactly = 1) { preferencesRepository.setAutoStartDownloads(true) }
     }
 
     @Test
