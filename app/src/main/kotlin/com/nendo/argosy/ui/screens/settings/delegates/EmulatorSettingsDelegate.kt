@@ -452,7 +452,12 @@ class EmulatorSettingsDelegate @Inject constructor(
     ) {
         scope.launch {
             val config = emulatorSaveConfigRepository.getByEmulator(emulatorId)
-            val besideRomSupported = !RetroArchPathResolver.isRetroArch(emulatorId)
+            val alwaysBesideRom = platformSlug?.takeIf { it.isNotBlank() }?.let { slug ->
+                savePathAuthority.configFor(
+                    SavePathRequest(platformSlug = slug, emulatorId = emulatorId, emulatorPackage = emulatorPackage)
+                )?.savesBesideRom
+            } == true
+            val besideRomSupported = !RetroArchPathResolver.isRetroArch(emulatorId) && !alwaysBesideRom
             val pathPresent = savePath?.let {
                 withContext(Dispatchers.IO) { saveHandlerRegistry.pathIsPresent(it) }
             } ?: true

@@ -669,6 +669,18 @@ object EmulatorRegistry {
             releaseSource = ReleaseSource.GitHub("SapphireRhodonite/melonDS-android")
         ),
         EmulatorDef(
+            id = "seedlessds",
+            packageName = "com.seedlessds.app",
+            displayName = "SeedlessDS",
+            supportedPlatforms = setOf("nds"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.seedlessds.app.LaunchGame",
+                intentExtras = mapOf("rom_path" to ExtraValue.FilePath)
+            ),
+            downloadUrl = "https://github.com/SapphireRhodonite/SeedlessDS/releases",
+            releaseSource = ReleaseSource.GitHub("SapphireRhodonite/SeedlessDS")
+        ),
+        EmulatorDef(
             id = "pizza_boy_gba",
             packageName = "it.dbtecno.pizzaboygba",
             displayName = "Pizza Boy GBA",
@@ -1089,7 +1101,7 @@ object EmulatorRegistry {
         "n64" to listOf(
             BUILTIN_ID, "mupen64plus_fz", "mupen64plus_fz_pro", "retroarch", "retroarch_64", "retroarch_32"
         ),
-        "nds" to listOf(BUILTIN_ID, "drastic", "melonds", "melondualds", "retroarch", "retroarch_64", "retroarch_32"),
+        "nds" to listOf(BUILTIN_ID, "drastic", "seedlessds", "melonds", "melondualds", "retroarch", "retroarch_64", "retroarch_32"),
         "3ds" to listOf(
             "azahar", "citra_mmj", "borked3ds", "citra", BUILTIN_ID,
             "retroarch", "retroarch_64", "retroarch_32"

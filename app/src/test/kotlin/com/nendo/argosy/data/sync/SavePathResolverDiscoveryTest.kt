@@ -405,6 +405,33 @@ class SavePathResolverDiscoveryTest {
     }
 
     @Test
+    fun `SeedlessDS saves are found beside the ROM without a user setting`() = runTest {
+        val romDir = File(tempDir, "roms/nds").apply { mkdirs() }
+        val romFile = File(romDir, "Mario Kart DS.nds").apply { writeBytes(byteArrayOf(0)) }
+        val saveFile = File(romDir, "Mario Kart DS.dsv").apply { writeBytes(byteArrayOf(1)) }
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = romFile.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 1L,
+        )
+
+        assertEquals(saveFile.absolutePath, result)
+    }
+
+    @Test
+    fun `a SeedlessDS download is written beside the ROM`() = runTest {
+        val romDir = File(tempDir, "roms/nds").apply { mkdirs() }
+        val romFile = File(romDir, "Mario Kart DS.nds").apply { writeBytes(byteArrayOf(0)) }
+
+        val result = resolver.constructSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = romFile.absolutePath, gameId = 1L,
+        )
+
+        assertEquals(File(romDir, "Mario Kart DS.dsv").absolutePath, result)
+    }
+
+    @Test
     fun `savesBesideRom discovers the save in the ROM folder`() = runTest {
         coEvery { emulatorSaveConfigDao.getByEmulator("argosy") } returns
             EmulatorSaveConfigEntity(emulatorId = "argosy", savePathPattern = "", isAutoDetected = true, savesBesideRom = true)

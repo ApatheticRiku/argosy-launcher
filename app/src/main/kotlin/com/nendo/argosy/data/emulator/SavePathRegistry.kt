@@ -15,6 +15,7 @@ data class SavePathConfig(
     val usesPackageTemplate: Boolean = false,
     val usesInternalStorage: Boolean = false,
     val usesGciFormat: Boolean = false,
+    val savesBesideRom: Boolean = false,
     val supported: Boolean = true
 )
 
@@ -346,6 +347,12 @@ object SavePathRegistry {
                 "{extStorage}/Android/data/com.dsemu.drastic/files/backup"
             ),
             saveExtensions = listOf("dsv", "sav")
+        ),
+        "seedlessds" to SavePathConfig(
+            emulatorId = "seedlessds",
+            defaultPaths = emptyList(),
+            saveExtensions = listOf("dsv", "sav"),
+            savesBesideRom = true
         ),
         "melonds" to SavePathConfig(
             emulatorId = "melonds",
@@ -730,6 +737,7 @@ object SavePathRegistry {
         "me.magnum.melonds" to "melonds",
         "me.magnum.melondualds" to "melondualds",
         "com.dsemu.drastic" to "drastic",
+        "com.seedlessds.app" to "seedlessds",
         "it.dbtecno.pizzaboygba" to "pizza_boy_gba",
         "it.dbtecno.pizzaboy" to "pizza_boy_gb",
         "it.dbtecno.pizzaboygbapro" to "pizza_boy_gba_pro",
