@@ -3,6 +3,8 @@ package com.nendo.argosy.data.install
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.nendo.argosy.data.local.entity.RomMAccountEntity
+import com.nendo.argosy.data.preferences.AppPreferences
+import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.preferences.StoragePreferences
 import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
@@ -44,6 +46,8 @@ class PushInstallCoordinatorTest {
     private val api: RomMApi = mockk(relaxed = true)
     private val connectionManager: RomMConnectionManager = mockk(relaxed = true)
     private val storagePreferences: StoragePreferencesRepository = mockk(relaxed = true)
+    private val appPreferences: AppPreferencesRepository = mockk(relaxed = true)
+    private val appState = MutableStateFlow(AppPreferences(firstRunComplete = true))
     private val accountRepository: RomMAccountRepository = mockk(relaxed = true)
     private val deviceSocket: RomMDeviceSocket = mockk(relaxed = true)
     private val pushInstall: PushInstallUseCase = mockk()
@@ -69,6 +73,7 @@ class PushInstallCoordinatorTest {
         every { connectionManager.getBaseUrl() } returns "http://romm.local/"
         every { connectionManager.getApi() } returns api
         every { storagePreferences.preferences } returns preferences
+        every { appPreferences.preferences } returns appState
         every { accountRepository.observeActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.activeAccount() } returns account
         every { deviceSocket.events } returns socketEvents
@@ -87,6 +92,7 @@ class PushInstallCoordinatorTest {
         preferences.value = StoragePreferences(allowRemoteInstalls = allowRemoteInstalls)
         return PushInstallCoordinator(
             connectionManager,
+            appPreferences,
             storagePreferences,
             accountRepository,
             deviceSocket,
@@ -118,6 +124,32 @@ class PushInstallCoordinatorTest {
         coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
         coVerify { api.updateDeviceCapabilities(DEVICE_ID, any()) }
         verify { deviceSocket.connect(RomMDeviceSocket.Target("http://romm.local/", "token")) }
+    }
+
+    @Test
+    fun `before setup completes nothing is advertised, connected or claimed`() = runBlocking {
+        appState.value = AppPreferences(firstRunComplete = false)
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+
+        verify(timeout = WAIT_MS) { deviceSocket.disconnect() }
+        awaitSocketSubscriber()
+        socketEvents.emit(RomMDeviceSocket.Event.InstallQueued)
+        delay(SETTLE_MS)
+
+        coVerify(exactly = 0) { api.claimInstallRequests(any()) }
+        coVerify(exactly = 0) { api.updateDeviceCapabilities(any(), any()) }
+        verify(exactly = 0) { deviceSocket.connect(any()) }
+    }
+
+    @Test
+    fun `completing setup drains the requests pushed during it`() = runBlocking {
+        appState.value = AppPreferences(firstRunComplete = false)
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+        verify(timeout = WAIT_MS) { deviceSocket.disconnect() }
+
+        appState.value = AppPreferences(firstRunComplete = true)
+
+        coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
     }
 
     @Test

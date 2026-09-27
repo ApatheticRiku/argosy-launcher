@@ -3,6 +3,7 @@ package com.nendo.argosy.data.install
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMConnectionManager
@@ -37,11 +38,13 @@ private const val HTTP_NOT_FOUND = 404
 /**
  * Sole sender of this device's install capability; drains the claim endpoint on start, foreground,
  * socket connect and `install:queued`. A refused socket stays closed until the token or device id
- * changes. Inert below [com.nendo.argosy.data.remote.romm.RomMCapabilities.DEVICE_INSTALL_MIN_VERSION].
+ * changes. Inert below [com.nendo.argosy.data.remote.romm.RomMCapabilities.DEVICE_INSTALL_MIN_VERSION]
+ * and until first-run setup completes; requests pushed before then stay queued on the server.
  */
 @Singleton
 class PushInstallCoordinator @Inject constructor(
     private val connectionManager: RomMConnectionManager,
+    private val appPreferences: AppPreferencesRepository,
     private val storagePreferences: StoragePreferencesRepository,
     private val accountRepository: RomMAccountRepository,
     private val deviceSocket: RomMDeviceSocket,
@@ -62,7 +65,8 @@ class PushInstallCoordinator @Inject constructor(
         val connectionState: ConnectionState,
         val deviceId: String?,
         val allowRemoteInstalls: Boolean,
-        val accountId: Long?
+        val accountId: Long?,
+        val setupComplete: Boolean
     )
 
     private val scope = SafeCoroutineScope(Dispatchers.IO, TAG)
@@ -88,8 +92,11 @@ class PushInstallCoordinator @Inject constructor(
                 connectionManager.connectionState,
                 connectionManager.deviceIdState,
                 storagePreferences.preferences.map { it.allowRemoteInstalls }.distinctUntilChanged(),
-                accountRepository.observeActiveAccount().map { it?.id }.distinctUntilChanged()
-            ) { state, deviceId, allow, accountId -> RefreshKey(state, deviceId, allow, accountId) }
+                accountRepository.observeActiveAccount().map { it?.id }.distinctUntilChanged(),
+                appPreferences.preferences.map { it.firstRunComplete }.distinctUntilChanged()
+            ) { state, deviceId, allow, accountId, setupComplete ->
+                RefreshKey(state, deviceId, allow, accountId, setupComplete)
+            }
                 .distinctUntilChanged()
                 .collect { refresh() }
         }
@@ -104,6 +111,7 @@ class PushInstallCoordinator @Inject constructor(
     }
 
     private suspend fun currentSession(): Session? {
+        if (!appPreferences.preferences.first().firstRunComplete) return null
         val connected = connectionManager.connectionState.value as? ConnectionState.Connected ?: return null
         if (!connected.capabilities.supportsDeviceInstall) return null
         if (accountRepository.activeAccount() == null) return null
