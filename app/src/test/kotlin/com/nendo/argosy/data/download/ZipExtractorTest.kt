@@ -659,6 +659,24 @@ class ZipExtractorTest {
     }
 
     @Test
+    fun `hidden files at the root do not break the wrapper`() {
+        assertEquals(
+            "Game",
+            ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", "._Game", ".DS_Store"))
+        )
+    }
+
+    @Test
+    fun `a hidden folder at the root does not break the wrapper`() {
+        assertEquals("Game", ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", ".fseventsd/x")))
+    }
+
+    @Test
+    fun `hidden files inside the wrapper stay part of it`() {
+        assertEquals("Game", ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", "Game/.config/x")))
+    }
+
+    @Test
     fun `a file at the root means there is no wrapper`() {
         assertNull(ZipExtractor.wrapperFolderOf(listOf("Game/a.bin", "readme.txt")))
     }
@@ -694,6 +712,26 @@ class ZipExtractorTest {
         assertTrue(File(gameFolder, "TENTACLE.000").isFile)
         assertTrue(File(gameFolder, "MONSTER.SOU").isFile)
         assertFalse(File(gameFolder, "Day of the Tentacle").exists())
+    }
+
+    @Test
+    fun `root junk does not stop a wrapped archive from extracting flat`() {
+        val platformDir = File(tempDir, "scummvm").apply { mkdirs() }
+        val zipFile = File(tempDir, "sam.zip")
+        createTestZip(
+            zipFile,
+            mapOf(
+                "Sam and Max/SAMNMAX.000" to "data",
+                "._Sam and Max" to "fork",
+                ".DS_Store" to "finder"
+            )
+        )
+
+        ZipExtractor.extractFolderRom(zipFile, "Sam and Max", platformDir, "scummvm")
+
+        val gameFolder = File(platformDir, "Sam and Max")
+        assertTrue(File(gameFolder, "SAMNMAX.000").isFile)
+        assertFalse(File(gameFolder, "Sam and Max").exists())
     }
 
     @Test

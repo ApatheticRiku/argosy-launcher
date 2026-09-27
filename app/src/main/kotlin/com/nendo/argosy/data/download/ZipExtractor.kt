@@ -681,7 +681,7 @@ object ZipExtractor {
     internal fun wrapperFolderOf(entryPaths: List<String>): String? {
         val tops = entryPaths
             .map { it.replace('\\', '/') }
-            .filterNot { it.startsWith("$MAC_METADATA_FOLDER/") }
+            .filterNot { isRootJunk(it.substringBefore('/')) }
             .map { it.substringBefore('/', missingDelimiterValue = "") }
         val top = tops.firstOrNull() ?: return null
         if (top.isEmpty() || tops.any { it != top }) return null
@@ -689,6 +689,9 @@ object ZipExtractor {
         if (folder in ADDON_FOLDERS || folder in DISC_LAYOUT_FOLDERS) return null
         return top
     }
+
+    private fun isRootJunk(rootName: String): Boolean =
+        rootName.startsWith(".") || rootName == MAC_METADATA_FOLDER
 
     internal fun withoutWrapper(entryPath: String, wrapper: String?): String {
         if (wrapper == null) return entryPath
