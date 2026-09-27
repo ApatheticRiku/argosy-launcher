@@ -26,6 +26,7 @@ private const val RECONNECT_DELAY_MAX_MS = 60_000L
 private const val RECONNECT_JITTER = 0.5
 private const val READ_TIMEOUT_SECONDS = 60L
 private val REFUSAL_MESSAGES = setOf("unauthorized", "disabled")
+private const val SERVER_DISCONNECT_REASON = "io server disconnect"
 
 /**
  * The RomM `/devices` socket.io namespace, authenticated with the device-bound client token.
@@ -108,12 +109,21 @@ class RomMDeviceSocket @Inject constructor(
         }
         created.on(Socket.EVENT_DISCONNECT) { args ->
             Logger.info(TAG, "disconnected: ${args.firstOrNull()}")
+            if (args.firstOrNull() == SERVER_DISCONNECT_REASON) reopenAfterServerClose(created)
         }
         created.on(Socket.EVENT_CONNECT_ERROR) { args -> onConnectError(created, args) }
         created.on(EVENT_INSTALL_QUEUED) {
             _events.tryEmit(Event.InstallQueued)
         }
         return created
+    }
+
+    private fun reopenAfterServerClose(source: Socket) {
+        synchronized(this) {
+            if (socket !== source) return
+            Logger.info(TAG, "server closed the device socket, reconnecting")
+            source.connect()
+        }
     }
 
     private fun onConnectError(source: Socket, args: Array<out Any?>) {
