@@ -30,6 +30,7 @@
     <string name="ingame_menu_settings">设置</string>
     <string name="ingame_menu_stop_speedrun_timer">停止速通计时</string>
     <string name="ingame_menu_speedrun_timer">速通计时器</string>
+    <string name="ingame_menu_swap_screens">交换屏幕</string>
     <string name="ingame_menu_touch_controls">触屏控件</string>
     <string name="ingame_menu_reset">重置</string>
     <string name="ingame_menu_quit">退出游戏</string>

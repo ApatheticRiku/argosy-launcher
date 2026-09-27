@@ -178,7 +178,6 @@ class DualScreenManager(
     private val activityIndependentScope =
         com.nendo.argosy.util.SafeCoroutineScope(Dispatchers.Main, "DualScreenState")
 
-    private var preGameRolesSwapped: Boolean? = null
     private var activityContext: Context = context
     private var lastStateEntries: Pair<Long, List<UnifiedStateEntry>>? = null
 
@@ -355,13 +354,16 @@ class DualScreenManager(
 
     /**
      * Moves the PRIMARY role onto [displayId]. A layout that already matches the live arrangement
-     * changes nothing and takes nobody's focus, and a running session keeps the screen it was
-     * launched on until it ends.
+     * changes nothing and takes nobody's focus. While a session runs the role moves only when the
+     * game can follow it to its new display, and the game keeps the pad.
      */
     fun setPrimaryDisplayId(displayId: Int) {
         val swapped = displayId == android.view.Display.DEFAULT_DISPLAY
         if (swapped == _isRolesSwapped.value) return
-        if (sessionStateStore.hasActiveSession()) return
+        if (sessionStateStore.hasActiveSession()) {
+            moveGameWithRoles(swapped) { commitRoleSwap(swapped) }
+            return
+        }
         commitRoleSwap(swapped)
         if (swapped) refocusMain()
     }
@@ -902,37 +904,23 @@ class DualScreenManager(
         }
     var emulatorMotionDispatcher: ((android.view.MotionEvent) -> Boolean)? = null
 
+    private val _emulatorDisplay = MutableStateFlow(
+        if (sessionStateStore.hasActiveSession()) sessionStateStore.getEmulatorDisplayId() else null
+    )
+
     /**
-     * The display the running game occupies, mirrored to disk so it survives the process.
-     *
-     * A launcher killed under a running game comes back with this field null, and null reads as
-     * "the game is on my display" at every site that exempts a cross-display session - which is how
-     * a restart ends up tearing down, and taking the screen from, a game running on the other panel.
-     * The persisted value is only consulted while the field is empty and only while a session is
-     * recorded behind it, so a live launch always wins and a finished game never leaves a display
-     * claim behind it.
+     * The display the running game occupies, mirrored to disk and restored from it when the manager
+     * is built under a recorded session, so a launcher restarted beneath a game still knows where
+     * that game is. Composition observes it here; everything else reads [emulatorDisplayId].
      */
-    var emulatorDisplayId: Int? = null
-        get() = field ?: persistedEmulatorDisplayId()
+    val emulatorDisplay: StateFlow<Int?> = _emulatorDisplay
+
+    var emulatorDisplayId: Int?
+        get() = _emulatorDisplay.value
         set(value) {
-            field = value
+            _emulatorDisplay.value = value
             sessionStateStore.setEmulatorDisplayId(value)
         }
-
-    private fun persistedEmulatorDisplayId(): Int? =
-        if (sessionStateStore.hasActiveSession()) sessionStateStore.getEmulatorDisplayId() else null
-
-    var isLaunchingGame = false
-        private set
-    private var launchGuardJob: Job? = null
-
-    fun onFocusLostToEmulator() {
-        if (isLaunchingGame) {
-            isLaunchingGame = false
-            launchGuardJob?.cancel()
-            launchGuardJob = null
-        }
-    }
 
     val isExternalDisplay: Boolean
         get() = displayAffinityHelper.secondaryDisplayType == SecondaryDisplayType.EXTERNAL
@@ -1195,12 +1183,11 @@ class DualScreenManager(
     fun directMediaPlayerFocus(displayId: Int) {
         if (!displayAffinityHelper.hasSecondaryDisplay) return
         if (sessionStateStore.hasActiveSession()) return
-        if (isLaunchingGame) return
         if (_mediaPlayerControlsLocked.value) return
         mediaFocusJob?.cancel()
         mediaFocusJob = scope.launch {
             delay(MEDIA_FOCUS_DIRECT_DELAY_MS)
-            if (sessionStateStore.hasActiveSession() || isLaunchingGame) return@launch
+            if (sessionStateStore.hasActiveSession()) return@launch
             try {
                 FocusDirectorActivity.launchOnDisplay(appContext, displayId)
             } catch (e: SecurityException) {
@@ -1501,9 +1488,12 @@ class DualScreenManager(
      * dashboard nowhere else to go; a game on the app screen leaves the presentation screen free
      * for it and Home stays on Primary.
      */
-    fun primaryShowsDashboard(primaryDisplayId: Int?): Boolean {
+    fun primaryShowsDashboard(
+        primaryDisplayId: Int?,
+        gameDisplayId: Int? = emulatorDisplayId
+    ): Boolean {
         if (!_swappedIsGameActive.value) return false
-        val gameDisplay = emulatorDisplayId ?: return false
+        val gameDisplay = gameDisplayId ?: return false
         if (gameDisplay == primaryDisplayId) return false
         val showcase = showcaseDisplayId() ?: return true
         return gameDisplay == showcase
@@ -1531,6 +1521,128 @@ class DualScreenManager(
                 kotlinx.coroutines.flow.SharingStarted.Eagerly,
                 com.nendo.argosy.ui.dualscreen.PresentationSlot.Fallback
             )
+
+    /**
+     * A running built-in game whose core survives a display move. Called on the main thread around
+     * a move the manager starts; the game reports arrival through [onGameMovedToDisplay].
+     */
+    interface LiveMoveHost {
+        fun beforeDisplayMove()
+        fun displayMoveAbandoned()
+    }
+
+    private val thorTaskMover = com.nendo.argosy.hardware.ThorTaskMover()
+    private val _taskMoveCapable = MutableStateFlow(false)
+    private val _liveMoveHost = MutableStateFlow<LiveMoveHost?>(null)
+    private val _gameWindowDisplay = MutableStateFlow<Int?>(null)
+
+    @Volatile
+    private var gameMoveInProgress = false
+
+    /**
+     * True from the moment a role swap starts carrying the game to another display until the game
+     * has focus there. Session teardown and focus restoring stand down while it holds.
+     */
+    val isMovingGame: Boolean
+        get() = gameMoveInProgress
+
+    fun registerLiveMoveHost(host: LiveMoveHost) {
+        _liveMoveHost.value = host
+    }
+
+    fun unregisterLiveMoveHost(host: LiveMoveHost) {
+        _liveMoveHost.compareAndSet(host, null)
+    }
+
+    fun onGameMovedToDisplay(displayId: Int) {
+        _gameWindowDisplay.value = displayId
+    }
+
+    /**
+     * Whether a role swap right now carries the running game to the display its role lands on.
+     */
+    val liveSwapAvailable: StateFlow<Boolean> =
+        kotlinx.coroutines.flow.combine(
+            _taskMoveCapable,
+            _liveMoveHost,
+            _swappedIsGameActive,
+            _emulatorDisplay,
+            _isRolesSwapped
+        ) { capable, host, gameActive, gameDisplay, swapped ->
+            capable && host != null && gameActive &&
+                liveMoveTarget(gameDisplay, swapped, !swapped) != null
+        }.stateIn(activityIndependentScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
+    private fun probeTaskMover() {
+        if (_taskMoveCapable.value) return
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return
+        if (!DisplayAffinityHelper.isKnownDualScreenDevice()) return
+        activityIndependentScope.launch { _taskMoveCapable.value = thorTaskMover.isAvailable() }
+    }
+
+    private fun liveMoveTarget(gameDisplay: Int?, swapped: Boolean, newSwapped: Boolean): Int? {
+        if (gameDisplay == null || displayAffinityHelper.isDockedDark) return null
+        val roles = displayAffinityHelper.getRoleDisplayIds(swapped) ?: return null
+        val role = when (gameDisplay) {
+            roles.first -> EmulatorDisplayTarget.PRIMARY
+            roles.second -> EmulatorDisplayTarget.PRESENTATION
+            else -> return null
+        }
+        return DisplayAffinityHelper.resolveDisplayTargetId(
+            target = role,
+            roleDisplayIds = displayAffinityHelper.getRoleDisplayIds(newSwapped),
+            appScreenDisplayId = displayAffinityHelper.appScreenDisplayId(newSwapped)
+        )?.takeIf { it != gameDisplay }
+    }
+
+    private fun moveGameWithRoles(newSwapped: Boolean, commit: () -> Unit) {
+        if (gameMoveInProgress || !_taskMoveCapable.value) return
+        val host = _liveMoveHost.value ?: return
+        val from = emulatorDisplayId ?: return
+        val target = liveMoveTarget(from, _isRolesSwapped.value, newSwapped) ?: return
+        gameMoveInProgress = true
+        activityIndependentScope.launch {
+            try {
+                if (!relocateGame(host, from, target)) return@launch
+                commit()
+                focusGameDisplay(target)
+            } finally {
+                gameMoveInProgress = false
+            }
+        }
+    }
+
+    private suspend fun relocateGame(host: LiveMoveHost, from: Int, target: Int): Boolean {
+        host.beforeDisplayMove()
+        _gameWindowDisplay.value = null
+        emulatorDisplayId = target
+        val requested = withContext(Dispatchers.IO) {
+            val taskId = builtInGameTaskId(appContext)
+            taskId != null && thorTaskMover.moveTask(taskId, target)
+        }
+        val arrived = requested && withTimeoutOrNull(GAME_MOVE_CONFIRM_MS) {
+            _gameWindowDisplay.first { it == target }
+        } != null
+        if (!arrived) {
+            Log.w(TAG, "Game did not reach display $target (requested=$requested), keeping it on $from")
+            emulatorDisplayId = from
+            host.displayMoveAbandoned()
+        }
+        return arrived
+    }
+
+    private fun focusGameDisplay(displayId: Int) {
+        try {
+            FocusDirectorActivity.launchOnDisplay(appContext, displayId)
+        } catch (e: SecurityException) {
+            val a11y = FocusAccessibilityService.instance
+            if (a11y != null) {
+                a11y.tapOnDisplay(displayId)
+            } else {
+                Log.w(TAG, "Game focus blocked on display $displayId (device restriction)")
+            }
+        }
+    }
 
     private var companionWatchdogJob: Job? = null
     private var companionLaunchJob: Job? = null
@@ -1638,16 +1750,35 @@ class DualScreenManager(
         Log.d(TAG, "HDMI disconnected: cleaned up swapped state")
     }
 
-    /**
-     * Whether the running session's emulator is still on a screen. Both the launcher and the
-     * companion tear a session down when they come back to the front, and neither of them can tell
-     * from that alone whether the game ended or merely stopped being the focused thing, so both ask
-     * here. Answering false without evidence would end a live session and archive its save mid-play,
-     * so an emulator that cannot be observed is treated as still running.
-     */
     private fun isEmulatorStillOnScreen(context: Context): Boolean {
         val emulatorPackage = sessionStateStore.getEmulatorPackage() ?: return false
+        if (emulatorPackage == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE) {
+            return isBuiltInGameAlive(context)
+        }
         return permissionHelper.isPackageOnScreenOrRecent(context, emulatorPackage)
+    }
+
+    private fun isBuiltInGameAlive(context: Context): Boolean {
+        val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
+            ?: return true
+        return builtInGameTask(activityManager) != null
+    }
+
+    private fun builtInGameTaskId(context: Context): Int? {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q) return null
+        val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
+            ?: return null
+        return builtInGameTask(activityManager)?.taskId
+    }
+
+    private fun builtInGameTask(
+        activityManager: android.app.ActivityManager
+    ): android.app.ActivityManager.RecentTaskInfo? {
+        val gameActivity = com.nendo.argosy.libretro.LibretroActivity::class.java.name
+        return activityManager.appTasks.firstNotNullOfOrNull { task ->
+            runCatching { task.taskInfo }.getOrNull()
+                ?.takeIf { it.topActivity?.className == gameActivity }
+        }
     }
 
     /**
@@ -1673,6 +1804,7 @@ class DualScreenManager(
         val sessionEnd = playSessionTracker.endSessionInBackground()
         broadcastSessionCleared()
         if (emulatorPackage == null || !_isDualScreenDevice.value) return
+        if (emulatorPackage == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE) return
         scope.launch {
             sessionEnd.join()
             repeat(EMULATOR_RELEASE_ATTEMPTS) {
@@ -1856,13 +1988,7 @@ class DualScreenManager(
             sessionStateStore.clearSession()
             swappedSessionTimer?.stop(appContext)
             swappedSessionTimer = null
-            val savedSwapped = preGameRolesSwapped
-            if (savedSwapped != null) {
-                _isRolesSwapped.value = savedSwapped
-                preGameRolesSwapped = null
-            }
             Handler(Looper.getMainLooper()).post {
-                if (savedSwapped != null) onRoleSwapped?.invoke(savedSwapped)
                 eachCompanion {
                     it.onSessionEnded()
                     it.onRoleSwapped(_isRolesSwapped.value)
@@ -2168,9 +2294,14 @@ class DualScreenManager(
         if (now - lastSwapTimeMs < SWAP_DEBOUNCE_MS) return
         lastSwapTimeMs = now
 
-        if (sessionStateStore.hasActiveSession()) return
-
         val newSwapped = !_isRolesSwapped.value
+        if (sessionStateStore.hasActiveSession()) {
+            moveGameWithRoles(newSwapped) {
+                mirrorOverrideTo(newSwapped)
+                applyRoleChange(newSwapped)
+            }
+            return
+        }
         mirrorOverrideTo(newSwapped)
         applyRoleChange(newSwapped)
     }
@@ -2191,15 +2322,18 @@ class DualScreenManager(
     }
 
     /**
-     * Stores the override and applies the arrangement it resolves to, skipping the live commit
-     * while a game is running.
+     * Stores the override and applies the arrangement it resolves to. While a game is running the
+     * live commit happens only when the game can follow its role to the new display.
      */
     fun applyDisplayRoleOverride(override: DisplayRoleOverride) {
         sessionStateStore.setDisplayRoleOverride(override.name)
         scope.launch { preferencesRepository.setDisplayRoleOverride(override) }
-        if (sessionStateStore.hasActiveSession()) return
         val resolved = DisplayRoleResolver(displayAffinityHelper, sessionStateStore).isSwapped
         if (resolved == _isRolesSwapped.value) return
+        if (sessionStateStore.hasActiveSession()) {
+            moveGameWithRoles(resolved) { applyRoleChange(resolved) }
+            return
+        }
         applyRoleChange(resolved)
     }
 
@@ -2230,43 +2364,19 @@ class DualScreenManager(
         _mediaInfoRequest.value = null
         onRoleSwapped?.invoke(newSwapped)
         eachCompanion { it.onRoleSwapped(newSwapped) }
-        if (!newSwapped) controlCompanion?.refocusSelf()
+        if (!newSwapped && !gameMoveInProgress) controlCompanion?.refocusSelf()
     }
 
     fun broadcastOpenOverlay(eventName: String) {
         controlCompanion?.onOverlayRequested(eventName)
     }
 
-    // WIP: Focus Recovery for External Displays
-    // -----------------------------------------
-    // FocusDirector (setLaunchDisplayId) is blocked by SafeActivityOptions.checkPermissions
-    // on external HDMI displays (Odin 3). Only SECONDARY_HOME activities get display launch
-    // permission on external screens.
-    //
-    // Current approach: FocusAccessibilityService uses dispatchGesture() with
-    // GestureDescription.Builder.setDisplayId() to inject a touch on the emulator display,
-    // which should update Android's FocusedDisplayId (tracks "most recent touch display").
-    //
-    // Status: Service is registered in manifest + config XML but UNTESTED.
-    // User must enable it in Settings > Accessibility > Argosy Launcher.
-    //
-    // Fallback: FocusDirector still works on BUILT_IN secondary displays (Thor).
-    //
-    // Triggers: MainActivity.onWindowFocusChanged(false), MainActivity.onResume
-    // Guard: isLaunchingGame flag prevents firing during game launch (cleared on focus loss, 10s ceiling)
-    //
-    // Next steps:
-    //   1. Test accessibility tap on Odin 3 external display
-    //   2. If dispatchGesture works, add auto-prompt for accessibility permission
-    //   3. Test on Thor to verify FocusDirector still works for built-in displays
-    //   4. Investigate game session being cleared on resume in swapped mode
     fun restoreEmulatorFocus() {
         val displayId = emulatorDisplayId ?: return
         if (!sessionStateStore.hasActiveSession()) return
-        if (isLaunchingGame) return
+        if (gameMoveInProgress) return
         scope.launch {
             delay(200)
-            if (isLaunchingGame) return@launch
             val a11y = FocusAccessibilityService.instance
             if (a11y != null) {
                 Log.d(TAG, "Restoring emulator focus via accessibility tap on display $displayId")
@@ -2405,6 +2515,7 @@ class DualScreenManager(
         private const val COMPANION_LAUNCH_VERIFY_MS = 8000L
         private const val MAX_COMPANION_LAUNCH_ATTEMPTS = 3
         private const val SWAP_DEBOUNCE_MS = 500L
+        private const val GAME_MOVE_CONFIRM_MS = 2_000L
 
         /**
          * How long a playback launch waits before directing focus to the player's display. Long
@@ -2511,6 +2622,7 @@ class DualScreenManager(
             blankPanelsSettingObserver
         )
         syncDockedState()
+        probeTaskMover()
     }
 
     fun unregisterReceivers() {

@@ -170,7 +170,8 @@ private data class InGameAppBarState(
     val apps: List<String>,
     val displays: List<com.nendo.argosy.ui.components.DisplayFocusTarget>,
     val pickerOpen: Boolean,
-    val pickerIndex: Int
+    val pickerIndex: Int,
+    val canSwapRoles: Boolean
 )
 
 @Composable
@@ -179,13 +180,14 @@ private fun rememberInGameAppBarState(): InGameAppBarState? {
     val apps by manager.homeAppsFlow.collectAsState(initial = manager.homeAppsList)
     val pickerOpen by manager.focusPickerOpen.collectAsState()
     val pickerIndex by manager.focusPickerIndex.collectAsState()
+    val canSwapRoles by manager.liveSwapAvailable.collectAsState()
     val displays = remember(pickerOpen) {
         manager.focusableDisplays().map { screen ->
             com.nendo.argosy.ui.components.DisplayFocusTarget(screen.displayId, screen.number)
         }
     }
-    if (apps.isEmpty() && displays.size <= 1) return null
-    return InGameAppBarState(manager, apps, displays, pickerOpen, pickerIndex)
+    if (apps.isEmpty() && displays.size <= 1 && !canSwapRoles) return null
+    return InGameAppBarState(manager, apps, displays, pickerOpen, pickerIndex, canSwapRoles)
 }
 
 @Composable
@@ -224,7 +226,11 @@ private fun InGameAppBar(state: InGameAppBarState, modifier: Modifier = Modifier
             manager.focusDisplay(displayId)
             manager.closeFocusPicker()
         },
-        onSwapRoles = null,
+        onSwapRoles = if (state.canSwapRoles) {
+            { manager.swapRoles() }
+        } else {
+            null
+        },
         drawsScrim = false,
         modifier = modifier
     )

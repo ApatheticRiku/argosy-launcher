@@ -368,7 +368,7 @@ class MainActivity : ComponentActivity() {
         }
 
         dualScreenManager.onRoleSwapped = { swapped ->
-            if (swapped) refocusSelf()
+            if (swapped && !dualScreenManager.isMovingGame) refocusSelf()
         }
         dualScreenManager.onOverlayFocusChanged = { _ -> }
         dualScreenManager.onEmulatorDispatcherChanged = { }
@@ -405,7 +405,13 @@ class MainActivity : ComponentActivity() {
                     val companionHoldsPrimary =
                         dualScreenManager.companionHoldsPrimary.collectAsState()
                     val gameActive = dualScreenManager.swappedIsGameActive.collectAsState()
-                    if (rendersPresentation(companionHoldsPrimary.value, gameActive.value)) {
+                    val gameDisplay = dualScreenManager.emulatorDisplay.collectAsState()
+                    if (rendersPresentation(
+                            companionHoldsPrimary.value,
+                            gameActive.value,
+                            gameDisplay.value
+                        )
+                    ) {
                         val slot by dualScreenManager.presentationSlot.collectAsState()
                         val presentationSink = androidx.compose.runtime.remember {
                             FocusRequester()
@@ -690,9 +696,6 @@ class MainActivity : ComponentActivity() {
             ) {
                 yieldedFocusToGame = true
             }
-            if (::dualScreenManager.isInitialized) {
-                dualScreenManager.onFocusLostToEmulator()
-            }
             ambientAudioManager.fadeOut()
             ambientLedManager.setContext(AmbientLedContext.IN_GAME)
             if (::dualScreenManager.isInitialized) {
@@ -712,16 +715,21 @@ class MainActivity : ComponentActivity() {
         if (emulatorDisplay == ownDisplay) return false
         return rendersPresentation(
             dualScreenManager.companionHoldsPrimary.value,
-            dualScreenManager.swappedIsGameActive.value
+            dualScreenManager.swappedIsGameActive.value,
+            emulatorDisplay
         )
     }
 
-    private fun rendersPresentation(companionHoldsPrimary: Boolean, gameActive: Boolean): Boolean {
+    private fun rendersPresentation(
+        companionHoldsPrimary: Boolean,
+        gameActive: Boolean,
+        gameDisplayId: Int?
+    ): Boolean {
         if (companionHoldsPrimary) return true
         if (!gameActive) return false
         val ownDisplayId = window.decorView.display?.displayId
         val holdsPrimaryRole = dualScreenManager.interactiveDisplayId()?.let { it == ownDisplayId } ?: true
-        return !holdsPrimaryRole || dualScreenManager.primaryShowsDashboard(ownDisplayId)
+        return !holdsPrimaryRole || dualScreenManager.primaryShowsDashboard(ownDisplayId, gameDisplayId)
     }
 
     /** Relinks companion input forwarding when input arrives on home but the link is stale (companion marked inactive or overlay focus latched) after a game, sleep/wake, or a foreground app yielding the secondary display. */
@@ -766,12 +774,12 @@ class MainActivity : ComponentActivity() {
     private fun cleanupStaleSession() {
         activityScope.launch {
             if (!::dualScreenManager.isInitialized) return@launch
-            if (dualScreenManager.isLaunchingGame) return@launch
+            if (dualScreenManager.isMovingGame) return@launch
             val emulatorDisplay = dualScreenManager.emulatorDisplayId
             val ownDisplay = window.decorView.display?.displayId
             if (emulatorDisplay != null && ownDisplay != null && emulatorDisplay != ownDisplay) return@launch
             val emulatorGone = dualScreenManager.emulatorLeftScreen(this@MainActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !dualScreenManager.isLaunchingGame
+                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             }
             if (!emulatorGone) return@launch
             if (playSessionTracker.activeSession.value == null &&

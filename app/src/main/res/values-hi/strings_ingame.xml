@@ -30,6 +30,7 @@
     <string name="ingame_menu_settings">सेटिंग्स</string>
     <string name="ingame_menu_stop_speedrun_timer">स्पीडरन टाइमर रोकें</string>
     <string name="ingame_menu_speedrun_timer">स्पीडरन टाइमर</string>
+    <string name="ingame_menu_swap_screens">स्क्रीन बदलें</string>
     <string name="ingame_menu_touch_controls">टच कंट्रोल्स</string>
     <string name="ingame_menu_reset">रीसेट</string>
     <string name="ingame_menu_quit">गेम छोड़ें</string>

@@ -381,7 +381,9 @@ class LibretroActivity : ComponentActivity() {
     private var speedrunPickerFocusIndex by mutableStateOf(0)
     private var speedrunPickerCategories by mutableStateOf<List<com.nendo.argosy.data.local.entity.SpeedrunCategoryEntity>>(emptyList())
     private var touchEditMode by mutableStateOf(false)
-    private var baselineRotation: Int = 0
+    private var baselineRotation by mutableStateOf(0)
+    private var onSecondaryDisplayState by mutableStateOf(false)
+    private var hostDisplayId = android.view.Display.INVALID_DISPLAY
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
@@ -396,6 +398,8 @@ class LibretroActivity : ComponentActivity() {
         currentOrientationState = resources.configuration.orientation
         currentRotationState = windowManager.defaultDisplay.rotation
         baselineRotation = currentRotationState
+        hostDisplayId = currentDisplayId()
+        onSecondaryDisplayState = onSecondaryDisplay()
         isGamepadConnectedState = com.nendo.argosy.core.input.ControllerDetector.isAnyGamepadConnected()
         registerGamepadDetection()
         registerOrientationListener()
@@ -530,6 +534,9 @@ class LibretroActivity : ComponentActivity() {
 
         corePath = intent.getStringExtra(EXTRA_CORE_PATH)!!
         resolvedCoreId = resolveCoreIdFromPath(corePath)
+        if (!isHwCore) {
+            com.nendo.argosy.DualScreenManagerHolder.instance?.registerLiveMoveHost(liveMoveHost)
+        }
         loadCoreOptionOverrides()
         loadControllerTypes()
         createRetroView(corePath, systemDir, savesDir, settings, restoredSram)
@@ -882,9 +889,34 @@ class LibretroActivity : ComponentActivity() {
     private fun isSegaCd(): Boolean =
         com.nendo.argosy.data.platform.PlatformDefinitions.getCanonicalSlug(platformSlug) == "scd"
 
-    @Suppress("DEPRECATION")
     private fun onSecondaryDisplay(): Boolean =
-        windowManager.defaultDisplay.displayId != android.view.Display.DEFAULT_DISPLAY
+        currentDisplayId() != android.view.Display.DEFAULT_DISPLAY
+
+    @Suppress("DEPRECATION")
+    private fun currentDisplayId(): Int = windowManager.defaultDisplay.displayId
+
+    private val liveMoveHost = object : com.nendo.argosy.DualScreenManager.LiveMoveHost {
+        override fun beforeDisplayMove() = hideSecondScreen()
+
+        override fun displayMoveAbandoned() = rebuildSecondScreen()
+    }
+
+    private fun rebuildSecondScreen() {
+        if (!::retroView.isInitialized) return
+        hideSecondScreen()
+        setUpSecondScreen()
+        if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+            showSecondScreen()
+        }
+    }
+
+    private fun onMovedToDisplay(displayId: Int) {
+        hostDisplayId = displayId
+        baselineRotation = currentRotationState
+        onSecondaryDisplayState = onSecondaryDisplay()
+        rebuildSecondScreen()
+        com.nendo.argosy.DualScreenManagerHolder.instance?.onGameMovedToDisplay(displayId)
+    }
 
     private fun detectBFICapability() {
         val displayManager = getSystemService(android.content.Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
@@ -1392,7 +1424,7 @@ class LibretroActivity : ComponentActivity() {
 
     @androidx.compose.runtime.Composable
     private fun InGameOverlay() {
-        ALauncherTheme(isSecondaryDisplay = onSecondaryDisplay()) {
+        ALauncherTheme(isSecondaryDisplay = onSecondaryDisplayState) {
             CompositionLocalProvider(
                 LocalGamepadInputHandler provides gamepadInputBridge,
                 LocalABIconsSwapped provides swapAB,
@@ -1414,6 +1446,12 @@ class LibretroActivity : ComponentActivity() {
                 )
                 val speedrunState by speedrunTimer.state.collectAsState()
                 val documents by inGameDocuments.available.collectAsState()
+                val liveSwapAvailable by (
+                    com.nendo.argosy.DualScreenManagerHolder.instance?.liveSwapAvailable
+                        ?: androidx.compose.runtime.remember {
+                            kotlinx.coroutines.flow.MutableStateFlow(false)
+                        }
+                    ).collectAsState()
                 val panelAlignment = if (sidePanelSideState == "Left") Alignment.CenterStart else Alignment.CenterEnd
                 val panelFraction = speedrunPanelFractionState.coerceIn(SPEEDRUN_PANEL_FRACTION_RANGE)
                 val shownPanel = sidePanelContent?.takeIf { sidePanelFits(it) }
@@ -1485,7 +1523,8 @@ class LibretroActivity : ComponentActivity() {
                         walkthroughAvailable = com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH in documents,
                         walkthroughPanelAvailable = !speedrunState.armed &&
                             sidePanelFits(com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH),
-                        walkthroughPanelShown = sidePanelContent == com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH
+                        walkthroughPanelShown = sidePanelContent == com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH,
+                        swapScreensAvailable = liveSwapAvailable
                     )
                 }
                 readerKind?.let { kind ->
@@ -2447,6 +2486,10 @@ class LibretroActivity : ComponentActivity() {
             InGameMenuAction.CustomizeTouchControls -> {
                 enterTouchEditMode()
             }
+            InGameMenuAction.SwapScreens -> {
+                hideMenu()
+                com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
+            }
             InGameMenuAction.Reset -> {
                 retroView.reset()
                 speedrunTimer.onGameReset(speedrunStartOnReset)
@@ -3340,6 +3383,8 @@ class LibretroActivity : ComponentActivity() {
         super.onConfigurationChanged(newConfig)
         currentOrientationState = newConfig.orientation
         currentRotationState = windowManager.defaultDisplay.rotation
+        val displayId = currentDisplayId()
+        if (displayId != hostDisplayId) onMovedToDisplay(displayId)
         splitColumn?.let { applyPortraitSplit(it) }
         splitRow?.let { applySidePanelSplit(it) }
     }
@@ -3544,6 +3589,7 @@ class LibretroActivity : ComponentActivity() {
             dsm.emulatorMotionDispatcher = null
             dsm.sessionQuickActions = null
             dsm.sessionRefocus = null
+            dsm.unregisterLiveMoveHost(liveMoveHost)
         }
         if (::netplay.isInitialized) netplay.shutdown()
         if (::achievementBridge.isInitialized) achievementBridge.destroy()

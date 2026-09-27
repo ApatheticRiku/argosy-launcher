@@ -30,6 +30,7 @@
     <string name="ingame_menu_settings">Ajustes</string>
     <string name="ingame_menu_stop_speedrun_timer">Detener cronómetro de speedrun</string>
     <string name="ingame_menu_speedrun_timer">Cronómetro de speedrun</string>
+    <string name="ingame_menu_swap_screens">Cambiar pantallas</string>
     <string name="ingame_menu_touch_controls">Controles táctiles</string>
     <string name="ingame_menu_reset">Reiniciar</string>
     <string name="ingame_menu_quit">Salir del juego</string>

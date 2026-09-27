@@ -212,7 +212,7 @@
 
         <activity
             android:name=".libretro.LibretroActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|colorMode|keyboardHidden"
             android:screenOrientation="fullUser"
             android:theme="@style/Theme.Argosy"
             android:taskAffinity=""

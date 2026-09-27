@@ -59,6 +59,9 @@
     <string name="ingame_menu_stop_speedrun_timer">Stop Speedrun Timer</string>
     <!-- Row in that menu while no run is being timed. Noun phrase: the split timer panel. -->
     <string name="ingame_menu_speedrun_timer">Speedrun Timer</string>
+    <!-- Row in that menu. Verb phrase: trades the two screens' roles and moves the running game to
+         the other screen. -->
+    <string name="ingame_menu_swap_screens">Swap Screens</string>
     <!-- Row in that menu. Noun phrase: opens the editor for the on-screen button overlay. -->
     <string name="ingame_menu_touch_controls">Touch Controls</string>
     <!-- Row in that menu. Verb: restarts the game from its boot screen. -->

@@ -30,6 +30,7 @@
     <string name="ingame_menu_settings">Paramètres</string>
     <string name="ingame_menu_stop_speedrun_timer">Arrêter le chrono speedrun</string>
     <string name="ingame_menu_speedrun_timer">Chrono speedrun</string>
+    <string name="ingame_menu_swap_screens">Inverser les écrans</string>
     <string name="ingame_menu_touch_controls">Commandes tactiles</string>
     <string name="ingame_menu_reset">Réinitialiser</string>
     <string name="ingame_menu_quit">Quitter le jeu</string>

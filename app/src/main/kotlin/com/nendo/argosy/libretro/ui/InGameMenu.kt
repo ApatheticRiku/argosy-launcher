@@ -68,6 +68,7 @@ sealed class InGameMenuAction {
     data object CloseNetplaySession : InGameMenuAction()
     data object CustomizeTouchControls : InGameMenuAction()
     data object ToggleSpeedrun : InGameMenuAction()
+    data object SwapScreens : InGameMenuAction()
 }
 
 enum class NetplayMenuRole { Host, Guest }
@@ -133,9 +134,11 @@ fun InGameMenu(
     manualAvailable: Boolean = false,
     walkthroughAvailable: Boolean = false,
     walkthroughPanelAvailable: Boolean = false,
-    walkthroughPanelShown: Boolean = false
+    walkthroughPanelShown: Boolean = false,
+    swapScreensAvailable: Boolean = false
 ): InputHandler {
     val menuItems: List<Pair<Int, InGameMenuAction>> = remember(
+        swapScreensAvailable,
         manualAvailable,
         walkthroughAvailable,
         walkthroughPanelAvailable,
@@ -198,6 +201,9 @@ fun InGameMenu(
                 }
             }
             add(R.string.ingame_menu_settings to InGameMenuAction.Settings)
+            if (swapScreensAvailable) {
+                add(R.string.ingame_menu_swap_screens to InGameMenuAction.SwapScreens)
+            }
             if (speedrunAvailable && !isInNetplaySession) {
                 val speedrunLabel = if (speedrunArmed) {
                     R.string.ingame_menu_stop_speedrun_timer

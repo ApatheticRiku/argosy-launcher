@@ -164,9 +164,19 @@ SELECT on Home swaps PRIMARY and PRESENTATION (`HomeInputHandler.onSelect`), gat
 dual-screen device WITH a presentation screen. Hold-A opens the game/tile menu, which is where
 SELECT's older job moved. Also reachable from Quick Settings' Swap Displays tile.
 
-Role-state writers: `swapRoles()` toggles, `applyDisplayRoleOverride(override)` sets. Both debounce
-and both refuse to commit live while a session is active. Do not write `_isRolesSwapped` from
-anywhere else.
+Role-state writers: `swapRoles()` toggles, `applyDisplayRoleOverride(override)` sets, and
+`setPrimaryDisplayId` applies a stored layout. While a session is active each one commits only
+through `moveGameWithRoles`, which carries the game to the display its role lands on first and
+refuses otherwise. Do not write `_isRolesSwapped` from anywhere else.
+
+Live move (AYN Thor only, `liveSwapAvailable`): needs `hardware/ThorTaskMover` answering its probe,
+a software-rendered built-in core registered as `LiveMoveHost`, and a game on the PRIMARY or
+PRESENTATION display (never the app screen, never docked). Order: `isMovingGame` raised, second
+screen hidden, `emulatorDisplayId` set to the target, task moved, arrival reported by
+`LibretroActivity.onConfigurationChanged`, roles committed, focus sent to the game's display,
+guard cleared. No arrival within `GAME_MOVE_CONFIRM_MS` restores the old display and commits
+nothing. Every refocus, teardown and focus-restore path checks `isMovingGame`; a new one must too.
+External emulators never move: their task id is not visible to the app.
 
 ## New-monitor prompt
 

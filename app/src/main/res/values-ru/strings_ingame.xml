@@ -30,6 +30,7 @@
     <string name="ingame_menu_settings">Настройки</string>
     <string name="ingame_menu_stop_speedrun_timer">Остановить таймер спидрана</string>
     <string name="ingame_menu_speedrun_timer">Таймер спидрана</string>
+    <string name="ingame_menu_swap_screens">Поменять экраны</string>
     <string name="ingame_menu_touch_controls">Сенсорное управление</string>
     <string name="ingame_menu_reset">Перезапустить</string>
     <string name="ingame_menu_quit">Выйти из игры</string>

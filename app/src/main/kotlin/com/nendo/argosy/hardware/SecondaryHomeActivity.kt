@@ -202,8 +202,9 @@ class SecondaryHomeActivity :
     @androidx.compose.runtime.Composable
     private fun CompanionRoleContent() {
         val gameActive by dsm.swappedIsGameActive.collectAsState()
+        val gameDisplay by dsm.emulatorDisplay.collectAsState()
         val hereDisplayId = androidx.core.content.ContextCompat.getDisplayOrDefault(this).displayId
-        val showsDashboard = gameActive && dsm.primaryShowsDashboard(hereDisplayId)
+        val showsDashboard = gameActive && dsm.primaryShowsDashboard(hereDisplayId, gameDisplay)
         if (!isShowcaseRole && !showsDashboard) {
             com.nendo.argosy.ui.ArgosyApp(
                 onStartupComplete = { dsm.stopStartupGuard() }
@@ -258,13 +259,13 @@ class SecondaryHomeActivity :
      * else observes an emulator the launcher does not own.
      */
     private fun endSessionIfEmulatorGone() {
-        if (!isGameActive || dsm.isLaunchingGame) return
+        if (!isGameActive || dsm.isMovingGame) return
         val emulatorDisplay = dsm.emulatorDisplayId ?: return
         val ownDisplay = window.decorView.display?.displayId ?: return
         if (emulatorDisplay != ownDisplay) return
         lifecycleScope.launch {
             val emulatorGone = dsm.emulatorLeftScreen(this@SecondaryHomeActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && !dsm.isLaunchingGame
+                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
             }
             if (!emulatorGone || !dsm.sessionStateStore.hasActiveSession()) return@launch
             android.util.Log.d("SecondaryHome", "Companion resumed and the emulator is gone, ending session")
@@ -466,7 +467,7 @@ class SecondaryHomeActivity :
      */
     private fun sessionKeepsItsScreen(): Boolean {
         if (!dsm.hasLiveSession()) return false
-        if (isShowcaseRole) return true
+        if (isShowcaseRole || dsm.isMovingGame) return true
         return dsm.emulatorDisplayId?.let { it != Display.DEFAULT_DISPLAY } ?: false
     }
 
