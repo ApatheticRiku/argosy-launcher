@@ -40,6 +40,8 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.ui.screens.settings.SteamSettingsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +57,7 @@ import java.io.File
 import javax.inject.Inject
 
 private const val GN_PACKAGE = "app.gamenative"
+private const val QR_CONNECT_TIMEOUT_MS = 75_000L
 
 class SteamSettingsDelegate @Inject constructor(
     private val steamRepository: SteamRepository,
@@ -442,10 +445,22 @@ class SteamSettingsDelegate @Inject constructor(
     }
 
     private var pendingQrAuth = false
+    private var sawQrConnectAttempt = false
+    private var qrConnectFailure: String? = null
+    private var qrConnectFailureMessage: String? = null
+    private var qrConnectWatchdog: Job? = null
 
     fun connectToSteam(context: Context, scope: CoroutineScope) {
         bindScope = scope
         pendingQrAuth = true
+        sawQrConnectAttempt = false
+        qrConnectFailure = null
+        qrConnectFailureMessage = context.getString(R.string.settings_steam_error_unreachable)
+        qrConnectWatchdog?.cancel()
+        qrConnectWatchdog = scope.launch {
+            delay(QR_CONNECT_TIMEOUT_MS)
+            if (pendingQrAuth) failQrConnect()
+        }
         // Optimistically move to CONNECTING so the UI shows a spinner
         // immediately rather than flickering back to the connect button
         // while the service starts up.
@@ -488,6 +503,7 @@ class SteamSettingsDelegate @Inject constructor(
 
     fun cancelQrAuth() {
         pendingQrAuth = false
+        qrConnectWatchdog?.cancel()
         steamAuthManager.cancelQrAuth()
     }
 
@@ -670,9 +686,39 @@ class SteamSettingsDelegate @Inject constructor(
         }
     }
 
+    private fun failQrConnect() {
+        pendingQrAuth = false
+        qrConnectWatchdog?.cancel()
+        qrConnectFailure = qrConnectFailureMessage
+        _state.update {
+            it.copy(
+                connectionState = SteamConnectionState.DISCONNECTED,
+                error = qrConnectFailure,
+                qrUrl = null,
+                authPolling = false
+            )
+        }
+        val service = serviceRef ?: return
+        bindScope?.launch(Dispatchers.IO) { service.disconnect() }
+    }
+
     private fun observeServiceState(scope: CoroutineScope) {
         scope.launch {
             serviceRef?.state?.collect { serviceState ->
+                if (pendingQrAuth) {
+                    when (serviceState.connectionState) {
+                        SteamConnectionState.CONNECTING -> sawQrConnectAttempt = true
+                        SteamConnectionState.DISCONNECTED ->
+                            if (sawQrConnectAttempt && serviceState.error != null) failQrConnect()
+                        else -> Unit
+                    }
+                }
+                qrConnectFailure?.let { failure ->
+                    _state.update {
+                        it.copy(connectionState = SteamConnectionState.DISCONNECTED, error = failure)
+                    }
+                    return@collect
+                }
                 _state.update {
                     // Suppress connection state changes that would flash the login screen:
                     // 1. During QR auth flow (old client teardown)
@@ -700,6 +746,7 @@ class SteamSettingsDelegate @Inject constructor(
 
                 if (serviceState.connectionState == SteamConnectionState.CONNECTED && pendingQrAuth) {
                     pendingQrAuth = false
+                    qrConnectWatchdog?.cancel()
                     steamAuthManager.startQrAuth()
                 }
             }

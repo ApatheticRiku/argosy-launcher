@@ -1180,6 +1180,7 @@
 
     <string name="settings_steam_error_title">Ошибка подключения</string>
     <string name="settings_steam_error_retry">Повторить</string>
+    <string name="settings_steam_error_unreachable">Не удалось подключиться к Steam. Проверьте соединение, VPN или DNS-блокировщик и повторите попытку.</string>
 
     <string name="settings_steam_add_game_title">Добавить игру Steam</string>
     <string name="settings_steam_add_game_message">Введите Steam App ID, чтобы добавить игру. Его можно найти в URL страницы игры в Steam.</string>

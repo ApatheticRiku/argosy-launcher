@@ -1154,6 +1154,7 @@
 
     <string name="settings_steam_error_title">Error de conexión</string>
     <string name="settings_steam_error_retry">Reintentar</string>
+    <string name="settings_steam_error_unreachable">No se pudo conectar con Steam. Revisa tu conexión, VPN o bloqueador de DNS e inténtalo de nuevo.</string>
 
     <string name="settings_steam_add_game_title">Añadir juego de Steam</string>
     <string name="settings_steam_add_game_message">Introduce el App ID de Steam para añadir un juego. Lo encontrarás en la URL de la página del juego en la tienda de Steam.</string>

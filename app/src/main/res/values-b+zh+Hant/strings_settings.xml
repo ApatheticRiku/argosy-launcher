@@ -1014,6 +1014,7 @@
 
     <string name="settings_steam_error_title">連線錯誤</string>
     <string name="settings_steam_error_retry">重試</string>
+    <string name="settings_steam_error_unreachable">無法連線到 Steam。請檢查網路連線、VPN 或 DNS 攔截器後再試一次。</string>
 
     <string name="settings_steam_add_game_title">新增Steam遊戲</string>
     <string name="settings_steam_add_game_message">輸入Steam App ID即可新增遊戲，您可以在該遊戲的Steam商店網址中找到此編號。</string>

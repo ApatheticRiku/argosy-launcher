@@ -2081,6 +2081,8 @@
     <string name="settings_steam_error_title">Connection Error</string>
     <!-- Button that tries the sign-in again. Verb phrase. -->
     <string name="settings_steam_error_retry">Try Again</string>
+    <!-- Body of that panel when Argosy could not reach Steam's servers to start the sign-in. -->
+    <string name="settings_steam_error_unreachable">Couldn\'t reach Steam. Check your connection, VPN or DNS blocker, then try again.</string>
 
     <!-- Heading of the panel for adding one game by number. Verb phrase. -->
     <string name="settings_steam_add_game_title">Add Steam Game</string>

@@ -1105,6 +1105,7 @@
 
     <string name="settings_steam_error_title">कनेक्शन त्रुटि</string>
     <string name="settings_steam_error_retry">फिर कोशिश करें</string>
+    <string name="settings_steam_error_unreachable">Steam से कनेक्ट नहीं हो सका। अपना कनेक्शन, VPN या DNS ब्लॉकर जाँचें, फिर कोशिश करें।</string>
 
     <string name="settings_steam_add_game_title">Steam गेम जोड़ें</string>
     <string name="settings_steam_add_game_message">गेम जोड़ने के लिए Steam App ID डालें। यह गेम के Steam स्टोर URL में मिलती है।</string>

@@ -1115,6 +1115,7 @@
 
     <string name="settings_steam_error_title">Verbindungsfehler</string>
     <string name="settings_steam_error_retry">Erneut versuchen</string>
+    <string name="settings_steam_error_unreachable">Steam ist nicht erreichbar. Prüfe deine Verbindung, dein VPN oder deinen DNS-Blocker und versuche es erneut.</string>
 
     <string name="settings_steam_add_game_title">Steam-Spiel hinzufügen</string>
     <string name="settings_steam_add_game_message">Geben Sie die Steam-App-ID ein, um ein Spiel hinzuzufügen. Sie finden diese in der Steam-Store-URL des Spiels.</string>

@@ -1070,6 +1070,7 @@
 
     <string name="settings_steam_error_title">连接错误</string>
     <string name="settings_steam_error_retry">重试</string>
+    <string name="settings_steam_error_unreachable">无法连接到 Steam。请检查网络连接、VPN 或 DNS 拦截器后重试。</string>
 
     <string name="settings_steam_add_game_title">添加Steam游戏</string>
     <string name="settings_steam_add_game_message">输入Steam App ID以添加游戏。你可以在该游戏的Steam商店网址中找到它。</string>
