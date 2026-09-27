@@ -19,10 +19,10 @@ data class RomMDeviceCapabilitiesUpdate(
     @Json(name = "capabilities") val capabilities: Map<String, Boolean>
 )
 
-private const val DEVICE_CAPABILITY_INSTALL = "install"
+private const val DEVICE_CAPABILITY_REMOTE_INSTALL = "remote_install"
 
 fun deviceCapabilities(allowRemoteInstalls: Boolean): Map<String, Boolean> =
-    mapOf(DEVICE_CAPABILITY_INSTALL to allowRemoteInstalls)
+    mapOf(DEVICE_CAPABILITY_REMOTE_INSTALL to allowRemoteInstalls)
 
 @JsonClass(generateAdapter = true)
 data class RomMDevice(

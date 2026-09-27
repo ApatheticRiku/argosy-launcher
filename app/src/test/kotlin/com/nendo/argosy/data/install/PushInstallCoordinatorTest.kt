@@ -10,6 +10,7 @@ import com.nendo.argosy.data.preferences.StoragePreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMConnectionManager
+import com.nendo.argosy.data.remote.romm.RomMDeviceCapabilitiesUpdate
 import com.nendo.argosy.data.remote.romm.RomMDeviceSocket
 import com.nendo.argosy.data.remote.romm.RomMInstallReport
 import com.nendo.argosy.data.remote.romm.RomMInstallRequest
@@ -122,7 +123,12 @@ class PushInstallCoordinatorTest {
         coordinator("5.4.0", allowRemoteInstalls = true).start()
 
         coVerify(timeout = WAIT_MS) { api.claimInstallRequests(DEVICE_ID) }
-        coVerify { api.updateDeviceCapabilities(DEVICE_ID, any()) }
+        coVerify {
+            api.updateDeviceCapabilities(
+                DEVICE_ID,
+                RomMDeviceCapabilitiesUpdate(mapOf("remote_install" to true))
+            )
+        }
         verify { deviceSocket.connect(RomMDeviceSocket.Target("http://romm.local/", "token")) }
     }
 
