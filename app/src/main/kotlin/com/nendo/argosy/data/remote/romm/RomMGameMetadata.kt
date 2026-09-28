@@ -92,8 +92,7 @@ internal fun GameEntity.withRomMetadata(rom: RomMRom): GameEntity = copy(
         ?: rom.saveTargetLayout?.takeIf { remoteIdentityTrusted(platformSlug) },
     siblingGroupKey = RomMSiblingIdentity.groupKey(rom),
     isHackVariant = RomMSiblingIdentity.isHack(rom),
-    isTranslationVariant = RomMSiblingIdentity.isTranslation(rom),
-    rommMainSibling = rom.romUser?.isMainSibling ?: rommMainSibling
+    isTranslationVariant = RomMSiblingIdentity.isTranslation(rom)
 )
 
 private fun GameEntity.remoteTitleId(rom: RomMRom, platformSlug: String): String? {

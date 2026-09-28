@@ -203,8 +203,7 @@ class SiblingGroupRepository @Inject constructor(
             }
         }
         val isMain = rom.romUser?.isMainSibling ?: return@withContext
-        if (isMain == game.rommMainSibling) return@withContext
-        gameDao.setRommMainSibling(gameId, isMain)
+        if (!overlayWriter.setRommMainSibling(overlayWriter.activeOwnerId(), gameId, isMain)) return@withContext
         game.siblingGroupKey?.let { recomputeGroups(listOf(it)) }
     }
 
@@ -243,12 +242,13 @@ class SiblingGroupRepository @Inject constructor(
         if (rows.isEmpty()) return
         val picks = pickDao.picksForOwner(ownerUserId).associate { it.groupKey to it.gameId }
         val hiddenForOwner = userRomsHiddenDao.hiddenGameIds(ownerUserId).toHashSet()
+        val rommMains = overlayWriter.rommMainSiblingGameIds(ownerUserId)
         val show = mutableListOf<Long>()
         val hide = mutableListOf<Long>()
         rows.groupBy { it.siblingGroupKey }.forEach { (groupKey, groupRows) ->
             val visible = if (collapse) {
                 SiblingGroupRanking.visibleMembers(
-                    groupRows.filterNot { it.id in hiddenForOwner }.map { it.toMember() },
+                    groupRows.filterNot { it.id in hiddenForOwner }.map { it.toMember(it.id in rommMains) },
                     picks[groupKey],
                     regionPriority
                 )
@@ -269,10 +269,10 @@ class SiblingGroupRepository @Inject constructor(
         }
     }
 
-    private fun GameSiblingRow.toMember() = SiblingMember(
+    private fun GameSiblingRow.toMember(isRommMain: Boolean) = SiblingMember(
         gameId = id,
         isHack = isHackVariant,
-        isRommMain = rommMainSibling,
+        isRommMain = isRommMain,
         isPreRelease = RomMSiblingIdentity.isPreRelease(rommFileName),
         isTranslation = isTranslationVariant,
         regions = regions.regionTokens(),

@@ -236,6 +236,10 @@ class SavePathResolver @Inject constructor(
                     return@withContext savePath
                 }
             }
+            if (!allowsTitleMatch(perGameDir, romPath, gameId)) {
+                onDecision("perGame+sharedNoMatch", null, perGameDir)
+                return@withContext null
+            }
             onDecision("perGame+title", null, perGameDir)
             return@withContext findSaveInPath(perGameDir, gameTitle, config.saveExtensions)
         }
@@ -284,6 +288,10 @@ class SavePathResolver @Inject constructor(
                     onDecision("override+romName", selectedMemcardForLog, savePathOverrideForLog)
                     return@withContext savePath
                 }
+            }
+            if (besideRomBaseDir != null) {
+                onDecision("besideRom+noMatch", selectedMemcardForLog, savePathOverrideForLog)
+                return@withContext null
             }
             onDecision("override+title", selectedMemcardForLog, savePathOverrideForLog)
             return@withContext findSaveInPath(overrideBaseDir, gameTitle, config.saveExtensions)
@@ -983,6 +991,12 @@ class SavePathResolver @Inject constructor(
     ): String? {
         val basePathOverride = emulatorSaveConfigRepository.resolveEffectiveSavePath(config.emulatorId, "switch")
         return switchSaveHandler.resolveSaveTargetPath(zipFile, config, emulatorPackage, basePathOverride)
+    }
+
+    private suspend fun allowsTitleMatch(perGameDir: String, romPath: String?, gameId: Long?): Boolean {
+        if (romPath != null && File(romPath).parent == File(perGameDir).path) return false
+        if (gameId == null) return true
+        return emulatorConfigDao.countOtherGamesWithSavePath(gameId, perGameDir) == 0
     }
 
     private suspend fun perGameSaveDir(gameId: Long?, config: SavePathConfig, platformSlug: String): String? {

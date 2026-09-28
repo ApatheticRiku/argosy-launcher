@@ -29,7 +29,6 @@ import com.nendo.argosy.ui.components.HomeLayoutPreview
 import com.nendo.argosy.ui.components.HomeLayoutSelectorRow
 import com.nendo.argosy.ui.components.HomeLayoutSettingField
 import com.nendo.argosy.ui.components.HomeLayoutSettingRow
-import com.nendo.argosy.ui.components.adjustHomeLayoutField
 import com.nendo.argosy.ui.components.homeLayoutFieldsFor
 import com.nendo.argosy.ui.components.isHomeLayoutFieldShown
 import com.nendo.argosy.ui.components.homeRailFields
@@ -376,14 +375,7 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     isFocused = isFocused(item),
                     onAdjust = { direction ->
                         viewModel.setFocusIndex(homeScreenFocusIndexOf(item, display))
-                        viewModel.setHomeLayout(
-                            adjustHomeLayoutField(
-                                display.homeLayout,
-                                item.field,
-                                direction,
-                                viewModel.customGridShape()
-                            )
-                        )
+                        viewModel.adjustHomeLayoutField(item.field, direction)
                     },
                     onToggle = {
                         viewModel.setFocusIndex(homeScreenFocusIndexOf(item, display))

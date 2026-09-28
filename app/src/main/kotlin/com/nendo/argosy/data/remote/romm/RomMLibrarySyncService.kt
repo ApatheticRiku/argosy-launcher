@@ -223,7 +223,7 @@ class RomMLibrarySyncService @Inject constructor(
             userPreferencesRepository.setLastRommSyncTime(syncStartedAt)
             syncVirtualCollectionsUseCase.get()()
             recomputeSiblingGroups(completesFullPass = false)
-            writeGameCounts(touchedStorageIds, scope.ownerUserId)
+            writeGameCounts(enabledRemoteIds.values.map { storagePlatformId(it) }, scope.ownerUserId)
             attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
 
             Logger.info(
@@ -692,6 +692,11 @@ class RomMLibrarySyncService @Inject constructor(
             }
 
             userPreferencesRepository.setLastRommSyncTime(Instant.now())
+            if (errors.isEmpty()) {
+                userPreferencesRepository.setLastRommFullSyncTime(
+                    resumeGeneration.takeIf { resuming } ?: syncStartedAt
+                )
+            }
 
             syncVirtualCollectionsUseCase.get()()
 
@@ -1226,7 +1231,6 @@ class RomMLibrarySyncService @Inject constructor(
             addedAt = localDataSource?.addedAt ?: java.time.Instant.now(),
             achievementCount = localDataSource?.achievementCount ?: 0,
             earnedAchievementCount = localDataSource?.earnedAchievementCount ?: 0,
-            rommMainSibling = existing?.rommMainSibling ?: false,
             isGroupVisible = existing?.isGroupVisible ?: true
         ).withRomMetadata(rom)
 
@@ -1289,6 +1293,7 @@ class RomMLibrarySyncService @Inject constructor(
         if (!unsent.keepsLocal(SyncType.STATUS)) overlayDao.setStatus(owner, gameId, romUser.status)
         overlayDao.setBacklogged(owner, gameId, romUser.backlogged)
         overlayDao.setNowPlaying(owner, gameId, romUser.nowPlaying)
+        overlayWriter.setRommMainSibling(owner, gameId, romUser.isMainSibling)
     }
 
     private suspend fun syncGameFiles(gameId: Long, rom: RomMRom, platformSlug: String) {

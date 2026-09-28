@@ -2,25 +2,59 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.ui.input.HapticFeedbackManager
+import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.ui.screens.gamedetail.RatingType
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RatingsStatusDelegateProgressTest {
 
     private val romMRepository = mockk<RomMRepository>(relaxed = true)
+    private val hapticManager = mockk<HapticFeedbackManager>(relaxed = true)
     private val delegate = RatingsStatusDelegate(
         context = mockk(relaxed = true),
         romMRepository = romMRepository,
         notificationManager = mockk(relaxed = true),
-        soundManager = mockk<SoundFeedbackManager>(relaxed = true)
+        soundManager = mockk<SoundFeedbackManager>(relaxed = true),
+        hapticManager = hapticManager
     )
+
+    @Test
+    fun `a progress step past 100 reports the bound and buzzes`() {
+        delegate.showRatingPicker(RatingType.PROGRESS, 100)
+
+        assertFalse(delegate.changeRatingValue(1))
+        verify(exactly = 1) { hapticManager.vibrate(HapticPattern.BOUNDARY_HIT) }
+    }
+
+    @Test
+    fun `a progress step below 0 reports the bound and buzzes`() {
+        delegate.showRatingPicker(RatingType.PROGRESS, 0)
+
+        assertFalse(delegate.changeRatingValue(-1))
+        verify(exactly = 1) { hapticManager.vibrate(HapticPattern.BOUNDARY_HIT) }
+    }
+
+    @Test
+    fun `a progress step away from either end moves without a buzz`() {
+        delegate.showRatingPicker(RatingType.PROGRESS, 100)
+        assertTrue(delegate.changeRatingValue(-1))
+
+        delegate.showRatingPicker(RatingType.PROGRESS, 0)
+        assertTrue(delegate.changeRatingValue(1))
+
+        verify(exactly = 0) { hapticManager.vibrate(HapticPattern.BOUNDARY_HIT) }
+    }
 
     @Test
     fun `progress steps by five and stops at 100`() {

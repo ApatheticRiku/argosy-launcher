@@ -381,6 +381,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun clearRACredentials() = syncPrefs.clearRACredentials()
     suspend fun setRAProxy(enabled: Boolean, address: String) = syncPrefs.setRAProxy(enabled, address)
     suspend fun setLastRommSyncTime(time: Instant) = syncPrefs.setLastRommSyncTime(time)
+    suspend fun setLastRommFullSyncTime(time: Instant) = syncPrefs.setLastRommFullSyncTime(time)
     suspend fun getSyncResumeGeneration(): Instant? = syncPrefs.getSyncResumeGeneration()
     suspend fun getSyncResumeCompletedPlatformIds(): Set<Long> = syncPrefs.getSyncResumeCompletedPlatformIds()
     suspend fun startSyncGeneration(time: Instant) = syncPrefs.startSyncGeneration(time)

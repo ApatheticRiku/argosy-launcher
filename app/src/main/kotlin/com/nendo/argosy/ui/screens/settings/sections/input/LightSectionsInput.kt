@@ -1,7 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
 import com.nendo.argosy.domain.model.HomeLayoutKind
-import com.nendo.argosy.ui.components.adjustHomeLayoutField
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsInputHandler
@@ -211,14 +210,7 @@ internal class LightSectionsInput(
                 return InputResult.HANDLED
             }
             is HomeScreenItem.LayoutField -> {
-                viewModel.setHomeLayout(
-                    adjustHomeLayoutField(
-                        display.homeLayout,
-                        focused.field,
-                        direction,
-                        viewModel.customGridShape()
-                    )
-                )
+                viewModel.adjustHomeLayoutField(focused.field, direction)
                 return InputResult.HANDLED
             }
             else -> {}

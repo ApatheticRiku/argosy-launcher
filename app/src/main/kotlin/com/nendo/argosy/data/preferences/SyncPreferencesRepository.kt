@@ -85,6 +85,7 @@ class SyncPreferencesRepository @Inject constructor(
         val RA_PROXY_ENABLED = booleanPreferencesKey("ra_proxy_enabled")
         val RA_PROXY_ADDRESS = stringPreferencesKey("ra_proxy_address")
         val LAST_ROMM_SYNC = stringPreferencesKey("last_romm_sync")
+        val LAST_ROMM_FULL_SYNC = stringPreferencesKey("last_romm_full_sync")
         val LAST_FAVORITES_SYNC = stringPreferencesKey("last_favorites_sync")
         val LAST_FAVORITES_CHECK = stringPreferencesKey("last_favorites_check")
         val SYNC_RESUME_GENERATION = stringPreferencesKey("sync_resume_generation")
@@ -422,6 +423,13 @@ class SyncPreferencesRepository @Inject constructor(
 
     suspend fun setLastRommSyncTime(time: Instant) {
         dataStore.edit { it[Keys.LAST_ROMM_SYNC] = time.toString() }
+    }
+
+    suspend fun getLastRommFullSyncTime(): Instant? =
+        dataStore.data.map { it[Keys.LAST_ROMM_FULL_SYNC]?.let(Instant::parse) }.first()
+
+    suspend fun setLastRommFullSyncTime(time: Instant) {
+        dataStore.edit { it[Keys.LAST_ROMM_FULL_SYNC] = time.toString() }
     }
 
     suspend fun getSyncResumeGeneration(): Instant? =

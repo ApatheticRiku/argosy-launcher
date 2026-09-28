@@ -196,16 +196,10 @@ class RomMGameMetadataTest {
     }
 
     @Test
-    fun `the RomM main flag follows rom_user and survives a payload without one`() {
+    fun `the per-account RomM main flag never lands on the shared row`() {
         val main = rom().copy(romUser = RomMRomUser(isMainSibling = true))
-        val marked = existing().withRomMetadata(main)
 
-        assertTrue(marked.rommMainSibling)
-        assertTrue(marked.withRomMetadata(rom()).rommMainSibling)
-        assertFalse(
-            marked.withRomMetadata(rom().copy(romUser = RomMRomUser(isMainSibling = false)))
-                .rommMainSibling
-        )
+        assertFalse(existing().withRomMetadata(main).rommMainSibling)
     }
 
     @Test

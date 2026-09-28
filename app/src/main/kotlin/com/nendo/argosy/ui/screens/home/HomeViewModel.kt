@@ -1315,6 +1315,18 @@ class HomeViewModel @Inject constructor(
     fun setCustomGridShape(resolved: com.nendo.argosy.domain.model.ResolvedGridShape) {
         customGrid.setShape(resolved.shape.columns, resolved.shape.rows)
         customGridShapeStore.report(resolved)
+        persistLegacyLaneOrientation(resolved.portrait)
+    }
+
+    private fun persistLegacyLaneOrientation(portrait: Boolean) {
+        if (!_uiState.value.customGridConfig.lanesOnShortEdge) return
+        viewModelScope.launch {
+            val settings = preferencesRepository.userPreferences.first().homeLayout
+            if (!settings.customGrid.lanesOnShortEdge) return@launch
+            preferencesRepository.setHomeLayout(
+                settings.copy(customGrid = settings.customGrid.orientedTo(portrait))
+            )
+        }
     }
 
     fun openHiddenCustomGridTiles() = customGrid.openHiddenTiles()

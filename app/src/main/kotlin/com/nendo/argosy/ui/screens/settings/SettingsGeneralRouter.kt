@@ -10,6 +10,9 @@ import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.ui.input.HapticPattern
+import com.nendo.argosy.ui.components.HomeLayoutSettingField
+import com.nendo.argosy.ui.components.adjustHomeLayoutField
+import com.nendo.argosy.ui.components.isHomeLayoutFieldAtBound
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_MAX_PERCENT
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_MIN_PERCENT
@@ -412,6 +415,14 @@ internal fun routeAdjustBackgroundOpacity(vm: SettingsViewModel, delta: Int) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
     }
     vm.displayDelegate.adjustBackgroundOpacity(vm.viewModelScope, delta)
+}
+
+internal fun routeAdjustHomeLayoutField(vm: SettingsViewModel, field: HomeLayoutSettingField, direction: Int) {
+    val settings = vm.uiState.value.display.homeLayout
+    if (isHomeLayoutFieldAtBound(settings, field, direction)) {
+        vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
+    }
+    vm.setHomeLayout(adjustHomeLayoutField(settings, field, direction, vm.customGridShape()))
 }
 
 internal fun routeCycleBackgroundBlur(vm: SettingsViewModel) {

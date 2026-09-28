@@ -114,4 +114,18 @@ class GameUserOverlayWriter @Inject constructor(
 
     suspend fun favoriteRommIdsForOwner(ownerUserId: Long): List<Long> =
         overlayDao.getFavoriteRommIdsForOwner(ownerUserId)
+
+    /**
+     * Records RomM's main-sibling flag for [ownerUserId] and returns whether it changed. Without
+     * an owner there is no account to record it for, and nothing is written.
+     */
+    suspend fun setRommMainSibling(ownerUserId: Long?, gameId: Long, isMain: Boolean): Boolean {
+        if (ownerUserId == null) return false
+        return overlayDao.setRommMainSibling(ownerUserId, gameId, isMain)
+    }
+
+    suspend fun rommMainSiblingGameIds(ownerUserId: Long?): Set<Long> {
+        if (ownerUserId == null) return emptySet()
+        return overlayDao.getRommMainSiblingGameIds(ownerUserId).toHashSet()
+    }
 }

@@ -13,6 +13,10 @@ import com.nendo.argosy.domain.model.SiblingMemberKind
 import com.nendo.argosy.domain.model.SiblingPickChange
 import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
+import com.nendo.argosy.data.remote.romm.RomMApiClient
+import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.data.remote.romm.RomMRom
+import com.nendo.argosy.data.remote.romm.RomMRomUser
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -41,6 +45,10 @@ class SiblingGroupRepositoryTest {
     private val seededOwners = mutableSetOf<Long>()
     private val hiddenIds = mutableSetOf<Long>()
     private var fullPassDone = true
+    private var activeOwner: Long? = owner
+    private val rommMainsByOwner = mutableMapOf<Long, MutableSet<Long>>()
+    private lateinit var overlayWriter: GameUserOverlayWriter
+    private lateinit var apiClient: RomMApiClient
 
     private fun row(
         id: Long,
@@ -55,7 +63,6 @@ class SiblingGroupRepositoryTest {
         siblingGroupKey = group,
         isHackVariant = hack,
         isTranslationVariant = false,
-        rommMainSibling = false,
         rommFileName = fileName,
         regions = regions,
         localPath = if (downloaded) "/roms/$id" else null,
@@ -69,10 +76,21 @@ class SiblingGroupRepositoryTest {
         platformDao = mockk(relaxed = true)
         userRomsHiddenDao = mockk(relaxed = true)
         appPreferences = mockk(relaxed = true)
-        val overlayWriter = mockk<GameUserOverlayWriter>(relaxed = true)
+        overlayWriter = mockk(relaxed = true)
+        apiClient = mockk(relaxed = true)
         val syncPreferences = mockk<SyncPreferencesRepository>(relaxed = true)
 
-        coEvery { overlayWriter.activeOwnerId() } returns owner
+        coEvery { overlayWriter.activeOwnerId() } answers { activeOwner }
+        coEvery { overlayWriter.rommMainSiblingGameIds(any()) } answers {
+            firstArg<Long?>()?.let { rommMainsByOwner[it]?.toSet() }.orEmpty()
+        }
+        coEvery { overlayWriter.setRommMainSibling(any(), any(), any()) } answers {
+            val requested = firstArg<Long?>() ?: return@answers false
+            val gameId = secondArg<Long>()
+            val isMain = thirdArg<Boolean>()
+            val mains = rommMainsByOwner.getOrPut(requested) { mutableSetOf() }
+            if (isMain) mains.add(gameId) else mains.remove(gameId)
+        }
         coEvery { syncPreferences.getRegionPriority() } returns listOf("USA", "Europe", "Japan")
         coEvery { gameDao.getSiblingRows() } answers { rows.values.toList() }
         coEvery { gameDao.getSiblingRowsForGroups(any()) } answers {
@@ -102,7 +120,7 @@ class SiblingGroupRepositoryTest {
             overlayWriter = overlayWriter,
             syncPreferencesRepository = syncPreferences,
             appPreferencesRepository = appPreferences,
-            apiClient = mockk(relaxed = true)
+            apiClient = apiClient
         )
     }
 
@@ -318,6 +336,54 @@ class SiblingGroupRepositoryTest {
 
         hiddenIds -= 1L
         repository.onHiddenChanged(1)
+        assertEquals(mapOf(1L to true, 2L to false), rows.mapValues { it.value.isGroupVisible })
+    }
+
+    @Test
+    fun `each account's RomM main sibling decides the shown copy for that account`() = runTest {
+        val other = 9L
+        put(
+            row(1, "g", regions = "USA", fileName = "a"),
+            row(2, "g", regions = "Europe", fileName = "b"),
+            row(3, "g", regions = "Japan", fileName = "c")
+        )
+        rommMainsByOwner[owner] = mutableSetOf(2L)
+        rommMainsByOwner[other] = mutableSetOf(3L)
+
+        repository.recomputeAll()
+        val shownForOwner = rows.values.filter { it.isGroupVisible }.map { it.id }
+        activeOwner = other
+        repository.recomputeAll()
+        val shownForOther = rows.values.filter { it.isGroupVisible }.map { it.id }
+
+        assertEquals(listOf(2L), shownForOwner)
+        assertEquals(listOf(3L), shownForOther)
+    }
+
+    @Test
+    fun `an account without a RomM main falls back to region priority`() = runTest {
+        put(row(1, "g", regions = "Japan", fileName = "a"), row(2, "g", regions = "USA", fileName = "b"))
+        rommMainsByOwner[9L] = mutableSetOf(1L)
+
+        repository.recomputeAll()
+
+        assertEquals(mapOf(1L to false, 2L to true), rows.mapValues { it.value.isGroupVisible })
+    }
+
+    @Test
+    fun `refreshing the main sibling records it for the active account only`() = runTest {
+        put(row(1, "g", regions = "Japan", fileName = "a"), row(2, "g", regions = "USA", fileName = "b"))
+        coEvery { gameDao.getById(1) } returns entity(1, "g")
+        coEvery { apiClient.getRom(1) } returns RomMResult.Success(
+            mockk<RomMRom>(relaxed = true) {
+                io.mockk.every { romUser } returns RomMRomUser(isMainSibling = true)
+            }
+        )
+
+        repository.refreshRommMainSibling(1)
+
+        assertEquals(setOf(1L), rommMainsByOwner[owner])
+        assertNull(rommMainsByOwner[9L])
         assertEquals(mapOf(1L to true, 2L to false), rows.mapValues { it.value.isGroupVisible })
     }
 

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -37,6 +38,7 @@ class RomMLibrarySyncChangesTest {
     private lateinit var platformDao: PlatformDao
     private lateinit var preferencesRepository: UserPreferencesRepository
     private lateinit var siblingGroupRepository: SiblingGroupRepository
+    private lateinit var overlayWriter: GameUserOverlayWriter
     private val pendingSyncQueueDao: PendingSyncQueueDao = mockk(relaxed = true)
     private lateinit var service: RomMLibrarySyncService
 
@@ -72,7 +74,7 @@ class RomMLibrarySyncChangesTest {
         preferencesRepository = mockk(relaxed = true)
         siblingGroupRepository = mockk(relaxed = true)
         val connectionManager = mockk<RomMConnectionManager>(relaxed = true)
-        val overlayWriter = mockk<GameUserOverlayWriter>(relaxed = true)
+        overlayWriter = mockk(relaxed = true)
         val preferences = mockk<UserPreferences>(relaxed = true)
 
         every { connectionManager.getApi() } returns api
@@ -183,6 +185,39 @@ class RomMLibrarySyncChangesTest {
     }
 
     @Test
+    fun `the changes pass recounts every enabled platform, not only those with changed roms`() = runTest {
+        val quiet = RomMPlatform(id = 2L, slug = "nes", name = "NES", fsSlug = "nes", romCount = 4)
+        coEvery { api.getPlatforms() } returns Response.success(listOf(platform, quiet))
+        coEvery { platformDao.getById(2L) } returns mockk<PlatformEntity>(relaxed = true) {
+            every { slug } returns "nes"
+            every { syncEnabled } returns true
+        }
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(rom()), total = 1))
+        coEvery { gameDao.countByPlatform(1L, null) } returns 7
+        coEvery { gameDao.countByPlatform(2L, null) } returns 3
+
+        service.syncLibraryChanges(since)
+
+        coVerify(exactly = 1) { platformDao.updateGameCount(1L, 7) }
+        coVerify(exactly = 1) { platformDao.updateGameCount(2L, 3) }
+    }
+
+    @Test
+    fun `the changes pass leaves a sync-disabled platform's count alone`() = runTest {
+        val disabled = RomMPlatform(id = 2L, slug = "nes", name = "NES", fsSlug = "nes", romCount = 4)
+        coEvery { api.getPlatforms() } returns Response.success(listOf(platform, disabled))
+        coEvery { platformDao.getById(2L) } returns mockk<PlatformEntity>(relaxed = true) {
+            every { slug } returns "nes"
+            every { syncEnabled } returns false
+        }
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
+
+        service.syncLibraryChanges(since)
+
+        coVerify(exactly = 0) { platformDao.updateGameCount(2L, any()) }
+    }
+
+    @Test
     fun `a complete library pass records the sibling full pass and then writes counts`() = runTest {
         coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
         coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
@@ -229,21 +264,34 @@ class RomMLibrarySyncChangesTest {
     }
 
     @Test
-    fun `a synced row carries its group key, hack flag and main sibling from the payload`() = runTest {
+    fun `a synced row carries its group key and hack flag, and the main sibling goes to the syncing account`() = runTest {
         val hackRom = rom().copy(
             igdbId = 1234L,
             tags = listOf("patched-kaizo"),
             romUser = RomMRomUser(isMainSibling = true)
         )
+        coEvery { overlayWriter.activeOwnerId() } returns OWNER
         coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(hackRom), total = 1))
         val stored = slot<GameEntity>()
         coEvery { gameDao.insert(capture(stored)) } returns 1L
+        coEvery { gameDao.getByRommId(42L) } answers { if (stored.isCaptured) stored.captured.copy(id = 9L) else null }
 
         service.syncLibraryChanges(since)
 
         assertEquals("igdb-1-1234", stored.captured.siblingGroupKey)
         assertTrue(stored.captured.isHackVariant)
-        assertTrue(stored.captured.rommMainSibling)
+        assertFalse(stored.captured.rommMainSibling)
+        coVerify(exactly = 1) { overlayWriter.setRommMainSibling(OWNER, 9L, true) }
+    }
+
+    @Test
+    fun `a payload without rom_user leaves the stored main sibling alone`() = runTest {
+        coEvery { overlayWriter.activeOwnerId() } returns OWNER
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(rom()), total = 1))
+
+        service.syncLibraryChanges(since)
+
+        coVerify(exactly = 0) { overlayWriter.setRommMainSibling(any(), any(), any()) }
     }
 
     @Test
@@ -269,6 +317,49 @@ class RomMLibrarySyncChangesTest {
     }
 
     @Test
+    fun `a complete library pass records when it started as the last full pass`() = runTest {
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
+        val before = Instant.now()
+
+        service.syncLibrary()
+
+        val recorded = slot<Instant>()
+        coVerify(exactly = 1) { preferencesRepository.setLastRommFullSyncTime(capture(recorded)) }
+        assertTrue(!recorded.captured.isBefore(before))
+    }
+
+    @Test
+    fun `a resumed library pass records the start of its first attempt as the last full pass`() = runTest {
+        val generation = Instant.now().minus(Duration.ofMinutes(30))
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns generation
+        coEvery { preferencesRepository.getSyncResumeCompletedPlatformIds() } returns setOf(1L)
+
+        service.syncLibrary()
+
+        coVerify(exactly = 1) { preferencesRepository.setLastRommFullSyncTime(generation) }
+    }
+
+    @Test
+    fun `a library pass with a failed platform leaves the last full pass time alone`() = runTest {
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
+        coEvery { api.getRoms(any()) } returns Response.error(500, "".toResponseBody())
+
+        service.syncLibrary()
+
+        coVerify(exactly = 0) { preferencesRepository.setLastRommFullSyncTime(any()) }
+    }
+
+    @Test
+    fun `the changes pass never records a full pass time`() = runTest {
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(rom()), total = 1))
+
+        service.syncLibraryChanges(since)
+
+        coVerify(exactly = 0) { preferencesRepository.setLastRommFullSyncTime(any()) }
+    }
+
+    @Test
     fun `a clean pass records the time it started`() = runTest {
         coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
         val before = Instant.now()
@@ -278,5 +369,9 @@ class RomMLibrarySyncChangesTest {
         val recorded = slot<Instant>()
         coVerify { preferencesRepository.setLastRommSyncTime(capture(recorded)) }
         assertTrue(!recorded.captured.isBefore(before))
+    }
+
+    private companion object {
+        const val OWNER = 5L
     }
 }

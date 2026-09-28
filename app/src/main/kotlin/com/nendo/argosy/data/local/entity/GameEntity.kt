@@ -273,7 +273,6 @@ data class GameSiblingRow(
     val siblingGroupKey: String,
     val isHackVariant: Boolean,
     val isTranslationVariant: Boolean,
-    val rommMainSibling: Boolean,
     val rommFileName: String?,
     val regions: String?,
     val localPath: String?,

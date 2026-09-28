@@ -181,7 +181,7 @@ fun LibrarySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val sortOption = SortOption.entries.firstOrNull { it.name == display.libraryDefaultSort }
         ?: SortOption.TITLE
     val sortDescending = display.libraryDefaultSortDescending ?: sortOption.defaultDescending
-    val platformTokens = libraryPlatformTokens(layoutState)
+    val platformTokens = remember(layoutState) { libraryPlatformTokens(layoutState) }
     val platformLabels = remember(layoutState, context) { libraryPlatformLabels(context, layoutState) }
     val platformIndex = platformTokens.indexOf(display.libraryDefaultPlatformId).coerceAtLeast(0)
     val sourceIndex = librarySourceKeys().indexOf(display.libraryDefaultSource).coerceAtLeast(0)
@@ -288,7 +288,9 @@ fun LibrarySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 value = regionSummary(display.libraryDefaultRegions),
                 isFocused = isFocused(item),
                 options = regionOptions,
-                selected = regionOptions.indices.filter { regionOptions[it] in display.libraryDefaultRegions }.toSet(),
+                selected = remember(regionOptions, display.libraryDefaultRegions) {
+                    regionOptions.indices.filter { regionOptions[it] in display.libraryDefaultRegions }.toSet()
+                },
                 onToggle = { viewModel.toggleLibraryDefaultRegion(regionOptions[it]) },
                 emptyText = stringResource(R.string.settings_library_default_region_none_available),
                 pickerRequestToken = pickerToken(item)

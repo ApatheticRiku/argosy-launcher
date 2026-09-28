@@ -6,13 +6,17 @@ import com.nendo.argosy.data.local.dao.clearArtOverride
 import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.data.storage.StorageVolumeHealth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
 class RepairImageCacheUseCase @Inject constructor(
     private val gameDao: GameDao,
     private val romMRepository: RomMRepository,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val volumeHealth: StorageVolumeHealth
 ) {
     suspend fun repairCover(gameId: Long, localPath: String?): String? {
         if (localPath == null) return null
@@ -21,7 +25,7 @@ class RepairImageCacheUseCase @Inject constructor(
 
         val game = gameDao.getById(gameId) ?: return null
         if (game.coverOverridePath == localPath) {
-            gameDao.clearArtOverride(gameId, ArtSlot.COVER)
+            if (isGenuinelyAbsent(localPath)) gameDao.clearArtOverride(gameId, ArtSlot.COVER)
             return game.coverPath
         }
         if (!romMRepository.isConnected()) return null
@@ -46,7 +50,7 @@ class RepairImageCacheUseCase @Inject constructor(
 
         val game = gameDao.getById(gameId) ?: return null
         if (game.backgroundOverridePath == localPath) {
-            gameDao.clearArtOverride(gameId, ArtSlot.BACKGROUND)
+            if (isGenuinelyAbsent(localPath)) gameDao.clearArtOverride(gameId, ArtSlot.BACKGROUND)
             return game.backgroundPath
         }
         if (!romMRepository.isConnected()) return null
@@ -93,6 +97,9 @@ class RepairImageCacheUseCase @Inject constructor(
             is RomMResult.Error -> null
         }
     }
+
+    private suspend fun isGenuinelyAbsent(path: String): Boolean =
+        withContext(Dispatchers.IO) { volumeHealth.newProbe().isGenuinelyAbsent(path) }
 
     fun isLocalPathValid(path: String?): Boolean {
         if (path == null) return false

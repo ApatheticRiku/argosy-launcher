@@ -3844,3 +3844,21 @@ object Migration_197_198 : Migration(197, 198) {
         )
     }
 }
+
+/**
+ * Adds `game_user_overlay.rommMainSibling`, RomM's per-account main-sibling flag. On a device
+ * whose overlay holds a single account, that account takes the value `games.rommMainSibling`
+ * carried; with several accounts the column starts false and the next library pass fills it.
+ */
+object Migration_198_199 : Migration(198, 199) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `game_user_overlay` ADD COLUMN `rommMainSibling` INTEGER NOT NULL DEFAULT 0"
+        )
+        db.execSQL(
+            "UPDATE `game_user_overlay` SET `rommMainSibling` = 1 " +
+                "WHERE `gameId` IN (SELECT `id` FROM `games` WHERE `rommMainSibling` = 1) " +
+                "AND (SELECT COUNT(DISTINCT `ownerUserId`) FROM `game_user_overlay`) = 1"
+        )
+    }
+}

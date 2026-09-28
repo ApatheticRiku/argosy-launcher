@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -195,15 +196,14 @@ fun SyncSettingsSection(
                         )
                     }
                     SyncSettingsItem.RegionPriority -> {
+                        val regionPriority = uiState.syncSettings.regionPriority
+                        val regionPreview = remember(regionPriority) {
+                            regionPriority.take(REGION_PRIORITY_PREVIEW_COUNT).joinToString(", ")
+                        }
                         ActionPreference(
                             icon = Icons.Default.SwapVert,
                             title = stringResource(R.string.settings_sync_region_priority_title),
-                            subtitle = stringResource(
-                                R.string.settings_sync_region_priority_subtitle,
-                                uiState.syncSettings.regionPriority
-                                    .take(REGION_PRIORITY_PREVIEW_COUNT)
-                                    .joinToString(", ")
-                            ),
+                            subtitle = stringResource(R.string.settings_sync_region_priority_subtitle, regionPreview),
                             isFocused = isFocused(item),
                             onClick = { viewModel.showRegionPriority() }
                         )

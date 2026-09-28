@@ -61,6 +61,8 @@ import com.nendo.argosy.data.netplay.VerifySubState
 import com.nendo.argosy.ui.components.CoreCrashModal
 import com.nendo.argosy.ui.components.SaveConflictModal
 import com.nendo.argosy.ui.components.ScreenDimmerOverlay
+import com.nendo.argosy.ui.input.BackgroundConflictInputHandler
+import com.nendo.argosy.ui.input.CapturingInputHandler
 import com.nendo.argosy.ui.input.GamepadEvent
 import com.nendo.argosy.ui.input.InputDispatcher
 import com.nendo.argosy.ui.input.InputHandler
@@ -529,32 +531,15 @@ fun ArgosyApp(
     }
 
     val backgroundConflictInputHandler = remember(viewModel) {
-        object : InputHandler {
-            override fun onUp(): InputResult {
-                viewModel.moveBackgroundConflictFocus(-1)
-                return InputResult.HANDLED
-            }
-            override fun onDown(): InputResult {
-                viewModel.moveBackgroundConflictFocus(1)
-                return InputResult.HANDLED
-            }
-            override fun onConfirm(): InputResult {
-                when (viewModel.backgroundConflictButtonIndex.value) {
-                    0 -> viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL)
-                    1 -> viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER)
-                    2 -> viewModel.resolveBackgroundConflict(ConflictResolution.SKIP)
-                }
-                return InputResult.handled(SoundType.CLOSE_MODAL)
-            }
-            override fun onBack(): InputResult {
-                viewModel.resolveBackgroundConflict(ConflictResolution.SKIP)
-                return InputResult.handled(SoundType.CLOSE_MODAL)
-            }
-        }
+        BackgroundConflictInputHandler(
+            moveFocus = viewModel::moveBackgroundConflictFocus,
+            focusedButton = { viewModel.backgroundConflictButtonIndex.value },
+            resolve = viewModel::resolveBackgroundConflict
+        )
     }
 
     val steamDownloadPromptInputHandler = remember(viewModel) {
-        object : InputHandler {
+        object : CapturingInputHandler {
             override fun onLeft(): InputResult {
                 viewModel.steamDownloadPromptController.moveFocus(-1)
                 return InputResult.HANDLED
@@ -583,7 +568,7 @@ fun ArgosyApp(
     }
 
     val netplayInviteInputHandler = remember(viewModel) {
-        object : InputHandler {
+        object : CapturingInputHandler {
             override fun onLeft(): InputResult {
                 viewModel.moveNetplayInviteFocus(-1)
                 return InputResult.HANDLED

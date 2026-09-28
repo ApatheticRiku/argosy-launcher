@@ -1,6 +1,7 @@
 package com.nendo.argosy.domain.usecase.sync
 
 import com.nendo.argosy.data.preferences.AppPreferencesRepository
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.remote.romm.SyncProgress
@@ -35,6 +36,7 @@ class SyncLibraryUseCaseTest {
     private lateinit var notificationManager: NotificationManager
     private lateinit var librarySyncBus: LibrarySyncBus
     private lateinit var appPreferences: AppPreferencesRepository
+    private lateinit var syncPreferences: SyncPreferencesRepository
     private lateinit var useCase: SyncLibraryUseCase
 
     @Before
@@ -45,12 +47,16 @@ class SyncLibraryUseCaseTest {
         librarySyncBus = mockk(relaxed = true)
         appPreferences = mockk(relaxed = true)
         coEvery { appPreferences.isSiblingFullPassDone() } returns true
+        syncPreferences = mockk(relaxed = true)
+        coEvery { syncPreferences.getLastRommFullSyncTime() } returns
+            java.time.Instant.now().minus(java.time.Duration.ofDays(1))
         useCase = SyncLibraryUseCase(
             romMRepository,
             notificationManager,
             librarySyncBus,
             SyncNotificationCopyResources(),
-            appPreferences
+            appPreferences,
+            syncPreferences
         ).apply {
             progressDispatcher = UnconfinedTestDispatcher()
         }
@@ -160,6 +166,53 @@ class SyncLibraryUseCaseTest {
         assertEquals(full, (result as SyncLibraryResult.Success).result)
         coVerify(exactly = 0) { romMRepository.syncLibraryChanges(any()) }
         coVerify(exactly = 1) { romMRepository.syncLibrary(any()) }
+    }
+
+    @Test
+    fun `a changes time is ignored once the last full pass is older than two weeks`() = runTest {
+        val since = java.time.Instant.now().minus(java.time.Duration.ofDays(8))
+        val full = SyncResult(5, 0, 12, 0, emptyList())
+        coEvery { syncPreferences.getLastRommFullSyncTime() } returns
+            java.time.Instant.now().minus(java.time.Duration.ofDays(15))
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibrary(any()) } returns full
+
+        val result = useCase(changesSince = since)
+
+        assertEquals(full, (result as SyncLibraryResult.Success).result)
+        coVerify(exactly = 0) { romMRepository.syncLibraryChanges(any()) }
+        coVerify(exactly = 1) { romMRepository.syncLibrary(any()) }
+    }
+
+    @Test
+    fun `a changes time is ignored when no full pass time was ever recorded`() = runTest {
+        val since = java.time.Instant.now().minus(java.time.Duration.ofDays(8))
+        coEvery { syncPreferences.getLastRommFullSyncTime() } returns null
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibrary(any()) } returns SyncResult(5, 0, 0, 0, emptyList())
+
+        useCase(changesSince = since)
+
+        coVerify(exactly = 0) { romMRepository.syncLibraryChanges(any()) }
+        coVerify(exactly = 1) { romMRepository.syncLibrary(any()) }
+    }
+
+    @Test
+    fun `a full pass within two weeks lets the changes pass run`() = runTest {
+        val since = java.time.Instant.now().minus(java.time.Duration.ofDays(8))
+        val changes = SyncResult(2, 1, 4, 1, emptyList())
+        coEvery { syncPreferences.getLastRommFullSyncTime() } returns
+            java.time.Instant.now().minus(java.time.Duration.ofDays(13))
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibraryChanges(since) } returns changes
+
+        val result = useCase(changesSince = since)
+
+        assertEquals(changes, (result as SyncLibraryResult.Success).result)
+        coVerify(exactly = 0) { romMRepository.syncLibrary(any()) }
     }
 
     @Test

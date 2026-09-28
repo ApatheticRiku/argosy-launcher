@@ -45,14 +45,32 @@ class SiblingConfigCarryOverTest {
     }
 
     @Test
-    fun `the winner's config is copied to regional copies that have none`() = runBlocking {
+    fun `the winner's launcher config is copied to regional copies that have none`() = runBlocking {
         carryOver.runOnce()
 
-        coVerify(exactly = 1) { emulatorConfigDao.insert(winnerConfig.copy(id = 0, gameId = 2L)) }
-        coVerify(exactly = 1) { emulatorConfigDao.insert(winnerConfig.copy(id = 0, gameId = 3L)) }
+        coVerify(exactly = 1) { emulatorConfigDao.insert(launcherOnly(gameId = 2L)) }
+        coVerify(exactly = 1) { emulatorConfigDao.insert(launcherOnly(gameId = 3L)) }
         coVerify(exactly = 0) { emulatorConfigDao.insert(match { it.gameId == 1L }) }
         coVerify { syncPreferences.setSiblingConfigCarryOverDone() }
     }
+
+    @Test
+    fun `the save folder and memory card stay with the member that owns them`() = runBlocking {
+        val withCard = winnerConfig.copy(selectedMemcardPath = "/storage/saves/blue/card")
+        coEvery { emulatorConfigDao.getGameOverrides() } returns listOf(withCard)
+        coEvery { emulatorConfigDao.getByGameId(1L) } returns withCard
+
+        carryOver.carryOver()
+
+        coVerify(exactly = 0) { emulatorConfigDao.insert(match { it.savePath != null }) }
+        coVerify(exactly = 0) { emulatorConfigDao.insert(match { it.selectedMemcardPath != null }) }
+        coVerify(exactly = 1) {
+            emulatorConfigDao.insert(match { it.gameId == 2L && it.packageName == "com.retroarch" && it.coreName == "gambatte" })
+        }
+    }
+
+    private fun launcherOnly(gameId: Long) =
+        winnerConfig.copy(id = 0, gameId = gameId, savePath = null, selectedMemcardPath = null)
 
     @Test
     fun `a copy that already has a config keeps it`() = runBlocking {
@@ -115,7 +133,6 @@ class SiblingConfigCarryOverTest {
         siblingGroupKey = groupKey,
         isHackVariant = isHack,
         isTranslationVariant = false,
-        rommMainSibling = false,
         rommFileName = "Blue $id.gb",
         regions = null,
         localPath = null,

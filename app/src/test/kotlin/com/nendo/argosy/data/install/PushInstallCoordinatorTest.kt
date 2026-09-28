@@ -54,6 +54,7 @@ class PushInstallCoordinatorTest {
     private val pushInstall: PushInstallUseCase = mockk()
     private val socketEvents = MutableSharedFlow<RomMDeviceSocket.Event>()
     private val deviceIdState = MutableStateFlow<String?>(DEVICE_ID)
+    private val baseUrlState = MutableStateFlow(LAN_URL)
     private val preferences = MutableStateFlow(StoragePreferences())
     private val account = RomMAccountEntity(
         rommUserId = 7,
@@ -71,7 +72,8 @@ class PushInstallCoordinatorTest {
         every { connectionManager.deviceIdState } returns deviceIdState
         every { connectionManager.getDeviceId() } answers { deviceIdState.value }
         every { connectionManager.getAccessToken() } returns "token"
-        every { connectionManager.getBaseUrl() } returns "http://romm.local/"
+        every { connectionManager.baseUrlState } returns baseUrlState
+        every { connectionManager.getBaseUrl() } answers { baseUrlState.value }
         every { connectionManager.getApi() } returns api
         every { storagePreferences.preferences } returns preferences
         every { appPreferences.preferences } returns appState
@@ -202,6 +204,16 @@ class PushInstallCoordinatorTest {
     }
 
     @Test
+    fun `switching to another server address reopens the socket there`() = runBlocking {
+        coordinator("5.4.0", allowRemoteInstalls = true).start()
+        verify(timeout = WAIT_MS) { deviceSocket.connect(RomMDeviceSocket.Target(LAN_URL, "token")) }
+
+        baseUrlState.value = WAN_URL
+
+        verify(timeout = WAIT_MS) { deviceSocket.connect(RomMDeviceSocket.Target(WAN_URL, "token")) }
+    }
+
+    @Test
     fun `the startup refresh and the socket connecting share one claim`() = runBlocking {
         coordinator("5.4.0", allowRemoteInstalls = true).start()
         awaitSocketSubscriber()
@@ -309,6 +321,8 @@ class PushInstallCoordinatorTest {
     private companion object {
         const val DEVICE_ID = "device-1"
         const val OTHER_DEVICE_ID = "device-2"
+        const val LAN_URL = "http://romm.local/"
+        const val WAN_URL = "https://romm.example.org/"
         const val WAIT_MS = 5_000L
         const val SETTLE_MS = DRAIN_SETTLE_MS + 300L
         const val OVERLAPPING_TRIGGERS = 5

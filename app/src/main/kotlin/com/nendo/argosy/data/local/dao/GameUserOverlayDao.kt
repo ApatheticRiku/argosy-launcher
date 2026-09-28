@@ -13,17 +13,6 @@ data class MirroredPlayTotals(
     val lastPlayed: Instant?
 )
 
-/**
- * Per-account game state, with every write mirrored onto the matching `games` column.
- *
- * The overlay row is the record and the `games` column is a materialised copy of the active
- * account, so reads keep going through the existing `FROM games` queries. Writes go the other
- * way round in one transaction: overlay first, then the mirror, never the mirror alone.
- *
- * A missing overlay row is deliberately not an error. It means this account has never written
- * anything about that game, in which case the `games` value already is its value, so the row
- * is seeded from `games` on first write and reads fall back to `games` until then.
- */
 @Dao
 interface GameUserOverlayDao {
 
@@ -440,6 +429,31 @@ interface GameUserOverlayDao {
         }
         mirrorIncrementEarned(gameId)
     }
+
+    @Query(
+        "SELECT rommMainSibling FROM game_user_overlay WHERE ownerUserId = :ownerUserId AND gameId = :gameId"
+    )
+    suspend fun readRommMainSibling(ownerUserId: Long, gameId: Long): Boolean?
+
+    @Query(
+        "UPDATE game_user_overlay SET rommMainSibling = :isMain WHERE ownerUserId = :ownerUserId AND gameId = :gameId"
+    )
+    suspend fun writeRommMainSibling(ownerUserId: Long, gameId: Long, isMain: Boolean)
+
+    /**
+     * Records RomM's main-sibling flag for one account and returns whether the stored value
+     * changed. A game with no overlay row reads as not main.
+     */
+    @Transaction
+    suspend fun setRommMainSibling(ownerUserId: Long, gameId: Long, isMain: Boolean): Boolean {
+        if ((readRommMainSibling(ownerUserId, gameId) ?: false) == isMain) return false
+        ensureRow(ownerUserId, gameId)
+        writeRommMainSibling(ownerUserId, gameId, isMain)
+        return true
+    }
+
+    @Query("SELECT gameId FROM game_user_overlay WHERE ownerUserId = :ownerUserId AND rommMainSibling = 1")
+    suspend fun getRommMainSiblingGameIds(ownerUserId: Long): List<Long>
 
     @Query(
         """

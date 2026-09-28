@@ -1460,7 +1460,9 @@ class GameDetailViewModel @Inject constructor(
         }
     }
 
-    fun changeRatingValue(delta: Int) = ratingsStatus.changeRatingValue(delta)
+    fun changeRatingValue(delta: Int) {
+        ratingsStatus.changeRatingValue(delta)
+    }
 
     fun setRatingValue(value: Int) = ratingsStatus.setRatingValue(value)
 

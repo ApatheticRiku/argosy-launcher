@@ -291,7 +291,9 @@ fun HomeCustomGridPage(
             gapPx
         )
         LaunchedEffect(columns, rows, metrics.columns, metrics.rows) {
-            reportShape(ResolvedGridShape(columns, rows, metrics.shape))
+            reportShape(
+                ResolvedGridShape(columns, rows, metrics.shape, portrait = measured.height > measured.width)
+            )
         }
         CustomGridCells(
             tiles = tiles,
@@ -1291,16 +1293,6 @@ private fun formatPlayTime(context: Context, minutes: Int): String {
     }
 }
 
-/**
- * Drag handling for the tile being arranged, laid over the page while a move is in progress.
- *
- * A drag only counts when it starts on the tile itself. Anywhere else does nothing, because a drag
- * that begins on empty space says nothing about where the tile should go, and treating it as a move
- * makes the tile lurch away from a finger that never touched it.
- *
- * The anchor stays where it was grabbed, so picking a wide tile up by its right half does not
- * teleport its corner under the touch.
- */
 @Composable
 internal fun BoxScope.TileDragSurface(
     metrics: CustomGridMetrics,

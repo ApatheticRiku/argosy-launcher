@@ -182,8 +182,22 @@ class InputDispatcher(
             Companion.currentIsRepeat = false
         }
         playFeedback(input.event, result)
-        return result
+        return claimSelectOverOverlay(input.event, handler, result)
     }
+
+    private fun claimSelectOverOverlay(
+        event: GamepadEvent,
+        handler: InputHandler,
+        result: InputResult
+    ): InputResult =
+        if (event.isSelectGesture() && handler !== viewHandler && !result.handled) {
+            InputResult.HANDLED
+        } else {
+            result
+        }
+
+    private fun GamepadEvent.isSelectGesture(): Boolean =
+        this == GamepadEvent.Select || this == GamepadEvent.LongSelect
 
     private val feedbackPlayer = InputFeedbackPlayer(hapticManager, soundManager)
 

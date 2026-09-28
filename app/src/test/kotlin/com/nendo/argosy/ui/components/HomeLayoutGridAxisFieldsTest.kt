@@ -5,7 +5,10 @@ import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.GridAxis
 import com.nendo.argosy.domain.model.HomeLayoutKind
 import com.nendo.argosy.domain.model.HomeLayoutSettings
+import com.nendo.argosy.domain.model.MAX_GRID_AXIS_COUNT
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class HomeLayoutGridAxisFieldsTest {
@@ -99,6 +102,41 @@ class HomeLayoutGridAxisFieldsTest {
         assertEquals(true, isHomeLayoutFieldShown(paged, HomeLayoutSettingField.CUSTOM_GRID_PERSIST_PAGES))
         assertEquals(false, isHomeLayoutFieldShown(scrolling, HomeLayoutSettingField.CUSTOM_GRID_PERSIST_PAGES))
         assertEquals(true, isHomeLayoutFieldShown(scrolling, HomeLayoutSettingField.CUSTOM_GRID_ROWS))
+    }
+
+    @Test
+    fun `a step past either end of the axis stepper reports the bound`() {
+        val atEnds = settings(GridAxis.Scroll, GridAxis.Fixed(MAX_GRID_AXIS_COUNT))
+
+        assertTrue(isHomeLayoutFieldAtBound(atEnds, HomeLayoutSettingField.CUSTOM_GRID_COLUMNS, -1))
+        assertTrue(isHomeLayoutFieldAtBound(atEnds, HomeLayoutSettingField.CUSTOM_GRID_ROWS, 1))
+    }
+
+    @Test
+    fun `a step away from the end of the axis stepper is not a bound`() {
+        val atEnds = settings(GridAxis.Scroll, GridAxis.Fixed(MAX_GRID_AXIS_COUNT))
+
+        assertFalse(isHomeLayoutFieldAtBound(atEnds, HomeLayoutSettingField.CUSTOM_GRID_COLUMNS, 1))
+        assertFalse(isHomeLayoutFieldAtBound(atEnds, HomeLayoutSettingField.CUSTOM_GRID_ROWS, -1))
+    }
+
+    @Test
+    fun `a step inside the axis stepper is not a bound in either direction`() {
+        val middle = settings(GridAxis.Fill, GridAxis.Fixed(3))
+
+        assertFalse(isHomeLayoutFieldAtBound(middle, HomeLayoutSettingField.CUSTOM_GRID_COLUMNS, -1))
+        assertFalse(isHomeLayoutFieldAtBound(middle, HomeLayoutSettingField.CUSTOM_GRID_COLUMNS, 1))
+        assertFalse(isHomeLayoutFieldAtBound(middle, HomeLayoutSettingField.CUSTOM_GRID_ROWS, -1))
+        assertFalse(isHomeLayoutFieldAtBound(middle, HomeLayoutSettingField.CUSTOM_GRID_ROWS, 1))
+    }
+
+    @Test
+    fun `a reported bound matches an adjustment that changes nothing`() {
+        val atEnds = settings(GridAxis.Scroll, GridAxis.Fixed(MAX_GRID_AXIS_COUNT))
+        val adjusted = adjustHomeLayoutField(atEnds, HomeLayoutSettingField.CUSTOM_GRID_COLUMNS, -1, measured)
+
+        assertEquals(atEnds.customGrid.columns, adjusted.customGrid.columns)
+        assertEquals(atEnds.customGrid.rows, adjusted.customGrid.rows)
     }
 
     @Test

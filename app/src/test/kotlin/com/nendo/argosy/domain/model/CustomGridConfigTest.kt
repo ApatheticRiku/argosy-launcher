@@ -3,6 +3,7 @@ package com.nendo.argosy.domain.model
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CustomGridConfigTest {
@@ -26,6 +27,52 @@ class CustomGridConfigTest {
 
         assertEquals(GridAxis.Fill, grid.columns)
         assertEquals(GridAxis.Fixed(5), grid.rows)
+    }
+
+    @Test
+    fun `a stored lane count lands on the columns of a portrait screen`() {
+        val grid = HomeLayoutSettings.fromJson(storedGrid("laneCount" to 3)).customGrid
+            .orientedTo(portrait = true)
+
+        assertEquals(GridAxis.Fixed(3), grid.columns)
+        assertEquals(GridAxis.Fill, grid.rows)
+        assertFalse(grid.lanesOnShortEdge)
+    }
+
+    @Test
+    fun `a stored lane count stays on the rows of a landscape screen`() {
+        val grid = HomeLayoutSettings.fromJson(storedGrid("laneCount" to 3)).customGrid
+            .orientedTo(portrait = false)
+
+        assertEquals(GridAxis.Fill, grid.columns)
+        assertEquals(GridAxis.Fixed(3), grid.rows)
+        assertFalse(grid.lanesOnShortEdge)
+    }
+
+    @Test
+    fun `the short edge marker survives a write made before the grid is measured`() {
+        val migrated = HomeLayoutSettings.fromJson(storedGrid("laneCount" to 4))
+        val reread = HomeLayoutSettings.fromJson(migrated.toJson()).customGrid
+
+        assertTrue(reread.lanesOnShortEdge)
+        assertEquals(GridAxis.Fixed(4), reread.orientedTo(portrait = true).columns)
+    }
+
+    @Test
+    fun `axes the user chose are never reoriented`() {
+        val grid = HomeLayoutSettings.fromJson(storedGrid("columns" to "FILL", "rows" to 3)).customGrid
+
+        assertFalse(grid.lanesOnShortEdge)
+        assertEquals(grid, grid.orientedTo(portrait = true))
+    }
+
+    @Test
+    fun `a stepper edit clears the short edge marker`() {
+        val migrated = HomeLayoutSettings.fromJson(storedGrid("laneCount" to 3)).customGrid
+        val edited = migrated.withRows(GridAxis.Fixed(4), CustomGridShape(columns = 5, rows = 3))
+
+        assertFalse(edited.lanesOnShortEdge)
+        assertEquals(edited, edited.orientedTo(portrait = true))
     }
 
     @Test

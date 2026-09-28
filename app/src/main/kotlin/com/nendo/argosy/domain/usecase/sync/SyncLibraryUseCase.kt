@@ -1,6 +1,7 @@
 package com.nendo.argosy.domain.usecase.sync
 
 import com.nendo.argosy.data.preferences.AppPreferencesRepository
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.remote.romm.SyncResult
@@ -17,6 +18,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Duration
+import java.time.Instant
 import javax.inject.Inject
 
 private const val TAG = "SyncLibraryUseCase"
@@ -49,20 +52,22 @@ class SyncLibraryUseCase @Inject constructor(
     private val notificationManager: NotificationManager,
     private val librarySyncBus: LibrarySyncBus,
     private val copy: SyncNotificationCopy,
-    private val appPreferencesRepository: AppPreferencesRepository
+    private val appPreferencesRepository: AppPreferencesRepository,
+    private val syncPreferencesRepository: SyncPreferencesRepository
 ) {
     internal var progressDispatcher: CoroutineDispatcher = Dispatchers.IO
     /**
      * Runs a library pass. With [changesSince] it syncs only what the server changed after that
      * time, and falls back to a full pass if that fails. [changesSince] is ignored until one
-     * complete pass has run with sibling grouping.
+     * complete pass has run with sibling grouping, and whenever the last error-free full pass
+     * began more than [FULL_PASS_MAX_AGE] ago or has no recorded time.
      */
     suspend operator fun invoke(
         initializeFirst: Boolean = false,
-        changesSince: java.time.Instant? = null,
+        changesSince: Instant? = null,
         onProgress: ((current: Int, total: Int, platform: String) -> Unit)? = null
     ): SyncLibraryResult {
-        val deltaSince = changesSince?.takeIf { appPreferencesRepository.isSiblingFullPassDone() }
+        val deltaSince = changesSince?.takeIf { isChangesPassAllowed(Instant.now()) }
         Logger.info(
             TAG,
             "invoke: starting, initializeFirst=$initializeFirst, changesSince=$changesSince, deltaSince=$deltaSince"
@@ -190,5 +195,15 @@ class SyncLibraryUseCase @Inject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun isChangesPassAllowed(now: Instant): Boolean {
+        if (!appPreferencesRepository.isSiblingFullPassDone()) return false
+        val lastFullPass = syncPreferencesRepository.getLastRommFullSyncTime() ?: return false
+        return lastFullPass.isAfter(now.minus(FULL_PASS_MAX_AGE))
+    }
+
+    companion object {
+        val FULL_PASS_MAX_AGE: Duration = Duration.ofDays(14)
     }
 }

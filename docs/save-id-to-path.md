@@ -460,8 +460,20 @@ so each rom keeps its own saves in RomM. Only the local folder is shared. Playin
 then the other starts the second copy on whatever the first left on disk, and an upload from the
 second copy can send that save under the second rom's id.
 
-Saves named after the rom file (RetroArch and the built-in `.srm` layout) do not share, because
-regional copies and hacks have different file names. Argosy leaves serial-keyed folders shared.
+Saves named after the rom file (RetroArch, the built-in `.srm` layout, and SeedlessDS `.dsv`
+beside the rom) do not share, because regional copies and hacks have different file names. That
+holds only while discovery matches by rom name. A folder that holds several copies' saves is
+never searched by game title, since a title such as `Mario Kart DS` is a prefix of every regional
+file name:
+
+- the rom's own folder, whether the emulator saves beside the rom (`savesBesideRom`) or a
+  per-game save folder points at it;
+- a per-game save folder that another game's per-game config also names, which is what the
+  one-time sibling config carry-over produced before it stopped copying `savePath` and
+  `selectedMemcardPath`.
+
+In those folders a rom-name miss means no save. The carry-over now copies launcher fields only.
+Argosy leaves serial-keyed folders shared.
 
 ## Why this matters when changing anything
 

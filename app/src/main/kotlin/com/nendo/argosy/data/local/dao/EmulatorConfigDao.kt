@@ -82,6 +82,12 @@ interface EmulatorConfigDao {
     @Query("SELECT savePath FROM emulator_configs WHERE gameId = :gameId LIMIT 1")
     suspend fun getSavePathForGame(gameId: Long): String?
 
+    @Query(
+        "SELECT COUNT(*) FROM emulator_configs " +
+            "WHERE savePath = :savePath AND gameId IS NOT NULL AND gameId != :gameId"
+    )
+    suspend fun countOtherGamesWithSavePath(gameId: Long, savePath: String): Int
+
     @Query("UPDATE emulator_configs SET savePath = :savePath WHERE gameId = :gameId")
     suspend fun updateSavePathForGame(gameId: Long, savePath: String?)
 

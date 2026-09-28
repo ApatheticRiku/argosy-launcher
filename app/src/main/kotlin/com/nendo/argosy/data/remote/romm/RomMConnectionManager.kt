@@ -96,7 +96,15 @@ class RomMConnectionManager @Inject constructor(
     private val apiFactory: RomMApiFactory
 ) {
     private var api: RomMApi? = null
-    private var baseUrl: String = ""
+    private val _baseUrl = MutableStateFlow("")
+    val baseUrlState: StateFlow<String> = _baseUrl.asStateFlow()
+    @get:JvmName("currentBaseUrl")
+    @set:JvmName("assignBaseUrl")
+    private var baseUrl: String
+        get() = _baseUrl.value
+        set(value) {
+            _baseUrl.value = value
+        }
     private var accessToken: String? = null
     private val _deviceId = MutableStateFlow<String?>(null)
     val deviceIdState: StateFlow<String?> = _deviceId.asStateFlow()

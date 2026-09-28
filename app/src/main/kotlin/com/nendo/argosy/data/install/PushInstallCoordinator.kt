@@ -65,6 +65,7 @@ class PushInstallCoordinator @Inject constructor(
 
     private data class RefreshKey(
         val connectionState: ConnectionState,
+        val baseUrl: String,
         val deviceId: String?,
         val allowRemoteInstalls: Boolean,
         val accountId: Long?,
@@ -95,13 +96,13 @@ class PushInstallCoordinator @Inject constructor(
         }
         scope.launch {
             combine(
-                connectionManager.connectionState,
+                combine(connectionManager.connectionState, connectionManager.baseUrlState, ::Pair),
                 connectionManager.deviceIdState,
                 storagePreferences.preferences.map { it.allowRemoteInstalls }.distinctUntilChanged(),
                 accountRepository.observeActiveAccount().map { it?.id }.distinctUntilChanged(),
                 appPreferences.preferences.map { it.firstRunComplete }.distinctUntilChanged()
-            ) { state, deviceId, allow, accountId, setupComplete ->
-                RefreshKey(state, deviceId, allow, accountId, setupComplete)
+            ) { (state, baseUrl), deviceId, allow, accountId, setupComplete ->
+                RefreshKey(state, baseUrl, deviceId, allow, accountId, setupComplete)
             }
                 .distinctUntilChanged()
                 .collect { refresh() }

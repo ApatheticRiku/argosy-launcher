@@ -432,6 +432,84 @@ class SavePathResolverDiscoveryTest {
     }
 
     @Test
+    fun `two SeedlessDS regional copies in one folder resolve only their own save`() = runTest {
+        val romDir = File(tempDir, "roms/nds").apply { mkdirs() }
+        val usaRom = File(romDir, "Mario Kart DS (USA).nds").apply { writeBytes(byteArrayOf(0)) }
+        val europeRom = File(romDir, "Mario Kart DS (Europe).nds").apply { writeBytes(byteArrayOf(0)) }
+        val usaSave = File(romDir, "Mario Kart DS (USA).dsv").apply { writeBytes(byteArrayOf(1)) }
+
+        val usa = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = usaRom.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 1L,
+        )
+        val europeBeforeItsOwnSave = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = europeRom.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 2L,
+        )
+        val europeSave = File(romDir, "Mario Kart DS (Europe).dsv").apply { writeBytes(byteArrayOf(2)) }
+        val europe = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = europeRom.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 2L,
+        )
+
+        assertEquals(usaSave.absolutePath, usa)
+        assertNull(europeBeforeItsOwnSave)
+        assertEquals(europeSave.absolutePath, europe)
+    }
+
+    @Test
+    fun `a rom folder never matches a save by title`() = runTest {
+        val romDir = File(tempDir, "roms/nds").apply { mkdirs() }
+        val europeRom = File(romDir, "Mario Kart DS (Europe).nds").apply { writeBytes(byteArrayOf(0)) }
+        File(romDir, "Mario Kart DS.dsv").writeBytes(byteArrayOf(1))
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = europeRom.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 2L,
+        )
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `a per-game folder another copy also names never matches a save by title`() = runTest {
+        val sharedDir = File(tempDir, "saves/nds").apply { mkdirs() }
+        File(sharedDir, "Mario Kart DS (USA).dsv").writeBytes(byteArrayOf(1))
+        coEvery { emulatorConfigDao.getSavePathForGame(2L) } returns sharedDir.absolutePath
+        coEvery { emulatorConfigDao.countOtherGamesWithSavePath(2L, sharedDir.absolutePath) } returns 1
+        val europeRom = File(tempDir, "roms/nds/Mario Kart DS (Europe).nds").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(0))
+        }
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "drastic", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = europeRom.absolutePath, gameId = 2L,
+        )
+
+        assertNull(result)
+    }
+
+    @Test
+    fun `a per-game folder only this game names still falls back to the title`() = runTest {
+        val ownDir = File(tempDir, "saves/mkds").apply { mkdirs() }
+        val titled = File(ownDir, "Mario Kart DS.dsv").apply { writeBytes(byteArrayOf(1)) }
+        coEvery { emulatorConfigDao.getSavePathForGame(2L) } returns ownDir.absolutePath
+        coEvery { emulatorConfigDao.countOtherGamesWithSavePath(2L, ownDir.absolutePath) } returns 0
+        val europeRom = File(tempDir, "roms/nds/Mario Kart DS (Europe).nds").apply {
+            parentFile?.mkdirs()
+            writeBytes(byteArrayOf(0))
+        }
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "drastic", gameTitle = "Mario Kart DS", platformSlug = "nds",
+            romPath = europeRom.absolutePath, gameId = 2L,
+        )
+
+        assertEquals(titled.absolutePath, result)
+    }
+
+    @Test
     fun `savesBesideRom discovers the save in the ROM folder`() = runTest {
         coEvery { emulatorSaveConfigDao.getByEmulator("argosy") } returns
             EmulatorSaveConfigEntity(emulatorId = "argosy", savePathPattern = "", isAutoDetected = true, savesBesideRom = true)

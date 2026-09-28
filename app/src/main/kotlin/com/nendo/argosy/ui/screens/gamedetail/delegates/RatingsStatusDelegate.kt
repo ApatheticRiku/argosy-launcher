@@ -3,6 +3,8 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 import android.content.Context
 import com.nendo.argosy.R
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.ui.input.HapticFeedbackManager
+import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.notification.NotificationManager
@@ -35,7 +37,8 @@ class RatingsStatusDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val romMRepository: RomMRepository,
     private val notificationManager: NotificationManager,
-    private val soundManager: SoundFeedbackManager
+    private val soundManager: SoundFeedbackManager,
+    private val hapticManager: HapticFeedbackManager
 ) {
     private val _state = MutableStateFlow(RatingsStatusState())
     val state: StateFlow<RatingsStatusState> = _state.asStateFlow()
@@ -95,10 +98,19 @@ class RatingsStatusDelegate @Inject constructor(
 
     fun getRatingsStatusAction(): Int = _state.value.ratingsStatusFocusIndex
 
-    fun changeRatingValue(direction: Int) {
+    /**
+     * Steps the picker value and returns whether it moved. A step clamped at either end leaves the
+     * value unchanged, returns false and fires [HapticPattern.BOUNDARY_HIT].
+     */
+    fun changeRatingValue(direction: Int): Boolean {
+        var moved = false
         _state.update { state ->
-            state.copy(ratingPickerValue = state.ratingPickerType.stepFrom(state.ratingPickerValue, direction))
+            val next = state.ratingPickerType.stepFrom(state.ratingPickerValue, direction)
+            moved = next != state.ratingPickerValue
+            state.copy(ratingPickerValue = next)
         }
+        if (!moved && direction != 0) hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
+        return moved
     }
 
     fun setRatingValue(value: Int) {

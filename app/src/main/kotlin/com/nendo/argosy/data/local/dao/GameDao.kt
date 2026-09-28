@@ -915,7 +915,7 @@ interface GameDao {
 
     @Query(
         """
-        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant, rommMainSibling,
+        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant,
                rommFileName, regions, localPath, isGroupVisible
         FROM games WHERE siblingGroupKey IS NOT NULL
         """
@@ -924,7 +924,7 @@ interface GameDao {
 
     @Query(
         """
-        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant, rommMainSibling,
+        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant,
                rommFileName, regions, localPath, isGroupVisible
         FROM games WHERE siblingGroupKey IN (:groupKeys)
         """
@@ -954,9 +954,6 @@ interface GameDao {
 
     @Query("UPDATE games SET isGroupVisible = 1 WHERE siblingGroupKey IS NULL AND isGroupVisible = 0")
     suspend fun showUngroupedRows(): Int
-
-    @Query("UPDATE games SET rommMainSibling = :isMain WHERE id = :gameId")
-    suspend fun setRommMainSibling(gameId: Long, isMain: Boolean)
 
     @Query(
         "SELECT * FROM games WHERE boxBackPath LIKE 'http%' OR boxSpinePath LIKE 'http%' OR logoPath LIKE 'http%'"

@@ -14,8 +14,9 @@ private const val TAG = "SiblingConfigCarryOver"
 
 /**
  * Copies the per-game emulator config of a sibling group's single configured member to every
- * other regional copy in the same `siblingGroupKey` that has none. Runs once per device, after
- * [SiblingSplitRepair] has completed; an existing config is never replaced.
+ * other regional copy in the same `siblingGroupKey` that has none. Only the launcher fields
+ * travel; the save folder and memory card stay with the member that owns them. Runs once per
+ * device, after [SiblingSplitRepair] has completed; an existing config is never replaced.
  */
 @Singleton
 class SiblingConfigCarryOver @Inject constructor(
@@ -57,7 +58,9 @@ class SiblingConfigCarryOver @Inject constructor(
             for (member in members) {
                 if (member.id in overrides) continue
                 if (emulatorConfigDao.getByGameId(member.id) != null) continue
-                emulatorConfigDao.insert(source.copy(id = 0, gameId = member.id))
+                emulatorConfigDao.insert(
+                    source.copy(id = 0, gameId = member.id, savePath = null, selectedMemcardPath = null)
+                )
                 copied++
                 Logger.info(TAG, "carryOver: game ${source.gameId} config -> game ${member.id} ($groupKey)")
             }

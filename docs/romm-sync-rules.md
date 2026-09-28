@@ -112,9 +112,11 @@ does not name follow in the default order). A member's rank is the best position
 regions holds in that list, and a member with no listed region ranks last. The sync region filter
 only decides what syncs; it has no say in which copy is shown.
 
-`is_main_sibling` lives on RomM's per-user `rom_user` row. Argosy reads it into
-`games.rommMainSibling` and never writes it. A library pass or a single-game refresh copies it
-from the rom payload when the payload carries `rom_user`. After a download finishes, and on
+`is_main_sibling` lives on RomM's per-user `rom_user` row. Argosy reads it into the fetching
+account's `game_user_overlay.rommMainSibling` and never writes it back; the ranking reads the
+active account's value, so one account's main copy never decides another's library. With no
+signed-in account nothing is recorded and the ranking falls back to region priority. A library
+pass or a single-game refresh copies it from the rom payload when the payload carries `rom_user`. After a download finishes, and on
 launch beside the pre-launch sync, one background `GET /api/roms/{id}` re-reads it. A failed
 request or a payload without `rom_user` keeps the stored value.
 
@@ -176,17 +178,20 @@ pickers are meant to show exact rows too. None of them reads a query that filter
 
 ### Choosing a copy
 
-This is the user flow; the UI for it is still being built.
+Downloading an entry whose group has more than one member, from Game Details, the Library or Home,
+opens a variant picker. Each member shows its title, its filename's region, revision and other
+tags (or its stored regions when the filename has none), and a Hack, Translation or Pre-release
+label where one applies. Choosing one stores it as this device's pick and downloads that rom.
+Launching never prompts.
 
-Downloading an entry whose group has more than one member opens a variant picker. Members are
-labelled by region, revision and tags, and hacks are marked. Choosing one sets the pick and
-downloads that rom. Once a group has a pick, launching it never prompts.
+The pick can be changed later from "Active Variant" in the game menu that holding A opens on Game
+Details, in the Library and on Home. The entry appears only when the game's group has more than
+one member. On Game Details the same menu also opens from its Options entry, so touch and TV reach
+it without a hold. "Automatic" clears the pick and hands the choice back to the ranking. Picking a
+copy that is not downloaded shows the entry as not installed until it is.
 
-The pick can be changed later from "Active variant" in the game menu that holding A opens on Game
-Details, in the Library and on Home. Game Details options also reach it for touch and TV. On a
-dual-screen device the choice opens as a modal on the companion screen. "Automatic" clears the
-pick and hands the choice back to the ranking. Picking a copy that is not downloaded shows the
-entry as not installed until it is.
+Both choices write the device-local pick only. RomM's main sibling stays read-only, as described
+under "Which member the Library shows".
 
 ### Save sync across copies
 
@@ -264,6 +269,12 @@ If `GET /api/roms/identifiers` fails, the pass cannot prove any rom is gone, and
 falls back to the evidence it had without that list.
 
 ## User properties from the server
+
+Per-account game state lives in `game_user_overlay`. Every overlay write is mirrored onto the
+matching `games` column, which holds the active account's values so list queries keep reading
+`games`; the overlay is written first, then the mirror, in one transaction. `rommMainSibling` has
+no mirror and is read from the overlay alone. A missing overlay row means the account never wrote
+anything for that game: reads fall back to `games`, and the first write seeds the row from it.
 
 A pass writes each rom's `rom_user` block against the account that fetched it, never onto the
 shared library row, so one account's rating and status stay off other accounts on the device.

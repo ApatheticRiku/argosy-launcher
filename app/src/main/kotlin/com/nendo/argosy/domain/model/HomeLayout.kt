@@ -97,6 +97,8 @@ val GridAxis.stepIndex: Int
 fun GridAxis.stepped(direction: Int): GridAxis =
     GRID_AXIS_STEPS[(stepIndex + direction).coerceIn(0, GRID_AXIS_STEPS.lastIndex)]
 
+fun GridAxis.isAtStepBound(direction: Int): Boolean = direction != 0 && stepped(direction) == this
+
 /**
  * How many columns and rows a page actually has on one screen.
  */
@@ -109,7 +111,8 @@ data class CustomGridShape(val columns: Int, val rows: Int)
 data class ResolvedGridShape(
     val columns: GridAxis,
     val rows: GridAxis,
-    val shape: CustomGridShape
+    val shape: CustomGridShape,
+    val portrait: Boolean = false
 )
 
 /**
@@ -158,6 +161,10 @@ data class ScrollArrangement(val axis: HomeScrollAxis, val lanes: Int) {
         get() = CustomGridLayout(CustomGridShape(columns = lanes, rows = lanes), axis)
 }
 
+/**
+ * @param lanesOnShortEdge marks axes migrated from a single lane count, which counted lanes along the
+ *   screen's short edge. [columns] and [rows] hold the landscape reading until [orientedTo] settles it.
+ */
 data class CustomGridConfig(
     val columns: GridAxis = GridAxis.Fill,
     val rows: GridAxis = GridAxis.Fixed(DEFAULT_LANE_COUNT),
@@ -166,7 +173,8 @@ data class CustomGridConfig(
     val persistBlankPages: Boolean = false,
     val autoFit: Boolean = true,
     val pageCount: Int = 0,
-    val scrollArrangement: ScrollArrangement? = null
+    val scrollArrangement: ScrollArrangement? = null,
+    val lanesOnShortEdge: Boolean = false
 ) : HomeLayoutConfig {
     override val kind: HomeLayoutKind get() = HomeLayoutKind.CUSTOM_GRID
 
@@ -195,17 +203,35 @@ data class CustomGridConfig(
 
     fun withColumns(axis: GridAxis, resolved: CustomGridShape): CustomGridConfig =
         if (!axis.isFixed && !rows.isFixed) {
-            copy(columns = axis, rows = GridAxis.Fixed(resolved.rows.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)))
+            copy(
+                columns = axis,
+                rows = GridAxis.Fixed(resolved.rows.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)),
+                lanesOnShortEdge = false
+            )
         } else {
-            copy(columns = axis)
+            copy(columns = axis, lanesOnShortEdge = false)
         }
 
     fun withRows(axis: GridAxis, resolved: CustomGridShape): CustomGridConfig =
         if (!axis.isFixed && !columns.isFixed) {
-            copy(rows = axis, columns = GridAxis.Fixed(resolved.columns.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)))
+            copy(
+                rows = axis,
+                columns = GridAxis.Fixed(resolved.columns.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)),
+                lanesOnShortEdge = false
+            )
         } else {
-            copy(rows = axis)
+            copy(rows = axis, lanesOnShortEdge = false)
         }
+
+    /**
+     * Settles a migrated lane count onto the short edge of a screen that is [portrait] or not.
+     * Returns this config unchanged when it carries no migrated lane count.
+     */
+    fun orientedTo(portrait: Boolean): CustomGridConfig = when {
+        !lanesOnShortEdge -> this
+        portrait -> copy(columns = rows, rows = columns, lanesOnShortEdge = false)
+        else -> copy(lanesOnShortEdge = false)
+    }
 }
 
 const val DEFAULT_LANE_COUNT = 3
@@ -296,6 +322,7 @@ data class HomeLayoutSettings(
                 put(KEY_PERSIST_PAGES, customGrid.persistBlankPages)
                 put(KEY_AUTO_FIT, customGrid.autoFit)
                 put(KEY_PAGE_COUNT, customGrid.pageCount)
+                if (customGrid.lanesOnShortEdge) put(KEY_LANES_ON_SHORT_EDGE, true)
                 customGrid.scrollArrangement?.let { arrangement ->
                     put(
                         KEY_SCROLL_ARRANGEMENT,
@@ -341,6 +368,7 @@ data class HomeLayoutSettings(
         private const val KEY_COLUMNS = "columns"
         private const val KEY_ROWS = "rows"
         private const val KEY_SCROLL_ARRANGEMENT = "scrollArrangement"
+        private const val KEY_LANES_ON_SHORT_EDGE = "lanesOnShortEdge"
         private const val TOKEN_FILL = "FILL"
         private const val TOKEN_SCROLL = "SCROLL"
         private const val KEY_RAILS = "rails"
@@ -440,10 +468,12 @@ data class HomeLayoutSettings(
                 ?.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)
             val resolvedColumns = columns ?: if (legacyLanes != null) GridAxis.Fill else defaults.columns
             val resolvedRows = rows ?: legacyLanes?.let { GridAxis.Fixed(it) } ?: defaults.rows
+            val lanesOnShortEdge = legacyLanes != null ||
+                json?.optBoolean(KEY_LANES_ON_SHORT_EDGE, false) == true
             return if (!resolvedColumns.isFixed && !resolvedRows.isFixed) {
                 defaults.copy(columns = resolvedColumns, rows = GridAxis.Fixed(DEFAULT_LANE_COUNT))
             } else {
-                defaults.copy(columns = resolvedColumns, rows = resolvedRows)
+                defaults.copy(columns = resolvedColumns, rows = resolvedRows, lanesOnShortEdge = lanesOnShortEdge)
             }
         }
 

@@ -1085,6 +1085,8 @@ class SettingsViewModel @Inject constructor(
         displayDelegate.setHomeLayout(viewModelScope, settings)
     fun customGridShape(): CustomGridShape =
         displayDelegate.customGridShape()
+    fun adjustHomeLayoutField(field: com.nendo.argosy.ui.components.HomeLayoutSettingField, direction: Int) =
+        routeAdjustHomeLayoutField(this, field, direction)
     fun setPresentationStyle(style: com.nendo.argosy.domain.model.PresentationStyle) =
         displayDelegate.setPresentationStyle(viewModelScope, style)
     fun cycleHomeBackgroundMode(direction: Int = 1) = displayDelegate.cycleHomeBackgroundMode(viewModelScope, direction)

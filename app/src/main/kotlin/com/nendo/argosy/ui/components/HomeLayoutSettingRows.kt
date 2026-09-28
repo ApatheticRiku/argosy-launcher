@@ -22,6 +22,7 @@ import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.GRID_AXIS_STEPS
 import com.nendo.argosy.domain.model.GridAxis
+import com.nendo.argosy.domain.model.isAtStepBound
 import com.nendo.argosy.domain.model.stepIndex
 import com.nendo.argosy.domain.model.stepped
 import com.nendo.argosy.domain.model.HomeFocusPosition
@@ -200,6 +201,16 @@ fun adjustHomeLayoutField(
             settings.copy(rails = settings.rails.copy(showContinueWatching = direction > 0))
         HomeLayoutSettingField.RAIL_NEXT_UP ->
             settings.copy(rails = settings.rails.copy(showNextUp = direction > 0))
+}
+
+fun isHomeLayoutFieldAtBound(
+    settings: HomeLayoutSettings,
+    field: HomeLayoutSettingField,
+    direction: Int
+): Boolean = when (field) {
+    HomeLayoutSettingField.CUSTOM_GRID_COLUMNS -> settings.customGrid.columns.isAtStepBound(direction)
+    HomeLayoutSettingField.CUSTOM_GRID_ROWS -> settings.customGrid.rows.isAtStepBound(direction)
+    else -> false
 }
 
 /**

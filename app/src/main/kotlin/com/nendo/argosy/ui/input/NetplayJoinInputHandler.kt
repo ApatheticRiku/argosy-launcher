@@ -7,7 +7,7 @@ import com.nendo.argosy.data.netplay.VerifySubState
 class NetplayJoinInputHandler(
     private val service: NetplayJoinService,
     private val onDismiss: () -> Unit
-) : InputHandler {
+) : CapturingInputHandler {
 
     override fun onUp(): InputResult {
         move(-1)

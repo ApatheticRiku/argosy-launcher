@@ -75,8 +75,9 @@ fun CustomGridScrollCanvas(
     val gapPx = with(density) { gap.toPx() }
     val reportShape by rememberUpdatedState(onShapeResolved)
     val listState = rememberLazyListState()
-    val bands = state.scrollBands
-    val focusedBand = state.focusedBandIndex
+    val bands = remember(state) { state.scrollBands }
+    val focusedBand = remember(state) { state.focusedBandIndex }
+    val tiles = remember(state) { state.tilesOnPage(state.page) }
     val editModeLabel = state.editLabelRes?.let { stringResource(it) }
 
     LaunchedEffect(focusedBand, bands.size) {
@@ -97,7 +98,9 @@ fun CustomGridScrollCanvas(
             gapPx
         )
         LaunchedEffect(columns, rows, metrics.columns, metrics.rows) {
-            reportShape(ResolvedGridShape(columns, rows, metrics.shape))
+            reportShape(
+                ResolvedGridShape(columns, rows, metrics.shape, portrait = measured.height > measured.width)
+            )
         }
         val cellWidth = with(density) { metrics.cellWidthPx.toDp() }
         val cellHeight = with(density) { metrics.cellHeightPx.toDp() }
@@ -106,11 +109,10 @@ fun CustomGridScrollCanvas(
         val lead = Dimens.spacingLg
         val leadPx = with(density) { lead.toPx() }
         val cross = with(density) { (if (vertical) metrics.offsetXPx else metrics.offsetYPx).toDp() }
-        val tiles = state.tilesOnPage(state.page)
 
         val band: @Composable (Int, IntRange) -> Unit = { index, lines ->
-            val bandTiles = tiles.filter {
-                (if (vertical) it.rect.rowIndex else it.rect.columnIndex) in lines
+            val bandTiles = remember(tiles, lines, vertical) {
+                tiles.filter { (if (vertical) it.rect.rowIndex else it.rect.columnIndex) in lines }
             }
             val length = stride * lines.count()
             val shift = -(stride * lines.first)

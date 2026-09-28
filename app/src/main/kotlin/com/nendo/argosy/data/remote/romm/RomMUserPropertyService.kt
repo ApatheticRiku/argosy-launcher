@@ -259,6 +259,9 @@ class RomMUserPropertyService @Inject constructor(
 
             val current = gameDao.getById(game.id) ?: game
             gameDao.update(updatedGame.withCurrentUserColumns(current))
+            rom.romUser?.let {
+                overlayWriter.setRommMainSibling(overlayWriter.activeOwnerId(), game.id, it.isMainSibling)
+            }
             gameFileSync.sync(game.id, rom, game.platformSlug, fileListIsAuthoritative = true)
             siblingGroupRepository.recomputeGroups(
                 listOfNotNull(current.siblingGroupKey, updatedGame.siblingGroupKey)

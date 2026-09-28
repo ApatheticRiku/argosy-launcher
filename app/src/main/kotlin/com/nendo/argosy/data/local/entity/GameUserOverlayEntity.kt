@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -53,5 +54,7 @@ data class GameUserOverlayEntity(
     val playCount: Int = 0,
     val playTimeMinutes: Int = 0,
     val lastPlayed: Instant? = null,
-    val earnedAchievementCount: Int = 0
+    val earnedAchievementCount: Int = 0,
+    @ColumnInfo(defaultValue = "0")
+    val rommMainSibling: Boolean = false
 )
