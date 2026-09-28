@@ -208,7 +208,8 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.videoWallpaperEnabled,
         display.surfaceBackdrop.enabled,
         display.homeBackgroundMode,
-        display.homeLayout.selected
+        display.homeLayout.selected,
+        display.homeLayout.customGrid.gridKind
     ) {
         homeScreenLayout.visibleItems(display)
     }
@@ -218,6 +219,7 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.surfaceBackdrop.enabled,
         display.homeBackgroundMode,
         display.homeLayout.selected,
+        display.homeLayout.customGrid.gridKind,
         context
     ) {
         homeScreenLayout.buildSections(display, context)
