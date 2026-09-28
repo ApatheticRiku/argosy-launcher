@@ -47,6 +47,7 @@ sealed interface GamepadEvent {
     data object RightStickClick : GamepadEvent
     data object Home : GamepadEvent
     data object LongConfirm : GamepadEvent
+    data object LongSelect : GamepadEvent
 }
 
 @Singleton
@@ -106,7 +107,10 @@ class GamepadInputHandler @Inject constructor(
 
     override fun setRawKeyEventListener(listener: ((KeyEvent) -> Boolean)?) {
         rawKeyEventListener = listener
-        if (listener != null) selectModifier.reset()
+        if (listener != null) {
+            selectHoldJob?.cancel()
+            selectModifier.reset()
+        }
     }
 
     override fun setRawMotionEventListener(listener: ((MotionEvent) -> Boolean)?) {
@@ -117,6 +121,7 @@ class GamepadInputHandler @Inject constructor(
     private var confirmFired = false
     private var confirmDeferred = false
     private var confirmDeferJob: kotlinx.coroutines.Job? = null
+    private var selectHoldJob: kotlinx.coroutines.Job? = null
     private val longPressThresholdMs = 500L
 
     private var lastStickDirection: GamepadEvent? = null
@@ -196,16 +201,36 @@ class GamepadInputHandler @Inject constructor(
             return true
         }
 
-        val emitted = selectModifier.filter(gamepadEvent, event.action) ?: return true
+        val isRepeat = event.repeatCount > 0
+        val holdArmed = gamepadEvent == GamepadEvent.Select &&
+            event.action == KeyEvent.ACTION_DOWN &&
+            !isRepeat &&
+            com.nendo.argosy.ui.dualscreen.selectHoldSwapsRoles()
+        if (gamepadEvent == GamepadEvent.Select) trackSelectHold(event.action, isRepeat, holdArmed)
+
+        val emitted = selectModifier.filter(gamepadEvent, event.action, isRepeat, holdArmed) ?: return true
         if (event.action == KeyEvent.ACTION_UP) {
             emitWithDebounce(emitted)
             return true
         }
 
-        val isRepeat = event.repeatCount > 0
         val signature = InputSignature.of(event)
         emitWithDebounce(emitted, isRepeat, signature)
         return true
+    }
+
+    private fun trackSelectHold(action: Int, isRepeat: Boolean, holdArmed: Boolean) {
+        if (action == KeyEvent.ACTION_UP) {
+            selectHoldJob?.cancel()
+            return
+        }
+        if (action != KeyEvent.ACTION_DOWN || isRepeat) return
+        selectHoldJob?.cancel()
+        if (!holdArmed) return
+        selectHoldJob = scope.launch {
+            kotlinx.coroutines.delay(longPressThresholdMs)
+            if (selectModifier.claimHold()) emitWithDebounce(GamepadEvent.LongSelect)
+        }
     }
 
     private fun emitWithDebounce(

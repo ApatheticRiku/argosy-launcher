@@ -54,6 +54,8 @@
     <string name="collections_screen_hint_swap_screens">Bildschirme tauschen</string>
     <string name="collections_screen_hint_select_hold_options">Auswählen, halten für Optionen</string>
     <string name="collections_screen_hint_options">Optionen</string>
+    <string name="collections_screen_hint_options_hold_swap_screens">Optionen, halten für Bildschirme tauschen</string>
+    <string name="collections_screen_hint_hold_swap_screens">Halten für Bildschirme tauschen</string>
 
     <string name="collections_detail_loading">Lädt…</string>
     <string name="collections_detail_hint_search_open">Öffnen</string>
@@ -68,6 +70,8 @@
     <string name="collections_detail_hint_swap_screens">Bildschirme tauschen</string>
     <string name="collections_detail_hint_open_hold_options">Öffnen, halten für Optionen</string>
     <string name="collections_detail_hint_options">Optionen</string>
+    <string name="collections_detail_hint_options_hold_swap_screens">Optionen, halten für Bildschirme tauschen</string>
+    <string name="collections_detail_hint_hold_swap_screens">Halten für Bildschirme tauschen</string>
     <string name="collections_detail_hint_refreshing">Aktualisiert…</string>
     <string name="collections_detail_hint_refresh">Aktualisieren</string>
     <string name="collections_detail_back_description">Zurück</string>
@@ -124,6 +128,8 @@
     <string name="collections_category_hint_swap_screens">Bildschirme tauschen</string>
     <string name="collections_category_hint_open_hold_download_all">Öffnen, halten für Alle herunterladen (%1$d)</string>
     <string name="collections_category_hint_download_all">Alle herunterladen (%1$d)</string>
+    <string name="collections_category_hint_download_all_hold_swap_screens">Alle herunterladen (%1$d), halten für Bildschirme tauschen</string>
+    <string name="collections_category_hint_hold_swap_screens">Halten für Bildschirme tauschen</string>
     <string name="collections_category_downloadall_confirm_title">Alle Spiele herunterladen?</string>
     <plurals name="collections_category_downloadall_confirm_message">
         <item quantity="one">%1$d Spiel dieser Kategorie wird auf dieses Gerät heruntergeladen.</item>
@@ -147,8 +153,6 @@
     <string name="collections_detail_platform_unknown">Unbekannt</string>
     <string name="collections_category_platform_unknown">Unbekannt</string>
 
-    <string name="collections_widecard_rating_value">%1$d/10</string>
-    <string name="collections_widecard_difficulty_value">%1$d/10</string>
 
     <string name="downloads_empty_title">Keine Downloads</string>
     <string name="downloads_empty_subtitle">Downloads werden hier angezeigt</string>

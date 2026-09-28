@@ -976,6 +976,11 @@ class DualScreenManager(
     val presentationStyle: StateFlow<com.nendo.argosy.domain.model.PresentationStyle> =
         _presentationStyle
 
+    private val _selectSwapMode =
+        MutableStateFlow(com.nendo.argosy.data.preferences.SelectSwapMode.HOLD)
+    val selectSwapMode: StateFlow<com.nendo.argosy.data.preferences.SelectSwapMode> =
+        _selectSwapMode
+
     /**
      * What the presentation screen should show right now: the most recent published slot, or the
      * fallback once every publisher has released. Screens publish while they are on screen and
@@ -1250,6 +1255,7 @@ class DualScreenManager(
             preferencesRepository.userPreferences.collect { prefs ->
                 menuWrapMode = prefs.menuWrapMode
                 _presentationStyle.value = prefs.presentationStyle
+                _selectSwapMode.value = prefs.selectSwapMode
             }
         }
         observeActiveAccount()

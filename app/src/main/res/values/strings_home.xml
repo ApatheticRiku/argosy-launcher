@@ -93,6 +93,9 @@
     <!-- Footer hint on the curated grid on a two-screen device. Verb: moves the home screen and
          the game presentation to the other display. -->
     <string name="home_footer_grid_swap_screens">Swap Screens</string>
+    <!-- Footer hint on the curated grid on a two-screen device: holding Select swaps the two
+         screens. Verb phrase. -->
+    <string name="home_footer_grid_hold_swap_screens">Hold to Swap Screens</string>
 
     <!-- Footer hint on a row of films and episodes, grid layout. Noun: the shoulder buttons move
          between the home screen's rows. -->

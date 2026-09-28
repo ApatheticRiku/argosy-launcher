@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.annotation.StringRes
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.MenuWrapMode
+import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.core.input.DetectedLayout
@@ -169,6 +170,18 @@ class ControlsSettingsDelegate @Inject constructor(
     fun cycleMenuWrapMode(scope: CoroutineScope, direction: Int = 1) {
         val current = _state.value.menuWrapMode
         setMenuWrapMode(scope, MenuWrapMode.entries[(current.ordinal + direction).mod(MenuWrapMode.entries.size)])
+    }
+
+    fun setSelectSwapMode(scope: CoroutineScope, mode: SelectSwapMode) {
+        scope.launch {
+            preferencesRepository.setSelectSwapMode(mode)
+            _state.update { it.copy(selectSwapMode = mode) }
+        }
+    }
+
+    fun cycleSelectSwapMode(scope: CoroutineScope, direction: Int = 1) {
+        val current = _state.value.selectSwapMode
+        setSelectSwapMode(scope, SelectSwapMode.entries[(current.ordinal + direction).mod(SelectSwapMode.entries.size)])
     }
 
     fun refreshUsageStatsPermission() {

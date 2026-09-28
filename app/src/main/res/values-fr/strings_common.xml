@@ -911,4 +911,26 @@
     <string name="ui_sibling_member_kind_hack">Hack</string>
     <string name="ui_sibling_member_kind_translation">Traduction</string>
     <string name="ui_sibling_member_kind_pre_release">Préversion</string>
+
+    <string name="gamelist_row_rating_value">%1$d %%</string>
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <string name="gamelist_row_cd_downloaded">Téléchargé</string>
+    <string name="gamelist_row_cd_download_paused">Téléchargement en pause</string>
+    <string name="gamelist_row_cd_download_queued">Téléchargement en attente</string>
+    <string name="gamelist_row_cd_needs_install">Prêt à installer</string>
+    <string name="gamelist_row_cd_save_synced">Sauvegardes synchronisées</string>
+    <string name="gamelist_row_cd_save_local_ahead">Sauvegarde plus récente sur cet appareil</string>
+    <string name="gamelist_row_cd_save_server_ahead">Sauvegarde plus récente sur le serveur</string>
+    <string name="gamelist_row_cd_save_needs_attention">La sauvegarde demande votre attention</string>
+    <string name="gamelist_row_genre_beat_em_up">Beat them all</string>
+    <string name="gamelist_row_genre_rpg">RPG</string>
+    <string name="gamelist_row_genre_rts">STR</string>
+    <string name="gamelist_row_genre_tbs">Tour par tour</string>
+    <string name="gamelist_row_genre_point_and_click">Point &amp; click</string>
+    <string name="gamelist_row_genre_board_game">Jeu de société</string>
+    <string name="gamelist_row_genre_quiz">Quiz</string>
+    <string name="gamelist_row_genre_sim">Simulation</string>
 </resources>

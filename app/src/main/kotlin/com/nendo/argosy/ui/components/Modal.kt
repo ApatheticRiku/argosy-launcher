@@ -119,6 +119,7 @@ fun CenteredModal(
     baseWidth: Dp = 400.dp,
     onDismiss: (() -> Unit)? = null,
     footerHints: List<Pair<InputButton, String>>? = null,
+    onHintClick: ((InputButton) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
@@ -155,7 +156,7 @@ fun CenteredModal(
             content()
 
             if (footerHints != null) {
-                FooterHints(hints = footerHints)
+                FooterHints(hints = footerHints, onHintClick = onHintClick)
             }
         }
     }

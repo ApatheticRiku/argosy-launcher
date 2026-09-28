@@ -6,7 +6,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.nendo.argosy.data.repository.CollectionRepository
+import com.nendo.argosy.data.repository.DownloadFileStatusRepository
 import com.nendo.argosy.data.repository.PlatformRepository
+import com.nendo.argosy.ui.common.GameListDetails
+import com.nendo.argosy.ui.common.listDetails
+import com.nendo.argosy.ui.common.resolveDownloaded
 import com.nendo.argosy.data.local.entity.CollectionEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
@@ -40,35 +44,28 @@ data class CollectionGameUi(
     val id: Long,
     val title: String,
     val platformId: Long,
+    val platformSlug: String,
     val platformDisplayName: String,
     val coverPath: String?,
-    val developer: String?,
-    val releaseYear: Int?,
-    val genre: String?,
-    val userRating: Int,
-    val userDifficulty: Int,
-    val achievementCount: Int,
-    val playTimeMinutes: Int,
+    val details: GameListDetails,
     val isFavorite: Boolean,
     val isDownloaded: Boolean,
     val rommId: Long?
 )
 
-fun GameEntity.toCollectionGameUi(platformDisplayName: String) = CollectionGameUi(
+suspend fun GameEntity.toCollectionGameUi(
+    platformDisplayName: String,
+    downloadStatus: DownloadFileStatusRepository
+) = CollectionGameUi(
     id = id,
     title = title,
     platformId = platformId,
+    platformSlug = platformSlug,
     platformDisplayName = platformDisplayName,
     coverPath = displayCoverPath,
-    developer = developer,
-    releaseYear = releaseYear,
-    genre = genre,
-    userRating = userRating,
-    userDifficulty = userDifficulty,
-    achievementCount = achievementCount,
-    playTimeMinutes = playTimeMinutes,
+    details = listDetails,
     isFavorite = isFavorite,
-    isDownloaded = localPath != null,
+    isDownloaded = resolveDownloaded(downloadStatus),
     rommId = rommId
 )
 
@@ -114,7 +111,8 @@ class CollectionDetailViewModel @Inject constructor(
     private val refreshAllCollectionsUseCase: RefreshAllCollectionsUseCase,
     private val downloadGameUseCase: DownloadGameUseCase,
     private val notificationManager: NotificationManager,
-    private val positions: VirtualBrowsePositions
+    private val positions: VirtualBrowsePositions,
+    private val downloadFileStatusRepository: DownloadFileStatusRepository
 ) : ViewModel() {
 
     private val collectionId: Long = checkNotNull(savedStateHandle["collectionId"])
@@ -168,7 +166,9 @@ class CollectionDetailViewModel @Inject constructor(
             val sorted = games
                 .map { game ->
                     game.toCollectionGameUi(
-                        platformMap[game.platformId] ?: context.getString(R.string.collections_detail_platform_unknown)
+                        platformDisplayName = platformMap[game.platformId]
+                            ?: context.getString(R.string.collections_detail_platform_unknown),
+                        downloadStatus = downloadFileStatusRepository
                     )
                 }
                 .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })

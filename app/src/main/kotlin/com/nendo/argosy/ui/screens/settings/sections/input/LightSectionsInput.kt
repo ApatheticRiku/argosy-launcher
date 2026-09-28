@@ -47,7 +47,7 @@ import com.nendo.argosy.ui.screens.settings.sections.steamItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.steamSections
 import com.nendo.argosy.ui.screens.settings.sections.syncSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.librarySections
-import com.nendo.argosy.ui.screens.settings.sections.libraryPlatformOptions
+import com.nendo.argosy.ui.screens.settings.sections.libraryPlatformTokens
 import com.nendo.argosy.ui.screens.settings.sections.libraryItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.LibraryLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.LibraryItem
@@ -246,6 +246,7 @@ internal class LightSectionsInput(
             NavigationItem.SelectLCombo -> { viewModel.cycleSelectLCombo(direction); return InputResult.HANDLED }
             NavigationItem.SelectRCombo -> { viewModel.cycleSelectRCombo(direction); return InputResult.HANDLED }
             NavigationItem.MenuWrap -> { viewModel.cycleMenuWrapMode(direction); return InputResult.HANDLED }
+            NavigationItem.SelectSwap -> { viewModel.cycleSelectSwapMode(direction); return InputResult.HANDLED }
             else -> {}
         }
         return InputResult.UNHANDLED
@@ -331,11 +332,13 @@ internal class LightSectionsInput(
         val state = viewModel.uiState.value
         val layoutState = LibraryLayoutState.from(state)
         when (libraryItemAtFocusIndex(state.focusedIndex, layoutState)) {
+            LibraryItem.LayoutItem -> viewModel.cycleLibraryLayout(direction)
             LibraryItem.GridDensityItem -> viewModel.cycleGridDensity(direction)
             LibraryItem.DefaultSort -> viewModel.cycleLibraryDefaultSort(direction)
             LibraryItem.DefaultPlatform ->
-                viewModel.cycleLibraryDefaultPlatform(direction, libraryPlatformOptions(layoutState))
+                viewModel.cycleLibraryDefaultPlatform(direction, libraryPlatformTokens(layoutState))
             LibraryItem.DefaultSource -> viewModel.cycleLibraryDefaultSource(direction)
+            LibraryItem.DefaultPlayers -> viewModel.cycleLibraryDefaultPlayers(direction)
             else -> return InputResult.UNHANDLED
         }
         return InputResult.HANDLED

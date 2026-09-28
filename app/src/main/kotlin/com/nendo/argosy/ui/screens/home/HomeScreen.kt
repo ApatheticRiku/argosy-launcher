@@ -935,8 +935,10 @@ fun HomeScreen(
                     val gridFinishedLabel = stringResource(R.string.home_footer_grid_finished)
                     val gridRerollLabel = stringResource(R.string.home_footer_grid_reroll)
                     val gridSwapScreensLabel = stringResource(R.string.home_footer_grid_swap_screens)
+                    val gridHoldSwapScreensLabel =
+                        stringResource(R.string.home_footer_grid_hold_swap_screens)
                     val gridDetailsLabel = stringResource(R.string.home_footer_game_details)
-                    val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+                    val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
                     val engagedFullscreenLabel =
                         stringResource(R.string.home_footer_grid_engaged_fullscreen)
                     val engagedIsMedia = grid.engagedTile?.target is
@@ -1025,8 +1027,12 @@ fun HomeScreen(
                                 if (grid.focusedGameId != null) {
                                     add(InputButton.X to gridDetailsLabel)
                                 }
-                                if (selectSwapsRoles) {
-                                    add(InputButton.SELECT to gridSwapScreensLabel)
+                                when (selectSwapMode) {
+                                    com.nendo.argosy.data.preferences.SelectSwapMode.TAP ->
+                                        add(InputButton.SELECT to gridSwapScreensLabel)
+                                    com.nendo.argosy.data.preferences.SelectSwapMode.HOLD ->
+                                        add(InputButton.SELECT to gridHoldSwapScreensLabel)
+                                    null -> Unit
                                 }
                             }
                         },
@@ -1261,7 +1267,7 @@ fun HomeScreen(
                 com.nendo.argosy.ui.components.DisplayFocusTarget(screen.displayId, screen.number)
             }.orEmpty()
         }
-        val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+        val canSwapRoles = com.nendo.argosy.ui.dualscreen.selectSwapModeState() != null
         if (hasPresentationScreen && uiState.homeApps.isNotEmpty()) {
             com.nendo.argosy.ui.components.CompanionAppBar(
                 apps = uiState.homeApps,
@@ -1293,7 +1299,7 @@ fun HomeScreen(
                     dsmForFocus?.closeFocusPicker()
                 },
                 onSwapRoles = dsmForFocus
-                    ?.takeIf { selectSwapsRoles }
+                    ?.takeIf { canSwapRoles }
                     ?.let { { it.swapRoles() } },
                 modifier = Modifier.align(Alignment.BottomCenter)
             )

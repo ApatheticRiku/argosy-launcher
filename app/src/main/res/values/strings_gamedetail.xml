@@ -601,6 +601,13 @@
     <string name="gamedetail_ratings_status_set_status">Set Status</string>
     <!-- Value beside the status row before the user has recorded one. Adjective phrase. -->
     <string name="gamedetail_ratings_status_status_unset">Not set</string>
+    <!-- Row in that menu. Verb phrase: records what percentage of the game the user has
+         completed. "Progress" is a percentage, never a download or a save. -->
+    <string name="gamedetail_ratings_status_set_progress">Set Progress</string>
+    <!-- Value beside the progress row before the user has recorded one. Adjective phrase. -->
+    <string name="gamedetail_ratings_status_progress_unset">Not set</string>
+    <!-- Value beside the progress row. %1$d is the percentage completed, 5 to 100. -->
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
 
     <!-- ================================= Artwork menu ================================== -->
 
@@ -652,6 +659,11 @@
     <string name="gamedetail_rating_picker_unset">Not set</string>
     <!-- Shown under the icons once a score is chosen. %1$d is the score, out of ten. -->
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <!-- Heading of the same picker when recording what percentage of the game the user has
+         completed. Verb phrase. Rendered in caps in English. -->
+    <string name="gamedetail_rating_picker_title_progress">SET PROGRESS</string>
+    <!-- Shown in the picker once a percentage is chosen. %1$d is the percentage completed. -->
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <!-- ============================= Play options modal ================================ -->
 
@@ -1087,6 +1099,9 @@
     <!-- Brief message after the user's progress through the game reached the server. "Status" is
          progress, never a save state. -->
     <string name="gamedetail_notice_status_saved">Status saved</string>
+    <!-- Brief message after the user's completion percentage was recorded. "Progress" is a
+         percentage through the game, never a download or a save. -->
+    <string name="gamedetail_notice_progress_saved">Progress saved</string>
     <!-- Brief message when the launcher cannot work out which emulator this game uses, so the saves
          panel cannot open. -->
     <string name="gamedetail_notice_no_emulator_for_saves">Cannot determine emulator for saves</string>

@@ -106,6 +106,11 @@
     <!-- Footer hint on dual-screen devices: A opens the collection, and holding A opens its options. -->
     <string name="collections_screen_hint_select_hold_options">Select, hold for Options</string>
     <string name="collections_screen_hint_options">Options</string>
+    <!-- Footer hint on dual-screen devices: pressing Select opens the collection's options, and
+         holding it swaps the two screens. -->
+    <string name="collections_screen_hint_options_hold_swap_screens">Options, hold to Swap Screens</string>
+    <!-- Footer hint on dual-screen devices: holding Select swaps the two screens. Verb phrase. -->
+    <string name="collections_screen_hint_hold_swap_screens">Hold to Swap Screens</string>
 
     <!-- === CollectionDetailScreen.kt === -->
     <string name="collections_detail_loading">Loading&#8230;</string>
@@ -128,6 +133,11 @@
     <!-- Footer hint on dual-screen devices: A opens the game, and holding A opens the collection's options. -->
     <string name="collections_detail_hint_open_hold_options">Open, hold for Options</string>
     <string name="collections_detail_hint_options">Options</string>
+    <!-- Footer hint on dual-screen devices: pressing Select opens the collection's options, and
+         holding it swaps the two screens. -->
+    <string name="collections_detail_hint_options_hold_swap_screens">Options, hold to Swap Screens</string>
+    <!-- Footer hint on dual-screen devices: holding Select swaps the two screens. Verb phrase. -->
+    <string name="collections_detail_hint_hold_swap_screens">Hold to Swap Screens</string>
     <string name="collections_detail_hint_refreshing">Refreshing&#8230;</string>
     <string name="collections_detail_hint_refresh">Refresh</string>
     <!-- Icon button. Verb: go back. -->
@@ -206,6 +216,11 @@
     <!-- Footer hint. Downloads every downloadable game in this category; %1$d is how many
          qualify. Distinct key from collections_options_download_all (different usage site). -->
     <string name="collections_category_hint_download_all">Download All (%1$d)</string>
+    <!-- Footer hint on dual-screen devices: pressing Select downloads every downloadable game in
+         this category, and holding it swaps the two screens. %1$d is how many games qualify. -->
+    <string name="collections_category_hint_download_all_hold_swap_screens">Download All (%1$d), hold to Swap Screens</string>
+    <!-- Footer hint on dual-screen devices: holding Select swaps the two screens. Verb phrase. -->
+    <string name="collections_category_hint_hold_swap_screens">Hold to Swap Screens</string>
     <!-- Title of the confirmation shown before every game in a category is queued for download. Question. -->
     <string name="collections_category_downloadall_confirm_title">Download all games?</string>
     <!-- Body of the download-all confirmation. %1$d is how many games would be queued. -->
@@ -239,12 +254,6 @@
     <!-- Fallback platform name shown on a game card when the game's platform cannot be
          resolved. Distinct key from collections_detail_platform_unknown. -->
     <string name="collections_category_platform_unknown">Unknown</string>
-
-    <!-- === components/WideGameCard.kt === -->
-    <!-- User's own rating out of ten, shown next to a star icon. %1$d is the rating. -->
-    <string name="collections_widecard_rating_value">%1$d/10</string>
-    <!-- User's own difficulty rating out of ten, shown next to a flame icon. %1$d is the rating. -->
-    <string name="collections_widecard_difficulty_value">%1$d/10</string>
 
     <!-- === downloads/DownloadsScreen.kt === -->
     <string name="downloads_empty_title">No Downloads</string>

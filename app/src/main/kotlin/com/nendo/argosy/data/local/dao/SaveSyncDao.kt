@@ -285,7 +285,26 @@ interface SaveSyncDao {
 
     @Query("UPDATE save_sync SET ownerUserId = :ownerUserId WHERE ownerUserId IS NULL")
     suspend fun adoptUnowned(ownerUserId: Long)
+
+    @Query("""
+        SELECT gameId, syncStatus FROM save_sync
+        WHERE ownerUserId IS NULL OR ownerUserId IS :ownerUserId
+        GROUP BY gameId, syncStatus
+        UNION
+        SELECT gameId, '${SaveSyncEntity.STATUS_CONFLICT}' AS syncStatus FROM pending_conflicts
+        WHERE dismissed = 0 AND ownerUserId IN (:conflictOwners)
+        GROUP BY gameId
+    """)
+    fun observeGameSyncStatuses(
+        ownerUserId: Long?,
+        conflictOwners: List<Long>
+    ): Flow<List<GameSyncStatusRow>>
 }
+
+data class GameSyncStatusRow(
+    val gameId: Long,
+    val syncStatus: String
+)
 
 data class SaveCountByDevice(
     val deviceId: String?,

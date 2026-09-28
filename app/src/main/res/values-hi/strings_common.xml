@@ -871,4 +871,26 @@
     <string name="ui_sibling_member_kind_hack">हैक</string>
     <string name="ui_sibling_member_kind_translation">अनुवाद</string>
     <string name="ui_sibling_member_kind_pre_release">प्री-रिलीज़</string>
+
+    <string name="gamelist_row_rating_value">%1$d%%</string>
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <string name="gamelist_row_cd_downloaded">डाउनलोड हो गया</string>
+    <string name="gamelist_row_cd_download_paused">डाउनलोड रुका हुआ है</string>
+    <string name="gamelist_row_cd_download_queued">डाउनलोड कतार में है</string>
+    <string name="gamelist_row_cd_needs_install">इंस्टॉल के लिए तैयार</string>
+    <string name="gamelist_row_cd_save_synced">सेव सिंक हैं</string>
+    <string name="gamelist_row_cd_save_local_ahead">इस डिवाइस पर नया सेव है</string>
+    <string name="gamelist_row_cd_save_server_ahead">सर्वर पर नया सेव है</string>
+    <string name="gamelist_row_cd_save_needs_attention">सेव पर ध्यान देना ज़रूरी है</string>
+    <string name="gamelist_row_genre_beat_em_up">बीट \'एम अप</string>
+    <string name="gamelist_row_genre_rpg">RPG</string>
+    <string name="gamelist_row_genre_rts">RTS</string>
+    <string name="gamelist_row_genre_tbs">TBS</string>
+    <string name="gamelist_row_genre_point_and_click">पॉइंट एंड क्लिक</string>
+    <string name="gamelist_row_genre_board_game">बोर्ड गेम</string>
+    <string name="gamelist_row_genre_quiz">क्विज़</string>
+    <string name="gamelist_row_genre_sim">सिम्युलेटर</string>
 </resources>

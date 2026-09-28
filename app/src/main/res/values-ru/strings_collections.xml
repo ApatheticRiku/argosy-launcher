@@ -58,6 +58,8 @@
     <string name="collections_screen_hint_swap_screens">Поменять экраны</string>
     <string name="collections_screen_hint_select_hold_options">Выбрать, удерживайте для параметров</string>
     <string name="collections_screen_hint_options">Параметры</string>
+    <string name="collections_screen_hint_options_hold_swap_screens">Параметры, удерживайте, чтобы поменять экраны</string>
+    <string name="collections_screen_hint_hold_swap_screens">Удерживайте, чтобы поменять экраны</string>
 
     <string name="collections_detail_loading">Загрузка…</string>
     <string name="collections_detail_hint_search_open">Открыть</string>
@@ -72,6 +74,8 @@
     <string name="collections_detail_hint_swap_screens">Поменять экраны</string>
     <string name="collections_detail_hint_open_hold_options">Открыть, удерживайте для параметров</string>
     <string name="collections_detail_hint_options">Параметры</string>
+    <string name="collections_detail_hint_options_hold_swap_screens">Параметры, удерживайте, чтобы поменять экраны</string>
+    <string name="collections_detail_hint_hold_swap_screens">Удерживайте, чтобы поменять экраны</string>
     <string name="collections_detail_hint_refreshing">Обновление…</string>
     <string name="collections_detail_hint_refresh">Обновить</string>
     <string name="collections_detail_back_description">Назад</string>
@@ -134,6 +138,8 @@
     <string name="collections_category_hint_swap_screens">Поменять экраны</string>
     <string name="collections_category_hint_open_hold_download_all">Открыть, удерживайте, чтобы скачать всё (%1$d)</string>
     <string name="collections_category_hint_download_all">Скачать всё (%1$d)</string>
+    <string name="collections_category_hint_download_all_hold_swap_screens">Скачать всё (%1$d), удерживайте, чтобы поменять экраны</string>
+    <string name="collections_category_hint_hold_swap_screens">Удерживайте, чтобы поменять экраны</string>
     <string name="collections_category_downloadall_confirm_title">Скачать все игры?</string>
     <plurals name="collections_category_downloadall_confirm_message">
         <item quantity="one">На это устройство будет скачана %1$d игра из этой категории.</item>
@@ -163,8 +169,6 @@
     <string name="collections_detail_platform_unknown">Неизвестно</string>
     <string name="collections_category_platform_unknown">Неизвестно</string>
 
-    <string name="collections_widecard_rating_value">%1$d/10</string>
-    <string name="collections_widecard_difficulty_value">%1$d/10</string>
 
     <string name="downloads_empty_title">Нет загрузок</string>
     <string name="downloads_empty_subtitle">Загрузки появятся здесь</string>

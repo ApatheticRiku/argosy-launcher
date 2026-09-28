@@ -71,6 +71,7 @@
     <string name="library_footer_hint_swap_screens">交換螢幕</string>
     <string name="library_footer_hint_details_hold_quick_menu">詳情，長按開啟快速選單</string>
     <string name="library_footer_hint_quick_menu">快速選單</string>
+    <string name="library_footer_hint_quick_menu_hold_swap_screens">快速選單，長按交換螢幕</string>
 
     <string name="library_quickmenu_title">快速操作</string>
     <string name="library_quickmenu_install">安裝</string>
@@ -125,6 +126,7 @@
     <string name="library_apps_hint_swap_screens">交換螢幕</string>
     <string name="library_apps_hint_open_hold_options">開啟，長按查看選項</string>
     <string name="library_apps_hint_options">選項</string>
+    <string name="library_apps_hint_options_hold_swap_screens">選項，長按交換螢幕</string>
     <string name="library_apps_hint_show_apps">顯示應用程式</string>
     <string name="library_apps_hint_show_hidden">顯示已隱藏項目</string>
 

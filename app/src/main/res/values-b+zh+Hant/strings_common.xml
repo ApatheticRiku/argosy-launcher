@@ -842,4 +842,26 @@
     <string name="ui_sibling_member_kind_hack">修改版</string>
     <string name="ui_sibling_member_kind_translation">翻譯版</string>
     <string name="ui_sibling_member_kind_pre_release">預發行版</string>
+
+    <string name="gamelist_row_rating_value">%1$d%%</string>
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <string name="gamelist_row_cd_downloaded">已下載</string>
+    <string name="gamelist_row_cd_download_paused">下載已暫停</string>
+    <string name="gamelist_row_cd_download_queued">下載排隊中</string>
+    <string name="gamelist_row_cd_needs_install">可以安裝</string>
+    <string name="gamelist_row_cd_save_synced">存檔已同步</string>
+    <string name="gamelist_row_cd_save_local_ahead">此裝置上的存檔較新</string>
+    <string name="gamelist_row_cd_save_server_ahead">伺服器上的存檔較新</string>
+    <string name="gamelist_row_cd_save_needs_attention">存檔需要處理</string>
+    <string name="gamelist_row_genre_beat_em_up">清版動作</string>
+    <string name="gamelist_row_genre_rpg">角色扮演</string>
+    <string name="gamelist_row_genre_rts">即時戰略</string>
+    <string name="gamelist_row_genre_tbs">回合策略</string>
+    <string name="gamelist_row_genre_point_and_click">點擊冒險</string>
+    <string name="gamelist_row_genre_board_game">桌遊</string>
+    <string name="gamelist_row_genre_quiz">問答</string>
+    <string name="gamelist_row_genre_sim">模擬</string>
 </resources>

@@ -224,6 +224,9 @@
     <string name="gamedetail_ratings_status_difficulty_unset">सेट नहीं</string>
     <string name="gamedetail_ratings_status_set_status">स्थिति सेट करें</string>
     <string name="gamedetail_ratings_status_status_unset">सेट नहीं</string>
+    <string name="gamedetail_ratings_status_set_progress">प्रगति सेट करें</string>
+    <string name="gamedetail_ratings_status_progress_unset">सेट नहीं</string>
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
     <string name="gamedetail_artwork_title">आर्टवर्क</string>
     <string name="gamedetail_artwork_row_cover">कवर</string>
     <string name="gamedetail_artwork_row_background">बैकग्राउंड</string>
@@ -248,6 +251,8 @@
     <string name="gamedetail_rating_picker_footer_cancel">रद्द करें</string>
     <string name="gamedetail_rating_picker_unset">सेट नहीं</string>
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <string name="gamedetail_rating_picker_title_progress">प्रगति सेट करें</string>
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <!-- ============================= Play options modal ================================ -->
 
@@ -442,6 +447,7 @@
     <string name="gamedetail_notice_rating_saved">रेटिंग सेव हुई</string>
     <string name="gamedetail_notice_difficulty_saved">कठिनाई सेव हुई</string>
     <string name="gamedetail_notice_status_saved">स्थिति सेव हुई</string>
+    <string name="gamedetail_notice_progress_saved">प्रगति सेव हुई</string>
     <string name="gamedetail_notice_no_emulator_for_saves">सेव के लिए एमुलेटर तय नहीं हो सका</string>
     <string name="gamedetail_notice_no_emulator_for_selection">एमुलेटर तय नहीं हो सका</string>
     <string name="gamedetail_notice_no_emulator_for_restore">सेव रीस्टोर के लिए एमुलेटर तय नहीं हो सका</string>

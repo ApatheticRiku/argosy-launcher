@@ -409,6 +409,13 @@ class DisplaySettingsDelegate @Inject constructor(
         setGridDensity(scope, next)
     }
 
+    fun setLibraryLayout(scope: CoroutineScope, layout: com.nendo.argosy.data.preferences.LibraryLayout) {
+        scope.launch {
+            preferencesRepository.setLibraryLayout(layout)
+            _state.update { it.copy(libraryLayout = layout) }
+        }
+    }
+
     fun setUiScale(scope: CoroutineScope, scale: Int) {
         val newValue = scale.coerceIn(50, 150)
         scope.launch {
@@ -768,18 +775,40 @@ class DisplaySettingsDelegate @Inject constructor(
         setLibraryDefaultSource(scope, keys[next])
     }
 
-    fun setLibraryDefaultPlatform(scope: CoroutineScope, name: String) {
+    fun setLibraryDefaultPlatform(scope: CoroutineScope, platformId: Long?) {
         scope.launch {
-            preferencesRepository.setLibraryDefaultPlatform(name)
-            _state.update { it.copy(libraryDefaultPlatform = name) }
+            preferencesRepository.setLibraryDefaultPlatformId(platformId)
+            _state.update { it.copy(libraryDefaultPlatformId = platformId) }
         }
     }
 
-    fun cycleLibraryDefaultPlatform(scope: CoroutineScope, direction: Int, options: List<String>) {
-        if (options.isEmpty()) return
-        val current = options.indexOf(_state.value.libraryDefaultPlatform).coerceAtLeast(0)
-        val next = (current + direction).mod(options.size)
-        setLibraryDefaultPlatform(scope, if (next == 0) "" else options[next])
+    fun cycleLibraryDefaultPlatform(scope: CoroutineScope, direction: Int, tokens: List<Long?>) {
+        if (tokens.isEmpty()) return
+        val current = tokens.indexOf(_state.value.libraryDefaultPlatformId).coerceAtLeast(0)
+        setLibraryDefaultPlatform(scope, tokens[(current + direction).mod(tokens.size)])
+    }
+
+    fun toggleLibraryDefaultRegion(scope: CoroutineScope, region: String) {
+        val current = _state.value.libraryDefaultRegions
+        val updated = if (region in current) current - region else current + region
+        _state.update { it.copy(libraryDefaultRegions = updated) }
+        scope.launch { preferencesRepository.setLibraryDefaultRegions(updated) }
+    }
+
+    fun setLibraryDefaultPlayers(
+        scope: CoroutineScope,
+        bucket: com.nendo.argosy.domain.model.PlayerCountBucket?
+    ) {
+        scope.launch {
+            preferencesRepository.setLibraryDefaultPlayers(bucket)
+            _state.update { it.copy(libraryDefaultPlayers = bucket) }
+        }
+    }
+
+    fun cycleLibraryDefaultPlayers(scope: CoroutineScope, direction: Int) {
+        val tokens = listOf(null) + com.nendo.argosy.domain.model.PlayerCountBucket.entries
+        val current = tokens.indexOf(_state.value.libraryDefaultPlayers).coerceAtLeast(0)
+        setLibraryDefaultPlayers(scope, tokens[(current + direction).mod(tokens.size)])
     }
 
     fun setGradientPreset(scope: CoroutineScope, preset: GradientPreset) {

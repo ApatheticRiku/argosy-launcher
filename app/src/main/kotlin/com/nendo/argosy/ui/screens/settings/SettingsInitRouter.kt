@@ -506,6 +506,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         val adoptedCount = vm.gameRepository.getAdoptedGamesCount()
         val availableSpace = vm.gameRepository.getAvailableStorageBytes()
         val boxArtCapableGames = vm.gameRepository.countBoxArtCapableGames()
+        val libraryRegionOptions = vm.gameRepository.getDistinctRegions()
 
         vm.displayDelegate.updateState(DisplayState(
             themeMode = prefs.themeMode,
@@ -531,6 +532,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             displayFontScale = prefs.displayFontScale,
             bodyFontScale = prefs.bodyFontScale,
             gridDensity = prefs.gridDensity,
+            libraryLayout = prefs.libraryLayout,
             backgroundBlur = prefs.backgroundBlur,
             backgroundSaturation = prefs.backgroundSaturation,
             backgroundOpacity = prefs.backgroundOpacity,
@@ -564,7 +566,10 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             sortInstalledFirst = prefs.sortInstalledFirst,
             sortFavoritesFirst = prefs.sortFavoritesFirst,
             libraryDefaultSource = prefs.libraryDefaultSource,
-            libraryDefaultPlatform = prefs.libraryDefaultPlatform,
+            libraryDefaultPlatformId = prefs.libraryDefaultPlatformId,
+            libraryDefaultRegions = prefs.libraryDefaultRegions,
+            libraryDefaultPlayers = prefs.libraryDefaultPlayers,
+            libraryRegionOptions = libraryRegionOptions,
             videoWallpaperEnabled = prefs.videoWallpaperEnabled,
             videoWallpaperDelaySeconds = prefs.videoWallpaperDelaySeconds,
             videoWallpaperMuted = prefs.videoWallpaperMuted,
@@ -614,7 +619,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             selectLCombo = prefs.selectLCombo,
             selectRCombo = prefs.selectRCombo,
             hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay,
-            menuWrapMode = prefs.menuWrapMode
+            menuWrapMode = prefs.menuWrapMode,
+            selectSwapMode = prefs.selectSwapMode
         ))
         vm.controlsDelegate.refreshUsageStatsPermission()
 

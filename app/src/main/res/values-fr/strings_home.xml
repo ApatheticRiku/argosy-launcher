@@ -33,6 +33,7 @@
     <string name="home_footer_grid_finished">Terminé</string>
     <string name="home_footer_grid_reroll">Relancer</string>
     <string name="home_footer_grid_swap_screens">Inverser les écrans</string>
+    <string name="home_footer_grid_hold_swap_screens">Maintenir pour inverser les écrans</string>
 
     <string name="home_footer_media_section">Section</string>
     <string name="home_footer_media_refresh">Actualiser</string>

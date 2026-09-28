@@ -1725,4 +1725,49 @@
     <string name="ui_sibling_member_kind_translation">Translation</string>
     <!-- Marker on a copy that is a demo, beta or prototype. Noun. -->
     <string name="ui_sibling_member_kind_pre_release">Pre-release</string>
+
+    <!-- === components/gamelist/GameListRow.kt === -->
+    <!-- Community rating on a 0-100 scale beside a globe icon. %1$d is the rating. -->
+    <string name="gamelist_row_rating_value">%1$d%%</string>
+    <!-- The player's own rating out of ten beside a star icon. %1$d is the rating. -->
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <!-- The player's own difficulty rating out of ten beside a flame icon. %1$d is the rating. -->
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <!-- Achievements unlocked out of the total, beside a trophy icon. %1$d earned, %2$d total. -->
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <!-- Time played against the typical main-story length. %1$s is time played (for example
+         "12h"), %2$s is the typical length (for example "30h"). -->
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <!-- Screen reader label for the mark showing the game is on this device. -->
+    <string name="gamelist_row_cd_downloaded">Downloaded</string>
+    <!-- Screen reader label for the mark showing the game's download is paused. -->
+    <string name="gamelist_row_cd_download_paused">Download paused</string>
+    <!-- Screen reader label for the mark showing the game is waiting to download. -->
+    <string name="gamelist_row_cd_download_queued">Download queued</string>
+    <!-- Screen reader label for the mark showing an Android game is downloaded but not installed. -->
+    <string name="gamelist_row_cd_needs_install">Ready to install</string>
+    <!-- Screen reader label: the game's saves match the server. -->
+    <string name="gamelist_row_cd_save_synced">Saves synced</string>
+    <!-- Screen reader label: this device holds a newer save than the server. -->
+    <string name="gamelist_row_cd_save_local_ahead">Newer save on this device</string>
+    <!-- Screen reader label: the server holds a newer save than this device. -->
+    <string name="gamelist_row_cd_save_server_ahead">Newer save on the server</string>
+    <!-- Screen reader label: a save conflict is waiting for the player to resolve. -->
+    <string name="gamelist_row_cd_save_needs_attention">Save needs attention</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Hack and slash/Beat 'em up". -->
+    <string name="gamelist_row_genre_beat_em_up">Beat \'em up</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Role-playing (RPG)". -->
+    <string name="gamelist_row_genre_rpg">RPG</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Real Time Strategy (RTS)". -->
+    <string name="gamelist_row_genre_rts">RTS</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Turn-based strategy (TBS)". -->
+    <string name="gamelist_row_genre_tbs">TBS</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Point-and-click" adventure. -->
+    <string name="gamelist_row_genre_point_and_click">Point &amp; click</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Card & Board Game". -->
+    <string name="gamelist_row_genre_board_game">Board game</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Quiz/Trivia". -->
+    <string name="gamelist_row_genre_quiz">Quiz</string>
+    <!-- Short game genre name on a narrow tab in the game list row. Full genre: "Simulator" (simulation games). -->
+    <string name="gamelist_row_genre_sim">Sim</string>
 </resources>

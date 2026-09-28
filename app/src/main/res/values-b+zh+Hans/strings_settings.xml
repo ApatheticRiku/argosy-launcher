@@ -181,6 +181,10 @@
     <string name="settings_navigation_combo_quick_menu">快捷菜单</string>
     <string name="settings_navigation_combo_quick_settings">快捷设置</string>
     <string name="settings_navigation_combo_none">无</string>
+    <string name="settings_navigation_select_swap_title">交换屏幕</string>
+    <string name="settings_navigation_select_swap_subtitle">选择按下还是长按 Select 来交换屏幕</string>
+    <string name="settings_navigation_select_swap_hold">长按 Select</string>
+    <string name="settings_navigation_select_swap_tap">按下 Select</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -1657,6 +1661,9 @@
     <string name="settings_library_section_layout">布局</string>
     <string name="settings_library_section_defaults">默认设置</string>
 
+    <string name="settings_library_layout_title">布局</string>
+    <string name="settings_library_layout_grid">网格</string>
+    <string name="settings_library_layout_list">列表</string>
     <string name="settings_library_grid_density_title">网格密度</string>
     <string name="settings_library_grid_density_compact">紧凑</string>
     <string name="settings_library_grid_density_normal">正常</string>
@@ -1673,6 +1680,19 @@
 
     <string name="settings_library_default_platform_title">默认平台</string>
     <string name="settings_library_default_source_title">默认筛选</string>
+    <string name="settings_library_default_platform_all">所有平台</string>
+    <string name="settings_library_default_region_title">默认地区</string>
+    <string name="settings_library_default_region_any">任何地区</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="other">%d 个地区</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">游戏库中未找到任何地区</string>
+    <string name="settings_library_default_players_title">默认玩家人数</string>
+    <string name="settings_library_default_players_any">不限</string>
+    <string name="settings_library_default_players_one">1 人及以上</string>
+    <string name="settings_library_default_players_two">2 人及以上</string>
+    <string name="settings_library_default_players_three">3 人及以上</string>
+    <string name="settings_library_default_players_four_plus">4 人及以上</string>
 
     <!-- ===== Hotkeys modal ===== -->
 

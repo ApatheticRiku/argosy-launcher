@@ -245,6 +245,8 @@ data class DisplayState(
     val displayFontScale: Int = 100,
     val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
+    val libraryLayout: com.nendo.argosy.data.preferences.LibraryLayout =
+        com.nendo.argosy.data.preferences.LibraryLayout.GRID,
     val backgroundBlur: Int = 0,
     val backgroundSaturation: Int = 100,
     val backgroundOpacity: Int = 100,
@@ -280,7 +282,10 @@ data class DisplayState(
     val sortInstalledFirst: Boolean = false,
     val sortFavoritesFirst: Boolean = false,
     val libraryDefaultSource: String = "ALL",
-    val libraryDefaultPlatform: String = "",
+    val libraryDefaultPlatformId: Long? = null,
+    val libraryDefaultRegions: Set<String> = emptySet(),
+    val libraryDefaultPlayers: com.nendo.argosy.domain.model.PlayerCountBucket? = null,
+    val libraryRegionOptions: List<String> = emptyList(),
     val videoWallpaperEnabled: Boolean = false,
     val videoWallpaperDelaySeconds: Int = 3,
     val videoWallpaperMuted: Boolean = false,
@@ -343,7 +348,8 @@ data class ControlsState(
     val selectRCombo: String = "quick_settings",
     val hasUsageStatsPermission: Boolean = false,
     val hasSecondaryDisplay: Boolean = false,
-    val menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
+    val menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP,
+    val selectSwapMode: com.nendo.argosy.data.preferences.SelectSwapMode = com.nendo.argosy.data.preferences.SelectSwapMode.HOLD
 )
 
 data class ManagedInstallerRow(

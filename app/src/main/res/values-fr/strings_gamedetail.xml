@@ -228,6 +228,9 @@
     <string name="gamedetail_ratings_status_difficulty_unset">Non définie</string>
     <string name="gamedetail_ratings_status_set_status">Définir le statut</string>
     <string name="gamedetail_ratings_status_status_unset">Non défini</string>
+    <string name="gamedetail_ratings_status_set_progress">Définir la progression</string>
+    <string name="gamedetail_ratings_status_progress_unset">Non définie</string>
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
     <string name="gamedetail_artwork_title">ILLUSTRATIONS</string>
     <string name="gamedetail_artwork_row_cover">Jaquette</string>
     <string name="gamedetail_artwork_row_background">Arrière-plan</string>
@@ -252,6 +255,8 @@
     <string name="gamedetail_rating_picker_footer_cancel">Annuler</string>
     <string name="gamedetail_rating_picker_unset">Non défini</string>
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <string name="gamedetail_rating_picker_title_progress">DÉFINIR LA PROGRESSION</string>
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <!-- ============================= Play options modal ================================ -->
 
@@ -447,6 +452,7 @@
     <string name="gamedetail_notice_rating_saved">Note enregistrée</string>
     <string name="gamedetail_notice_difficulty_saved">Difficulté enregistrée</string>
     <string name="gamedetail_notice_status_saved">Statut enregistré</string>
+    <string name="gamedetail_notice_progress_saved">Progression enregistrée</string>
     <string name="gamedetail_notice_no_emulator_for_saves">Impossible de déterminer l\'émulateur pour les sauvegardes</string>
     <string name="gamedetail_notice_no_emulator_for_selection">Impossible de déterminer l\'émulateur</string>
     <string name="gamedetail_notice_no_emulator_for_restore">Impossible de déterminer l\'émulateur pour la restauration de la sauvegarde</string>

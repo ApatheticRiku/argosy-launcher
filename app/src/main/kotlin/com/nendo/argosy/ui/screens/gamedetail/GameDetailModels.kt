@@ -136,7 +136,27 @@ enum class GameDownloadStatus {
     NEEDS_INSTALL
 }
 
-enum class RatingType { OPINION, DIFFICULTY }
+enum class RatingType(val maxValue: Int, val step: Int) {
+    OPINION(maxValue = 10, step = 1),
+    DIFFICULTY(maxValue = 10, step = 1),
+    PROGRESS(maxValue = 100, step = 5);
+
+    fun clamp(value: Int): Int = value.coerceIn(0, maxValue)
+
+    /**
+     * The next value one step in [direction] (negative lowers, positive raises), landing on a
+     * multiple of [step] so an off-grid value snaps to the grid first. Clamped to 0..[maxValue].
+     */
+    fun stepFrom(current: Int, direction: Int): Int {
+        val base = clamp(current)
+        val next = when {
+            direction > 0 -> (base / step + 1) * step
+            direction < 0 -> if (base % step == 0) base - step else base / step * step
+            else -> base
+        }
+        return clamp(next)
+    }
+}
 
 /**
  * A picture offered in the artwork picker. [source] is either a remote url or an absolute local
@@ -220,6 +240,7 @@ sealed class MoreOptionAction {
     data object RatingsStatus : MoreOptionAction()
     data object RateGame : MoreOptionAction()
     data object SetDifficulty : MoreOptionAction()
+    data object SetProgress : MoreOptionAction()
     data object SetStatus : MoreOptionAction()
     data object ChangeEmulator : MoreOptionAction()
     data object ChangeSteamLauncher : MoreOptionAction()

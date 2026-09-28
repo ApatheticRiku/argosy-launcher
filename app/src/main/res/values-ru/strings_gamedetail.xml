@@ -205,6 +205,9 @@
     <string name="gamedetail_ratings_status_difficulty_unset">Не задано</string>
     <string name="gamedetail_ratings_status_set_status">Задать статус</string>
     <string name="gamedetail_ratings_status_status_unset">Не задано</string>
+    <string name="gamedetail_ratings_status_set_progress">Задать прогресс</string>
+    <string name="gamedetail_ratings_status_progress_unset">Не задано</string>
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
     <string name="gamedetail_artwork_title">ОФОРМЛЕНИЕ</string>
     <string name="gamedetail_artwork_row_cover">Обложка</string>
     <string name="gamedetail_artwork_row_background">Фон</string>
@@ -225,6 +228,8 @@
     <string name="gamedetail_rating_picker_footer_cancel">Отмена</string>
     <string name="gamedetail_rating_picker_unset">Не задано</string>
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <string name="gamedetail_rating_picker_title_progress">ЗАДАТЬ ПРОГРЕСС</string>
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <string name="gamedetail_play_options_title">НАЧАТЬ ИГРУ</string>
     <string name="gamedetail_play_options_section_continue">ПРОДОЛЖИТЬ</string>
@@ -401,6 +406,7 @@
     <string name="gamedetail_notice_rating_saved">Оценка сохранена</string>
     <string name="gamedetail_notice_difficulty_saved">Сложность сохранена</string>
     <string name="gamedetail_notice_status_saved">Статус сохранён</string>
+    <string name="gamedetail_notice_progress_saved">Прогресс сохранён</string>
     <string name="gamedetail_notice_no_emulator_for_saves">Не удалось определить эмулятор для сохранений</string>
     <string name="gamedetail_notice_no_emulator_for_selection">Не удалось определить эмулятор</string>
     <string name="gamedetail_notice_no_emulator_for_restore">Не удалось определить эмулятор для восстановления сохранения</string>

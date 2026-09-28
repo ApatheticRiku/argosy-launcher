@@ -1025,6 +1025,10 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.requestEnumPicker(NavigationItem.MenuWrap.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        NavigationItem.SelectSwap -> {
+            vm.requestEnumPicker(NavigationItem.SelectSwap.key)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         else -> {}
     }
     return InputResult.HANDLED

@@ -1061,6 +1061,11 @@ class SettingsViewModel @Inject constructor(
 
     fun cycleGridDensity(direction: Int = 1) = routeCycleGridDensity(this, direction)
 
+    fun setLibraryLayout(layout: com.nendo.argosy.data.preferences.LibraryLayout) =
+        displayDelegate.setLibraryLayout(viewModelScope, layout)
+
+    fun cycleLibraryLayout(direction: Int = 1) = routeCycleLibraryLayout(this, direction)
+
     fun setUiScale(scale: Int) = displayDelegate.setUiScale(viewModelScope, scale)
 
     fun adjustUiScale(delta: Int) = routeAdjustUiScale(this, delta)
@@ -1317,9 +1322,16 @@ class SettingsViewModel @Inject constructor(
     fun setSortFavoritesFirst(enabled: Boolean) = displayDelegate.setSortFavoritesFirst(viewModelScope, enabled)
     fun setLibraryDefaultSource(source: String) = displayDelegate.setLibraryDefaultSource(viewModelScope, source)
     fun cycleLibraryDefaultSource(direction: Int) = displayDelegate.cycleLibraryDefaultSource(viewModelScope, direction)
-    fun setLibraryDefaultPlatform(name: String) = displayDelegate.setLibraryDefaultPlatform(viewModelScope, name)
-    fun cycleLibraryDefaultPlatform(direction: Int, options: List<String>) =
-        displayDelegate.cycleLibraryDefaultPlatform(viewModelScope, direction, options)
+    fun setLibraryDefaultPlatform(platformId: Long?) =
+        displayDelegate.setLibraryDefaultPlatform(viewModelScope, platformId)
+    fun cycleLibraryDefaultPlatform(direction: Int, tokens: List<Long?>) =
+        displayDelegate.cycleLibraryDefaultPlatform(viewModelScope, direction, tokens)
+    fun toggleLibraryDefaultRegion(region: String) =
+        displayDelegate.toggleLibraryDefaultRegion(viewModelScope, region)
+    fun setLibraryDefaultPlayers(bucket: com.nendo.argosy.domain.model.PlayerCountBucket?) =
+        displayDelegate.setLibraryDefaultPlayers(viewModelScope, bucket)
+    fun cycleLibraryDefaultPlayers(direction: Int) =
+        displayDelegate.cycleLibraryDefaultPlayers(viewModelScope, direction)
     fun navigateToLibraryView() = routeNavigateToLibraryView(this)
     fun setVideoWallpaperEnabled(enabled: Boolean) = displayDelegate.setVideoWallpaperEnabled(viewModelScope, enabled)
     fun cycleVideoWallpaperDelay(direction: Int = 1) = displayDelegate.cycleVideoWallpaperDelay(viewModelScope, direction)
@@ -1424,6 +1436,8 @@ class SettingsViewModel @Inject constructor(
     fun setSelectRCombo(value: String) = controlsDelegate.setSelectRCombo(viewModelScope, value)
     fun cycleMenuWrapMode(direction: Int = 1) = controlsDelegate.cycleMenuWrapMode(viewModelScope, direction)
     fun setMenuWrapMode(mode: com.nendo.argosy.data.preferences.MenuWrapMode) = controlsDelegate.setMenuWrapMode(viewModelScope, mode)
+    fun cycleSelectSwapMode(direction: Int = 1) = controlsDelegate.cycleSelectSwapMode(viewModelScope, direction)
+    fun setSelectSwapMode(mode: com.nendo.argosy.data.preferences.SelectSwapMode) = controlsDelegate.setSelectSwapMode(viewModelScope, mode)
     fun refreshUsageStatsPermission() = controlsDelegate.refreshUsageStatsPermission()
     fun openUsageStatsSettings() = controlsDelegate.openUsageStatsSettings()
     fun openManagedInstallers() = installerDelegate.openScreen(viewModelScope)

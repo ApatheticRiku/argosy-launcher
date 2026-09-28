@@ -423,6 +423,7 @@ class SyncCoordinator @Inject constructor(
                 SyncType.SAVE_STATE -> processSaveState(item, signedInUserId)
                 SyncType.RATING -> processProperty(item, signedInUserId)
                 SyncType.DIFFICULTY -> processProperty(item, signedInUserId)
+                SyncType.COMPLETION -> processProperty(item, signedInUserId)
                 SyncType.STATUS -> processProperty(item, signedInUserId)
                 SyncType.FAVORITE -> processFavorite(item, signedInUserId)
                 SyncType.HIDDEN -> processHidden(item, signedInUserId)
@@ -633,6 +634,7 @@ class SyncCoordinator @Inject constructor(
         val props = RomMUserPropsUpdateData(
             rating = if (item.syncType == SyncType.RATING) payload.intValue else null,
             difficulty = if (item.syncType == SyncType.DIFFICULTY) payload.intValue else null,
+            completion = if (item.syncType == SyncType.COMPLETION) payload.intValue else null,
             status = if (item.syncType == SyncType.STATUS) payload.stringValue else null,
             hidden = null
         )
@@ -668,6 +670,7 @@ class SyncCoordinator @Inject constructor(
                 rommId = item.rommId,
                 userRating = props.rating,
                 userDifficulty = props.difficulty,
+                completion = props.completion,
                 userStatus = props.status,
                 hidden = props.hidden
             )

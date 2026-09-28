@@ -12,7 +12,7 @@ import java.time.temporal.ChronoUnit
 
 private const val NEW_GAME_THRESHOLD_HOURS = 24L
 
-private suspend fun GameEntity.resolveDownloaded(
+internal suspend fun GameEntity.resolveDownloaded(
     downloadStatus: DownloadFileStatusRepository
 ): Boolean = when {
     source == GameSource.ANDROID_APP -> true
@@ -111,7 +111,8 @@ suspend fun GameEntity.toLibraryGameUi(
     isAndroidApp = isAndroidApp,
     emulatorName = emulatorName,
     needsInstall = needsAndroidInstall,
-    isHidden = isHidden
+    isHidden = isHidden,
+    listDetails = listDetails
 )
 
 suspend fun GameListItem.toHomeGameUi(
@@ -128,7 +129,7 @@ suspend fun GameListItem.toHomeGameUi(
         platformDisplayName = platformDisplayName ?: platformSlug,
         coverPath = coverPath,
         backgroundPath = coverPath,
-        developer = null,
+        developer = developer,
         releaseYear = releaseYear,
         genre = genre,
         isFavorite = isFavorite,
@@ -138,11 +139,16 @@ suspend fun GameListItem.toHomeGameUi(
         rating = rating,
         userRating = userRating,
         userDifficulty = userDifficulty,
+        achievementCount = achievementCount,
+        earnedAchievementCount = earnedAchievementCount,
         isAndroidApp = isAndroidApp,
         packageName = packageName,
         needsInstall = needsAndroidInstall,
         isNew = addedAt.isAfter(newThreshold) && lastPlayed == null,
         isHidden = isHidden,
+        status = status,
+        igdbId = igdbId,
+        timeToBeatMainSec = timeToBeatMainSec,
         sortTitle = sortTitle,
         addedAt = addedAt.toEpochMilli(),
         playCount = playCount,
@@ -174,5 +180,6 @@ suspend fun GameListItem.toLibraryGameUi(
     isAndroidApp = isAndroidApp,
     emulatorName = emulatorName,
     needsInstall = needsAndroidInstall,
-    isHidden = isHidden
+    isHidden = isHidden,
+    listDetails = listDetails
 )

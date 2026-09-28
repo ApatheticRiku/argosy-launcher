@@ -626,18 +626,13 @@ class HomeInputHandler(
     }
 
     /**
-     * Swaps which display holds which role, the same meaning Select carries on every home surface.
-     *
-     * A device with one display has no roles to trade, so there the button keeps its older job of
-     * opening the focused game's menu. Holding A reaches that menu on both kinds of device, which
-     * is what keeps the actions on a controller when a second screen claims the press.
+     * Opens the focused game's menu, or swaps which display holds which role when the player chose
+     * a press of Select for the swap. Holding A reaches that menu on every device, which keeps the
+     * actions on a controller when a second screen claims the press.
      */
     override fun onSelect(): InputResult {
-        if (appOverlayOpen()) return InputResult.HANDLED
+        if (selectHeldByOverlay()) return InputResult.HANDLED
         val state = actions.uiState.value
-        if (state.showAddToCollectionModal) return InputResult.HANDLED
-        if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
-        if (state.customGrid.engagedTileId != null) return InputResult.HANDLED
         if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
         if (isCustomGrid(state)) return InputResult.UNHANDLED
         if (state.isMediaRow) return InputResult.HANDLED
@@ -645,6 +640,18 @@ class HomeInputHandler(
             actions.toggleGameMenu()
         }
         return InputResult.HANDLED
+    }
+
+    override fun onLongSelect(): InputResult =
+        if (selectHeldByOverlay()) InputResult.HANDLED else InputResult.UNHANDLED
+
+    private fun selectHeldByOverlay(): Boolean {
+        if (appOverlayOpen()) return true
+        val state = actions.uiState.value
+        return state.showAddToCollectionModal ||
+            state.customGrid.mediaSetup != null ||
+            state.customGrid.featureSetup != null ||
+            state.customGrid.engagedTileId != null
     }
 
     /**

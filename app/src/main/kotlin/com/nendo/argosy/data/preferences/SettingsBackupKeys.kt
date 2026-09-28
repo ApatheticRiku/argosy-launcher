@@ -126,6 +126,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("show_status_battery", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("show_status_network", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("library_default_platform", SettingsBackupType.STRING),
+        SettingsBackupKey("library_default_players", SettingsBackupType.STRING),
+        SettingsBackupKey("library_layout", SettingsBackupType.STRING),
         SettingsBackupKey("library_default_sort", SettingsBackupType.STRING),
         SettingsBackupKey("library_default_sort_desc", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("library_default_source", SettingsBackupType.STRING),
@@ -164,6 +166,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("swap_start_select", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("select_l_combo", SettingsBackupType.STRING),
         SettingsBackupKey("select_r_combo", SettingsBackupType.STRING),
+        SettingsBackupKey("select_swap_mode", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("grip_reserve_mode", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_percent", SettingsBackupType.INT)

@@ -31,7 +31,8 @@ data class ControlsPreferences(
     val gameDetailThemeEnabled: Boolean = false,
     val selectLCombo: String = "quick_menu",
     val selectRCombo: String = "quick_settings",
-    val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP
+    val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
+    val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD
 )
 
 @Singleton
@@ -55,6 +56,7 @@ class ControlsPreferencesRepository @Inject constructor(
         val SELECT_L_COMBO = stringPreferencesKey("select_l_combo")
         val SELECT_R_COMBO = stringPreferencesKey("select_r_combo")
         val MENU_WRAP_MODE = stringPreferencesKey("menu_wrap_mode")
+        val SELECT_SWAP_MODE = stringPreferencesKey("select_swap_mode")
     }
 
     val preferences: Flow<ControlsPreferences> = dataStore.data.map { prefs ->
@@ -74,7 +76,8 @@ class ControlsPreferencesRepository @Inject constructor(
             gameDetailThemeEnabled = prefs[Keys.GAME_DETAIL_THEME] ?: false,
             selectLCombo = prefs[Keys.SELECT_L_COMBO] ?: "quick_menu",
             selectRCombo = prefs[Keys.SELECT_R_COMBO] ?: "quick_settings",
-            menuWrapMode = MenuWrapMode.fromString(prefs[Keys.MENU_WRAP_MODE])
+            menuWrapMode = MenuWrapMode.fromString(prefs[Keys.MENU_WRAP_MODE]),
+            selectSwapMode = SelectSwapMode.fromString(prefs[Keys.SELECT_SWAP_MODE])
         )
     }.flowOn(Dispatchers.Default)
 
@@ -186,6 +189,10 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setMenuWrapMode(mode: MenuWrapMode) {
         dataStore.edit { it[Keys.MENU_WRAP_MODE] = mode.name }
+    }
+
+    suspend fun setSelectSwapMode(mode: SelectSwapMode) {
+        dataStore.edit { it[Keys.SELECT_SWAP_MODE] = mode.name }
     }
 
     private fun parseSoundConfigs(raw: String?): Map<SoundType, SoundConfig> {

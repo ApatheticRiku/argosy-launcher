@@ -400,6 +400,7 @@ class RomMApiClient @Inject constructor(
         rommId: Long,
         userRating: Int? = null,
         userDifficulty: Int? = null,
+        completion: Int? = null,
         userStatus: String? = null,
         hidden: Boolean? = null
     ): Boolean {
@@ -408,6 +409,7 @@ class RomMApiClient @Inject constructor(
             val props = RomMUserPropsUpdateData(
                 rating = userRating,
                 difficulty = userDifficulty,
+                completion = completion,
                 status = userStatus,
                 hidden = hidden
             )

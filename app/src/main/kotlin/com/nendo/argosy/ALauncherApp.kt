@@ -80,6 +80,9 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     lateinit var activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
 
     @Inject
+    lateinit var libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration
+
+    @Inject
     lateinit var apkInstallManager: ApkInstallManager
 
     @Inject
@@ -195,6 +198,7 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         }
         appScope.launch { accountSwitchCoordinator.resumeIfInterrupted() }
         appScope.launch { activeSaveRepository.resetAllActiveSaveApplied() }
+        appScope.launch { libraryDefaultPlatformMigration.run() }
         appScope.launch { autoConnectSteam() }
         appScope.launch { steamContentManager.discoverLocalSteamGames() }
         syncPlatformSortOrders()

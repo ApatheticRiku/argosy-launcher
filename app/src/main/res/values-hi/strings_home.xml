@@ -33,6 +33,7 @@
     <string name="home_footer_grid_finished">पूर्ण</string>
     <string name="home_footer_grid_reroll">फिर से चुनें</string>
     <string name="home_footer_grid_swap_screens">स्क्रीन बदलें</string>
+    <string name="home_footer_grid_hold_swap_screens">स्क्रीन बदलने के लिए दबाए रखें</string>
 
     <string name="home_footer_media_section">सेक्शन</string>
     <string name="home_footer_media_refresh">रीफ्रेश</string>

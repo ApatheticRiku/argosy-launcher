@@ -905,4 +905,26 @@
     <string name="ui_sibling_member_kind_hack">Хак</string>
     <string name="ui_sibling_member_kind_translation">Перевод</string>
     <string name="ui_sibling_member_kind_pre_release">Предрелиз</string>
+
+    <string name="gamelist_row_rating_value">%1$d%%</string>
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <string name="gamelist_row_cd_downloaded">Загружено</string>
+    <string name="gamelist_row_cd_download_paused">Загрузка приостановлена</string>
+    <string name="gamelist_row_cd_download_queued">Загрузка в очереди</string>
+    <string name="gamelist_row_cd_needs_install">Готово к установке</string>
+    <string name="gamelist_row_cd_save_synced">Сохранения синхронизированы</string>
+    <string name="gamelist_row_cd_save_local_ahead">На этом устройстве более новое сохранение</string>
+    <string name="gamelist_row_cd_save_server_ahead">На сервере более новое сохранение</string>
+    <string name="gamelist_row_cd_save_needs_attention">Сохранение требует внимания</string>
+    <string name="gamelist_row_genre_beat_em_up">Beat \'em up</string>
+    <string name="gamelist_row_genre_rpg">RPG</string>
+    <string name="gamelist_row_genre_rts">RTS</string>
+    <string name="gamelist_row_genre_tbs">TBS</string>
+    <string name="gamelist_row_genre_point_and_click">Квест</string>
+    <string name="gamelist_row_genre_board_game">Настольная</string>
+    <string name="gamelist_row_genre_quiz">Викторина</string>
+    <string name="gamelist_row_genre_sim">Симулятор</string>
 </resources>

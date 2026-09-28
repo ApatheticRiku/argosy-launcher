@@ -35,4 +35,5 @@ interface InputHandler {
     fun onLeftStickClick(): InputResult = InputResult.UNHANDLED
     fun onRightStickClick(): InputResult = InputResult.UNHANDLED
     fun onLongConfirm(): InputResult = InputResult.UNHANDLED
+    fun onLongSelect(): InputResult = InputResult.UNHANDLED
 }

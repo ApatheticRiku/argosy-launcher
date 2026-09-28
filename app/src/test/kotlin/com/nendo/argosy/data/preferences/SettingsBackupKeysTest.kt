@@ -85,6 +85,10 @@ class SettingsBackupKeysTest {
         "app_display_targets"
     )
 
+    private val localRowIdsAndSets = setOf(
+        "library_default_platform_id", "library_default_regions"
+    )
+
     private val derivedAndGenerated = setOf(
         "recommendation_penalties", "recommended_game_ids", "last_recommendation_generation",
         "last_penalty_decay_week", "storage_attribution_snapshot", "library_recent_searches",
@@ -98,7 +102,7 @@ class SettingsBackupKeysTest {
     private val excluded: Set<String> =
         credentialsAndIdentity + presenceSharingAndServiceAccounts + syncWatermarksAndResume +
             oneShotAndVersionMarkers + liveSessionState + saveAndStateSafetyGates +
-            filesystemLocations + hardwareAndUnit + perDeviceScreenChoices +
+            filesystemLocations + hardwareAndUnit + perDeviceScreenChoices + localRowIdsAndSets +
             derivedAndGenerated + diagnostics
 
     private val credentialShapes = listOf(

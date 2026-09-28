@@ -186,6 +186,10 @@
     <string name="settings_navigation_combo_quick_menu">Быстрое меню</string>
     <string name="settings_navigation_combo_quick_settings">Быстрые настройки</string>
     <string name="settings_navigation_combo_none">Нет</string>
+    <string name="settings_navigation_select_swap_title">Смена экранов</string>
+    <string name="settings_navigation_select_swap_subtitle">Выберите, меняет ли экраны нажатие или удержание Select</string>
+    <string name="settings_navigation_select_swap_hold">Удерживать Select</string>
+    <string name="settings_navigation_select_swap_tap">Нажать Select</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -1792,6 +1796,9 @@
     <string name="settings_library_section_layout">Раскладка</string>
     <string name="settings_library_section_defaults">По умолчанию</string>
 
+    <string name="settings_library_layout_title">Раскладка</string>
+    <string name="settings_library_layout_grid">Сетка</string>
+    <string name="settings_library_layout_list">Список</string>
     <string name="settings_library_grid_density_title">Плотность сетки</string>
     <string name="settings_library_grid_density_compact">Компактная</string>
     <string name="settings_library_grid_density_normal">Обычная</string>
@@ -1808,6 +1815,22 @@
 
     <string name="settings_library_default_platform_title">Платформа по умолчанию</string>
     <string name="settings_library_default_source_title">Фильтр по умолчанию</string>
+    <string name="settings_library_default_platform_all">Все платформы</string>
+    <string name="settings_library_default_region_title">Регион по умолчанию</string>
+    <string name="settings_library_default_region_any">Любой регион</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d регион</item>
+        <item quantity="few">%d региона</item>
+        <item quantity="many">%d регионов</item>
+        <item quantity="other">%d региона</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">В библиотеке не найдено регионов</string>
+    <string name="settings_library_default_players_title">Игроки по умолчанию</string>
+    <string name="settings_library_default_players_any">Любое</string>
+    <string name="settings_library_default_players_one">1+ игроков</string>
+    <string name="settings_library_default_players_two">2+ игроков</string>
+    <string name="settings_library_default_players_three">3+ игроков</string>
+    <string name="settings_library_default_players_four_plus">4+ игроков</string>
 
     <!-- ===== Hotkeys modal (Settings > components > HotkeysModal) ===== -->
 

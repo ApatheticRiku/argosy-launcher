@@ -195,6 +195,9 @@
     <string name="gamedetail_ratings_status_difficulty_unset">未設定</string>
     <string name="gamedetail_ratings_status_set_status">設定狀態</string>
     <string name="gamedetail_ratings_status_status_unset">未設定</string>
+    <string name="gamedetail_ratings_status_set_progress">設定進度</string>
+    <string name="gamedetail_ratings_status_progress_unset">未設定</string>
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
     <string name="gamedetail_artwork_title">美術圖</string>
     <string name="gamedetail_artwork_row_cover">封面</string>
     <string name="gamedetail_artwork_row_background">背景</string>
@@ -215,6 +218,8 @@
     <string name="gamedetail_rating_picker_footer_cancel">取消</string>
     <string name="gamedetail_rating_picker_unset">未設定</string>
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <string name="gamedetail_rating_picker_title_progress">設定進度</string>
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <string name="gamedetail_play_options_title">開始遊戲</string>
     <string name="gamedetail_play_options_section_continue">繼續</string>
@@ -388,6 +393,7 @@
     <string name="gamedetail_notice_rating_saved">評分已儲存</string>
     <string name="gamedetail_notice_difficulty_saved">難度已儲存</string>
     <string name="gamedetail_notice_status_saved">狀態已儲存</string>
+    <string name="gamedetail_notice_progress_saved">進度已儲存</string>
     <string name="gamedetail_notice_no_emulator_for_saves">無法判斷存檔所使用的模擬器</string>
     <string name="gamedetail_notice_no_emulator_for_selection">無法判斷模擬器</string>
     <string name="gamedetail_notice_no_emulator_for_restore">無法判斷還原存檔所使用的模擬器</string>

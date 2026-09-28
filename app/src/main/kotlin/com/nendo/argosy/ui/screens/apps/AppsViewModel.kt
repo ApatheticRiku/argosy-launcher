@@ -676,6 +676,12 @@ class AppsViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
+        override fun onLongSelect(): InputResult {
+            val state = _uiState.value
+            if (state.isReorderMode || state.showContextMenu) return InputResult.HANDLED
+            return InputResult.UNHANDLED
+        }
+
         override fun onLongConfirm(): InputResult {
             val state = _uiState.value
             if (state.isReorderMode || state.showContextMenu) return InputResult.HANDLED

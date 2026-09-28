@@ -89,6 +89,7 @@
     <string name="library_footer_hint_swap_screens">Поменять экраны</string>
     <string name="library_footer_hint_details_hold_quick_menu">Детали, удерживайте для быстрого меню</string>
     <string name="library_footer_hint_quick_menu">Быстрое меню</string>
+    <string name="library_footer_hint_quick_menu_hold_swap_screens">Быстрое меню, удерживайте, чтобы поменять экраны</string>
 
     <string name="library_quickmenu_title">БЫСТРЫЕ ДЕЙСТВИЯ</string>
     <string name="library_quickmenu_install">Установить</string>
@@ -149,6 +150,7 @@
     <string name="library_apps_hint_swap_screens">Поменять экраны</string>
     <string name="library_apps_hint_open_hold_options">Открыть, удерживайте для параметров</string>
     <string name="library_apps_hint_options">Параметры</string>
+    <string name="library_apps_hint_options_hold_swap_screens">Параметры, удерживайте, чтобы поменять экраны</string>
     <string name="library_apps_hint_show_apps">Показать приложения</string>
     <string name="library_apps_hint_show_hidden">Показать скрытые</string>
 

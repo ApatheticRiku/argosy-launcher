@@ -85,7 +85,8 @@ class VirtualCategoryViewModel @Inject constructor(
     private val refreshAllCollectionsUseCase: RefreshAllCollectionsUseCase,
     private val downloadGameUseCase: DownloadGameUseCase,
     private val notificationManager: NotificationManager,
-    private val positions: VirtualBrowsePositions
+    private val positions: VirtualBrowsePositions,
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
 ) : ViewModel() {
 
     private val type: String = checkNotNull(savedStateHandle["type"])
@@ -135,7 +136,9 @@ class VirtualCategoryViewModel @Inject constructor(
         val sorted = games
             .map { game ->
                 game.toCollectionGameUi(
-                    platformMap[game.platformId] ?: context.getString(R.string.collections_category_platform_unknown)
+                    platformDisplayName = platformMap[game.platformId]
+                        ?: context.getString(R.string.collections_category_platform_unknown),
+                    downloadStatus = downloadFileStatusRepository
                 )
             }
             .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
@@ -405,6 +408,9 @@ class VirtualCategoryViewModel @Inject constructor(
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
             return onLongConfirm()
         }
+
+        override fun onLongSelect(): InputResult =
+            if (uiState.value.downloadAllProgress.isActive) InputResult.HANDLED else InputResult.UNHANDLED
 
         override fun onLongConfirm(): InputResult {
             if (uiState.value.downloadAllProgress.isActive) return InputResult.HANDLED

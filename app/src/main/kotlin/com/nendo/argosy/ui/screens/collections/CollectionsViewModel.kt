@@ -459,6 +459,9 @@ class CollectionsViewModel @Inject constructor(
             return openOptionsForFocused(state)
         }
 
+        override fun onLongSelect(): InputResult =
+            if (uiState.value.showOptionsModal) InputResult.HANDLED else InputResult.UNHANDLED
+
         override fun onLongConfirm(): InputResult {
             val state = uiState.value
             if (state.showOptionsModal) return InputResult.HANDLED

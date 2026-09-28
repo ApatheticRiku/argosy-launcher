@@ -97,6 +97,7 @@ class UserPreferencesRepository @Inject constructor(
             selectLCombo = controls.selectLCombo,
             selectRCombo = controls.selectRCombo,
             menuWrapMode = controls.menuWrapMode,
+            selectSwapMode = controls.selectSwapMode,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -126,12 +127,15 @@ class UserPreferencesRepository @Inject constructor(
             stageDownloadsInternally = storage.stageDownloadsInternally,
             folderNameFromRom = storage.folderNameFromRom,
             gridDensity = display.gridDensity,
+            libraryLayout = display.libraryLayout,
             libraryDefaultSort = display.libraryDefaultSort,
             libraryDefaultSortDescending = display.libraryDefaultSortDescending,
             sortInstalledFirst = display.sortInstalledFirst,
             sortFavoritesFirst = display.sortFavoritesFirst,
             libraryDefaultSource = display.libraryDefaultSource,
-            libraryDefaultPlatform = display.libraryDefaultPlatform,
+            libraryDefaultPlatformId = display.libraryDefaultPlatformId,
+            libraryDefaultRegions = display.libraryDefaultRegions,
+            libraryDefaultPlayers = display.libraryDefaultPlayers,
             soundConfigs = controls.soundConfigs,
             betaUpdatesEnabled = app.betaUpdatesEnabled,
             appLanguage = app.appLanguage,
@@ -267,6 +271,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setCustomFont(slot: FontSlot, path: String?, name: String?) = displayPrefs.setCustomFont(slot, path, name)
     suspend fun setFontScale(slot: FontSlot, scale: Int) = displayPrefs.setFontScale(slot, scale)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
+    suspend fun setLibraryLayout(layout: LibraryLayout) = displayPrefs.setLibraryLayout(layout)
 
     suspend fun setLibraryDefaultSort(option: String, descending: Boolean) =
         displayPrefs.setLibraryDefaultSort(option, descending)
@@ -277,7 +282,16 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setLibraryDefaultSource(source: String) = displayPrefs.setLibraryDefaultSource(source)
 
-    suspend fun setLibraryDefaultPlatform(slug: String) = displayPrefs.setLibraryDefaultPlatform(slug)
+    suspend fun setLibraryDefaultPlatformId(platformId: Long?) =
+        displayPrefs.setLibraryDefaultPlatformId(platformId)
+
+    suspend fun setLibraryDefaultRegions(regions: Set<String>) = displayPrefs.setLibraryDefaultRegions(regions)
+
+    suspend fun setLibraryDefaultPlayers(bucket: com.nendo.argosy.domain.model.PlayerCountBucket?) =
+        displayPrefs.setLibraryDefaultPlayers(bucket)
+
+    suspend fun migrateLegacyDefaultPlatform(idForDisplayName: (String) -> Long?) =
+        displayPrefs.migrateLegacyDefaultPlatform(idForDisplayName)
     suspend fun setUiScale(scale: Int) = displayPrefs.setUiScale(scale)
     suspend fun setGripReserveEnabled(enabled: Boolean) = displayPrefs.setGripReserveEnabled(enabled)
     suspend fun setGripReservePercent(percent: Int) = displayPrefs.setGripReservePercent(percent)
@@ -441,6 +455,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setAmbientAudioShuffle(shuffle: Boolean) = controlsPrefs.setAmbientAudioShuffle(shuffle)
     suspend fun setGameDetailThemeEnabled(enabled: Boolean) = controlsPrefs.setGameDetailThemeEnabled(enabled)
     suspend fun setMenuWrapMode(mode: MenuWrapMode) = controlsPrefs.setMenuWrapMode(mode)
+    suspend fun setSelectSwapMode(mode: SelectSwapMode) = controlsPrefs.setSelectSwapMode(mode)
 
 
     // --- Storage delegates ---
@@ -750,6 +765,7 @@ data class UserPreferences(
     val selectLCombo: String = "quick_menu",
     val selectRCombo: String = "quick_settings",
     val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
+    val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,
@@ -769,12 +785,15 @@ data class UserPreferences(
     val stageDownloadsInternally: Boolean = true,
     val folderNameFromRom: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
+    val libraryLayout: LibraryLayout = LibraryLayout.GRID,
     val libraryDefaultSort: String = "TITLE",
     val libraryDefaultSortDescending: Boolean? = null,
     val sortInstalledFirst: Boolean = false,
     val sortFavoritesFirst: Boolean = false,
     val libraryDefaultSource: String = "ALL",
-    val libraryDefaultPlatform: String = "",
+    val libraryDefaultPlatformId: Long? = null,
+    val libraryDefaultRegions: Set<String> = emptySet(),
+    val libraryDefaultPlayers: com.nendo.argosy.domain.model.PlayerCountBucket? = null,
     val soundConfigs: Map<SoundType, SoundConfig> = emptyMap(),
     val betaUpdatesEnabled: Boolean = false,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
@@ -930,6 +949,15 @@ enum class GridDensity {
     companion object {
         fun fromString(value: String?): GridDensity =
             entries.find { it.name == value } ?: NORMAL
+    }
+}
+
+enum class LibraryLayout {
+    GRID, LIST;
+
+    companion object {
+        fun fromString(value: String?): LibraryLayout =
+            entries.find { it.name == value } ?: GRID
     }
 }
 

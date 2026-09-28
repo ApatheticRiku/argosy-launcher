@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.domain.model.GripAutoControllers
 import com.nendo.argosy.domain.model.ScreenLayouts
@@ -47,12 +48,15 @@ data class DisplayPreferences(
     val displayFontScale: Int = 100,
     val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
+    val libraryLayout: LibraryLayout = LibraryLayout.GRID,
     val libraryDefaultSort: String = "TITLE",
     val libraryDefaultSortDescending: Boolean? = null,
     val sortInstalledFirst: Boolean = false,
     val sortFavoritesFirst: Boolean = false,
     val libraryDefaultSource: String = "ALL",
-    val libraryDefaultPlatform: String = "",
+    val libraryDefaultPlatformId: Long? = null,
+    val libraryDefaultRegions: Set<String> = emptySet(),
+    val libraryDefaultPlayers: com.nendo.argosy.domain.model.PlayerCountBucket? = null,
     val uiScale: Int = 100,
     val gripReserveMode: GripReserveMode = GripReserveMode.OFF,
     val gripReservePercent: Int = 35,
@@ -144,12 +148,16 @@ class DisplayPreferencesRepository @Inject constructor(
         val FONT_DISPLAY_SCALE = intPreferencesKey("font_display_scale")
         val FONT_BODY_SCALE = intPreferencesKey("font_body_scale")
         val UI_DENSITY = stringPreferencesKey("ui_density")
+        val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
         val LIBRARY_DEFAULT_SORT = stringPreferencesKey("library_default_sort")
         val LIBRARY_DEFAULT_SORT_DESC = booleanPreferencesKey("library_default_sort_desc")
         val SORT_INSTALLED_FIRST = booleanPreferencesKey("sort_installed_first")
         val SORT_FAVORITES_FIRST = booleanPreferencesKey("sort_favorites_first")
         val LIBRARY_DEFAULT_SOURCE = stringPreferencesKey("library_default_source")
-        val LIBRARY_DEFAULT_PLATFORM = stringPreferencesKey("library_default_platform")
+        val LIBRARY_DEFAULT_PLATFORM_LEGACY_NAME = stringPreferencesKey("library_default_platform")
+        val LIBRARY_DEFAULT_PLATFORM_ID = longPreferencesKey("library_default_platform_id")
+        val LIBRARY_DEFAULT_REGIONS = stringSetPreferencesKey("library_default_regions")
+        val LIBRARY_DEFAULT_PLAYERS = stringPreferencesKey("library_default_players")
         val UI_SCALE = intPreferencesKey("ui_scale")
         val GRIP_RESERVE_ENABLED = booleanPreferencesKey("grip_reserve_enabled")
         val GRIP_RESERVE_PERCENT = intPreferencesKey("grip_reserve_percent")
@@ -236,12 +244,17 @@ class DisplayPreferencesRepository @Inject constructor(
             displayFontScale = prefs[Keys.FONT_DISPLAY_SCALE] ?: 100,
             bodyFontScale = prefs[Keys.FONT_BODY_SCALE] ?: 100,
             gridDensity = GridDensity.fromString(prefs[Keys.UI_DENSITY]),
+            libraryLayout = LibraryLayout.fromString(prefs[Keys.LIBRARY_LAYOUT]),
             libraryDefaultSort = prefs[Keys.LIBRARY_DEFAULT_SORT] ?: "TITLE",
             libraryDefaultSortDescending = prefs[Keys.LIBRARY_DEFAULT_SORT_DESC],
             sortInstalledFirst = prefs[Keys.SORT_INSTALLED_FIRST] ?: false,
             sortFavoritesFirst = prefs[Keys.SORT_FAVORITES_FIRST] ?: false,
             libraryDefaultSource = prefs[Keys.LIBRARY_DEFAULT_SOURCE] ?: "ALL",
-            libraryDefaultPlatform = prefs[Keys.LIBRARY_DEFAULT_PLATFORM] ?: "",
+            libraryDefaultPlatformId = prefs[Keys.LIBRARY_DEFAULT_PLATFORM_ID],
+            libraryDefaultRegions = prefs[Keys.LIBRARY_DEFAULT_REGIONS].orEmpty(),
+            libraryDefaultPlayers = com.nendo.argosy.domain.model.PlayerCountBucket.fromName(
+                prefs[Keys.LIBRARY_DEFAULT_PLAYERS]
+            ),
             uiScale = prefs[Keys.UI_SCALE] ?: 100,
             gripReserveMode = readGripReserveMode(prefs),
             gripReservePercent = (prefs[Keys.GRIP_RESERVE_PERCENT] ?: 35).coerceIn(10, 40),
@@ -424,6 +437,10 @@ class DisplayPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.UI_DENSITY] = density.name }
     }
 
+    suspend fun setLibraryLayout(layout: LibraryLayout) {
+        dataStore.edit { it[Keys.LIBRARY_LAYOUT] = layout.name }
+    }
+
     suspend fun setLibraryDefaultSort(option: String, descending: Boolean) {
         dataStore.edit {
             it[Keys.LIBRARY_DEFAULT_SORT] = option
@@ -443,8 +460,49 @@ class DisplayPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.LIBRARY_DEFAULT_SOURCE] = source }
     }
 
-    suspend fun setLibraryDefaultPlatform(slug: String) {
-        dataStore.edit { it[Keys.LIBRARY_DEFAULT_PLATFORM] = slug }
+    suspend fun setLibraryDefaultPlatformId(platformId: Long?) {
+        dataStore.edit { prefs ->
+            if (platformId != null) {
+                prefs[Keys.LIBRARY_DEFAULT_PLATFORM_ID] = platformId
+            } else {
+                prefs.remove(Keys.LIBRARY_DEFAULT_PLATFORM_ID)
+            }
+        }
+    }
+
+    suspend fun setLibraryDefaultRegions(regions: Set<String>) {
+        dataStore.edit { prefs ->
+            if (regions.isEmpty()) {
+                prefs.remove(Keys.LIBRARY_DEFAULT_REGIONS)
+            } else {
+                prefs[Keys.LIBRARY_DEFAULT_REGIONS] = regions
+            }
+        }
+    }
+
+    suspend fun setLibraryDefaultPlayers(bucket: com.nendo.argosy.domain.model.PlayerCountBucket?) {
+        dataStore.edit { prefs ->
+            if (bucket != null) {
+                prefs[Keys.LIBRARY_DEFAULT_PLAYERS] = bucket.name
+            } else {
+                prefs.remove(Keys.LIBRARY_DEFAULT_PLAYERS)
+            }
+        }
+    }
+
+    /**
+     * Converts a default platform stored by display name into a stored platform id, then drops the
+     * name so this runs once. A name [idForDisplayName] cannot place becomes no default platform.
+     */
+    suspend fun migrateLegacyDefaultPlatform(idForDisplayName: (String) -> Long?) {
+        dataStore.edit { prefs ->
+            val legacyName = prefs[Keys.LIBRARY_DEFAULT_PLATFORM_LEGACY_NAME] ?: return@edit
+            prefs.remove(Keys.LIBRARY_DEFAULT_PLATFORM_LEGACY_NAME)
+            if (prefs[Keys.LIBRARY_DEFAULT_PLATFORM_ID] != null) return@edit
+            legacyName.takeIf { it.isNotBlank() }
+                ?.let(idForDisplayName)
+                ?.let { prefs[Keys.LIBRARY_DEFAULT_PLATFORM_ID] = it }
+        }
     }
 
     suspend fun setUiScale(scale: Int) {

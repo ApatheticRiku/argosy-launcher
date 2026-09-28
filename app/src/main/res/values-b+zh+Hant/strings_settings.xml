@@ -170,6 +170,10 @@
     <string name="settings_navigation_combo_quick_menu">快速選單</string>
     <string name="settings_navigation_combo_quick_settings">快速設定</string>
     <string name="settings_navigation_combo_none">無</string>
+    <string name="settings_navigation_select_swap_title">交換螢幕</string>
+    <string name="settings_navigation_select_swap_subtitle">選擇按下還是長按 Select 來交換螢幕</string>
+    <string name="settings_navigation_select_swap_hold">長按 Select</string>
+    <string name="settings_navigation_select_swap_tap">按下 Select</string>
 
     <string name="settings_displays_section_screen_safety">螢幕保護</string>
     <string name="settings_displays_section_displays">顯示器</string>
@@ -1575,6 +1579,9 @@
     <string name="settings_library_section_layout">版面配置</string>
     <string name="settings_library_section_defaults">預設值</string>
 
+    <string name="settings_library_layout_title">版面配置</string>
+    <string name="settings_library_layout_grid">格線</string>
+    <string name="settings_library_layout_list">清單</string>
     <string name="settings_library_grid_density_title">格線密度</string>
     <string name="settings_library_grid_density_compact">緊湊</string>
     <string name="settings_library_grid_density_normal">一般</string>
@@ -1591,6 +1598,19 @@
 
     <string name="settings_library_default_platform_title">預設平台</string>
     <string name="settings_library_default_source_title">預設篩選條件</string>
+    <string name="settings_library_default_platform_all">所有平台</string>
+    <string name="settings_library_default_region_title">預設地區</string>
+    <string name="settings_library_default_region_any">任何地區</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="other">%d 個地區</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">遊戲庫中沒有找到任何地區</string>
+    <string name="settings_library_default_players_title">預設玩家人數</string>
+    <string name="settings_library_default_players_any">不限</string>
+    <string name="settings_library_default_players_one">1 人以上</string>
+    <string name="settings_library_default_players_two">2 人以上</string>
+    <string name="settings_library_default_players_three">3 人以上</string>
+    <string name="settings_library_default_players_four_plus">4 人以上</string>
 
     <string name="settings_hotkeys_title">快捷鍵</string>
     <string name="settings_hotkeys_subtitle_default">設定按鍵快捷方式</string>

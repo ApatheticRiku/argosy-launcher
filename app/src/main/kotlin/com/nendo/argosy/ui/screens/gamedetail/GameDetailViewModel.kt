@@ -1369,6 +1369,7 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.RatingsStatus -> showRatingsStatusMenu()
             MoreOptionAction.RateGame -> showRatingPicker(RatingType.OPINION)
             MoreOptionAction.SetDifficulty -> showRatingPicker(RatingType.DIFFICULTY)
+            MoreOptionAction.SetProgress -> showRatingPicker(RatingType.PROGRESS)
             MoreOptionAction.SetStatus -> showStatusPicker()
             MoreOptionAction.ChangeEmulator -> showEmulatorPicker()
             MoreOptionAction.ChangeSteamLauncher -> showSteamLauncherPicker()
@@ -1430,6 +1431,7 @@ class GameDetailViewModel @Inject constructor(
         val currentValue = when (type) {
             RatingType.OPINION -> game.userRating
             RatingType.DIFFICULTY -> game.userDifficulty
+            RatingType.PROGRESS -> game.completion
         }
         moreOptionsDelegate.reset()
         ratingsStatus.showRatingPicker(type, currentValue)
@@ -1454,6 +1456,7 @@ class GameDetailViewModel @Inject constructor(
             0 -> showRatingPicker(RatingType.OPINION)
             1 -> showRatingPicker(RatingType.DIFFICULTY)
             2 -> showStatusPicker()
+            3 -> showRatingPicker(RatingType.PROGRESS)
         }
     }
 
@@ -2767,26 +2770,28 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onSelect(): InputResult {
-            val state = _uiState.value
-            val saveState = state.saveChannel
-            val pickerState = pickerModalDelegate.state.value
-            if (state.reviewEditor != null) { submitReview(); return InputResult.HANDLED }
-            val anyModalOpen = state.showMoreOptions || state.showArtworkMenu || state.showPlayOptions || pickerState.hasAnyPickerOpen || state.showRatingPicker || state.showStatusPicker || state.showMissingDiscPrompt || state.showScreenshotViewer || saveState.isVisible
-            if (anyModalOpen) { dismissAllModals(); return InputResult.HANDLED }
+            if (_uiState.value.reviewEditor != null) { submitReview(); return InputResult.HANDLED }
+            if (hasOpenModal()) { dismissAllModals(); return InputResult.HANDLED }
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
             toggleMoreOptions(); return InputResult.HANDLED
         }
 
+        override fun onLongSelect(): InputResult =
+            if (hasOpenModal()) InputResult.HANDLED else InputResult.UNHANDLED
+
         override fun onLongConfirm(): InputResult {
+            if (hasOpenModal()) return InputResult.handled(SoundType.BOUNDARY)
+            toggleMoreOptions()
+            return InputResult.HANDLED
+        }
+
+        private fun hasOpenModal(): Boolean {
             val state = _uiState.value
             val pickerState = pickerModalDelegate.state.value
-            val anyModalOpen = state.showMoreOptions || state.showArtworkMenu || state.showPlayOptions ||
+            return state.showMoreOptions || state.showArtworkMenu || state.showPlayOptions ||
                 pickerState.hasAnyPickerOpen || state.showRatingPicker || state.showStatusPicker ||
                 state.showMissingDiscPrompt || state.showScreenshotViewer ||
                 state.saveChannel.isVisible || state.reviewEditor != null
-            if (anyModalOpen) return InputResult.handled(SoundType.BOUNDARY)
-            toggleMoreOptions()
-            return InputResult.HANDLED
         }
     }
 }

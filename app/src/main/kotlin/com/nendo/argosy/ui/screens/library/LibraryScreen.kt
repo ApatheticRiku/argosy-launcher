@@ -96,6 +96,7 @@ import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.SourceFilter
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.fastAnimateScrollToItem
 import com.nendo.argosy.ui.components.ActiveFilterChipRow
@@ -400,7 +401,16 @@ fun LibraryScreen(
                                 val columnWidth = (maxWidth - totalSpacing - sidebarWidth) / columnsCount
                                 val cardHeight = columnWidth / aspectRatio
 
-                                if (boxArtStyle.nativeAspectRatio) {
+                                if (uiState.isListLayout) {
+                                    LibraryGameList(
+                                        uiState = uiState,
+                                        viewModel = viewModel,
+                                        sidebarWidth = sidebarWidth,
+                                        headerHeightPx = headerHeightPx,
+                                        footerHeightPx = footerHeightPx,
+                                        onGameSelect = onGameSelect
+                                    )
+                                } else if (boxArtStyle.nativeAspectRatio) {
                                     LibraryMasonryGrid(
                                         uiState = uiState,
                                         viewModel = viewModel,
@@ -1259,7 +1269,8 @@ private fun LibraryFooter(
     showSectionJump: Boolean = false,
     onHintClick: ((InputButton) -> Unit)? = null
 ) {
-    val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+    val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
+    val selectSwapsRoles = selectSwapMode == SelectSwapMode.TAP
     val hints = buildList {
         if (showSectionJump) {
             add(InputButton.LT_RT to stringResource(R.string.library_footer_hint_jump_section))
@@ -1281,7 +1292,11 @@ private fun LibraryFooter(
         add(InputButton.X to stringResource(R.string.library_footer_hint_filter))
         add(
             InputButton.SELECT to stringResource(
-                if (selectSwapsRoles) R.string.library_footer_hint_swap_screens else R.string.library_footer_hint_quick_menu
+                when (selectSwapMode) {
+                    SelectSwapMode.TAP -> R.string.library_footer_hint_swap_screens
+                    SelectSwapMode.HOLD -> R.string.library_footer_hint_quick_menu_hold_swap_screens
+                    null -> R.string.library_footer_hint_quick_menu
+                }
             )
         )
     }
@@ -1292,7 +1307,7 @@ private fun LibraryFooter(
 }
 
 @Composable
-private fun SectionDivider(
+internal fun SectionDivider(
     label: String,
     modifier: Modifier = Modifier
 ) {

@@ -89,6 +89,26 @@ object ColorTokens {
                 val light = Color(0xFF9E9E9E)
             }
         }
+        object RatingTier {
+            object Low {
+                val dark = Color(0xFFEF6C6C)
+                val light = Color(0xFFC62828)
+            }
+            object Mid {
+                val dark = Color(0xFFFFCA5F)
+                val light = Color(0xFFB26A00)
+            }
+            object High {
+                val dark = Color(0xFF6FCF7A)
+                val light = Color(0xFF2E7D32)
+            }
+        }
+        object CompletionBar {
+            object Track {
+                val dark = Color(0xFF2B2D36)
+                val light = Color(0xFFD5D8E0)
+            }
+        }
         object SocialBrand {
             val accent = Color(0xFF6366F1)
         }

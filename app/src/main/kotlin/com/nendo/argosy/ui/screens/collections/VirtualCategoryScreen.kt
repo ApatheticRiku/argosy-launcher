@@ -59,7 +59,7 @@ import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
-import com.nendo.argosy.ui.screens.collections.components.WideGameCard
+import com.nendo.argosy.ui.components.gamelist.GameListRow
 import com.nendo.argosy.ui.theme.Dimens
 
 @Composable
@@ -149,17 +149,13 @@ fun VirtualCategoryScreen(
                             verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
                         ) {
                             itemsIndexed(uiState.games, key = { _, g -> g.id }) { index, game ->
-                                WideGameCard(
+                                GameListRow(
                                     title = game.title,
+                                    platformSlug = game.platformSlug,
                                     platformDisplayName = game.platformDisplayName,
                                     coverPath = game.coverPath,
-                                    developer = game.developer,
-                                    releaseYear = game.releaseYear,
-                                    genre = game.genre,
-                                    userRating = game.userRating,
-                                    userDifficulty = game.userDifficulty,
-                                    achievementCount = game.achievementCount,
-                                    playTimeMinutes = game.playTimeMinutes,
+                                    details = game.details,
+                                    isDownloaded = game.isDownloaded,
                                     isFocused = uiState.focusedIndex == index,
                                     onClick = { onGameClick(game.id) },
                                     onLongClick = { inputHandler.onLongConfirm() }
@@ -184,7 +180,10 @@ fun VirtualCategoryScreen(
             }
         }
 
-        val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+        val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
+        val selectSwapsRoles = selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.TAP
+        val selectHintSwaps = selectSwapsRoles ||
+            (selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.HOLD && !uiState.canDownloadAll)
         FooterHints(
             hints = if (uiState.isSearchActive) {
                 listOf(
@@ -219,10 +218,18 @@ fun VirtualCategoryScreen(
                             if (uiState.isRefreshing) R.string.collections_category_hint_refreshing else R.string.collections_category_hint_refresh
                         )
                     )
-                    if (selectSwapsRoles) {
-                        add(InputButton.SELECT to stringResource(R.string.collections_category_hint_swap_screens))
-                    } else if (uiState.canDownloadAll) {
-                        add(
+                    when {
+                        selectSwapsRoles ->
+                            add(InputButton.SELECT to stringResource(R.string.collections_category_hint_swap_screens))
+                        selectHintSwaps ->
+                            add(InputButton.SELECT to stringResource(R.string.collections_category_hint_hold_swap_screens))
+                        selectSwapMode != null && uiState.canDownloadAll -> add(
+                            InputButton.SELECT to stringResource(
+                                R.string.collections_category_hint_download_all_hold_swap_screens,
+                                uiState.downloadableGamesCount
+                            )
+                        )
+                        uiState.canDownloadAll -> add(
                             InputButton.SELECT to stringResource(
                                 R.string.collections_category_hint_download_all,
                                 uiState.downloadableGamesCount
@@ -237,7 +244,7 @@ fun VirtualCategoryScreen(
                     InputButton.B -> { inputHandler.onBack() }
                     InputButton.X -> { inputHandler.onContextMenu() }
                     InputButton.Y -> { inputHandler.onSecondaryAction() }
-                    InputButton.SELECT -> if (selectSwapsRoles) {
+                    InputButton.SELECT -> if (selectHintSwaps) {
                         com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
                     } else {
                         inputHandler.onSelect()

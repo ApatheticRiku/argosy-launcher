@@ -234,6 +234,65 @@ class SyncCoordinatorProcessQueueTest {
     }
 
     @Test
+    fun `a COMPLETION row pushes only the completion field to RomM`() = runTest {
+        val row = propertyRow(id = 40L, syncType = SyncType.COMPLETION, intValue = 45)
+        coEvery { pendingSyncQueueDao.getPendingByPriorityTier(SyncPriority.PROPERTY) } returns listOf(row)
+        coEvery { romMRepository.updateRomUserProps(any(), any(), any(), any(), any(), any()) } returns true
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) {
+            romMRepository.updateRomUserProps(
+                rommId = 100L,
+                userRating = null,
+                userDifficulty = null,
+                completion = 45,
+                userStatus = null,
+                hidden = null
+            )
+        }
+        coVerify(exactly = 1) { pendingSyncQueueDao.deleteById(40L) }
+    }
+
+    @Test
+    fun `a COMPLETION row of zero clears completion on RomM`() = runTest {
+        val row = propertyRow(id = 41L, syncType = SyncType.COMPLETION, intValue = 0)
+        coEvery { pendingSyncQueueDao.getPendingByPriorityTier(SyncPriority.PROPERTY) } returns listOf(row)
+        coEvery { romMRepository.updateRomUserProps(any(), any(), any(), any(), any(), any()) } returns true
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) {
+            romMRepository.updateRomUserProps(100L, null, null, 0, null, null)
+        }
+    }
+
+    @Test
+    fun `a RATING row never carries a completion value`() = runTest {
+        val row = propertyRow(id = 42L, syncType = SyncType.RATING, intValue = 7)
+        coEvery { pendingSyncQueueDao.getPendingByPriorityTier(SyncPriority.PROPERTY) } returns listOf(row)
+        coEvery { romMRepository.updateRomUserProps(any(), any(), any(), any(), any(), any()) } returns true
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) {
+            romMRepository.updateRomUserProps(100L, 7, null, null, null, null)
+        }
+    }
+
+    @Test
+    fun `a rejected COMPLETION write keeps the row queued`() = runTest {
+        val row = propertyRow(id = 43L, syncType = SyncType.COMPLETION, intValue = 50)
+        coEvery { pendingSyncQueueDao.getPendingByPriorityTier(SyncPriority.PROPERTY) } returns listOf(row)
+        coEvery { romMRepository.updateRomUserProps(any(), any(), any(), any(), any(), any()) } returns false
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) { pendingSyncQueueDao.markFailed(43L, any(), any()) }
+        coVerify(exactly = 0) { pendingSyncQueueDao.deleteById(43L) }
+    }
+
+    @Test
     fun `returns NotConnected when RomM is not connected`() = runTest {
         connectionState.value = ConnectionState.Disconnected
 
@@ -242,6 +301,15 @@ class SyncCoordinatorProcessQueueTest {
         assertTrue(result is SyncCoordinator.ProcessResult.NotConnected)
         coVerify(exactly = 0) { pendingSyncQueueDao.promoteEligibleFailedToPending(any()) }
     }
+
+    private fun propertyRow(id: Long, syncType: SyncType, intValue: Int): PendingSyncQueueEntity =
+        PendingSyncQueueEntity(
+            id = id, gameId = 1L, rommId = 100L,
+            syncType = syncType, priority = SyncPriority.PROPERTY,
+            payloadJson = payloadCodec.encode(PropertyPayload(intValue = intValue)),
+            status = SyncStatus.PENDING,
+            createdAt = Instant.now(), updatedAt = Instant.now(),
+        )
 
     private fun saveFileRow(
         id: Long,

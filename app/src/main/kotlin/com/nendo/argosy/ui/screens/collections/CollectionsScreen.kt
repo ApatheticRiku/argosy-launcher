@@ -213,8 +213,11 @@ fun CollectionsScreen(
         }
 
         Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-            val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+            val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
+            val selectSwapsRoles = selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.TAP
             val hasOptions = uiState.focusedSection == CollectionSection.MY_COLLECTIONS && uiState.focusedCollection != null
+            val selectHintSwaps = selectSwapsRoles ||
+                (selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.HOLD && !hasOptions)
             val baseHints = listOf(
                 InputButton.DPAD to stringResource(R.string.collections_screen_hint_navigate),
                 InputButton.A to stringResource(
@@ -240,6 +243,10 @@ fun CollectionsScreen(
             }
             val selectHints = when {
                 selectSwapsRoles -> listOf(InputButton.SELECT to stringResource(R.string.collections_screen_hint_swap_screens))
+                selectHintSwaps -> listOf(InputButton.SELECT to stringResource(R.string.collections_screen_hint_hold_swap_screens))
+                selectSwapMode != null && hasOptions -> listOf(
+                    InputButton.SELECT to stringResource(R.string.collections_screen_hint_options_hold_swap_screens)
+                )
                 hasOptions -> listOf(InputButton.SELECT to stringResource(R.string.collections_screen_hint_options))
                 else -> emptyList()
             }
@@ -251,7 +258,7 @@ fun CollectionsScreen(
                         InputButton.B -> { inputHandler.onBack() }
                         InputButton.X -> { inputHandler.onContextMenu() }
                         InputButton.Y -> { inputHandler.onSecondaryAction() }
-                        InputButton.SELECT -> if (selectSwapsRoles) {
+                        InputButton.SELECT -> if (selectHintSwaps) {
                             com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
                         } else {
                             inputHandler.onSelect()

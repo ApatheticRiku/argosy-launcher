@@ -8,6 +8,7 @@ import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.sync.SyncCoordinator
+import com.nendo.argosy.data.sync.unsentUserProps
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,6 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "RomMUserPropertyService"
+private const val MAX_COMPLETION = 100
 
 @Singleton
 class RomMUserPropertyService @Inject constructor(
@@ -45,6 +47,19 @@ class RomMUserPropertyService @Inject constructor(
         overlayWriter.updateUserDifficulty(gameId, difficulty)
         val rommId = game.rommId ?: return RomMResult.Success(Unit)
         syncCoordinator.get().queuePropertyChange(gameId, rommId, SyncType.DIFFICULTY, intValue = difficulty)
+        return RomMResult.Success(Unit)
+    }
+
+    /**
+     * Records the user's completion percentage, where 0 means unset. Values outside 0..100 are
+     * clamped, matching the range RomM accepts for `rom_user.completion`.
+     */
+    suspend fun updateCompletion(gameId: Long, completion: Int): RomMResult<Unit> {
+        val game = gameDao.getById(gameId) ?: return RomMResult.Error("Game not found")
+        val value = completion.coerceIn(0, MAX_COMPLETION)
+        overlayWriter.updateCompletion(gameId, value)
+        val rommId = game.rommId ?: return RomMResult.Success(Unit)
+        syncCoordinator.get().queuePropertyChange(gameId, rommId, SyncType.COMPLETION, intValue = value)
         return RomMResult.Success(Unit)
     }
 
@@ -87,14 +102,13 @@ class RomMUserPropertyService @Inject constructor(
             val rom = response.body() ?: return RomMResult.Success(Unit)
             val romUser = rom.romUser ?: return RomMResult.Success(Unit)
 
-            val hasRating = pendingSyncQueueDao.hasPending(gameId, SyncType.RATING)
-            val hasDifficulty = pendingSyncQueueDao.hasPending(gameId, SyncType.DIFFICULTY)
-            val hasStatus = pendingSyncQueueDao.hasPending(gameId, SyncType.STATUS)
+            val unsent = pendingSyncQueueDao.unsentUserProps(gameId, overlayWriter.activeOwnerId())
 
             val current = gameDao.getById(gameId) ?: return RomMResult.Success(Unit)
-            if (!hasRating) overlayWriter.updateUserRating(gameId, romUser.rating)
-            if (!hasDifficulty) overlayWriter.updateUserDifficulty(gameId, romUser.difficulty)
-            if (!hasStatus) overlayWriter.updateStatus(gameId, romUser.status)
+            if (!unsent.keepsLocal(SyncType.RATING)) overlayWriter.updateUserRating(gameId, romUser.rating)
+            if (!unsent.keepsLocal(SyncType.DIFFICULTY)) overlayWriter.updateUserDifficulty(gameId, romUser.difficulty)
+            if (!unsent.keepsLocal(SyncType.COMPLETION)) overlayWriter.updateCompletion(gameId, romUser.completion)
+            if (!unsent.keepsLocal(SyncType.STATUS)) overlayWriter.updateStatus(gameId, romUser.status)
             if (current.backlogged != romUser.backlogged) {
                 overlayWriter.updateBacklogged(gameId, romUser.backlogged)
             }

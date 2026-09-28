@@ -195,6 +195,10 @@
     <string name="settings_navigation_combo_quick_menu">Menú rápido</string>
     <string name="settings_navigation_combo_quick_settings">Ajustes rápidos</string>
     <string name="settings_navigation_combo_none">Ninguno</string>
+    <string name="settings_navigation_select_swap_title">Cambio de pantallas</string>
+    <string name="settings_navigation_select_swap_subtitle">Elige si pulsar o mantener Select cambia las pantallas</string>
+    <string name="settings_navigation_select_swap_hold">Mantener Select</string>
+    <string name="settings_navigation_select_swap_tap">Pulsar Select</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -1757,6 +1761,9 @@
     <string name="settings_library_section_layout">Diseño</string>
     <string name="settings_library_section_defaults">Predeterminados</string>
 
+    <string name="settings_library_layout_title">Diseño</string>
+    <string name="settings_library_layout_grid">Cuadrícula</string>
+    <string name="settings_library_layout_list">Lista</string>
     <string name="settings_library_grid_density_title">Densidad de cuadrícula</string>
     <string name="settings_library_grid_density_compact">Compacta</string>
     <string name="settings_library_grid_density_normal">Normal</string>
@@ -1773,6 +1780,21 @@
 
     <string name="settings_library_default_platform_title">Plataforma predeterminada</string>
     <string name="settings_library_default_source_title">Filtro predeterminado</string>
+    <string name="settings_library_default_platform_all">Todas las plataformas</string>
+    <string name="settings_library_default_region_title">Región predeterminada</string>
+    <string name="settings_library_default_region_any">Cualquier región</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d región</item>
+        <item quantity="many">%d regiones</item>
+        <item quantity="other">%d regiones</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">No hay regiones en tu biblioteca</string>
+    <string name="settings_library_default_players_title">Jugadores predeterminados</string>
+    <string name="settings_library_default_players_any">Cualquiera</string>
+    <string name="settings_library_default_players_one">1+ jugadores</string>
+    <string name="settings_library_default_players_two">2+ jugadores</string>
+    <string name="settings_library_default_players_three">3+ jugadores</string>
+    <string name="settings_library_default_players_four_plus">4+ jugadores</string>
 
     <!-- ===== Hotkeys modal (Settings > components > HotkeysModal) ===== -->
 

@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SyncStatus
 import com.nendo.argosy.data.local.entity.SyncType
+import com.nendo.argosy.data.local.entity.UnsentSyncTypeRow
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -98,8 +99,13 @@ interface PendingSyncQueueDao {
     @Query("SELECT * FROM pending_sync_queue WHERE syncType = :syncType")
     suspend fun getBySyncType(syncType: SyncType): List<PendingSyncQueueEntity>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM pending_sync_queue WHERE gameId = :gameId AND syncType = :syncType AND status = 'PENDING')")
-    suspend fun hasPending(gameId: Long, syncType: SyncType): Boolean
+    @Query("""
+        SELECT DISTINCT gameId, syncType FROM pending_sync_queue
+        WHERE (:gameId IS NULL OR gameId = :gameId)
+          AND (ownerUserId IS :ownerUserId OR ownerUserId IS NULL)
+          AND status IN ('PENDING', 'IN_PROGRESS')
+    """)
+    suspend fun getUnsentSyncTypesForOwnerOrUnowned(ownerUserId: Long?, gameId: Long?): List<UnsentSyncTypeRow>
 
     @Query("""
         SELECT * FROM pending_sync_queue

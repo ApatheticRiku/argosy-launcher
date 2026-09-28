@@ -183,9 +183,17 @@ class RomMRepository @Inject constructor(
         rommId: Long,
         userRating: Int? = null,
         userDifficulty: Int? = null,
+        completion: Int? = null,
         userStatus: String? = null,
         hidden: Boolean? = null
-    ): Boolean = apiClient.updateRomUserProps(rommId, userRating, userDifficulty, userStatus, hidden)
+    ): Boolean = apiClient.updateRomUserProps(
+        rommId = rommId,
+        userRating = userRating,
+        userDifficulty = userDifficulty,
+        completion = completion,
+        userStatus = userStatus,
+        hidden = hidden
+    )
 
     // --- Library Sync ---
 
@@ -241,6 +249,9 @@ class RomMRepository @Inject constructor(
 
     suspend fun updateUserDifficulty(gameId: Long, difficulty: Int): RomMResult<Unit> =
         userPropertyService.updateUserDifficulty(gameId, difficulty)
+
+    suspend fun updateCompletion(gameId: Long, completion: Int): RomMResult<Unit> =
+        userPropertyService.updateCompletion(gameId, completion)
 
     suspend fun updateUserStatus(gameId: Long, status: String?): RomMResult<Unit> =
         userPropertyService.updateUserStatus(gameId, status)

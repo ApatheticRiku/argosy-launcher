@@ -241,7 +241,14 @@ data class GameListItem(
     val userRating: Int,
     val userDifficulty: Int,
     val releaseYear: Int?,
-    val addedAt: Instant
+    val addedAt: Instant,
+    val achievementCount: Int,
+    val earnedAchievementCount: Int,
+    val completion: Int,
+    val status: String?,
+    val developer: String?,
+    val igdbId: Long?,
+    val timeToBeatMainSec: Int?
 ) {
     val isExternallyManaged: Boolean
         get() = steamLauncher != null && steamLauncher != GameEntity.LAUNCHER_UNSPECIFIED

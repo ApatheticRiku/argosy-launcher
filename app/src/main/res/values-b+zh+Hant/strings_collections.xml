@@ -52,6 +52,8 @@
     <string name="collections_screen_hint_swap_screens">交換螢幕</string>
     <string name="collections_screen_hint_select_hold_options">選擇，長按查看選項</string>
     <string name="collections_screen_hint_options">選項</string>
+    <string name="collections_screen_hint_options_hold_swap_screens">選項，長按交換螢幕</string>
+    <string name="collections_screen_hint_hold_swap_screens">長按交換螢幕</string>
 
     <string name="collections_detail_loading">載入中&#8230;</string>
     <string name="collections_detail_hint_search_open">開啟</string>
@@ -66,6 +68,8 @@
     <string name="collections_detail_hint_swap_screens">交換螢幕</string>
     <string name="collections_detail_hint_open_hold_options">開啟，長按查看選項</string>
     <string name="collections_detail_hint_options">選項</string>
+    <string name="collections_detail_hint_options_hold_swap_screens">選項，長按交換螢幕</string>
+    <string name="collections_detail_hint_hold_swap_screens">長按交換螢幕</string>
     <string name="collections_detail_hint_refreshing">重新整理中&#8230;</string>
     <string name="collections_detail_hint_refresh">重新整理</string>
     <string name="collections_detail_back_description">返回</string>
@@ -119,6 +123,8 @@
     <string name="collections_category_hint_swap_screens">交換螢幕</string>
     <string name="collections_category_hint_open_hold_download_all">開啟，長按全部下載 (%1$d)</string>
     <string name="collections_category_hint_download_all">全部下載 (%1$d)</string>
+    <string name="collections_category_hint_download_all_hold_swap_screens">全部下載 (%1$d)，長按交換螢幕</string>
+    <string name="collections_category_hint_hold_swap_screens">長按交換螢幕</string>
     <string name="collections_category_downloadall_confirm_title">下載全部遊戲？</string>
     <plurals name="collections_category_downloadall_confirm_message">
         <item quantity="other">此分類中的 %1$d 個遊戲將下載到本裝置。</item>
@@ -139,8 +145,6 @@
     <string name="collections_detail_platform_unknown">未知</string>
     <string name="collections_category_platform_unknown">未知</string>
 
-    <string name="collections_widecard_rating_value">%1$d/10</string>
-    <string name="collections_widecard_difficulty_value">%1$d/10</string>
 
     <string name="downloads_empty_title">沒有下載項目</string>
     <string name="downloads_empty_subtitle">下載項目將顯示於此</string>

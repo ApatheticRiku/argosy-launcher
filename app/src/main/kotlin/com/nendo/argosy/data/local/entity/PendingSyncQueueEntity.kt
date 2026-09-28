@@ -44,11 +44,17 @@ data class PendingSyncQueueEntity(
     val cacheId: Long? = null
 )
 
+data class UnsentSyncTypeRow(
+    val gameId: Long,
+    val syncType: SyncType
+)
+
 enum class SyncType {
     SAVE_FILE,
     SAVE_STATE,
     RATING,
     DIFFICULTY,
+    COMPLETION,
     STATUS,
     FAVORITE,
     HIDDEN,

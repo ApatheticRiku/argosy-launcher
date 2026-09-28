@@ -38,7 +38,12 @@ import com.nendo.argosy.data.model.SortOption
 import com.nendo.argosy.data.model.computeSections
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.LibraryLayout
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.repository.SaveListStatusRepository
+import com.nendo.argosy.data.social.FriendActivity
+import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.domain.model.SaveListState
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.model.SourceFilter
@@ -105,6 +110,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 
 /**
  * The tabs of the filter modal. Routing runs on the entry itself and on its ordinal, never on the
@@ -237,7 +243,8 @@ data class LibraryGameUi(
     val isAndroidApp: Boolean,
     val emulatorName: String?,
     val needsInstall: Boolean = false,
-    val isHidden: Boolean = false
+    val isHidden: Boolean = false,
+    val listDetails: com.nendo.argosy.ui.common.GameListDetails
 ) {
     val sourceIcon: ImageVector?
         get() = when (source) {
@@ -267,6 +274,9 @@ data class LibraryUiState(
     val quickMenuHasSiblingGroup: Boolean = false,
     val isCustomGridHome: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
+    val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val saveStates: Map<Long, SaveListState> = emptyMap(),
+    val friendsActivity: Map<Int, List<FriendActivity>> = emptyMap(),
     val isLoading: Boolean = true,
     val activeFilters: ActiveFilters = ActiveFilters(),
     val filterOptions: FilterOptions = FilterOptions(),
@@ -327,8 +337,11 @@ data class LibraryUiState(
     val mediaCellCount: Int
         get() = platformCells.count { it.isMedia }
 
+    val isListLayout: Boolean
+        get() = libraryLayout == LibraryLayout.LIST
+
     val columnsCount: Int
-        get() = GridUtils.getGameGridColumns(gridDensity, screenWidthDp)
+        get() = if (isListLayout) 1 else GridUtils.getGameGridColumns(gridDensity, screenWidthDp)
 
     val gridSpacingDp: Int
         get() = GridUtils.getGridSpacingDp(gridDensity)
@@ -451,7 +464,10 @@ class LibraryViewModel @Inject constructor(
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
     private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
-    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate
+    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate,
+    private val socialRepository: SocialRepository,
+    private val saveListStatusRepository: SaveListStatusRepository,
+    private val libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration
 ) : ViewModel() {
 
     val siblingChoiceState = siblingChoice.state
@@ -514,6 +530,7 @@ class LibraryViewModel @Inject constructor(
         loadFilterOptions()
         applyLibraryDefaults()
         observeGridDensity()
+        observeListDecorations()
         observeSyncOverlay()
         observeCollectionModal()
         observeGradientChanges()
@@ -534,18 +551,15 @@ class LibraryViewModel @Inject constructor(
      */
     private fun applyLibraryDefaults() {
         viewModelScope.launch {
+            libraryDefaultPlatformMigration.run()
             val prefs = preferencesRepository.userPreferences.first()
             val option = SortOption.entries.firstOrNull { it.name == prefs.libraryDefaultSort }
                 ?: SortOption.TITLE
             val source = SourceFilter.entries.firstOrNull { it.name == prefs.libraryDefaultSource }
                 ?: SourceFilter.ALL
-            val platforms = prefs.libraryDefaultPlatform
-                .takeIf { it.isNotBlank() }
-                ?.let { name ->
-                    cachedPlatformDisplayNames.entries
-                        .firstOrNull { it.value == name }
-                        ?.let { setOf(PlatformRef(it.key, it.value)) }
-                }
+            val platforms = prefs.libraryDefaultPlatformId
+                ?.let { platformRepository.getById(it) }
+                ?.let { setOf(PlatformRef(it.id, it.getDisplayName())) }
                 ?: emptySet()
             val landsOnGames = explicitDestinationRequested ||
                 source != SourceFilter.ALL ||
@@ -567,7 +581,9 @@ class LibraryViewModel @Inject constructor(
                             } else {
                                 source
                             },
-                            platforms = platforms
+                            platforms = platforms,
+                            regions = prefs.libraryDefaultRegions,
+                            players = prefs.libraryDefaultPlayers
                         )
                     }
                 )
@@ -766,16 +782,41 @@ class LibraryViewModel @Inject constructor(
                 val partitionChanged = partition != sortPartition
                 sortPartition = partition
                 if (partitionChanged) loadGames()
+                if (prefs.libraryLayout == LibraryLayout.LIST) masonryCells = emptyList()
+                val leftList = _uiState.value.isListLayout && prefs.libraryLayout == LibraryLayout.GRID
                 _uiState.update {
                     it.copy(
                         gridDensity = prefs.gridDensity,
+                        libraryLayout = prefs.libraryLayout,
                         recentSearches = prefs.libraryRecentSearches,
                         isCustomGridHome = prefs.homeLayout.selected ==
                             com.nendo.argosy.domain.model.HomeLayoutKind.CUSTOM_GRID
                     )
                 }
+                if (leftList) extractGradientsForVisibleGames(_uiState.value.focusedIndex)
             }
         }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeListDecorations() {
+        preferencesRepository.userPreferences
+            .map { it.libraryLayout }
+            .distinctUntilChanged()
+            .flatMapLatest { layout ->
+                if (layout == LibraryLayout.LIST) {
+                    combine(
+                        saveListStatusRepository.observeWorstByGame(),
+                        socialRepository.friendsActivity
+                    ) { saves, friends -> saves to friends }
+                } else {
+                    flowOf(emptyMap<Long, SaveListState>() to emptyMap<Int, List<FriendActivity>>())
+                }
+            }
+            .onEach { (saves, friends) ->
+                _uiState.update { it.copy(saveStates = saves, friendsActivity = friends) }
+            }
+            .launchIn(viewModelScope)
     }
 
     /**
@@ -972,7 +1013,7 @@ class LibraryViewModel @Inject constructor(
 
     private fun extractGradientsForVisibleGames(focusedIndex: Int) {
         val games = _uiState.value.games
-        if (games.isEmpty()) return
+        if (games.isEmpty() || _uiState.value.isListLayout) return
         val cols = _uiState.value.columnsCount
         val buffer = cols * 3
         val requests = games.map { GameGradientRequest(it.id, it.coverPath) }
@@ -1533,7 +1574,7 @@ class LibraryViewModel @Inject constructor(
             FocusMove.LEFT -> GridDirection.LEFT
             FocusMove.RIGHT -> GridDirection.RIGHT
         }
-        val newIndex = if (masonryCells.isNotEmpty()) {
+        val newIndex = if (masonryCells.isNotEmpty() && !state.isListLayout) {
             navigateMasonry(gridDirection, state.focusedIndex, state.columnsCount, state.games.size)
         } else {
             val rows = GridFocusNavigator.buildGridRows(
@@ -2288,6 +2329,9 @@ class LibraryViewModel @Inject constructor(
             }
             return InputResult.HANDLED
         }
+
+        override fun onLongSelect(): InputResult =
+            if (_uiState.value.showAddToCollectionModal) InputResult.HANDLED else InputResult.UNHANDLED
 
         override fun onLongConfirm(): InputResult {
             if (_uiState.value.isPlatformGrid) return InputResult.handled(SoundType.BOUNDARY)

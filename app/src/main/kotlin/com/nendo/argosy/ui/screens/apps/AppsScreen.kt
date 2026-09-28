@@ -269,7 +269,8 @@ fun AppsScreen(
                 }
             }
 
-            val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+            val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
+            val selectSwapsRoles = selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.TAP
             FooterHints(
                 hints = when {
                     uiState.isReorderMode -> listOf(
@@ -288,7 +289,13 @@ fun AppsScreen(
                             stringResource(R.string.library_apps_hint_reorder)
                         },
                         InputButton.SELECT to stringResource(
-                            if (selectSwapsRoles) R.string.library_apps_hint_swap_screens else R.string.library_apps_hint_options
+                            when (selectSwapMode) {
+                                com.nendo.argosy.data.preferences.SelectSwapMode.TAP ->
+                                    R.string.library_apps_hint_swap_screens
+                                com.nendo.argosy.data.preferences.SelectSwapMode.HOLD ->
+                                    R.string.library_apps_hint_options_hold_swap_screens
+                                null -> R.string.library_apps_hint_options
+                            }
                         ),
                         InputButton.X to if (uiState.showHiddenApps) {
                             stringResource(R.string.library_apps_hint_show_apps)

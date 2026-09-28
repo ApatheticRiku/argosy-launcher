@@ -195,6 +195,9 @@
     <string name="gamedetail_ratings_status_difficulty_unset">未设置</string>
     <string name="gamedetail_ratings_status_set_status">设置状态</string>
     <string name="gamedetail_ratings_status_status_unset">未设置</string>
+    <string name="gamedetail_ratings_status_set_progress">设置进度</string>
+    <string name="gamedetail_ratings_status_progress_unset">未设置</string>
+    <string name="gamedetail_ratings_status_progress_value">%1$d%%</string>
     <string name="gamedetail_artwork_title">美术图</string>
     <string name="gamedetail_artwork_row_cover">封面</string>
     <string name="gamedetail_artwork_row_background">背景</string>
@@ -215,6 +218,8 @@
     <string name="gamedetail_rating_picker_footer_cancel">取消</string>
     <string name="gamedetail_rating_picker_unset">未设置</string>
     <string name="gamedetail_rating_picker_value">%1$d/10</string>
+    <string name="gamedetail_rating_picker_title_progress">设置进度</string>
+    <string name="gamedetail_rating_picker_progress_value">%1$d%%</string>
 
     <string name="gamedetail_play_options_title">开始游戏</string>
     <string name="gamedetail_play_options_section_continue">继续</string>
@@ -388,6 +393,7 @@
     <string name="gamedetail_notice_rating_saved">评分已保存</string>
     <string name="gamedetail_notice_difficulty_saved">难度已保存</string>
     <string name="gamedetail_notice_status_saved">状态已保存</string>
+    <string name="gamedetail_notice_progress_saved">进度已保存</string>
     <string name="gamedetail_notice_no_emulator_for_saves">无法确定用于存档的模拟器</string>
     <string name="gamedetail_notice_no_emulator_for_selection">无法确定模拟器</string>
     <string name="gamedetail_notice_no_emulator_for_restore">无法确定用于恢复存档的模拟器</string>

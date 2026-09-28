@@ -52,6 +52,8 @@
     <string name="collections_screen_hint_swap_screens">交换屏幕</string>
     <string name="collections_screen_hint_select_hold_options">选择，长按查看选项</string>
     <string name="collections_screen_hint_options">选项</string>
+    <string name="collections_screen_hint_options_hold_swap_screens">选项，长按交换屏幕</string>
+    <string name="collections_screen_hint_hold_swap_screens">长按交换屏幕</string>
 
     <string name="collections_detail_loading">加载中&#8230;</string>
     <string name="collections_detail_hint_search_open">打开</string>
@@ -66,6 +68,8 @@
     <string name="collections_detail_hint_swap_screens">交换屏幕</string>
     <string name="collections_detail_hint_open_hold_options">打开，长按查看选项</string>
     <string name="collections_detail_hint_options">选项</string>
+    <string name="collections_detail_hint_options_hold_swap_screens">选项，长按交换屏幕</string>
+    <string name="collections_detail_hint_hold_swap_screens">长按交换屏幕</string>
     <string name="collections_detail_hint_refreshing">正在刷新&#8230;</string>
     <string name="collections_detail_hint_refresh">刷新</string>
     <string name="collections_detail_back_description">返回</string>
@@ -119,6 +123,8 @@
     <string name="collections_category_hint_swap_screens">交换屏幕</string>
     <string name="collections_category_hint_open_hold_download_all">打开，长按全部下载（%1$d）</string>
     <string name="collections_category_hint_download_all">全部下载（%1$d）</string>
+    <string name="collections_category_hint_download_all_hold_swap_screens">全部下载（%1$d），长按交换屏幕</string>
+    <string name="collections_category_hint_hold_swap_screens">长按交换屏幕</string>
     <string name="collections_category_downloadall_confirm_title">下载全部游戏？</string>
     <plurals name="collections_category_downloadall_confirm_message">
         <item quantity="other">此分类中的 %1$d 个游戏将下载到本设备。</item>
@@ -139,8 +145,6 @@
     <string name="collections_detail_platform_unknown">未知</string>
     <string name="collections_category_platform_unknown">未知</string>
 
-    <string name="collections_widecard_rating_value">%1$d/10</string>
-    <string name="collections_widecard_difficulty_value">%1$d/10</string>
 
     <string name="downloads_empty_title">暂无下载</string>
     <string name="downloads_empty_subtitle">下载内容将显示在这里</string>

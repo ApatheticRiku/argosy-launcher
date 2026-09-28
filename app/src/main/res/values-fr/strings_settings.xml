@@ -185,6 +185,10 @@
     <string name="settings_navigation_combo_quick_menu">Menu rapide</string>
     <string name="settings_navigation_combo_quick_settings">Paramètres rapides</string>
     <string name="settings_navigation_combo_none">Aucun</string>
+    <string name="settings_navigation_select_swap_title">Inversion des écrans</string>
+    <string name="settings_navigation_select_swap_subtitle">Choisir si appuyer ou maintenir Select inverse les écrans</string>
+    <string name="settings_navigation_select_swap_hold">Maintenir Select</string>
+    <string name="settings_navigation_select_swap_tap">Appuyer sur Select</string>
 
     <!-- ===== Section Ecrans ===== -->
 
@@ -1747,6 +1751,9 @@
     <string name="settings_library_section_layout">Disposition</string>
     <string name="settings_library_section_defaults">Défauts</string>
 
+    <string name="settings_library_layout_title">Disposition</string>
+    <string name="settings_library_layout_grid">Grille</string>
+    <string name="settings_library_layout_list">Liste</string>
     <string name="settings_library_grid_density_title">Densité de la grille</string>
     <string name="settings_library_grid_density_compact">Compacte</string>
     <string name="settings_library_grid_density_normal">Normale</string>
@@ -1763,6 +1770,21 @@
 
     <string name="settings_library_default_platform_title">Plateforme par défaut</string>
     <string name="settings_library_default_source_title">Filtre par défaut</string>
+    <string name="settings_library_default_platform_all">Toutes les plateformes</string>
+    <string name="settings_library_default_region_title">Région par défaut</string>
+    <string name="settings_library_default_region_any">Toutes les régions</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d région</item>
+        <item quantity="many">%d régions</item>
+        <item quantity="other">%d régions</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">Aucune région trouvée dans votre bibliothèque</string>
+    <string name="settings_library_default_players_title">Joueurs par défaut</string>
+    <string name="settings_library_default_players_any">Tous</string>
+    <string name="settings_library_default_players_one">1 joueur et plus</string>
+    <string name="settings_library_default_players_two">2 joueurs et plus</string>
+    <string name="settings_library_default_players_three">3 joueurs et plus</string>
+    <string name="settings_library_default_players_four_plus">4 joueurs et plus</string>
 
     <!-- ===== Fenetre des raccourcis ===== -->
 

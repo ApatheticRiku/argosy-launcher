@@ -153,8 +153,8 @@ class ArtOverridePrecedenceTest {
     }
 
     @Test
-    fun `collection rows read the cover override`() {
-        val row = game(coverOverridePath = userCover).toCollectionGameUi("SNES")
+    fun `collection rows read the cover override`() = runTest {
+        val row = game(coverOverridePath = userCover).toCollectionGameUi("SNES", downloadStatus)
 
         assertEquals(userCover, row.coverPath)
     }

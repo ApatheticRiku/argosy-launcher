@@ -183,6 +183,10 @@
     <string name="settings_navigation_combo_quick_menu">क्विक मेनू</string>
     <string name="settings_navigation_combo_quick_settings">क्विक सेटिंग्स</string>
     <string name="settings_navigation_combo_none">कुछ नहीं</string>
+    <string name="settings_navigation_select_swap_title">स्क्रीन बदलना</string>
+    <string name="settings_navigation_select_swap_subtitle">चुनें कि Select दबाने या दबाए रखने से स्क्रीन बदलें</string>
+    <string name="settings_navigation_select_swap_hold">Select दबाए रखें</string>
+    <string name="settings_navigation_select_swap_tap">Select दबाएँ</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -1699,6 +1703,9 @@
     <string name="settings_library_section_layout">लेआउट</string>
     <string name="settings_library_section_defaults">डिफ़ॉल्ट</string>
 
+    <string name="settings_library_layout_title">लेआउट</string>
+    <string name="settings_library_layout_grid">ग्रिड</string>
+    <string name="settings_library_layout_list">सूची</string>
     <string name="settings_library_grid_density_title">ग्रिड डेंसिटी</string>
     <string name="settings_library_grid_density_compact">कॉम्पैक्ट</string>
     <string name="settings_library_grid_density_normal">सामान्य</string>
@@ -1715,6 +1722,20 @@
 
     <string name="settings_library_default_platform_title">डिफ़ॉल्ट प्लेटफ़ॉर्म</string>
     <string name="settings_library_default_source_title">डिफ़ॉल्ट फ़िल्टर</string>
+    <string name="settings_library_default_platform_all">सभी प्लेटफ़ॉर्म</string>
+    <string name="settings_library_default_region_title">डिफ़ॉल्ट क्षेत्र</string>
+    <string name="settings_library_default_region_any">कोई भी क्षेत्र</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d क्षेत्र</item>
+        <item quantity="other">%d क्षेत्र</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">आपकी लाइब्रेरी में कोई क्षेत्र नहीं मिला</string>
+    <string name="settings_library_default_players_title">डिफ़ॉल्ट खिलाड़ी</string>
+    <string name="settings_library_default_players_any">कोई भी</string>
+    <string name="settings_library_default_players_one">1+ खिलाड़ी</string>
+    <string name="settings_library_default_players_two">2+ खिलाड़ी</string>
+    <string name="settings_library_default_players_three">3+ खिलाड़ी</string>
+    <string name="settings_library_default_players_four_plus">4+ खिलाड़ी</string>
 
     <!-- ===== Hotkeys modal (Settings > components > HotkeysModal) ===== -->
 

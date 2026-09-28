@@ -160,9 +160,14 @@ LAW: an activity that is NOT hosting must decline to claim.
 The view hierarchy consumes nothing, because the launcher uses no Compose focus for navigation,
 so a forwarded key handed to `super` vanishes silently.
 
-SELECT on Home swaps PRIMARY and PRESENTATION (`HomeInputHandler.onSelect`), gated on a
-dual-screen device WITH a presentation screen. Hold-A opens the game/tile menu, which is where
-SELECT's older job moved. Also reachable from Quick Settings' Swap Displays tile.
+SELECT swaps PRIMARY and PRESENTATION, gated on a dual-screen device WITH a presentation
+screen. The Navigation setting `select_swap_mode` picks the gesture, and
+`ui/dualscreen/RoleSwapInput.kt` is the one reader (`activeSelectSwapMode`). HOLD (default):
+`GamepadInputHandler` defers Select through `SelectModifier`, emits `GamepadEvent.LongSelect`
+after the long-press threshold, and the ArgosyApp fallback swaps; a press keeps the screen's own
+Select action. TAP: screens return Select unhandled (`selectSwapsRoles()`) and the fallback
+swaps. Screens that block Select under an overlay block `onLongSelect` the same way. Hold-A
+opens the game/tile menu on every device. Also reachable from Quick Settings' Swap Displays tile.
 
 Role-state writers: `swapRoles()` toggles, `applyDisplayRoleOverride(override)` sets, and
 `setPrimaryDisplayId` applies a stored layout. While a session is active each one commits only

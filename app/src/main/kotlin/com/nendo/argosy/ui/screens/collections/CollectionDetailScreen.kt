@@ -54,7 +54,7 @@ import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
-import com.nendo.argosy.ui.screens.collections.components.WideGameCard
+import com.nendo.argosy.ui.components.gamelist.GameListRow
 import com.nendo.argosy.ui.screens.collections.dialogs.CollectionOption
 import com.nendo.argosy.ui.screens.collections.dialogs.CollectionOptionsModal
 import com.nendo.argosy.ui.screens.collections.dialogs.DeleteCollectionDialog
@@ -149,17 +149,13 @@ fun CollectionDetailScreen(
                         ) {
                             val hasDialogOpen = uiState.showEditDialog || uiState.showDeleteDialog || uiState.showRemoveGameDialog
                             itemsIndexed(uiState.games, key = { _, g -> g.id }) { index, game ->
-                                WideGameCard(
+                                GameListRow(
                                     title = game.title,
+                                    platformSlug = game.platformSlug,
                                     platformDisplayName = game.platformDisplayName,
                                     coverPath = game.coverPath,
-                                    developer = game.developer,
-                                    releaseYear = game.releaseYear,
-                                    genre = game.genre,
-                                    userRating = game.userRating,
-                                    userDifficulty = game.userDifficulty,
-                                    achievementCount = game.achievementCount,
-                                    playTimeMinutes = game.playTimeMinutes,
+                                    details = game.details,
+                                    isDownloaded = game.isDownloaded,
                                     isFocused = !hasDialogOpen && uiState.focusedIndex == index,
                                     onClick = { onGameClick(game.id) },
                                     onLongClick = { viewModel.handleGameLongPress(index) }
@@ -184,7 +180,10 @@ fun CollectionDetailScreen(
             }
         }
 
-        val selectSwapsRoles = com.nendo.argosy.ui.dualscreen.selectSwapsRolesState()
+        val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
+        val selectSwapsRoles = selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.TAP
+        val selectHintSwaps = selectSwapsRoles ||
+            (selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.HOLD && uiState.collection == null)
         val hints = if (uiState.isSearchActive) {
             listOf(
                 InputButton.A to stringResource(R.string.collections_detail_hint_search_open),
@@ -219,6 +218,10 @@ fun CollectionDetailScreen(
             }
             val optionsHint = when {
                 selectSwapsRoles -> listOf(InputButton.SELECT to stringResource(R.string.collections_detail_hint_swap_screens))
+                selectHintSwaps -> listOf(InputButton.SELECT to stringResource(R.string.collections_detail_hint_hold_swap_screens))
+                selectSwapMode != null && uiState.collection != null -> listOf(
+                    InputButton.SELECT to stringResource(R.string.collections_detail_hint_options_hold_swap_screens)
+                )
                 uiState.collection != null -> listOf(InputButton.SELECT to stringResource(R.string.collections_detail_hint_options))
                 else -> emptyList()
             }
@@ -237,7 +240,7 @@ fun CollectionDetailScreen(
                     InputButton.B -> { inputHandler.onBack() }
                     InputButton.X -> { inputHandler.onContextMenu() }
                     InputButton.Y -> { inputHandler.onSecondaryAction() }
-                    InputButton.SELECT -> if (selectSwapsRoles) {
+                    InputButton.SELECT -> if (selectHintSwaps) {
                         com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
                     } else {
                         inputHandler.onSelect()

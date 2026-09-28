@@ -362,6 +362,13 @@ internal fun routeCycleGridDensity(vm: SettingsViewModel, direction: Int) {
     vm.setGridDensity(densities[nextIndex])
 }
 
+internal fun routeCycleLibraryLayout(vm: SettingsViewModel, direction: Int) {
+    val layouts = com.nendo.argosy.data.preferences.LibraryLayout.entries
+    val current = vm.uiState.value.display.libraryLayout
+    val nextIndex = (layouts.indexOf(current) + direction).mod(layouts.size)
+    vm.setLibraryLayout(layouts[nextIndex])
+}
+
 internal fun routeAdjustUiScale(vm: SettingsViewModel, delta: Int) {
     val current = vm.uiState.value.display.uiScale
     val wouldBe = (current + delta).coerceIn(50, 150)

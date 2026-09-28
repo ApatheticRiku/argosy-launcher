@@ -17,6 +17,7 @@ import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.local.entity.GameDiscEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.InstalledAppResolver
@@ -27,6 +28,8 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.BiosRepository
 import com.nendo.argosy.data.storage.StorageAttributionRepository
 import com.nendo.argosy.data.storage.StorageCategory
+import com.nendo.argosy.data.sync.UnsentUserPropsByGame
+import com.nendo.argosy.data.sync.unsentUserPropsByGame
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -312,7 +315,12 @@ class RomMLibrarySyncService @Inject constructor(
     private suspend fun singleRomScope(): SyncScope {
         val ownerUserId = overlayWriter.activeOwnerId()
         if (ownerUserId != null) overlayWriter.adoptLibraryIfUnclaimed(ownerUserId)
-        return SyncScope(ownerUserId, RomMVisibility.Unavailable, ServerRomIds { null })
+        return SyncScope(
+            ownerUserId = ownerUserId,
+            visibility = RomMVisibility.Unavailable,
+            serverRomIds = ServerRomIds { null },
+            unsentUserProps = pendingSyncQueueDao.unsentUserPropsByGame(ownerUserId)
+        )
     }
 
     private suspend fun doSyncPlatform(platformId: Long): SyncResult {
@@ -761,15 +769,15 @@ class RomMLibrarySyncService @Inject constructor(
         }
     }
 
-    /**
-     * [serverRomIds] resolves to null when the call failed. Null means the pass cannot prove any
-     * rom is gone and every deletion path falls back to the evidence it had before the set existed.
-     */
     private data class SyncScope(
         val ownerUserId: Long?,
         val visibility: RomMVisibility,
-        val serverRomIds: ServerRomIds
+        val serverRomIds: ServerRomIds,
+        val unsentUserProps: UnsentUserPropsByGame
     )
+
+    private suspend fun SyncScope.withFreshUnsentUserProps(): SyncScope =
+        copy(unsentUserProps = pendingSyncQueueDao.unsentUserPropsByGame(ownerUserId))
 
     private suspend fun resolveSyncScope(api: RomMApi): SyncScope {
         val ownerUserId = overlayWriter.activeOwnerId()
@@ -786,7 +794,12 @@ class RomMLibrarySyncService @Inject constructor(
                 }
             }
         }
-        return SyncScope(ownerUserId, visibilityService.fetch(api), identifiers)
+        return SyncScope(
+            ownerUserId = ownerUserId,
+            visibility = visibilityService.fetch(api),
+            serverRomIds = identifiers,
+            unsentUserProps = pendingSyncQueueDao.unsentUserPropsByGame(ownerUserId)
+        )
     }
 
     private suspend fun reconcileOrphans(
@@ -1264,28 +1277,18 @@ class RomMLibrarySyncService @Inject constructor(
         return candidates.filter { it.rommId !in serverRomIds }
     }
 
-    /**
-     * Records the server's rom_user block against the account that fetched it, and re-grants that
-     * account's membership. The block is per user, so writing it onto the library row alone would
-     * publish one account's rating and status to every other account on the device.
-     *
-     * `rom_user.hidden` lands in `user_roms_hidden` rather than on the overlay row: it is the
-     * user's own choice and the peer of the local toggle, not the admin-imposed `serverHidden`.
-     * A local hide that has not been pushed yet wins, or the server would undo it on the next
-     * pass before the queue ever drained.
-     */
     private suspend fun applyRomUserProperties(gameId: Long, rom: RomMRom, scope: SyncScope) {
         val owner = scope.ownerUserId
         if (owner != null) overlayWriter.grantMembership(owner, gameId)
 
         val romUser = rom.romUser ?: return
-        overlayDao.setUserRating(owner, gameId, romUser.rating)
-        overlayDao.setUserDifficulty(owner, gameId, romUser.difficulty)
-        overlayDao.setCompletion(owner, gameId, romUser.completion)
-        overlayDao.setStatus(owner, gameId, romUser.status)
+        val unsent = scope.unsentUserProps.forGame(gameId)
+        if (!unsent.keepsLocal(SyncType.RATING)) overlayDao.setUserRating(owner, gameId, romUser.rating)
+        if (!unsent.keepsLocal(SyncType.DIFFICULTY)) overlayDao.setUserDifficulty(owner, gameId, romUser.difficulty)
+        if (!unsent.keepsLocal(SyncType.COMPLETION)) overlayDao.setCompletion(owner, gameId, romUser.completion)
+        if (!unsent.keepsLocal(SyncType.STATUS)) overlayDao.setStatus(owner, gameId, romUser.status)
         overlayDao.setBacklogged(owner, gameId, romUser.backlogged)
         overlayDao.setNowPlaying(owner, gameId, romUser.nowPlaying)
-
     }
 
     private suspend fun syncGameFiles(gameId: Long, rom: RomMRom, platformSlug: String) {
@@ -1379,6 +1382,7 @@ class RomMLibrarySyncService @Inject constructor(
         filters: SyncFilterPreferences,
         scope: SyncScope
     ): PlatformSyncResult {
+        val platformScope = scope.withFreshUnsentUserProps()
         val batch = RomBatch()
         var offset = 0
         var totalFetched = 0
@@ -1415,7 +1419,7 @@ class RomMLibrarySyncService @Inject constructor(
             for (rom in romsPage.items) {
                 processedRoms++
                 publishGameProgress(storageId, processedRoms, platformTotal ?: totalFetched)
-                syncRomInBatch(rom, filters, scope, batch)
+                syncRomInBatch(rom, filters, platformScope, batch)
             }
 
             if (pageCount < SYNC_PAGE_SIZE) break

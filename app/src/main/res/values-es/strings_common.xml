@@ -900,4 +900,26 @@
     <string name="ui_sibling_member_kind_hack">Hack</string>
     <string name="ui_sibling_member_kind_translation">Traducción</string>
     <string name="ui_sibling_member_kind_pre_release">Versión preliminar</string>
+
+    <string name="gamelist_row_rating_value">%1$d%%</string>
+    <string name="gamelist_row_user_rating_value">%1$d/10</string>
+    <string name="gamelist_row_difficulty_value">%1$d/10</string>
+    <string name="gamelist_row_achievements_value">%1$d/%2$d</string>
+    <string name="gamelist_row_playtime_of_hltb">%1$s / %2$s</string>
+    <string name="gamelist_row_cd_downloaded">Descargado</string>
+    <string name="gamelist_row_cd_download_paused">Descarga en pausa</string>
+    <string name="gamelist_row_cd_download_queued">Descarga en cola</string>
+    <string name="gamelist_row_cd_needs_install">Listo para instalar</string>
+    <string name="gamelist_row_cd_save_synced">Partidas sincronizadas</string>
+    <string name="gamelist_row_cd_save_local_ahead">Partida más reciente en este dispositivo</string>
+    <string name="gamelist_row_cd_save_server_ahead">Partida más reciente en el servidor</string>
+    <string name="gamelist_row_cd_save_needs_attention">La partida requiere atención</string>
+    <string name="gamelist_row_genre_beat_em_up">Beat \'em up</string>
+    <string name="gamelist_row_genre_rpg">RPG</string>
+    <string name="gamelist_row_genre_rts">RTS</string>
+    <string name="gamelist_row_genre_tbs">TBS</string>
+    <string name="gamelist_row_genre_point_and_click">Point &amp; click</string>
+    <string name="gamelist_row_genre_board_game">Juego de mesa</string>
+    <string name="gamelist_row_genre_quiz">Trivia</string>
+    <string name="gamelist_row_genre_sim">Simulación</string>
 </resources>

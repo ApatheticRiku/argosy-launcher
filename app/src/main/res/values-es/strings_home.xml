@@ -33,6 +33,7 @@
     <string name="home_footer_grid_finished">Terminado</string>
     <string name="home_footer_grid_reroll">Volver a elegir</string>
     <string name="home_footer_grid_swap_screens">Cambiar pantallas</string>
+    <string name="home_footer_grid_hold_swap_screens">Mantén para cambiar pantallas</string>
 
     <string name="home_footer_media_section">Sección</string>
     <string name="home_footer_media_refresh">Actualizar</string>

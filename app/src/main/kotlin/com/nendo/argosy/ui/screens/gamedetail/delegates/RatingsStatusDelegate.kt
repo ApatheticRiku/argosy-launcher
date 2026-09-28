@@ -29,6 +29,8 @@ data class RatingsStatusState(
     val ratingsStatusFocusIndex: Int = 0
 )
 
+private const val RATINGS_STATUS_ROW_COUNT = 4
+
 class RatingsStatusDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
     private val romMRepository: RomMRepository,
@@ -78,7 +80,7 @@ class RatingsStatusDelegate @Inject constructor(
 
     fun changeRatingsStatusFocus(delta: Int) {
         _state.update { state ->
-            val newIndex = (state.ratingsStatusFocusIndex + delta).coerceIn(0, 2)
+            val newIndex = (state.ratingsStatusFocusIndex + delta).coerceIn(0, RATINGS_STATUS_ROW_COUNT - 1)
             state.copy(ratingsStatusFocusIndex = newIndex)
         }
     }
@@ -93,15 +95,14 @@ class RatingsStatusDelegate @Inject constructor(
 
     fun getRatingsStatusAction(): Int = _state.value.ratingsStatusFocusIndex
 
-    fun changeRatingValue(delta: Int) {
+    fun changeRatingValue(direction: Int) {
         _state.update { state ->
-            val newValue = (state.ratingPickerValue + delta).coerceIn(0, 10)
-            state.copy(ratingPickerValue = newValue)
+            state.copy(ratingPickerValue = state.ratingPickerType.stepFrom(state.ratingPickerValue, direction))
         }
     }
 
     fun setRatingValue(value: Int) {
-        _state.update { it.copy(ratingPickerValue = value.coerceIn(0, 10)) }
+        _state.update { it.copy(ratingPickerValue = it.ratingPickerType.clamp(value)) }
     }
 
     fun confirmRating(scope: CoroutineScope, gameId: Long, onSuccess: () -> Unit) {
@@ -113,16 +114,17 @@ class RatingsStatusDelegate @Inject constructor(
             val result = when (type) {
                 RatingType.OPINION -> romMRepository.updateUserRating(gameId, value)
                 RatingType.DIFFICULTY -> romMRepository.updateUserDifficulty(gameId, value)
+                RatingType.PROGRESS -> romMRepository.updateCompletion(gameId, value)
             }
 
             when (result) {
                 is com.nendo.argosy.data.remote.romm.RomMResult.Success -> {
-                    val message = if (type == RatingType.OPINION) {
-                        NotificationText.Res(R.string.gamedetail_notice_rating_saved)
-                    } else {
-                        NotificationText.Res(R.string.gamedetail_notice_difficulty_saved)
+                    val message = when (type) {
+                        RatingType.OPINION -> R.string.gamedetail_notice_rating_saved
+                        RatingType.DIFFICULTY -> R.string.gamedetail_notice_difficulty_saved
+                        RatingType.PROGRESS -> R.string.gamedetail_notice_progress_saved
                     }
-                    notificationManager.showSuccess(message)
+                    notificationManager.showSuccess(NotificationText.Res(message))
                     onSuccess()
                 }
                 is com.nendo.argosy.data.remote.romm.RomMResult.Error -> {

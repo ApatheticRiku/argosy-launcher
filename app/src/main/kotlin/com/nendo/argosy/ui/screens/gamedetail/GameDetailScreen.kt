@@ -1266,6 +1266,8 @@ private fun GameDetailModals(
             type = uiState.ratingPickerType,
             value = uiState.ratingPickerValue,
             onValueChange = viewModel::setRatingValue,
+            onAdjust = viewModel::changeRatingValue,
+            onConfirm = viewModel::confirmRating,
             onDismiss = viewModel::dismissRatingPicker
         )
     }

@@ -8,6 +8,7 @@ import com.nendo.argosy.data.model.SortOption
 import com.nendo.argosy.data.model.SourceFilter
 import com.nendo.argosy.domain.model.LibraryLinkFilters
 import com.nendo.argosy.domain.model.PlayerCountBucket
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ import org.junit.Before
 import org.junit.Test
 
 private const val GAME_BOY_ID = 3L
+private const val SNES_ID = 9L
 private const val SNES_NAME = "Super Nintendo"
 private const val GAME_BOY_NAME = "Game Boy"
 
@@ -72,11 +74,12 @@ class LibraryTileFilterArrivalTest {
         every { platformRepository.observeVisiblePlatforms() } returns MutableStateFlow(
             listOf(
                 platform(GAME_BOY_ID, GAME_BOY_NAME),
-                platform(9L, SNES_NAME)
+                platform(SNES_ID, SNES_NAME)
             )
         )
+        coEvery { platformRepository.getById(SNES_ID) } returns platform(SNES_ID, SNES_NAME)
         every { preferences.userPreferences } returns flowOf(
-            UserPreferences(libraryDefaultPlatform = SNES_NAME)
+            UserPreferences(libraryDefaultPlatformId = SNES_ID)
         )
     }
 
@@ -139,6 +142,36 @@ class LibraryTileFilterArrivalTest {
         advanceUntilIdle()
 
         assertEquals(setOf(SNES_NAME), viewModel.platformLabels())
+        assertEquals(setOf(SNES_ID), viewModel.platformIds())
+    }
+
+    @Test
+    fun `the configured default region and players reach the filters`() = runTest(dispatcher) {
+        every { preferences.userPreferences } returns flowOf(
+            UserPreferences(
+                libraryDefaultRegions = setOf("Japan", "USA"),
+                libraryDefaultPlayers = PlayerCountBucket.TWO
+            )
+        )
+        val viewModel = viewModel()
+
+        advanceUntilIdle()
+
+        val filters = viewModel.uiState.value.activeFilters
+        assertEquals(setOf("Japan", "USA"), filters.regions)
+        assertEquals(PlayerCountBucket.TWO, filters.players)
+        assertEquals(emptySet<Long>(), viewModel.platformIds())
+    }
+
+    @Test
+    fun `a default platform that no longer exists applies no platform filter`() = runTest(dispatcher) {
+        every { preferences.userPreferences } returns flowOf(UserPreferences(libraryDefaultPlatformId = 404L))
+        coEvery { platformRepository.getById(404L) } returns null
+        val viewModel = viewModel()
+
+        advanceUntilIdle()
+
+        assertEquals(emptySet<Long>(), viewModel.platformIds())
     }
 
     @Test
@@ -187,7 +220,10 @@ class LibraryTileFilterArrivalTest {
         steamDownloadPromptController = mockk(relaxed = true),
         downloadFileStatusRepository = mockk(relaxed = true),
         emulatorLaunchTargetResolver = mockk(relaxed = true),
-        siblingChoice = mockk(relaxed = true)
+        siblingChoice = mockk(relaxed = true),
+        socialRepository = mockk(relaxed = true),
+        saveListStatusRepository = mockk(relaxed = true),
+        libraryDefaultPlatformMigration = mockk(relaxed = true)
     )
 
     private fun LibraryViewModel.platformIds(): Set<Long> =

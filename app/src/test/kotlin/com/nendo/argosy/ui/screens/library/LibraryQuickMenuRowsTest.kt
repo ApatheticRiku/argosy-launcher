@@ -20,7 +20,8 @@ class LibraryQuickMenuRowsTest {
         isDownloaded = isDownloaded,
         isRommGame = true,
         isAndroidApp = false,
-        emulatorName = null
+        emulatorName = null,
+        listDetails = com.nendo.argosy.ui.common.GameListDetails()
     )
 
     @Test

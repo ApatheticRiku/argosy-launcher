@@ -99,6 +99,21 @@ object ComponentDefaults {
         const val thumbSize = 64
     }
 
+    object GameListRow {
+        const val rowHeight = 84
+        const val footerHeight = 22
+        const val footerSecondTabAlpha = 0.55f
+        const val footerThirdTabAlpha = 0.3f
+        const val focusBorderWidth = 3
+        const val completionBarWidth = 64
+        const val completionBarHeight = 4
+        const val friendAvatarSize = 20
+        const val maxFriendAvatars = 3
+        const val friendOverlapRatio = 0.35f
+        const val estimateFillAlphaDark = 0.35f
+        const val estimateFillAlphaLight = 0.45f
+    }
+
     object VolumeMeter {
         const val height = 12
         const val radius = 2

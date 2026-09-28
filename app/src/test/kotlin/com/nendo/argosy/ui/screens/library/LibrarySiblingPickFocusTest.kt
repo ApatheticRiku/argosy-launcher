@@ -141,7 +141,14 @@ class LibrarySiblingPickFocusTest {
         userRating = 0,
         userDifficulty = 0,
         releaseYear = null,
-        addedAt = Instant.EPOCH
+        addedAt = Instant.EPOCH,
+        achievementCount = 0,
+        earnedAchievementCount = 0,
+        completion = 0,
+        status = null,
+        developer = null,
+        igdbId = null,
+        timeToBeatMainSec = null
     )
 
     private fun viewModel() = LibraryViewModel(
@@ -174,6 +181,9 @@ class LibrarySiblingPickFocusTest {
         steamDownloadPromptController = mockk(relaxed = true),
         downloadFileStatusRepository = mockk(relaxed = true),
         emulatorLaunchTargetResolver = mockk(relaxed = true),
-        siblingChoice = siblingChoice
+        siblingChoice = siblingChoice,
+        socialRepository = mockk(relaxed = true),
+        saveListStatusRepository = mockk(relaxed = true),
+        libraryDefaultPlatformMigration = mockk(relaxed = true)
     )
 }

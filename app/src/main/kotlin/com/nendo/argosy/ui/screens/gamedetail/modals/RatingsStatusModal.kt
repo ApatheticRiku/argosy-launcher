@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.gamedetail.modals
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DonutLarge
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.runtime.Composable
@@ -61,6 +62,17 @@ fun RatingsStatusModal(
                 ?: stringResource(R.string.gamedetail_ratings_status_status_unset),
             isFocused = focusIndex == 2,
             onClick = { onAction(MoreOptionAction.SetStatus) }
+        )
+        OptionItem(
+            icon = Icons.Default.DonutLarge,
+            label = stringResource(R.string.gamedetail_ratings_status_set_progress),
+            value = if (game.completion > 0) {
+                stringResource(R.string.gamedetail_ratings_status_progress_value, game.completion)
+            } else {
+                stringResource(R.string.gamedetail_ratings_status_progress_unset)
+            },
+            isFocused = focusIndex == 3,
+            onClick = { onAction(MoreOptionAction.SetProgress) }
         )
     }
 }

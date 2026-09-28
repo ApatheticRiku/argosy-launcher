@@ -260,6 +260,21 @@ parent owns its discs) was decided against, and removing it is the point. A rom 
 mentioned is removable only once `GET /api/roms/identifiers` agrees it is gone. While the server
 still lists it, absence means it moved platform or the pass failed on it, and the row stays.
 
+If `GET /api/roms/identifiers` fails, the pass cannot prove any rom is gone, and every deletion path
+falls back to the evidence it had without that list.
+
+## User properties from the server
+
+A pass writes each rom's `rom_user` block against the account that fetched it, never onto the
+shared library row, so one account's rating and status stay off other accounts on the device.
+`rom_user.hidden` lands in `user_roms_hidden` as the user's own choice, separate from the
+admin-imposed `serverHidden`.
+
+A local edit that has not reached the server wins over the server's value: hidden, rating,
+difficulty, completion and status each keep their local value while a pending or in-progress
+queue row for that field exists. The pass reads the unsent queue once per platform, so an edit
+made during a long pass is protected from the next platform on.
+
 ## Account-scoped preference keys
 
 `AccountScopedPreferenceKeys` lists the DataStore keys that follow the signed-in RomM account.

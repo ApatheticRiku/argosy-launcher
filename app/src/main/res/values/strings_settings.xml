@@ -403,6 +403,17 @@
     <string name="settings_navigation_combo_quick_settings">Quick Settings</string>
     <!-- Value of those rows: that press does nothing. Pronoun standing for no action. -->
     <string name="settings_navigation_combo_none">None</string>
+    <!-- Row title, shown on devices with two screens. Noun phrase: trading which screen shows
+         the menus and which shows the artwork. -->
+    <string name="settings_navigation_select_swap_title">Screen Swap</string>
+    <!-- Second line of that row. Select is printed on the controller itself; leave it as it is. -->
+    <string name="settings_navigation_select_swap_subtitle">Choose whether pressing or holding Select swaps the screens</string>
+    <!-- Value of that row: holding Select down swaps the screens, and a quick press keeps its
+         usual action. Verb phrase. Select is the button's printed name. -->
+    <string name="settings_navigation_select_swap_hold">Hold Select</string>
+    <!-- Value of that row: a quick press of Select swaps the screens. Verb phrase. Select is the
+         button's printed name. -->
+    <string name="settings_navigation_select_swap_tap">Press Select</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -3211,6 +3222,13 @@
          plural: the starting choices. -->
     <string name="settings_library_section_defaults">Defaults</string>
 
+    <!-- Row title. Noun: whether the library shows games as a grid of covers or as a list of rows. -->
+    <string name="settings_library_layout_title">Layout</string>
+    <!-- Value of that row. Noun: games shown as a grid of cover tiles. -->
+    <string name="settings_library_layout_grid">Grid</string>
+    <!-- Value of that row. Noun: games shown one per row with details beside the cover. -->
+    <string name="settings_library_layout_list">List</string>
+
     <!-- Row title. Noun phrase: how tightly the library packs its game covers. -->
     <string name="settings_library_grid_density_title">Grid Density</string>
     <!-- Value of that row. Adjective: the most covers per screen, smallest tiles. -->
@@ -3241,8 +3259,34 @@
 
     <!-- Row title. Noun phrase: the console whose games the library shows when first opened. -->
     <string name="settings_library_default_platform_title">Default Platform</string>
+    <!-- Value of the Default Platform row when no single platform is chosen. -->
+    <string name="settings_library_default_platform_all">All Platforms</string>
     <!-- Row title. Noun phrase: which slice of the library is shown when it is first opened. -->
     <string name="settings_library_default_source_title">Default Filter</string>
+    <!-- Row title. Noun phrase: the game regions (Japan, USA, Europe...) the library is filtered to
+         when first opened. -->
+    <string name="settings_library_default_region_title">Default Region</string>
+    <!-- Value of that row when no region is chosen, so every region shows. -->
+    <string name="settings_library_default_region_any">Any Region</string>
+    <!-- Value of that row when several regions are chosen. %d is how many. -->
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d region</item>
+        <item quantity="other">%d regions</item>
+    </plurals>
+    <!-- Shown in the region picker when no game in the library carries a region yet. -->
+    <string name="settings_library_default_region_none_available">No regions found in your library</string>
+    <!-- Row title. Noun phrase: the player-count filter the library starts with. -->
+    <string name="settings_library_default_players_title">Default Players</string>
+    <!-- Value of that row when no player-count filter is set. -->
+    <string name="settings_library_default_players_any">Any</string>
+    <!-- Value of that row: games for at least one player. -->
+    <string name="settings_library_default_players_one">1+ Players</string>
+    <!-- Value of that row: games for at least two players. -->
+    <string name="settings_library_default_players_two">2+ Players</string>
+    <!-- Value of that row: games for at least three players. -->
+    <string name="settings_library_default_players_three">3+ Players</string>
+    <!-- Value of that row: games for four or more players. -->
+    <string name="settings_library_default_players_four_plus">4+ Players</string>
 
     <!-- ===== Hotkeys modal (Settings > components > HotkeysModal) ===== -->
 

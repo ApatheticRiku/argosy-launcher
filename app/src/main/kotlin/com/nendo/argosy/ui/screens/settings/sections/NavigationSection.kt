@@ -14,6 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.MenuWrapMode
+import com.nendo.argosy.data.preferences.SelectSwapMode
+import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
@@ -60,6 +62,11 @@ internal sealed class NavigationItem(
     data object MenuWrap : NavigationItem("menuWrap", "menus")
     data object SelectLCombo : NavigationItem("selectLCombo", "menus")
     data object SelectRCombo : NavigationItem("selectRCombo", "menus")
+    data object SelectSwap : NavigationItem(
+        key = "selectSwap",
+        section = "menus",
+        visibleWhen = { it.hasSecondaryDisplay }
+    )
 
     companion object {
         private val ControllerHeader =
@@ -76,7 +83,7 @@ internal sealed class NavigationItem(
                 FeedbackSpacer, FeedbackHeader,
                 HapticFeedback, VibrationStrength,
                 MenusSpacer, MenusHeader,
-                MenuWrap, SelectLCombo, SelectRCombo
+                MenuWrap, SelectLCombo, SelectRCombo, SelectSwap
             )
     }
 }
@@ -114,10 +121,10 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val controls = uiState.controls
     val context = LocalContext.current
 
-    val visibleItems = remember(controls.hapticEnabled, controls.vibrationSupported) {
+    val visibleItems = remember(controls.hapticEnabled, controls.vibrationSupported, controls.hasSecondaryDisplay) {
         navigationLayout.visibleItems(controls)
     }
-    val sections = remember(controls.hapticEnabled, controls.vibrationSupported, context) {
+    val sections = remember(controls.hapticEnabled, controls.vibrationSupported, controls.hasSecondaryDisplay, context) {
         navigationLayout.buildSections(controls, context)
     }
 
@@ -260,6 +267,20 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     }
                 },
                 onSelect = { viewModel.setSelectRCombo(ControlsSettingsDelegate.COMBO_CYCLE[it]) },
+                pickerRequestToken = pickerToken(item)
+            )
+
+            NavigationItem.SelectSwap -> CyclePreference(
+                title = stringResource(R.string.settings_navigation_select_swap_title),
+                value = stringResource(controls.selectSwapMode.labelRes),
+                subtitle = stringResource(R.string.settings_navigation_select_swap_subtitle),
+                isFocused = isFocused(item),
+                onClick = { viewModel.cycleSelectSwapMode() },
+                onPrev = { viewModel.cycleSelectSwapMode(-1) },
+                options = remember(context) {
+                    SelectSwapMode.entries.map { context.getString(it.labelRes) }
+                },
+                onSelect = { viewModel.setSelectSwapMode(SelectSwapMode.entries[it]) },
                 pickerRequestToken = pickerToken(item)
             )
 

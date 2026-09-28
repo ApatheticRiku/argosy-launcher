@@ -33,6 +33,7 @@
     <string name="home_footer_grid_finished">Пройдено</string>
     <string name="home_footer_grid_reroll">Перевыбрать</string>
     <string name="home_footer_grid_swap_screens">Поменять экраны</string>
+    <string name="home_footer_grid_hold_swap_screens">Удерживайте, чтобы поменять экраны</string>
 
     <string name="home_footer_media_section">Раздел</string>
     <string name="home_footer_media_refresh">Обновить</string>

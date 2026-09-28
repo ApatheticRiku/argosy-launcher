@@ -193,6 +193,10 @@
     <string name="settings_navigation_combo_quick_menu">Schnellmenü</string>
     <string name="settings_navigation_combo_quick_settings">Schnelleinstellungen</string>
     <string name="settings_navigation_combo_none">Keine</string>
+    <string name="settings_navigation_select_swap_title">Bildschirmtausch</string>
+    <string name="settings_navigation_select_swap_subtitle">Wähle, ob Drücken oder Halten von Select die Bildschirme tauscht</string>
+    <string name="settings_navigation_select_swap_hold">Select halten</string>
+    <string name="settings_navigation_select_swap_tap">Select drücken</string>
 
     <!-- ===== Displays section ===== -->
 
@@ -1709,6 +1713,9 @@
     <string name="settings_library_section_layout">Layout</string>
     <string name="settings_library_section_defaults">Standards</string>
 
+    <string name="settings_library_layout_title">Layout</string>
+    <string name="settings_library_layout_grid">Raster</string>
+    <string name="settings_library_layout_list">Liste</string>
     <string name="settings_library_grid_density_title">Rasterdichte</string>
     <string name="settings_library_grid_density_compact">Kompakt</string>
     <string name="settings_library_grid_density_normal">Normal</string>
@@ -1725,6 +1732,20 @@
 
     <string name="settings_library_default_platform_title">Standardplattform</string>
     <string name="settings_library_default_source_title">Standardfilter</string>
+    <string name="settings_library_default_platform_all">Alle Plattformen</string>
+    <string name="settings_library_default_region_title">Standardregion</string>
+    <string name="settings_library_default_region_any">Jede Region</string>
+    <plurals name="settings_library_default_region_count">
+        <item quantity="one">%d Region</item>
+        <item quantity="other">%d Regionen</item>
+    </plurals>
+    <string name="settings_library_default_region_none_available">Keine Regionen in deiner Bibliothek gefunden</string>
+    <string name="settings_library_default_players_title">Standard-Spielerzahl</string>
+    <string name="settings_library_default_players_any">Beliebig</string>
+    <string name="settings_library_default_players_one">1+ Spieler</string>
+    <string name="settings_library_default_players_two">2+ Spieler</string>
+    <string name="settings_library_default_players_three">3+ Spieler</string>
+    <string name="settings_library_default_players_four_plus">4+ Spieler</string>
 
     <!-- ===== Hotkeys modal (Settings > components > HotkeysModal) ===== -->
 
