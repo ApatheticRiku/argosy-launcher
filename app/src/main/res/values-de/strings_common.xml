@@ -398,6 +398,12 @@
     <string name="ui_page_chooser_music_soundtracks_header">Ihre Soundtracks</string>
 
     <string name="ui_custom_grid_add_page">Seite hinzufügen</string>
+    <string name="ui_custom_grid_hidden_tiles_title">Ausgeblendete Kacheln</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">Unbenannte Kachel</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d ausgeblendet</item>
+        <item quantity="other">%d ausgeblendet</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">Verschieben</string>
     <string name="ui_custom_grid_edit_resize">Größe ändern</string>
     <string name="ui_custom_grid_confirm_play">Spielen</string>
@@ -518,7 +524,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">Durch die gesamte Bibliothek einer Plattform scrollen, statt bei \"Alle anzeigen\" zu stoppen</string>
     <string name="ui_home_layout_carousel_box_art">3D-Box-Art</string>
     <string name="ui_home_layout_auto_grid_box_art">3D-Box-Art</string>
-    <string name="ui_home_layout_custom_grid_lanes">Zellen (Breite)</string>
+    <string name="ui_home_layout_custom_grid_columns">Spalten</string>
+    <string name="ui_home_layout_custom_grid_rows">Zeilen</string>
     <string name="ui_home_layout_custom_grid_auto_add">Neue Downloads hinzufügen</string>
     <string name="ui_home_layout_custom_grid_empty_slots">Leere Felder anzeigen</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">Zellen umranden, auf denen nichts liegt</string>
@@ -526,8 +533,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">Eine hinzugefügte Seite bleibt bestehen, auch wenn sie leer ist</string>
     <string name="ui_home_layout_custom_grid_auto_fit">Zellen automatisch anpassen</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">Verschiebt oder verkleinert Kacheln, auf die platziert wird, statt die Platzierung abzulehnen</string>
-    <string name="ui_home_layout_custom_grid_match_screens">Beide Bildschirme angleichen</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">Gleiche Spaltenzahl auf beiden Bildschirmen, auf dem breiteren zentriert</string>
     <string name="ui_home_layout_rail_libraries">Medienbibliotheken</string>
     <string name="ui_home_layout_rail_libraries_subtitle">Eine Zeile für jede Bibliothek auf Ihrem Medienserver</string>
     <string name="ui_home_layout_rail_continue_watching">Weiterschauen</string>

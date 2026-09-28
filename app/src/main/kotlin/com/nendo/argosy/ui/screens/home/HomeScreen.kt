@@ -95,6 +95,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.text.style.TextAlign
@@ -781,10 +782,8 @@ fun HomeScreen(
                             com.nendo.argosy.ui.components.CustomGridSurface(
                                 state = uiState.customGrid,
                                 contentFor = { tile -> uiState.tileContentFor(tile, context) },
-                                laneCount = uiState.customGridConfig.laneCount,
-                                peerScreen = com.nendo.argosy.ui.dualscreen.rememberShowcaseScreenSize(
-                                    uiState.customGridConfig.matchOtherScreen
-                                ),
+                                columns = uiState.customGridConfig.columns,
+                                rows = uiState.customGridConfig.rows,
                                 showCursor = !uiState.appBarFocused,
                                 onCellTap = { cell ->
                                     val grid = uiState.customGrid
@@ -808,10 +807,9 @@ fun HomeScreen(
                                     viewModel.rememberTilePlaybackPosition(path, position)
                                 },
                                 showEmptySlots = uiState.customGridConfig.showEmptySlots,
-                                onShapeResolved = { columns, rows ->
-                                    viewModel.setCustomGridShape(columns, rows)
-                                },
+                                onShapeResolved = viewModel::setCustomGridShape,
                                 onAddPage = { viewModel.confirmAddPage() },
+                                onHiddenTilesTap = viewModel::openHiddenCustomGridTiles,
                                 onTileLongPress = { cell ->
                                     viewModel.setCustomGridCell(cell)
                                     viewModel.openTileMenu()
@@ -1010,7 +1008,7 @@ fun HomeScreen(
                                     stringResource(R.string.home_footer_grid_edit_cancel)
                             )
                             else -> buildList {
-                                add(InputButton.LB_RB to gridPageLabel)
+                                if (!grid.isScrolling) add(InputButton.LB_RB to gridPageLabel)
                                 grid.confirmLabelRes?.let {
                                     add(InputButton.A to stringResource(it))
                                 }
@@ -1405,10 +1403,29 @@ fun HomeScreen(
         }
 
         if (uiState.customGrid.showMenu) {
-            val menuTile = uiState.customGrid.focusedTile
+            val grid = uiState.customGrid
+            val menuTile = grid.focusedTile
+            val hiddenFallback = stringResource(R.string.ui_custom_grid_hidden_tile_unnamed)
             com.nendo.argosy.ui.components.CustomTileMenuModal(
-                title = menuTile?.let { uiState.tileContentFor(it, context)?.label }.orEmpty(),
-                entries = uiState.customGrid.menuActions.map { context.getString(it.labelRes) },
+                header = if (grid.menuListsHidden) {
+                    stringResource(R.string.ui_custom_grid_hidden_tiles_title)
+                } else {
+                    stringResource(R.string.ui_custom_tile_menu_header)
+                },
+                title = if (grid.menuListsHidden) {
+                    pluralStringResource(
+                        R.plurals.ui_custom_grid_hidden_count,
+                        grid.hiddenTiles.size,
+                        grid.hiddenTiles.size
+                    )
+                } else {
+                    menuTile?.let { uiState.tileContentFor(it, context)?.label }.orEmpty()
+                },
+                entries = if (grid.menuListsHidden) {
+                    grid.hiddenTiles.map { uiState.tileContentFor(it, context)?.label ?: hiddenFallback }
+                } else {
+                    grid.menuActions.map { context.getString(it.labelRes) }
+                },
                 focusIndex = uiState.customGrid.menuFocusIndex,
                 onSelect = { index ->
                     viewModel.moveTileMenuFocus(index - uiState.customGrid.menuFocusIndex)

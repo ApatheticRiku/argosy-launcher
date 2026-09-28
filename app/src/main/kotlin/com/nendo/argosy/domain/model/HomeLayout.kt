@@ -66,20 +66,146 @@ data class AutoGridConfig(
 enum class HomeTileAutoAdd { OFF, AUTO, PROMPT }
 
 /**
- * A page is [laneCount] lanes across its short side; how many cells run along the long side follows
- * from the display's shape, so one curated page keeps its proportions on a tall handheld and a wide
- * television instead of being authored for one and stretched on the other.
+ * One axis of the custom grid. [Fill] takes as many square cells as the screen fits; [Scroll] is an
+ * unbounded axis the grid scrolls along. At most one axis of a config is anything but [Fixed].
  */
+sealed interface GridAxis {
+    data class Fixed(val count: Int) : GridAxis
+    data object Fill : GridAxis
+    data object Scroll : GridAxis
+}
+
+val GridAxis.isFixed: Boolean get() = this is GridAxis.Fixed
+
+const val MIN_GRID_AXIS_COUNT = 2
+
+const val MAX_GRID_AXIS_COUNT = 12
+
+/**
+ * The values the settings stepper walks, left to right.
+ */
+val GRID_AXIS_STEPS: List<GridAxis> =
+    listOf(GridAxis.Scroll, GridAxis.Fill) +
+        (MIN_GRID_AXIS_COUNT..MAX_GRID_AXIS_COUNT).map { GridAxis.Fixed(it) }
+
+val GridAxis.stepIndex: Int
+    get() = GRID_AXIS_STEPS.indexOf(this).coerceAtLeast(0)
+
+/**
+ * The neighbouring stepper value in [direction], clamped at either end.
+ */
+fun GridAxis.stepped(direction: Int): GridAxis =
+    GRID_AXIS_STEPS[(stepIndex + direction).coerceIn(0, GRID_AXIS_STEPS.lastIndex)]
+
+/**
+ * How many columns and rows a page actually has on one screen.
+ */
+data class CustomGridShape(val columns: Int, val rows: Int)
+
+/**
+ * A shape a screen measured, with the axes it was measured for. A shape measured for other axes
+ * says nothing about the current config.
+ */
+data class ResolvedGridShape(
+    val columns: GridAxis,
+    val rows: GridAxis,
+    val shape: CustomGridShape
+)
+
+/**
+ * Which set of tiles a custom grid shows. Paged and scrolling grids hold separate tiles; the name is
+ * the token stored on each tile row.
+ */
+enum class HomeGridKind { PAGED, SCROLL }
+
+fun gridKindFor(scrollAxis: HomeScrollAxis?): HomeGridKind =
+    if (scrollAxis == null) HomeGridKind.PAGED else HomeGridKind.SCROLL
+
+/**
+ * Where a grid puts new tiles: a page of [shape] when [scrollAxis] is null, else one canvas unbounded
+ * along [scrollAxis] with [lanes] cells across it.
+ */
+data class CustomGridLayout(
+    val shape: CustomGridShape,
+    val scrollAxis: HomeScrollAxis? = null
+) {
+    val kind: HomeGridKind get() = gridKindFor(scrollAxis)
+
+    val lanes: Int
+        get() = when (scrollAxis) {
+            HomeScrollAxis.HORIZONTAL -> shape.rows
+            else -> shape.columns
+        }
+
+    val scrollArrangement: ScrollArrangement?
+        get() = scrollAxis?.let { ScrollArrangement(it, lanes) }
+
+    /**
+     * True when both layouts scroll and differ in scroll axis or lane count. Entering or leaving
+     * scroll mode is never a reflow.
+     */
+    fun needsScrollReflowTo(next: CustomGridLayout): Boolean =
+        scrollAxis != null && next.scrollAxis != null &&
+            (scrollAxis != next.scrollAxis || lanes != next.lanes)
+}
+
+/**
+ * The scroll axis and lane count the stored scrolling tiles are arranged for. It outlives a switch to
+ * the paged grid, so returning to scroll mode in a different shape still reflows from the right one.
+ */
+data class ScrollArrangement(val axis: HomeScrollAxis, val lanes: Int) {
+    val layout: CustomGridLayout
+        get() = CustomGridLayout(CustomGridShape(columns = lanes, rows = lanes), axis)
+}
+
 data class CustomGridConfig(
-    val laneCount: Int = DEFAULT_LANE_COUNT,
+    val columns: GridAxis = GridAxis.Fill,
+    val rows: GridAxis = GridAxis.Fixed(DEFAULT_LANE_COUNT),
     val autoAdd: HomeTileAutoAdd = HomeTileAutoAdd.OFF,
     val showEmptySlots: Boolean = true,
     val persistBlankPages: Boolean = false,
     val autoFit: Boolean = true,
     val pageCount: Int = 0,
-    val matchOtherScreen: Boolean = true
+    val scrollArrangement: ScrollArrangement? = null
 ) : HomeLayoutConfig {
     override val kind: HomeLayoutKind get() = HomeLayoutKind.CUSTOM_GRID
+
+    val scrollAxis: HomeScrollAxis?
+        get() = when {
+            rows is GridAxis.Scroll -> HomeScrollAxis.VERTICAL
+            columns is GridAxis.Scroll -> HomeScrollAxis.HORIZONTAL
+            else -> null
+        }
+
+    val gridKind: HomeGridKind get() = gridKindFor(scrollAxis)
+
+    fun layoutFor(resolved: ResolvedGridShape?): CustomGridLayout =
+        CustomGridLayout(shapeFor(resolved), scrollAxis)
+
+    fun shapeFor(resolved: ResolvedGridShape?): CustomGridShape {
+        val measured = resolved?.takeIf { it.columns == columns && it.rows == rows }?.shape
+        if (measured != null) return measured
+        val fixedColumns = (columns as? GridAxis.Fixed)?.count
+        val fixedRows = (rows as? GridAxis.Fixed)?.count
+        return CustomGridShape(
+            columns = fixedColumns ?: fixedRows ?: DEFAULT_LANE_COUNT,
+            rows = fixedRows ?: fixedColumns ?: DEFAULT_LANE_COUNT
+        )
+    }
+
+    fun withColumns(axis: GridAxis, resolved: CustomGridShape): CustomGridConfig =
+        if (!axis.isFixed && !rows.isFixed) {
+            copy(columns = axis, rows = GridAxis.Fixed(resolved.rows.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)))
+        } else {
+            copy(columns = axis)
+        }
+
+    fun withRows(axis: GridAxis, resolved: CustomGridShape): CustomGridConfig =
+        if (!axis.isFixed && !columns.isFixed) {
+            copy(rows = axis, columns = GridAxis.Fixed(resolved.columns.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)))
+        } else {
+            copy(rows = axis)
+        }
 }
 
 const val DEFAULT_LANE_COUNT = 3
@@ -163,13 +289,22 @@ data class HomeLayoutSettings(
         put(
             KEY_CUSTOM_GRID,
             JSONObject().apply {
-                put(KEY_LANE_COUNT, customGrid.laneCount)
+                put(KEY_COLUMNS, customGrid.columns.toJsonValue())
+                put(KEY_ROWS, customGrid.rows.toJsonValue())
                 put(KEY_AUTO_ADD, customGrid.autoAdd.name)
                 put(KEY_EMPTY_SLOTS, customGrid.showEmptySlots)
                 put(KEY_PERSIST_PAGES, customGrid.persistBlankPages)
                 put(KEY_AUTO_FIT, customGrid.autoFit)
                 put(KEY_PAGE_COUNT, customGrid.pageCount)
-                put(KEY_MATCH_OTHER_SCREEN, customGrid.matchOtherScreen)
+                customGrid.scrollArrangement?.let { arrangement ->
+                    put(
+                        KEY_SCROLL_ARRANGEMENT,
+                        JSONObject().apply {
+                            put(KEY_SCROLL_AXIS, arrangement.axis.name)
+                            put(KEY_LANE_COUNT, arrangement.lanes)
+                        }
+                    )
+                }
             }
         )
         put(
@@ -203,7 +338,11 @@ data class HomeLayoutSettings(
         private const val KEY_PERSIST_PAGES = "persistBlankPages"
         private const val KEY_AUTO_FIT = "autoFit"
         private const val KEY_PAGE_COUNT = "pageCount"
-        private const val KEY_MATCH_OTHER_SCREEN = "matchOtherScreen"
+        private const val KEY_COLUMNS = "columns"
+        private const val KEY_ROWS = "rows"
+        private const val KEY_SCROLL_ARRANGEMENT = "scrollArrangement"
+        private const val TOKEN_FILL = "FILL"
+        private const val TOKEN_SCROLL = "SCROLL"
         private const val KEY_RAILS = "rails"
         private const val KEY_CONTINUE_WATCHING = "showContinueWatching"
         private const val KEY_NEXT_UP = "showNextUp"
@@ -261,9 +400,7 @@ data class HomeLayoutSettings(
                     useBoxArt = autoGrid?.optBoolean(KEY_USE_BOX_ART, defaults.autoGrid.useBoxArt)
                         ?: defaults.autoGrid.useBoxArt
                 ),
-                customGrid = CustomGridConfig(
-                    laneCount = customGrid?.optInt(KEY_LANE_COUNT, defaults.customGrid.laneCount)
-                        ?.coerceIn(MIN_LANE_COUNT, MAX_LANE_COUNT) ?: defaults.customGrid.laneCount,
+                customGrid = customGridAxes(customGrid, defaults.customGrid).copy(
                     autoAdd = enumOrDefault(
                         customGrid?.optString(KEY_AUTO_ADD),
                         defaults.customGrid.autoAdd
@@ -280,10 +417,7 @@ data class HomeLayoutSettings(
                         ?: defaults.customGrid.autoFit,
                     pageCount = customGrid?.optInt(KEY_PAGE_COUNT, defaults.customGrid.pageCount)
                         ?.coerceAtLeast(0) ?: defaults.customGrid.pageCount,
-                    matchOtherScreen = customGrid?.optBoolean(
-                        KEY_MATCH_OTHER_SCREEN,
-                        defaults.customGrid.matchOtherScreen
-                    ) ?: defaults.customGrid.matchOtherScreen
+                    scrollArrangement = scrollArrangementOrNull(customGrid?.optJSONObject(KEY_SCROLL_ARRANGEMENT))
                 ),
                 rails = HomeRailSettings(
                     showContinueWatching = rails?.optBoolean(
@@ -296,6 +430,46 @@ data class HomeLayoutSettings(
                         ?: defaults.rails.showLibraries
                 )
             )
+        }
+
+        private fun customGridAxes(json: JSONObject?, defaults: CustomGridConfig): CustomGridConfig {
+            val columns = axisOrNull(json, KEY_COLUMNS)
+            val rows = axisOrNull(json, KEY_ROWS)
+            val legacyLanes = json?.takeIf { columns == null && rows == null && it.has(KEY_LANE_COUNT) }
+                ?.optInt(KEY_LANE_COUNT, DEFAULT_LANE_COUNT)
+                ?.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)
+            val resolvedColumns = columns ?: if (legacyLanes != null) GridAxis.Fill else defaults.columns
+            val resolvedRows = rows ?: legacyLanes?.let { GridAxis.Fixed(it) } ?: defaults.rows
+            return if (!resolvedColumns.isFixed && !resolvedRows.isFixed) {
+                defaults.copy(columns = resolvedColumns, rows = GridAxis.Fixed(DEFAULT_LANE_COUNT))
+            } else {
+                defaults.copy(columns = resolvedColumns, rows = resolvedRows)
+            }
+        }
+
+        private fun scrollArrangementOrNull(json: JSONObject?): ScrollArrangement? {
+            val axis = json?.optString(KEY_SCROLL_AXIS)
+                ?.let { name -> HomeScrollAxis.entries.firstOrNull { it.name == name } }
+                ?: return null
+            val lanes = json.optInt(KEY_LANE_COUNT, 0).takeIf { it > 0 } ?: return null
+            return ScrollArrangement(axis, lanes)
+        }
+
+        private fun axisOrNull(json: JSONObject?, key: String): GridAxis? {
+            if (json == null || !json.has(key)) return null
+            return when (val raw = json.opt(key)) {
+                is Number -> GridAxis.Fixed(raw.toInt().coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT))
+                TOKEN_FILL -> GridAxis.Fill
+                TOKEN_SCROLL -> GridAxis.Scroll
+                else -> raw?.toString()?.toIntOrNull()
+                    ?.let { GridAxis.Fixed(it.coerceIn(MIN_GRID_AXIS_COUNT, MAX_GRID_AXIS_COUNT)) }
+            }
+        }
+
+        private fun GridAxis.toJsonValue(): Any = when (this) {
+            is GridAxis.Fixed -> count
+            GridAxis.Fill -> TOKEN_FILL
+            GridAxis.Scroll -> TOKEN_SCROLL
         }
 
         private inline fun <reified T : Enum<T>> enumOrDefault(raw: String?, fallback: T): T =

@@ -211,7 +211,14 @@ internal class LightSectionsInput(
                 return InputResult.HANDLED
             }
             is HomeScreenItem.LayoutField -> {
-                viewModel.setHomeLayout(adjustHomeLayoutField(display.homeLayout, focused.field, direction))
+                viewModel.setHomeLayout(
+                    adjustHomeLayoutField(
+                        display.homeLayout,
+                        focused.field,
+                        direction,
+                        viewModel.customGridShape()
+                    )
+                )
                 return InputResult.HANDLED
             }
             else -> {}

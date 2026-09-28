@@ -102,6 +102,7 @@
     <string name="custom_tile_menu_action_start_game_queue">Iniciar cola</string>
     <string name="custom_tile_menu_action_set_focus_game">Elegir siguiente juego</string>
     <string name="custom_tile_menu_action_advance_focus_game">Marcar terminado</string>
+    <string name="custom_tile_menu_action_hidden_tiles">Mosaicos ocultos</string>
     <string name="custom_tile_menu_action_page_backdrop">Fondo de esta página</string>
     <string name="custom_tile_menu_action_page_music">Música de esta página</string>
     <string name="custom_tile_menu_action_delete_page">Eliminar página</string>

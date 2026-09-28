@@ -102,6 +102,7 @@
     <string name="custom_tile_menu_action_start_game_queue">Lancer la file</string>
     <string name="custom_tile_menu_action_set_focus_game">Choisir le prochain jeu</string>
     <string name="custom_tile_menu_action_advance_focus_game">Marquer terminé</string>
+    <string name="custom_tile_menu_action_hidden_tiles">Tuiles masquées</string>
     <string name="custom_tile_menu_action_page_backdrop">Arrière-plan de cette page</string>
     <string name="custom_tile_menu_action_page_music">Musique de cette page</string>
     <string name="custom_tile_menu_action_delete_page">Supprimer la page</string>

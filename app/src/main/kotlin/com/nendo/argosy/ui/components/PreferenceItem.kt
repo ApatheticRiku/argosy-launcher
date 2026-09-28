@@ -307,7 +307,8 @@ fun SliderPreference(
     step: Int = 1,
     suffix: String? = null,
     onClick: (() -> Unit)? = null,
-    onAdjust: ((Int) -> Unit)? = null
+    onAdjust: ((Int) -> Unit)? = null,
+    valueLabel: String? = null
 ) {
     Row(
         modifier = preferenceModifier(
@@ -327,7 +328,7 @@ fun SliderPreference(
                 .padding(end = Dimens.spacingSm)
         )
         StepperControl(
-            display = "$value${suffix.orEmpty()}",
+            display = valueLabel ?: "$value${suffix.orEmpty()}",
             focused = isFocused,
             numericValue = value,
             onDecrement = { onAdjust?.invoke(-step) },

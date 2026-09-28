@@ -50,10 +50,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
+import com.nendo.argosy.domain.model.CustomGridShape
+import com.nendo.argosy.domain.model.DEFAULT_LANE_COUNT
+import com.nendo.argosy.domain.model.GridAxis
 import com.nendo.argosy.domain.model.GridCell
 import com.nendo.argosy.domain.model.HomeTile
+import com.nendo.argosy.domain.model.ResolvedGridShape
+import com.nendo.argosy.domain.model.isFixed
 import com.nendo.argosy.domain.model.TileCoverScale
 import com.nendo.argosy.domain.model.TileRect
 import com.nendo.argosy.ui.primitives.FocusIndicators
@@ -68,96 +72,103 @@ import kotlinx.coroutines.launch
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 /**
- * How a page divides into cells. The lane count runs across the page's short edge, so the same
- * curated page keeps its proportions on a tall handheld and a wide television rather than being
- * authored for one and stretched on the other.
- */
-data class CustomGridShape(val columns: Int, val rows: Int) {
-    companion object {
-        fun forSize(size: IntSize, laneCount: Int, gapPx: Float): CustomGridShape {
-            val metrics = customGridMetrics(size, laneCount, gapPx)
-            return CustomGridShape(metrics.columns, metrics.rows)
-        }
-    }
-}
-
-/**
- * A page's geometry in pixels. Cells are square, so a tile reads the same whichever way it spans,
- * and whatever the square grid cannot fill becomes margin: the block is centred rather than stretched
- * to the edges, which keeps the spacing between cells equal to the spacing around them.
- *
- * The two margins are computed separately because a page rarely divides evenly on both axes; forcing
- * them equal would push the grid off centre on one of them.
- *
- * The cell is sized as though there were one extra lane's worth of focus growth to fit, because a
- * focused tile scales about its centre and the outermost lane would otherwise grow over whatever
- * sits beyond the grid. Reserving the room rather than clipping it keeps the cursor whole: clipping
- * cuts the one cell that most has to read clearly.
+ * A page's geometry in pixels, the block centred with [offsetXPx] and [offsetYPx] of margin on each
+ * side. Cells are square unless both axes are fixed.
  */
 data class CustomGridMetrics(
     val columns: Int,
     val rows: Int,
-    val cellPx: Float,
+    val cellWidthPx: Float,
+    val cellHeightPx: Float,
     val gapPx: Float,
     val offsetXPx: Float,
     val offsetYPx: Float
-)
-
-fun customGridMetrics(
-    size: IntSize,
-    laneCount: Int,
-    gapPx: Float,
-    maxColumns: Int? = null
-): CustomGridMetrics {
-    val lanes = laneCount.coerceAtLeast(1)
-    if (size.width <= 0 || size.height <= 0) {
-        return CustomGridMetrics(lanes, lanes, 0f, gapPx, 0f, 0f)
-    }
-    val widthIsShort = size.width <= size.height
-    val shortEdge = if (widthIsShort) size.width else size.height
-    val longEdge = if (widthIsShort) size.height else size.width
-    val overhangLanes = (ComponentDefaults.Focus.scaleFocused - 1f).coerceAtLeast(0f)
-    val cell = ((shortEdge - gapPx * (lanes - 1)) / (lanes + overhangLanes)).coerceAtLeast(1f)
-    val longOverhang = cell * overhangLanes
-    val alongLanes = (((longEdge - longOverhang + gapPx) / (cell + gapPx)).toInt()).coerceAtLeast(1)
-    val columns = if (widthIsShort) {
-        lanes
-    } else {
-        maxColumns?.let { alongLanes.coerceAtMost(it.coerceAtLeast(1)) } ?: alongLanes
-    }
-    val rows = if (widthIsShort) alongLanes else lanes
-    val gridWidth = columns * cell + gapPx * (columns - 1)
-    val gridHeight = rows * cell + gapPx * (rows - 1)
-    return CustomGridMetrics(
-        columns = columns,
-        rows = rows,
-        cellPx = cell,
-        gapPx = gapPx,
-        offsetXPx = ((size.width - gridWidth) / 2f).coerceAtLeast(0f),
-        offsetYPx = ((size.height - gridHeight) / 2f).coerceAtLeast(0f)
-    )
+) {
+    val shape: CustomGridShape get() = CustomGridShape(columns, rows)
 }
 
 /**
- * The column count the grid gets on [peerScreen], taking [ownScreen] minus [ownGrid] as the chrome
- * both screens share. Sizes are in dp. Null when either grid is taller than it is wide.
+ * Widest a cell may be against its height, and the reverse, when both axes are fixed.
  */
-fun matchedGridColumns(
-    ownScreen: androidx.compose.ui.unit.DpSize,
-    ownGrid: androidx.compose.ui.unit.DpSize,
-    peerScreen: androidx.compose.ui.unit.DpSize,
-    laneCount: Int,
-    gap: Dp
-): Int? {
-    if (ownGrid.width <= ownGrid.height) return null
-    val peerWidth = peerScreen.width - (ownScreen.width - ownGrid.width)
-    val peerHeight = peerScreen.height - (ownScreen.height - ownGrid.height)
-    if (peerWidth <= 0.dp || peerHeight <= 0.dp || peerWidth <= peerHeight) return null
-    return customGridMetrics(
-        IntSize(peerWidth.value.toInt(), peerHeight.value.toInt()),
-        laneCount,
-        gap.value
-    ).columns
+const val MAX_CELL_STRETCH = 4f / 3f
+
+/**
+ * The single page geometry for the home grid and the settings preview.
+ *
+ * A non-fixed axis takes as many square cells as fit. Two fixed axes fit the whole block on the page,
+ * cells stretching up to [MAX_CELL_STRETCH] either way, with the rest left as centred margin. Each
+ * axis reserves [overhangLanes] of a cell beyond the block for a focused tile's growth.
+ */
+fun customGridMetrics(
+    width: Float,
+    height: Float,
+    columns: GridAxis,
+    rows: GridAxis,
+    gapPx: Float,
+    overhangLanes: Float = (ComponentDefaults.Focus.scaleFocused - 1f).coerceAtLeast(0f)
+): CustomGridMetrics {
+    val bothOpen = !columns.isFixed && !rows.isFixed
+    val fixedColumns = (columns as? GridAxis.Fixed)?.count?.coerceAtLeast(1)
+    val fixedRows = ((if (bothOpen) GridAxis.Fixed(DEFAULT_LANE_COUNT) else rows) as? GridAxis.Fixed)
+        ?.count?.coerceAtLeast(1)
+    if (width <= 0f || height <= 0f) {
+        return CustomGridMetrics(
+            columns = fixedColumns ?: fixedRows ?: 1,
+            rows = fixedRows ?: fixedColumns ?: 1,
+            cellWidthPx = 0f,
+            cellHeightPx = 0f,
+            gapPx = gapPx,
+            offsetXPx = 0f,
+            offsetYPx = 0f
+        )
+    }
+    val overhang = overhangLanes.coerceAtLeast(0f)
+    val extent = { edge: Float, count: Int ->
+        ((edge - gapPx * (count - 1)) / (count + overhang)).coerceAtLeast(1f)
+    }
+    val fitting = { edge: Float, cell: Float ->
+        ((edge - cell * overhang + gapPx) / (cell + gapPx)).toInt().coerceAtLeast(1)
+    }
+    val columnCount: Int
+    val rowCount: Int
+    val cellWidth: Float
+    val cellHeight: Float
+    when {
+        fixedColumns != null && fixedRows != null -> {
+            val across = extent(width, fixedColumns)
+            val down = extent(height, fixedRows)
+            columnCount = fixedColumns
+            rowCount = fixedRows
+            cellWidth = minOf(across, down * MAX_CELL_STRETCH)
+            cellHeight = minOf(down, across * MAX_CELL_STRETCH)
+        }
+        fixedColumns != null -> {
+            val cell = minOf(extent(width, fixedColumns), extent(height, 1))
+            columnCount = fixedColumns
+            rowCount = fitting(height, cell)
+            cellWidth = cell
+            cellHeight = cell
+        }
+        else -> {
+            val lanes = fixedRows ?: DEFAULT_LANE_COUNT
+            val cell = minOf(extent(height, lanes), extent(width, 1))
+            columnCount = fitting(width, cell)
+            rowCount = lanes
+            cellWidth = cell
+            cellHeight = cell
+        }
+    }
+    val gridWidth = columnCount * cellWidth + gapPx * (columnCount - 1)
+    val gridHeight = rowCount * cellHeight + gapPx * (rowCount - 1)
+    return CustomGridMetrics(
+        columns = columnCount,
+        rows = rowCount,
+        cellWidthPx = cellWidth,
+        cellHeightPx = cellHeight,
+        gapPx = gapPx,
+        offsetXPx = ((width - gridWidth) / 2f).coerceAtLeast(0f),
+        offsetYPx = ((height - gridHeight) / 2f).coerceAtLeast(0f)
+    )
 }
 
 /**
@@ -225,10 +236,11 @@ data class TileCollectionUi(
 fun HomeCustomGridPage(
     tiles: List<HomeTile>,
     contentFor: (HomeTile) -> CustomGridTileContent?,
-    laneCount: Int,
+    columns: GridAxis,
+    rows: GridAxis,
     focusedCell: GridCell,
     onCellTap: (GridCell) -> Unit,
-    onShapeResolved: (Int, Int) -> Unit,
+    onShapeResolved: (ResolvedGridShape) -> Unit,
     modifier: Modifier = Modifier,
     onTileLongPress: ((GridCell) -> Unit)? = null,
     showEmptyCells: Boolean = true,
@@ -257,114 +269,65 @@ fun HomeCustomGridPage(
     playbackPositions: Map<String, Long> = emptyMap(),
     onPlaybackPosition: (String, Long) -> Unit = { _, _ -> },
     onTakeAudio: () -> Unit = {},
-    onReleaseAudio: () -> Unit = {},
-    peerScreen: androidx.compose.ui.unit.DpSize? = null
+    onReleaseAudio: () -> Unit = {}
 ) {
     val density = LocalDensity.current
-    val rootView = androidx.compose.ui.platform.LocalView.current.rootView
     var measured by remember { mutableStateOf(IntSize.Zero) }
     var dragOffset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     val gap = Dimens.spacingSm
     val gapPx = with(density) { gap.toPx() }
+    val reportShape by androidx.compose.runtime.rememberUpdatedState(onShapeResolved)
     Box(
         modifier = modifier
             .fillMaxSize()
             .onSizeChanged { measured = it }
     ) {
         if (measured.width <= 0 || measured.height <= 0) return@Box
-        val columnCap = peerScreen?.let { peer ->
-            with(density) {
-                matchedGridColumns(
-                    ownScreen = androidx.compose.ui.unit.DpSize(rootView.width.toDp(), rootView.height.toDp()),
-                    ownGrid = androidx.compose.ui.unit.DpSize(measured.width.toDp(), measured.height.toDp()),
-                    peerScreen = peer,
-                    laneCount = laneCount,
-                    gap = gap
-                )
-            }
+        val metrics = customGridMetrics(
+            measured.width.toFloat(),
+            measured.height.toFloat(),
+            columns,
+            rows,
+            gapPx
+        )
+        LaunchedEffect(columns, rows, metrics.columns, metrics.rows) {
+            reportShape(ResolvedGridShape(columns, rows, metrics.shape))
         }
-        val metrics = customGridMetrics(measured, laneCount, gapPx, columnCap)
-        LaunchedEffect(metrics.columns, metrics.rows) {
-            onShapeResolved(metrics.columns, metrics.rows)
-        }
-        val cellSize = with(density) { metrics.cellPx.toDp() }
-        val originX = with(density) { metrics.offsetXPx.toDp() }
-        val originY = with(density) { metrics.offsetYPx.toDp() }
-        val occupied = tiles.flatMap { tile ->
-            (tile.rect.columnIndex..tile.rect.lastColumn).flatMap { column ->
-                (tile.rect.rowIndex..tile.rect.lastRow).map { row -> column to row }
-            }
-        }.toSet()
-
-        for (column in 0 until metrics.columns) {
-                for (row in 0 until metrics.rows) {
-                    if (column to row in occupied) continue
-                    val isCursor = focusedCell.columnIndex == column &&
-                        focusedCell.rowIndex == row
-                    if (!showEmptyCells && !isCursor) continue
-                    CustomGridCellBox(
-                        rect = TileRect(column, row),
-                        cellSize = cellSize,
-                        gap = gap,
-                        originX = originX,
-                        originY = originY,
-                        isFocused = isCursor && showCursor,
-                        onClick = { onCellTap(GridCell(column, row)) },
-                        onLongClick = null,
-                        content = null,
-                        editModeLabel = null,
-                        isOverlapped = false,
-                        downloadIndicatorFor = downloadIndicatorFor,
-                        onCoverLoadFailed = null,
-                        onCoverLoaded = null,
-                        onPosterLoaded = null
-                    )
-                }
-            }
-
-        tiles.sortedBy { it.id == editingTileId }.forEach { tile ->
-            key(tile.id) {
-            CustomGridCellBox(
-                rect = tile.rect,
-                cellSize = cellSize,
-                gap = gap,
-                originX = originX,
-                originY = originY,
-                isFocused = if (editingTileId != null) {
-                    tile.id == editingTileId
-                } else {
-                    showCursor && tile.rect.covers(focusedCell.columnIndex, focusedCell.rowIndex)
-                },
-                onClick = { onCellTap(GridCell(tile.rect.columnIndex, tile.rect.rowIndex)) },
-                onLongClick = onTileLongPress?.let { handler ->
-                    {
-                        handler(GridCell(tile.rect.columnIndex, tile.rect.rowIndex))
-                    }
-                },
-                content = contentFor(tile),
-                coverScale = tile.coverScale,
-                editModeLabel = editModeLabel.takeIf { tile.id == editingTileId },
-                isOverlapped = tile.id in overlappedTileIds,
-                dragOffset = if (tile.id == editingTileId) dragOffset else
-                    androidx.compose.ui.geometry.Offset.Zero,
-                downloadIndicatorFor = downloadIndicatorFor,
-                onCoverLoadFailed = onCoverLoadFailed,
-                onCoverLoaded = onCoverLoaded,
-                onPosterLoaded = onPosterLoaded,
-                playbackPath = tilePlayback[tile.id],
-                isEngaged = tile.id == engagedTileId,
-                isPaused = tile.id == engagedTileId && engagedPaused,
-                seekTicks = if (tile.id == engagedTileId) engagedSeekTicks else 0,
-                engagedIndex = if (tile.id == engagedTileId) engagedIndex else 0,
-                onBadgeTap = onBadgeTap,
-                onBandTap = onBandTap,
-                startPositionMs = tilePlayback[tile.id]?.let { playbackPositions[it] } ?: 0L,
-                onPlaybackPosition = onPlaybackPosition,
-                onTakeAudio = onTakeAudio,
-                onReleaseAudio = onReleaseAudio
-            )
-            }
-        }
+        CustomGridCells(
+            tiles = tiles,
+            columnRange = 0 until metrics.columns,
+            rowRange = 0 until metrics.rows,
+            cellWidth = with(density) { metrics.cellWidthPx.toDp() },
+            cellHeight = with(density) { metrics.cellHeightPx.toDp() },
+            gap = gap,
+            originX = with(density) { metrics.offsetXPx.toDp() },
+            originY = with(density) { metrics.offsetYPx.toDp() },
+            contentFor = contentFor,
+            focusedCell = focusedCell,
+            onCellTap = onCellTap,
+            onTileLongPress = onTileLongPress,
+            showEmptyCells = showEmptyCells,
+            showCursor = showCursor,
+            editModeLabel = editModeLabel,
+            downloadIndicatorFor = downloadIndicatorFor,
+            onCoverLoadFailed = onCoverLoadFailed,
+            onCoverLoaded = onCoverLoaded,
+            onPosterLoaded = onPosterLoaded,
+            overlappedTileIds = overlappedTileIds,
+            editingTileId = editingTileId,
+            dragOffset = dragOffset,
+            tilePlayback = tilePlayback,
+            engagedTileId = engagedTileId,
+            engagedPaused = engagedPaused,
+            engagedSeekTicks = engagedSeekTicks,
+            engagedIndex = engagedIndex,
+            onBadgeTap = onBadgeTap,
+            onBandTap = onBandTap,
+            playbackPositions = playbackPositions,
+            onPlaybackPosition = onPlaybackPosition,
+            onTakeAudio = onTakeAudio,
+            onReleaseAudio = onReleaseAudio
+        )
 
         if (editingTileId != null && onTileDrag != null) {
             TileDragSurface(
@@ -381,6 +344,124 @@ fun HomeCustomGridPage(
     }
 }
 
+@Composable
+internal fun CustomGridCells(
+    tiles: List<HomeTile>,
+    columnRange: IntRange,
+    rowRange: IntRange,
+    cellWidth: Dp,
+    cellHeight: Dp,
+    gap: Dp,
+    originX: Dp,
+    originY: Dp,
+    contentFor: (HomeTile) -> CustomGridTileContent?,
+    focusedCell: GridCell,
+    onCellTap: (GridCell) -> Unit,
+    onTileLongPress: ((GridCell) -> Unit)?,
+    showEmptyCells: Boolean,
+    showCursor: Boolean,
+    editModeLabel: String?,
+    downloadIndicatorFor: (Long) -> com.nendo.argosy.ui.screens.home.GameDownloadIndicator,
+    onCoverLoadFailed: ((Long, String) -> Unit)?,
+    onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)?,
+    onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)?,
+    overlappedTileIds: Set<Long>,
+    editingTileId: Long?,
+    dragOffset: androidx.compose.ui.geometry.Offset,
+    tilePlayback: Map<Long, String>,
+    engagedTileId: Long?,
+    engagedPaused: Boolean,
+    engagedSeekTicks: Int,
+    engagedIndex: Int,
+    onBadgeTap: ((Int) -> Unit)?,
+    onBandTap: (() -> Unit)?,
+    playbackPositions: Map<String, Long>,
+    onPlaybackPosition: (String, Long) -> Unit,
+    onTakeAudio: () -> Unit,
+    onReleaseAudio: () -> Unit
+) {
+    val occupied = remember(tiles) {
+        tiles.flatMap { tile ->
+            (tile.rect.columnIndex..tile.rect.lastColumn).flatMap { column ->
+                (tile.rect.rowIndex..tile.rect.lastRow).map { row -> column to row }
+            }
+        }.toSet()
+    }
+
+    for (column in columnRange) {
+        for (row in rowRange) {
+            if (column to row in occupied) continue
+            val isCursor = focusedCell.columnIndex == column && focusedCell.rowIndex == row
+            if (!showEmptyCells && !isCursor) continue
+            CustomGridCellBox(
+                rect = TileRect(column, row),
+                cellWidth = cellWidth,
+                cellHeight = cellHeight,
+                gap = gap,
+                originX = originX,
+                originY = originY,
+                isFocused = isCursor && showCursor,
+                onClick = { onCellTap(GridCell(column, row)) },
+                onLongClick = null,
+                content = null,
+                outlineEmpty = showEmptyCells,
+                editModeLabel = null,
+                isOverlapped = false,
+                downloadIndicatorFor = downloadIndicatorFor,
+                onCoverLoadFailed = null,
+                onCoverLoaded = null,
+                onPosterLoaded = null
+            )
+        }
+    }
+
+    tiles.sortedBy { it.id == editingTileId }.forEach { tile ->
+        key(tile.id) {
+            CustomGridCellBox(
+                rect = tile.rect,
+                cellWidth = cellWidth,
+                cellHeight = cellHeight,
+                gap = gap,
+                originX = originX,
+                originY = originY,
+                isFocused = if (editingTileId != null) {
+                    tile.id == editingTileId
+                } else {
+                    showCursor && tile.rect.covers(focusedCell.columnIndex, focusedCell.rowIndex)
+                },
+                onClick = { onCellTap(GridCell(tile.rect.columnIndex, tile.rect.rowIndex)) },
+                onLongClick = onTileLongPress?.let { handler ->
+                    { handler(GridCell(tile.rect.columnIndex, tile.rect.rowIndex)) }
+                },
+                content = contentFor(tile),
+                coverScale = tile.coverScale,
+                editModeLabel = editModeLabel.takeIf { tile.id == editingTileId },
+                isOverlapped = tile.id in overlappedTileIds,
+                dragOffset = if (tile.id == editingTileId) {
+                    dragOffset
+                } else {
+                    androidx.compose.ui.geometry.Offset.Zero
+                },
+                downloadIndicatorFor = downloadIndicatorFor,
+                onCoverLoadFailed = onCoverLoadFailed,
+                onCoverLoaded = onCoverLoaded,
+                onPosterLoaded = onPosterLoaded,
+                playbackPath = tilePlayback[tile.id],
+                isEngaged = tile.id == engagedTileId,
+                isPaused = tile.id == engagedTileId && engagedPaused,
+                seekTicks = if (tile.id == engagedTileId) engagedSeekTicks else 0,
+                engagedIndex = if (tile.id == engagedTileId) engagedIndex else 0,
+                onBadgeTap = onBadgeTap,
+                onBandTap = onBandTap,
+                startPositionMs = tilePlayback[tile.id]?.let { playbackPositions[it] } ?: 0L,
+                onPlaybackPosition = onPlaybackPosition,
+                onTakeAudio = onTakeAudio,
+                onReleaseAudio = onReleaseAudio
+            )
+        }
+    }
+}
+
 /**
  * One cell of the grid. A tile that resolves to a game renders as a [GameCard], so the cursor,
  * corner radius, border style and glow are the box art container's rather than a second look that
@@ -390,7 +471,8 @@ fun HomeCustomGridPage(
 @Composable
 private fun CustomGridCellBox(
     rect: TileRect,
-    cellSize: Dp,
+    cellWidth: Dp,
+    cellHeight: Dp,
     gap: Dp,
     originX: Dp,
     originY: Dp,
@@ -398,6 +480,7 @@ private fun CustomGridCellBox(
     onClick: () -> Unit,
     onLongClick: (() -> Unit)?,
     content: CustomGridTileContent?,
+    outlineEmpty: Boolean = true,
     coverScale: TileCoverScale = TileCoverScale.CROP,
     dragOffset: androidx.compose.ui.geometry.Offset = androidx.compose.ui.geometry.Offset.Zero,
     editModeLabel: String?,
@@ -421,9 +504,8 @@ private fun CustomGridCellBox(
     val theme = LocalArgosyTheme.current
     val boxArtStyle = com.nendo.argosy.ui.theme.LocalBoxArtStyle.current
     val shape = RoundedCornerShape(boxArtStyle.cornerRadiusDp)
-    val stride = cellSize + gap
-    val width = cellSize * rect.columnSpan + gap * (rect.columnSpan - 1)
-    val height = cellSize * rect.rowSpan + gap * (rect.rowSpan - 1)
+    val width = cellWidth * rect.columnSpan + gap * (rect.columnSpan - 1)
+    val height = cellHeight * rect.rowSpan + gap * (rect.rowSpan - 1)
     val placement = Modifier
         .zIndex(
             when {
@@ -433,8 +515,8 @@ private fun CustomGridCellBox(
             }
         )
         .offset(
-            x = originX + stride * rect.columnIndex,
-            y = originY + stride * rect.rowIndex
+            x = originX + (cellWidth + gap) * rect.columnIndex,
+            y = originY + (cellHeight + gap) * rect.rowIndex
         )
         .graphicsLayer {
             translationX = dragOffset.x
@@ -646,7 +728,11 @@ private fun CustomGridCellBox(
             .clip(shape)
             .then(
                 if (content == null) {
-                    Modifier.border(boxArtStyle.borderThicknessDp, theme.surfaceRaised, shape)
+                    if (outlineEmpty) {
+                        Modifier.border(boxArtStyle.borderThicknessDp, theme.surfaceRaised, shape)
+                    } else {
+                        Modifier
+                    }
                 } else {
                     Modifier.background(theme.surfaceRaised)
                 }
@@ -1216,7 +1302,7 @@ private fun formatPlayTime(context: Context, minutes: Int): String {
  * teleport its corner under the touch.
  */
 @Composable
-private fun BoxScope.TileDragSurface(
+internal fun BoxScope.TileDragSurface(
     metrics: CustomGridMetrics,
     anchor: TileRect?,
     isResizing: Boolean,
@@ -1224,10 +1310,15 @@ private fun BoxScope.TileDragSurface(
     onTileDrag: (GridCell) -> Unit,
     onTileResize: ((GridCell) -> Unit)?,
     onCommit: () -> Unit,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    scrolled: () -> androidx.compose.ui.geometry.Offset = { androidx.compose.ui.geometry.Offset.Zero }
 ) {
     val currentAnchor by androidx.compose.runtime.rememberUpdatedState(anchor)
     val resizing by androidx.compose.runtime.rememberUpdatedState(isResizing)
+    val currentScrolled by androidx.compose.runtime.rememberUpdatedState(scrolled)
+    val cellAt = { offset: androidx.compose.ui.geometry.Offset ->
+        cellAtOffset(offset + currentScrolled(), metrics)
+    }
     Box(
         modifier = Modifier
             .matchParentSize()
@@ -1239,7 +1330,7 @@ private fun BoxScope.TileDragSurface(
                 var landing: GridCell? = null
                 detectDragGestures(
                     onDragStart = { offset ->
-                        val touched = cellAtOffset(offset, metrics)
+                        val touched = cellAt(offset)
                         val grabbed = currentAnchor
                         carrying = grabbed != null &&
                             grabbed.covers(touched.columnIndex, touched.rowIndex)
@@ -1264,7 +1355,7 @@ private fun BoxScope.TileDragSurface(
                     onDrag = { change, amount ->
                         if (!carrying) return@detectDragGestures
                         change.consume()
-                        val touched = cellAtOffset(change.position, metrics)
+                        val touched = cellAt(change.position)
                         if (resizing) {
                             onTileResize?.invoke(touched)
                             return@detectDragGestures
@@ -1281,7 +1372,7 @@ private fun BoxScope.TileDragSurface(
             .pointerInput(metrics) {
                 detectTapGestures(
                     onTap = { offset ->
-                        val touched = cellAtOffset(offset, metrics)
+                        val touched = cellAt(offset)
                         val grabbed = currentAnchor ?: return@detectTapGestures
                         if (grabbed.covers(touched.columnIndex, touched.rowIndex)) onTap()
                     },
@@ -1299,10 +1390,11 @@ private fun cellAtOffset(
     offset: androidx.compose.ui.geometry.Offset,
     metrics: CustomGridMetrics
 ): GridCell {
-    val stride = metrics.cellPx + metrics.gapPx
-    if (stride <= 0f) return GridCell(0, 0)
-    val column = ((offset.x - metrics.offsetXPx) / stride).toInt()
-    val row = ((offset.y - metrics.offsetYPx) / stride).toInt()
+    val columnStride = metrics.cellWidthPx + metrics.gapPx
+    val rowStride = metrics.cellHeightPx + metrics.gapPx
+    if (columnStride <= 0f || rowStride <= 0f) return GridCell(0, 0)
+    val column = ((offset.x - metrics.offsetXPx) / columnStride).toInt()
+    val row = ((offset.y - metrics.offsetYPx) / rowStride).toInt()
     return GridCell(
         column.coerceIn(0, (metrics.columns - 1).coerceAtLeast(0)),
         row.coerceIn(0, (metrics.rows - 1).coerceAtLeast(0))

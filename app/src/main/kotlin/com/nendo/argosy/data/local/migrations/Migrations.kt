@@ -3778,3 +3778,17 @@ object Migration_195_196 : Migration(195, 196) {
         db.execSQL("PRAGMA foreign_keys=ON")
     }
 }
+
+/**
+ * Adds `home_tiles.gridKind`, the token naming which custom grid a tile belongs to: `PAGED` or
+ * `SCROLL`. Every existing row is a paged tile.
+ */
+object Migration_196_197 : Migration(196, 197) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `home_tiles` ADD COLUMN `gridKind` TEXT NOT NULL DEFAULT 'PAGED'")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_home_tiles_ownerUserId_gridKind_pageIndex` " +
+                "ON `home_tiles` (`ownerUserId`, `gridKind`, `pageIndex`)"
+        )
+    }
+}

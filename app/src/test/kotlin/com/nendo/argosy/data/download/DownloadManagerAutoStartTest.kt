@@ -87,6 +87,7 @@ class DownloadManagerAutoStartTest {
             syncPreferencesRepository = mockk(relaxed = true),
             homeTileRepository = mockk(relaxed = true),
             homeTilePromptQueue = mockk(relaxed = true),
+            customGridShapeStore = mockk(relaxed = true),
             extContentOrganizer = mockk(relaxed = true),
             romStagingManager = mockk(relaxed = true)
         )

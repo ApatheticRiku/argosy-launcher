@@ -108,6 +108,7 @@
     <string name="custom_tile_menu_action_start_game_queue">依序播放</string>
     <string name="custom_tile_menu_action_set_focus_game">選擇下一個遊戲</string>
     <string name="custom_tile_menu_action_advance_focus_game">標記為完成</string>
+    <string name="custom_tile_menu_action_hidden_tiles">隱藏的圖塊</string>
     <string name="custom_tile_menu_action_page_backdrop">此頁面的背景</string>
     <string name="custom_tile_menu_action_page_music">此頁面的音樂</string>
     <string name="custom_tile_menu_action_delete_page">刪除頁面</string>

@@ -3,10 +3,13 @@ package com.nendo.argosy.ui.home.grid
 import android.content.Context
 import com.nendo.argosy.R
 import com.nendo.argosy.data.repository.HomeTileRepository
+import com.nendo.argosy.domain.model.CustomGridLayout
 import com.nendo.argosy.domain.model.CustomGridMove
+import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.GridCell
 import com.nendo.argosy.domain.model.GridDirection2D
 import com.nendo.argosy.domain.model.FeatureTileKind
+import com.nendo.argosy.domain.model.HomeScrollAxis
 import com.nendo.argosy.domain.model.HomeTile
 import com.nendo.argosy.domain.model.TileCoverScale
 import com.nendo.argosy.ui.components.FeatureFilterOptions
@@ -227,8 +230,27 @@ class CustomGridCoordinator(
      * than read from preferences at each decision point, so a placement and the page it lands on
      * cannot disagree about the rules mid-edit.
      */
-    fun applyConfig(autoFit: Boolean, storedPages: Int) =
-        write { it.copy(autoFit = autoFit, storedPages = storedPages) }
+    fun applyConfig(autoFit: Boolean, storedPages: Int, scrollAxis: HomeScrollAxis?) = write {
+        if (it.scrollAxis == scrollAxis) {
+            it.copy(autoFit = autoFit, storedPages = storedPages)
+        } else {
+            it.copy(
+                autoFit = autoFit,
+                storedPages = storedPages,
+                scrollAxis = scrollAxis,
+                page = 0,
+                cell = GridCell(0, 0),
+                editMode = TileEditMode.NONE,
+                editingTileId = null,
+                editingRect = null,
+                editingPage = null,
+                pendingPage = null,
+                engagedTileId = null,
+                showMenu = false,
+                menuListsHidden = false
+            )
+        }
+    }
 
     /**
      * Says whether media can be pinned at all. Signing out closes the Media tab and moves off it, so
@@ -275,8 +297,8 @@ class CustomGridCoordinator(
         val move = customGridStep(
             cell = current.cell,
             tiles = current.tilesOnPage(current.page),
-            columns = current.columns,
-            rows = current.rows,
+            columns = current.canvasColumns,
+            rows = current.canvasRows,
             direction = direction
         )
         return when (move) {
@@ -291,12 +313,12 @@ class CustomGridCoordinator(
     }
 
     /**
-     * Turns to an adjacent page, entering from the edge the move came from so the cursor keeps its
-     * line rather than jumping to a corner. While a tile is being arranged it comes along, since
-     * leaving it behind would put the cursor and the tile on different pages.
+     * Turns to an adjacent page, entering from the edge the move came from on the cursor's line and
+     * carrying a tile being arranged. Answers false on a scrolling grid, which has no pages.
      */
     fun turnPage(delta: Int): Boolean {
         val current = read()
+        if (current.isScrolling) return false
         val editing = current.editingTile
         if (editing != null) return carryToPage(editing, delta)
         val target = current.page + delta
@@ -317,21 +339,36 @@ class CustomGridCoordinator(
 
     fun openMenu() {
         if (read().menuActions.isEmpty()) return
-        write { it.copy(showMenu = true, menuFocusIndex = 0) }
+        write { it.copy(showMenu = true, menuFocusIndex = 0, menuListsHidden = false) }
     }
 
-    fun closeMenu() = write { it.copy(showMenu = false) }
+    /**
+     * Opens the tile menu on the list of tiles this screen cannot draw on the current page.
+     */
+    fun openHiddenTiles() {
+        if (read().hiddenTiles.isEmpty()) return
+        write { it.copy(showMenu = true, menuFocusIndex = 0, menuListsHidden = true) }
+    }
+
+    fun closeMenu() = write { it.copy(showMenu = false, menuListsHidden = false) }
 
     fun moveMenuFocus(delta: Int) = write {
-        val maxIndex = (it.menuActions.size - 1).coerceAtLeast(0)
+        val maxIndex = (it.menuEntryCount - 1).coerceAtLeast(0)
         it.copy(menuFocusIndex = (it.menuFocusIndex + delta).coerceIn(0, maxIndex))
     }
 
     fun confirmMenu() {
         val current = read()
+        if (current.menuListsHidden) {
+            val hidden = current.hiddenTiles.getOrNull(current.menuFocusIndex) ?: return
+            closeMenu()
+            placeHiddenTile(hidden)
+            return
+        }
         val action = current.menuActions.getOrNull(current.menuFocusIndex) ?: return
         closeMenu()
         when (action) {
+            CustomTileMenuAction.HIDDEN_TILES -> openHiddenTiles()
             CustomTileMenuAction.ARRANGE -> enterMoveMode()
             CustomTileMenuAction.RECURATE -> recurateFocusedTile()
             CustomTileMenuAction.FIT_COVER -> setFocusedCoverScale(TileCoverScale.FIT)
@@ -350,12 +387,14 @@ class CustomGridCoordinator(
     }
 
     fun enterMoveMode() {
-        val tile = read().focusedTile ?: return
+        val current = read()
+        val focused = current.focusedTile ?: return
+        val stored = current.tiles.firstOrNull { it.id == focused.id } ?: return
         write {
             it.copy(
                 editMode = TileEditMode.MOVE,
-                editingTileId = tile.id,
-                editingRect = tile.rect,
+                editingTileId = stored.id,
+                editingRect = if (it.isScrolling) focused.rect else stored.rect,
                 editingPage = it.page,
                 engagedTileId = null,
                 showMenu = false
@@ -382,7 +421,7 @@ class CustomGridCoordinator(
             GridDirection2D.UP -> tile.rect.copy(rowIndex = tile.rect.rowIndex - 1)
             GridDirection2D.DOWN -> tile.rect.copy(rowIndex = tile.rect.rowIndex + 1)
         }
-        if (moved.withinBounds(current.columns, current.rows)) {
+        if (moved.withinBounds(current.layoutColumns, current.layoutRows)) {
             write {
                 it.copy(
                     editingRect = moved,
@@ -391,6 +430,7 @@ class CustomGridCoordinator(
             }
             return true
         }
+        if (current.isScrolling) return false
         return when (direction) {
             GridDirection2D.LEFT -> carryToPage(tile, -1)
             GridDirection2D.RIGHT -> carryToPage(tile, 1)
@@ -408,9 +448,12 @@ class CustomGridCoordinator(
         val tile = current.editingTile ?: return false
         val column = target.columnIndex.coerceIn(
             0,
-            (current.columns - tile.rect.columnSpan).coerceAtLeast(0)
+            (current.layoutColumns - tile.rect.columnSpan).coerceAtLeast(0)
         )
-        val row = target.rowIndex.coerceIn(0, (current.rows - tile.rect.rowSpan).coerceAtLeast(0))
+        val row = target.rowIndex.coerceIn(
+            0,
+            (current.layoutRows - tile.rect.rowSpan).coerceAtLeast(0)
+        )
         write {
             it.copy(
                 editingRect = tile.rect.copy(columnIndex = column, rowIndex = row),
@@ -429,8 +472,8 @@ class CustomGridCoordinator(
         val current = read()
         val tile = current.editingTile ?: return false
         val floor = tile.minSpan
-        val columnCeiling = (current.columns - tile.rect.columnIndex).coerceAtLeast(1)
-        val rowCeiling = (current.rows - tile.rect.rowIndex).coerceAtLeast(1)
+        val columnCeiling = (current.layoutColumns - tile.rect.columnIndex).coerceAtLeast(1)
+        val rowCeiling = (current.layoutRows - tile.rect.rowIndex).coerceAtLeast(1)
         val columnSpan = (target.columnIndex - tile.rect.columnIndex + 1)
             .coerceIn(floor.coerceAtMost(columnCeiling), columnCeiling)
         val rowSpan = (target.rowIndex - tile.rect.rowIndex + 1)
@@ -493,7 +536,7 @@ class CustomGridCoordinator(
         }
         val floor = tile.minSpan
         if (resized.columnSpan < floor || resized.rowSpan < floor) return false
-        if (!resized.withinBounds(current.columns, current.rows)) return false
+        if (!resized.withinBounds(current.layoutColumns, current.layoutRows)) return false
         write { it.copy(editingRect = resized) }
         return true
     }
@@ -512,35 +555,76 @@ class CustomGridCoordinator(
         val current = read()
         val draft = current.editingRect
         val stored = current.editingTileId?.let { id -> current.tiles.firstOrNull { it.id == id } }
-        val tiles = repository
-        if (draft == null || stored == null || tiles == null) {
+        if (draft == null || stored == null || repository == null) {
             clearEdit()
             return
         }
         val page = current.editingPage ?: stored.pageIndex
-        val edited = stored.copy(rect = draft, pageIndex = page)
-        val others = current.tiles.filter { it.pageIndex == page && it.id != stored.id }
-        if (!current.autoFit && others.any { it.rect.overlaps(edited.rect) }) {
+        if (draft == stored.rect && page == stored.pageIndex) {
+            clearEdit()
+            return
+        }
+        if (!storeArrangement(current, stored, draft, page)) {
             cancelEdit()
             return
         }
+        clearEdit()
+    }
+
+    private fun storeArrangement(
+        current: CustomGridState,
+        stored: HomeTile,
+        rect: TileRect,
+        page: Int
+    ): Boolean {
+        val tiles = repository ?: return false
+        val others = current.tiles.filter {
+            it.pageIndex == page && it.kind == current.kind && it.id != stored.id
+        }
+        if (!current.autoFit && others.any { it.rect.overlaps(rect) }) return false
         val settled = settleAfterEdit(
-            editing = edited,
+            editing = stored.copy(rect = rect, pageIndex = page),
             others = others,
-            columns = current.columns,
-            rows = current.rows
+            columns = current.layoutColumns,
+            rows = current.layoutRows
         )
         scope.launch {
-            val owner = ownerUserId()
-            if (stored.rect != draft || stored.pageIndex != page) {
-                tiles.move(stored, owner, draft, page)
-            }
+            tiles.move(stored, rect, page)
             settled.placed.filter { it.id != stored.id }.forEach { moved ->
                 val was = others.firstOrNull { it.id == moved.id }
-                if (was != null && was.rect != moved.rect) tiles.move(was, owner, moved.rect)
+                if (was != null && was.rect != moved.rect) tiles.move(was, moved.rect)
             }
         }
-        clearEdit()
+        return true
+    }
+
+    /**
+     * Brings a tile this screen cannot draw onto the cursor, keeping as much of its span as fits
+     * from there. The anchor steps back only when the tile's minimum span would leave the page.
+     */
+    fun placeHiddenTile(tile: HomeTile) {
+        val current = read()
+        val stored = current.tiles.firstOrNull { it.id == tile.id } ?: return
+        if (current.columns <= 0 || current.rows <= 0 || current.isOnAddPage) return
+        val cell = current.cell
+        val columns = current.layoutColumns
+        val rows = current.layoutRows
+        val columnSpan = stored.rect.columnSpan
+            .coerceAtMost(columns - cell.columnIndex)
+            .coerceAtLeast(stored.minSpan)
+            .coerceAtMost(columns)
+        val rowSpan = stored.rect.rowSpan
+            .coerceAtMost(rows - cell.rowIndex)
+            .coerceAtLeast(stored.minSpan)
+            .coerceAtMost(rows)
+        val rect = TileRect(
+            columnIndex = cell.columnIndex.coerceAtMost(columns - columnSpan).coerceAtLeast(0),
+            rowIndex = cell.rowIndex.coerceAtMost(rows - rowSpan).coerceAtLeast(0),
+            columnSpan = columnSpan,
+            rowSpan = rowSpan
+        )
+        if (!storeArrangement(current, stored, rect, current.page)) return
+        write { it.copy(cell = GridCell(rect.columnIndex, rect.rowIndex)) }
     }
 
     /**
@@ -1112,7 +1196,7 @@ class CustomGridCoordinator(
             )
         }
         scope.launch {
-            repository?.retarget(tile, ownerUserId(), retargeted, emptyList())
+            repository?.retarget(tile.id, retargeted, emptyList())
             if (gameId != null) {
                 onPrepareQueue?.invoke(collection.collectionId, gameId)
             }
@@ -1308,11 +1392,16 @@ class CustomGridCoordinator(
         write { it.copy(pendingAdd = null) }
         entry.gameId?.let(onResolved)
         if (tiles == null) return
+        val current = read()
+        val layout = CustomGridLayout(
+            shape = CustomGridShape(current.columns.coerceAtLeast(1), current.rows.coerceAtLeast(1)),
+            scrollAxis = current.scrollAxis
+        )
         scope.launch {
-            tiles.appendToLastPage(
+            tiles.append(
                 ownerUserId = ownerUserId(),
                 target = entry.target,
-                columns = read().columns.coerceAtLeast(1)
+                layout = layout
             )
         }
     }
@@ -1325,8 +1414,8 @@ class CustomGridCoordinator(
 
     private fun retargetTile(tileId: Long, target: HomeTileTargetRef, playlist: List<String>) {
         val tiles = repository ?: return
-        val tile = read().tiles.firstOrNull { it.id == tileId } ?: return
-        scope.launch { tiles.retarget(tile, ownerUserId(), target, playlist) }
+        if (read().tiles.none { it.id == tileId }) return
+        scope.launch { tiles.retarget(tileId, target, playlist) }
     }
 
     /**
@@ -1349,6 +1438,7 @@ class CustomGridCoordinator(
         scope.launch {
             tiles.place(
                 ownerUserId = ownerUserId(),
+                kind = current.kind,
                 pageIndex = current.page,
                 rect = TileRect(current.cell.columnIndex, current.cell.rowIndex),
                 target = target,

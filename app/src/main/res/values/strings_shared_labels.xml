@@ -116,6 +116,8 @@
     <string name="custom_tile_menu_action_set_focus_game">Choose next game</string>
     <!-- Tile menu: marks the current game done and moves the tile on to the next one; does not skip. -->
     <string name="custom_tile_menu_action_advance_focus_game">Mark finished</string>
+    <!-- Tile menu: lists the tiles of this page that do not fit on this screen, so one can be placed at the cursor. -->
+    <string name="custom_tile_menu_action_hidden_tiles">Hidden tiles</string>
     <string name="custom_tile_menu_action_page_backdrop">Backdrop for this page</string>
     <string name="custom_tile_menu_action_page_music">Music for this page</string>
     <string name="custom_tile_menu_action_delete_page">Delete page</string>

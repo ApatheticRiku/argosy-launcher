@@ -416,6 +416,14 @@
     <string name="ui_page_chooser_music_soundtracks_header">Ваши саундтреки</string>
 
     <string name="ui_custom_grid_add_page">Добавить страницу</string>
+    <string name="ui_custom_grid_hidden_tiles_title">Скрытые плитки</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">Плитка без названия</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d скрыта</item>
+        <item quantity="few">%d скрыты</item>
+        <item quantity="many">%d скрыто</item>
+        <item quantity="other">%d скрыто</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">Переместить</string>
     <string name="ui_custom_grid_edit_resize">Изменить размер</string>
     <string name="ui_custom_grid_confirm_play">Играть</string>
@@ -534,7 +542,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">Прокручивать всю библиотеку платформы вместо остановки на плитке \"Смотреть все\"</string>
     <string name="ui_home_layout_carousel_box_art">Коробки 3D</string>
     <string name="ui_home_layout_auto_grid_box_art">Коробки 3D</string>
-    <string name="ui_home_layout_custom_grid_lanes">Ячеек в ширину</string>
+    <string name="ui_home_layout_custom_grid_columns">Столбцы</string>
+    <string name="ui_home_layout_custom_grid_rows">Строки</string>
     <string name="ui_home_layout_custom_grid_auto_add">Добавлять новые загрузки</string>
     <string name="ui_home_layout_custom_grid_empty_slots">Показывать пустые ячейки</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">Обводить контуром ячейки, на которых ничего нет</string>
@@ -542,8 +551,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">Добавленная страница остаётся, даже если на ней ничего нет</string>
     <string name="ui_home_layout_custom_grid_auto_fit">Автоподбор ячеек</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">Сдвигать или уменьшать плитки, на которые попадает размещение, вместо отказа</string>
-    <string name="ui_home_layout_custom_grid_match_screens">Одинаково на обоих экранах</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">Одинаковое число столбцов на обоих экранах, сетка по центру на более широком</string>
     <string name="ui_home_layout_rail_libraries">Медиатеки</string>
     <string name="ui_home_layout_rail_libraries_subtitle">Ряд для каждой библиотеки на вашем медиасервере</string>
     <string name="ui_home_layout_rail_continue_watching">Продолжить просмотр</string>

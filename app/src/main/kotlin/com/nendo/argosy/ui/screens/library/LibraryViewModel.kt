@@ -19,6 +19,7 @@ import com.nendo.argosy.data.local.dao.PlatformShowcaseStats
 import com.nendo.argosy.data.local.dao.SHOWCASE_COVER_LIMIT
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.repository.CollectionRepository
+import com.nendo.argosy.data.repository.CustomGridShapeStore
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.MediaRepository
 import com.nendo.argosy.data.repository.PlatformRepository
@@ -263,7 +264,6 @@ data class LibraryUiState(
     val showQuickMenu: Boolean = false,
     val quickMenuFocusIndex: Int = 0,
     val isCustomGridHome: Boolean = false,
-    val customGridLanes: Int = 0,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val isLoading: Boolean = true,
     val activeFilters: ActiveFilters = ActiveFilters(),
@@ -430,6 +430,7 @@ class LibraryViewModel @Inject constructor(
     private val notificationManager: NotificationManager,
     private val preferencesRepository: UserPreferencesRepository,
     private val homeTileRepository: com.nendo.argosy.data.repository.HomeTileRepository,
+    private val customGridShapeStore: CustomGridShapeStore,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val soundManager: SoundFeedbackManager,
     private val gameActions: GameActionsDelegate,
@@ -761,8 +762,7 @@ class LibraryViewModel @Inject constructor(
                         gridDensity = prefs.gridDensity,
                         recentSearches = prefs.libraryRecentSearches,
                         isCustomGridHome = prefs.homeLayout.selected ==
-                            com.nendo.argosy.domain.model.HomeLayoutKind.CUSTOM_GRID,
-                        customGridLanes = prefs.homeLayout.customGrid.laneCount
+                            com.nendo.argosy.domain.model.HomeLayoutKind.CUSTOM_GRID
                     )
                 }
             }
@@ -1726,10 +1726,11 @@ class LibraryViewModel @Inject constructor(
      */
     fun addGameToHomeGrid(gameId: Long) {
         viewModelScope.launch {
-            homeTileRepository.appendToLastPage(
+            val config = preferencesRepository.userPreferences.first().homeLayout.customGrid
+            homeTileRepository.append(
                 ownerUserId = syncPreferencesRepository.getRommUserId(),
                 target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(gameId),
-                columns = _uiState.value.customGridLanes.coerceAtLeast(1)
+                layout = customGridShapeStore.layoutFor(config)
             )
             notificationManager.showSuccess(
                 NotificationText.Res(R.string.library_notice_added_to_home_grid)

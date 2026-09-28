@@ -398,6 +398,12 @@
     <string name="ui_page_chooser_music_soundtracks_header">आपके साउंडट्रैक</string>
 
     <string name="ui_custom_grid_add_page">एक पेज जोड़ें</string>
+    <string name="ui_custom_grid_hidden_tiles_title">छिपी टाइलें</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">बिना नाम की टाइल</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d छिपी</item>
+        <item quantity="other">%d छिपी</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">स्थानांतरित करें</string>
     <string name="ui_custom_grid_edit_resize">आकार बदलें</string>
     <string name="ui_custom_grid_confirm_play">खेलें</string>
@@ -518,7 +524,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">\'सभी देखें\' पर रुकने के बजाय पूरे प्लेटफ़ॉर्म की लाइब्रेरी स्क्रॉल करें</string>
     <string name="ui_home_layout_carousel_box_art">3D बॉक्स आर्ट</string>
     <string name="ui_home_layout_auto_grid_box_art">3D बॉक्स आर्ट</string>
-    <string name="ui_home_layout_custom_grid_lanes">आड़े सेल</string>
+    <string name="ui_home_layout_custom_grid_columns">कॉलम</string>
+    <string name="ui_home_layout_custom_grid_rows">पंक्तियाँ</string>
     <string name="ui_home_layout_custom_grid_auto_add">नए डाउनलोड जोड़ें</string>
     <string name="ui_home_layout_custom_grid_empty_slots">खाली स्लॉट दिखाएं</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">जिन सेल पर कुछ नहीं है उन्हें आउटलाइन करें</string>
@@ -526,8 +533,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">जोड़ा गया पेज खाली रहते हुए भी बना रहता है</string>
     <string name="ui_home_layout_custom_grid_auto_fit">ऑटो-फिट सेल</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">जिन टाइल पर प्लेसमेंट होता है उन्हें मना करने के बजाय हटाएं या छोटा करें</string>
-    <string name="ui_home_layout_custom_grid_match_screens">दोनों स्क्रीन मिलाएं</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">दोनों स्क्रीन पर समान कॉलम रखें और चौड़ी स्क्रीन पर ग्रिड को बीच में रखें</string>
     <string name="ui_home_layout_rail_libraries">मीडिया लाइब्रेरी</string>
     <string name="ui_home_layout_rail_libraries_subtitle">आपके मीडिया सर्वर की हर लाइब्रेरी के लिए एक रो</string>
     <string name="ui_home_layout_rail_continue_watching">देखना जारी रखें</string>

@@ -425,6 +425,12 @@ class HomeInputHandler(
         return true
     }
 
+    private fun customPageTurn(delta: Int): InputResult {
+        if (actions.uiState.value.customGrid.isScrolling) return InputResult.handled(SoundType.BOUNDARY)
+        actions.turnCustomGridPage(delta)
+        return InputResult.handled(SoundType.SECTION_CHANGE)
+    }
+
     private fun customMove(direction: GridDirection2D): InputResult {
         val moved = when (actions.uiState.value.customGrid.editMode) {
             TileEditMode.MOVE -> actions.moveFocusedTile(direction)
@@ -769,10 +775,7 @@ class HomeInputHandler(
             actions.cycleTilePickerCategory(-1)
             return InputResult.handled(SoundType.SECTION_CHANGE)
         }
-        if (isCustomGrid(state)) {
-            actions.turnCustomGridPage(-1)
-            return InputResult.handled(SoundType.SECTION_CHANGE)
-        }
+        if (isCustomGrid(state)) return customPageTurn(-1)
         actions.previousRow()
         return InputResult.handled(SoundType.SECTION_CHANGE)
     }
@@ -786,10 +789,7 @@ class HomeInputHandler(
             actions.cycleTilePickerCategory(1)
             return InputResult.handled(SoundType.SECTION_CHANGE)
         }
-        if (isCustomGrid(state)) {
-            actions.turnCustomGridPage(1)
-            return InputResult.handled(SoundType.SECTION_CHANGE)
-        }
+        if (isCustomGrid(state)) return customPageTurn(1)
         actions.nextRow()
         return InputResult.handled(SoundType.SECTION_CHANGE)
     }

@@ -8,6 +8,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.APP_BAR_DRAWER_INDEX
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.data.local.entity.CollectionType
+import com.nendo.argosy.data.repository.CustomGridShapeStore
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -62,6 +63,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -120,6 +123,7 @@ class HomeViewModel @Inject constructor(
     private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
     private val appsRepository: com.nendo.argosy.data.repository.AppsRepository,
     private val homeTileRepository: com.nendo.argosy.data.repository.HomeTileRepository,
+    private val customGridShapeStore: CustomGridShapeStore,
     private val homeGridPageRepository: com.nendo.argosy.data.repository.HomeGridPageRepository,
     private val raTileContentRepository: com.nendo.argosy.data.repository.RaTileContentRepository,
     private val pageChooserEntrySource: com.nendo.argosy.ui.home.grid.PageChooserEntrySource,
@@ -667,10 +671,14 @@ class HomeViewModel @Inject constructor(
                         homeApps = prefs.secondaryHomeApps.toList()
                     )
                 }
+                val scrollAxis = prefs.homeLayout.customGrid.scrollAxis
+                val axisChanged = _uiState.value.customGrid.scrollAxis != scrollAxis
                 customGrid.applyConfig(
                     autoFit = prefs.homeLayout.customGrid.autoFit,
-                    storedPages = prefs.homeLayout.customGrid.pageCount
+                    storedPages = prefs.homeLayout.customGrid.pageCount,
+                    scrollAxis = scrollAxis
                 )
+                if (axisChanged) applyPageAudio()
 
                 val showsEveryGame = prefs.homeLayout.showsEveryGame
                 if (lastShowsEveryGame != null && lastShowsEveryGame != showsEveryGame) {
@@ -1034,9 +1042,14 @@ class HomeViewModel @Inject constructor(
         return result.nextGameId
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private fun observeHomeTiles() {
         viewModelScope.launch {
-            homeTileRepository.observeTiles(syncPreferencesRepository.getRommUserId())
+            val owner = syncPreferencesRepository.getRommUserId()
+            preferencesRepository.preferences
+                .map { it.homeLayout.customGrid.gridKind }
+                .distinctUntilChanged()
+                .flatMapLatest { kind -> homeTileRepository.observeTiles(owner, kind) }
                 .collect { tiles ->
                     storedTiles = tiles
                     publishHomeTiles(tiles)
@@ -1283,7 +1296,12 @@ class HomeViewModel @Inject constructor(
      * here; navigation needs the same columns and rows the user can see or the cursor leaves the
      * page at a different edge than the art does.
      */
-    fun setCustomGridShape(columns: Int, rows: Int) = customGrid.setShape(columns, rows)
+    fun setCustomGridShape(resolved: com.nendo.argosy.domain.model.ResolvedGridShape) {
+        customGrid.setShape(resolved.shape.columns, resolved.shape.rows)
+        customGridShapeStore.report(resolved)
+    }
+
+    fun openHiddenCustomGridTiles() = customGrid.openHiddenTiles()
 
     override fun moveCustomGridFocus(
         direction: com.nendo.argosy.domain.model.GridDirection2D

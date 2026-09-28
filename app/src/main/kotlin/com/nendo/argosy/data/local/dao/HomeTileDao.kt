@@ -10,29 +10,26 @@ import com.nendo.argosy.data.local.entity.HomeTileEntity
 import com.nendo.argosy.data.local.entity.HomeTileEpisodeEntity
 import kotlinx.coroutines.flow.Flow
 
-/**
- * Every read is scoped to an account. A pre-account tile carries a null owner and belongs to
- * whoever is signed in, so the scope is matched with IS NULL rather than being left out.
- */
 @Dao
 interface HomeTileDao {
 
     @Query(
         "SELECT * FROM home_tiles WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) " +
-            "ORDER BY pageIndex ASC, rowIndex ASC, columnIndex ASC"
+            "AND gridKind = :gridKind ORDER BY pageIndex ASC, rowIndex ASC, columnIndex ASC"
     )
-    fun observeTiles(ownerUserId: Long?): Flow<List<HomeTileEntity>>
+    fun observeTiles(ownerUserId: Long?, gridKind: String): Flow<List<HomeTileEntity>>
 
     @Query(
         "SELECT * FROM home_tiles WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) " +
-            "AND pageIndex = :pageIndex ORDER BY rowIndex ASC, columnIndex ASC"
+            "AND gridKind = :gridKind AND pageIndex = :pageIndex ORDER BY rowIndex ASC, columnIndex ASC"
     )
-    suspend fun getPage(ownerUserId: Long?, pageIndex: Int): List<HomeTileEntity>
+    suspend fun getPage(ownerUserId: Long?, gridKind: String, pageIndex: Int): List<HomeTileEntity>
 
     @Query(
-        "SELECT MAX(pageIndex) FROM home_tiles WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL)"
+        "SELECT MAX(pageIndex) FROM home_tiles WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) " +
+            "AND gridKind = :gridKind"
     )
-    suspend fun getMaxPageIndex(ownerUserId: Long?): Int?
+    suspend fun getMaxPageIndex(ownerUserId: Long?, gridKind: String): Int?
 
     @Query("SELECT * FROM home_tiles WHERE id = :id")
     suspend fun getById(id: Long): HomeTileEntity?
@@ -42,6 +39,9 @@ interface HomeTileDao {
 
     @Update
     suspend fun update(tile: HomeTileEntity)
+
+    @Update
+    suspend fun updateAll(tiles: List<HomeTileEntity>)
 
     @Query("DELETE FROM home_tiles WHERE id = :id")
     suspend fun deleteById(id: Long)
@@ -60,9 +60,10 @@ interface HomeTileDao {
 
     @Query(
         "DELETE FROM home_tile_episodes WHERE tileId IN (SELECT id FROM home_tiles " +
-            "WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) AND pageIndex = :pageIndex)"
+            "WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) AND gridKind = :gridKind " +
+            "AND pageIndex = :pageIndex)"
     )
-    suspend fun deleteEpisodesForPage(ownerUserId: Long?, pageIndex: Int)
+    suspend fun deleteEpisodesForPage(ownerUserId: Long?, gridKind: String, pageIndex: Int)
 
     @Transaction
     suspend fun replaceEpisodes(tileId: Long, rows: List<HomeTileEpisodeEntity>) {
@@ -78,19 +79,16 @@ interface HomeTileDao {
 
     @Query(
         "DELETE FROM home_tiles WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) " +
-            "AND pageIndex = :pageIndex"
+            "AND gridKind = :gridKind AND pageIndex = :pageIndex"
     )
-    suspend fun deletePage(ownerUserId: Long?, pageIndex: Int)
+    suspend fun deletePage(ownerUserId: Long?, gridKind: String, pageIndex: Int)
 
-    /**
-     * Closes the gap a removed page leaves. Without it the pages after it keep their old numbers
-     * and the grid shows an empty page where the removed one used to be.
-     */
     @Query(
         "UPDATE home_tiles SET pageIndex = pageIndex - 1 " +
-            "WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) AND pageIndex > :removedPage"
+            "WHERE (ownerUserId = :ownerUserId OR ownerUserId IS NULL) AND gridKind = :gridKind " +
+            "AND pageIndex > :removedPage"
     )
-    suspend fun shiftPagesDown(ownerUserId: Long?, removedPage: Int)
+    suspend fun shiftPagesDown(ownerUserId: Long?, gridKind: String, removedPage: Int)
 
     @Query("DELETE FROM home_tiles WHERE targetType = 'GAME' AND gameId NOT IN (SELECT id FROM games)")
     suspend fun deleteTilesForMissingGames()

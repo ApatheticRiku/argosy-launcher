@@ -21,6 +21,7 @@ import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.download.nsz.NszDecompressor
 import com.nendo.argosy.data.emulator.M3uManager
+import com.nendo.argosy.data.repository.CustomGridShapeStore
 import com.nendo.argosy.data.storage.StorageAttributionRepository
 import com.nendo.argosy.data.storage.StorageCategory
 import com.nendo.argosy.DualScreenManagerHolder
@@ -176,6 +177,7 @@ class DownloadManager @Inject constructor(
     private val syncPreferencesRepository: SyncPreferencesRepository,
     private val homeTileRepository: com.nendo.argosy.data.repository.HomeTileRepository,
     private val homeTilePromptQueue: com.nendo.argosy.data.repository.HomeTilePromptQueue,
+    private val customGridShapeStore: CustomGridShapeStore,
     private val extContentOrganizer: ExtContentOrganizer,
     private val romStagingManager: RomStagingManager
 ) {
@@ -541,10 +543,10 @@ class DownloadManager @Inject constructor(
         when (customGrid.autoAdd) {
             com.nendo.argosy.domain.model.HomeTileAutoAdd.OFF -> return
             com.nendo.argosy.domain.model.HomeTileAutoAdd.PROMPT -> homeTilePromptQueue.offer(gameId)
-            com.nendo.argosy.domain.model.HomeTileAutoAdd.AUTO -> homeTileRepository.appendToLastPage(
+            com.nendo.argosy.domain.model.HomeTileAutoAdd.AUTO -> homeTileRepository.append(
                 ownerUserId = syncPreferencesRepository.getRommUserId(),
                 target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(gameId),
-                columns = customGrid.laneCount
+                layout = customGridShapeStore.layoutFor(customGrid)
             )
         }
     }

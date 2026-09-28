@@ -38,6 +38,7 @@ private const val AUTO_GRID_SECTIONS = 3
 private const val AUTO_GRID_ROWS_PER_SECTION = 2
 private const val AUTO_GRID_HORIZONTAL_OVERSCAN = 2
 private const val CUSTOM_GRID_PAGES = 3
+private const val SCROLL_SCHEMATIC_OVERSCAN = 2
 
 /**
  * Auto-grid schematic. [AutoGridConfig.laneCount] owns the cross-axis count, so it reads as columns
@@ -75,12 +76,6 @@ internal fun AutoGridSchematic(
     }
 }
 
-/**
- * Custom-grid schematic, paging sideways. [CustomGridConfig.laneCount] is read across the short
- * edge, so a portrait screen gets that many columns and a landscape one that many rows. Cells keep
- * the cover aspect ratio and are centred in the slot the page division gives them, so a wide grid
- * thins the covers instead of stretching them.
- */
 @Composable
 internal fun CustomGridSchematic(
     config: CustomGridConfig,
@@ -88,6 +83,11 @@ internal fun CustomGridSchematic(
     animate: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val scrollAxis = config.scrollAxis
+    if (scrollAxis != null) {
+        ScrollingCustomGridSchematic(config, scrollAxis, preview, animate, modifier)
+        return
+    }
     var page by remember { mutableIntStateOf(0) }
     LaunchedEffect(animate) {
         if (!animate) return@LaunchedEffect
@@ -104,20 +104,17 @@ internal fun CustomGridSchematic(
     val dotSize = ComponentDefaults.Carousel.dotSizeActive.dp * preview.scale
     val dotGap = ComponentDefaults.Carousel.dotGap.dp * preview.scale
     Canvas(modifier = modifier.clipToBounds().fillMaxSize()) {
-        val lanes = config.laneCount
-        val isPortrait = size.height >= size.width
-        val laneExtent = if (isPortrait) size.width / lanes else size.height / lanes
-        val cellHeight = if (isPortrait) laneExtent / preview.coverAspectRatio else laneExtent
-        val cellWidth = if (isPortrait) laneExtent else laneExtent * preview.coverAspectRatio
-        val alongCount = if (isPortrait) {
-            (size.height / cellHeight).toInt()
-        } else {
-            (size.width / cellWidth).toInt()
-        }.coerceAtLeast(1)
+        val gapPx = preview.gap.toPx()
+        val dotStrip = dotSize.toPx() + gapPx
         drawCustomGrid(
-            columns = if (isPortrait) lanes else alongCount,
-            rows = if (isPortrait) alongCount else lanes,
-            gapPx = preview.gap.toPx(),
+            metrics = customGridMetrics(
+                width = size.width,
+                height = size.height - dotStrip,
+                columns = config.columns,
+                rows = config.rows,
+                gapPx = gapPx
+            ),
+            dotStripPx = dotStrip,
             coverAspectRatio = preview.coverAspectRatio,
             cornerPx = preview.coverCornerRadius.toPx(),
             dotSizePx = dotSize.toPx(),
@@ -126,6 +123,56 @@ internal fun CustomGridSchematic(
             blockColor = preview.block,
             activeColor = preview.focus
         )
+    }
+}
+
+@Composable
+private fun ScrollingCustomGridSchematic(
+    config: CustomGridConfig,
+    scrollAxis: HomeScrollAxis,
+    preview: HomeLayoutPreviewMetrics,
+    animate: Boolean,
+    modifier: Modifier
+) {
+    val progress = if (animate) {
+        rememberLoopProgress(ComponentDefaults.HomeLayoutPreview.scrollCycleMs)
+    } else {
+        0f
+    }
+    Canvas(modifier = modifier.clipToBounds().fillMaxSize()) {
+        val metrics = customGridMetrics(
+            width = size.width,
+            height = size.height,
+            columns = config.columns,
+            rows = config.rows,
+            gapPx = preview.gap.toPx()
+        )
+        val cellWidth = metrics.cellWidthPx
+        val cellHeight = metrics.cellHeightPx
+        if (cellWidth <= 0f || cellHeight <= 0f) return@Canvas
+        val coverWidth = minOf(cellWidth, cellHeight * preview.coverAspectRatio)
+        val coverHeight = coverWidth / preview.coverAspectRatio
+        val vertical = scrollAxis == HomeScrollAxis.VERTICAL
+        val stride = (if (vertical) cellHeight else cellWidth) + metrics.gapPx
+        val lanes = if (vertical) metrics.columns else metrics.rows
+        val lines = (if (vertical) metrics.rows else metrics.columns) + SCROLL_SCHEMATIC_OVERSCAN
+        val shift = progress * stride
+        val cornerPx = preview.coverCornerRadius.toPx()
+        repeat(lines) { line ->
+            val along = line * stride - shift
+            repeat(lanes) { lane ->
+                val cellX = if (vertical) metrics.offsetXPx + lane * (cellWidth + metrics.gapPx) else along
+                val cellY = if (vertical) along else metrics.offsetYPx + lane * (cellHeight + metrics.gapPx)
+                drawBlock(
+                    x = cellX + (cellWidth - coverWidth) / 2f,
+                    y = cellY + (cellHeight - coverHeight) / 2f,
+                    width = coverWidth,
+                    height = coverHeight,
+                    cornerPx = cornerPx,
+                    color = preview.block
+                )
+            }
+        }
     }
 }
 
@@ -232,9 +279,8 @@ private fun DrawScope.cellWidthOf(geometry: AutoGridGeometry): Float =
 
 
 private fun DrawScope.drawCustomGrid(
-    columns: Int,
-    rows: Int,
-    gapPx: Float,
+    metrics: CustomGridMetrics,
+    dotStripPx: Float,
     coverAspectRatio: Float,
     cornerPx: Float,
     dotSizePx: Float,
@@ -243,23 +289,21 @@ private fun DrawScope.drawCustomGrid(
     blockColor: Color,
     activeColor: Color
 ) {
-    val dotStrip = dotSizePx + gapPx
-    val pageWidth = size.width
-    val gridHeight = size.height - dotStrip
-    val cellWidth = (pageWidth - gapPx * (columns - 1)) / columns
-    val cellHeight = (gridHeight - gapPx * (rows - 1)) / rows
-    if (cellWidth <= 0f || cellHeight <= 0f) return
+    val gapPx = metrics.gapPx
+    val cellWidth = metrics.cellWidthPx
+    val cellHeight = metrics.cellHeightPx
+    if (cellWidth <= 0f || cellHeight <= 0f || size.height <= dotStripPx) return
     val coverWidth = minOf(cellWidth, cellHeight * coverAspectRatio)
     val coverHeight = coverWidth / coverAspectRatio
-    val stride = pageWidth + gapPx
+    val stride = size.width + gapPx
     val within = offset.mod(1f) * stride
     repeat(2) { page ->
-        val originX = page * stride - within
-        repeat(rows) { row ->
-            repeat(columns) { column ->
+        val originX = page * stride - within + metrics.offsetXPx
+        repeat(metrics.rows) { row ->
+            repeat(metrics.columns) { column ->
                 drawBlock(
                     x = originX + column * (cellWidth + gapPx) + (cellWidth - coverWidth) / 2f,
-                    y = row * (cellHeight + gapPx) + (cellHeight - coverHeight) / 2f,
+                    y = metrics.offsetYPx + row * (cellHeight + gapPx) + (cellHeight - coverHeight) / 2f,
                     width = coverWidth,
                     height = coverHeight,
                     cornerPx = cornerPx,

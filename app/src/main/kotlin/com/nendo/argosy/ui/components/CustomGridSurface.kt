@@ -5,25 +5,46 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.R
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
+import com.nendo.argosy.domain.model.GridAxis
 import com.nendo.argosy.domain.model.GridCell
 import com.nendo.argosy.domain.model.HomeTile
+import com.nendo.argosy.domain.model.ResolvedGridShape
 import com.nendo.argosy.ui.screens.home.GameDownloadIndicator
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.util.clickableNoFocus
 
 /**
  * The custom grid as a whole: the page being shown, the stub that adds another, and the dots that
@@ -34,10 +55,12 @@ import com.nendo.argosy.ui.theme.Motion
 fun CustomGridSurface(
     state: CustomGridState,
     contentFor: (HomeTile) -> CustomGridTileContent?,
-    laneCount: Int,
+    columns: GridAxis,
+    rows: GridAxis,
     onCellTap: (GridCell) -> Unit,
-    onShapeResolved: (Int, Int) -> Unit,
+    onShapeResolved: (ResolvedGridShape) -> Unit,
     onAddPage: () -> Unit,
+    onHiddenTilesTap: () -> Unit,
     modifier: Modifier = Modifier,
     onTileLongPress: ((GridCell) -> Unit)? = null,
     onBadgeTap: ((Int) -> Unit)? = null,
@@ -55,9 +78,41 @@ fun CustomGridSurface(
     downloadIndicatorFor: (Long) -> GameDownloadIndicator = { GameDownloadIndicator.NONE },
     onCoverLoadFailed: ((Long, String) -> Unit)? = null,
     onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)? = null,
-    onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)? = null,
-    peerScreen: androidx.compose.ui.unit.DpSize? = null
+    onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)? = null
 ) {
+    if (state.isScrolling) {
+        Column(modifier = modifier) {
+            CustomGridScrollCanvas(
+                state = state,
+                contentFor = contentFor,
+                columns = columns,
+                rows = rows,
+                onCellTap = onCellTap,
+                onShapeResolved = onShapeResolved,
+                onTileLongPress = onTileLongPress,
+                onBadgeTap = onBadgeTap,
+                onBandTap = onBandTap,
+                onTileDrag = onTileDrag,
+                onTileResize = onTileResize,
+                onToggleEditMode = onToggleEditMode,
+                onCommitEdit = onCommitEdit,
+                onPlaybackPosition = onPlaybackPosition,
+                onTakeAudio = onTakeAudio,
+                onReleaseAudio = onReleaseAudio,
+                showEmptySlots = showEmptySlots,
+                showCursor = showCursor,
+                downloadIndicatorFor = downloadIndicatorFor,
+                onCoverLoadFailed = onCoverLoadFailed,
+                onCoverLoaded = onCoverLoaded,
+                onPosterLoaded = onPosterLoaded,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+            CustomGridFooterBand()
+        }
+        return
+    }
     val swipeThresholdPx = with(LocalDensity.current) {
         ComponentDefaults.CustomGrid.swipePageThresholdDp.dp.toPx()
     }
@@ -103,7 +158,8 @@ fun CustomGridSurface(
                 HomeCustomGridPage(
                     tiles = state.tilesOnPage(page),
                     contentFor = contentFor,
-                    laneCount = laneCount,
+                    columns = columns,
+                    rows = rows,
                     focusedCell = state.cell,
                     onCellTap = onCellTap,
                     onShapeResolved = onShapeResolved,
@@ -126,7 +182,6 @@ fun CustomGridSurface(
                     onPlaybackPosition = onPlaybackPosition,
                     onTakeAudio = onTakeAudio,
                     onReleaseAudio = onReleaseAudio,
-                    peerScreen = peerScreen,
                     editModeLabel = state.editLabelRes?.let { stringResource(it) },
                     overlappedTileIds = state.overlappedTileIds,
                     editingTileId = state.editingTileId,
@@ -138,12 +193,60 @@ fun CustomGridSurface(
                 )
             }
         }
-        CustomGridPageDots(
-            pageCount = state.pageCount,
-            currentPage = state.page,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(vertical = Dimens.spacingSm)
+        CustomGridFooterBand {
+            CustomGridPageDots(pageCount = state.pageCount, currentPage = state.page)
+            val hiddenCount = state.hiddenTiles.size
+            if (hiddenCount > 0 && !state.isEditing) {
+                CustomGridHiddenMarker(
+                    count = hiddenCount,
+                    onClick = onHiddenTilesTap,
+                    modifier = Modifier.wrapContentHeight(unbounded = true)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomGridFooterBand(content: @Composable RowScope.() -> Unit = {}) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = Dimens.spacingSm)
+            .height(Dimens.spacingSm),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+        content = content
+    )
+}
+
+@Composable
+private fun CustomGridHiddenMarker(
+    count: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusSm)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(theme.surfaceRaised)
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.VisibilityOff,
+            contentDescription = null,
+            tint = theme.textDim,
+            modifier = Modifier.size(Dimens.iconSm)
+        )
+        Text(
+            text = pluralStringResource(R.plurals.ui_custom_grid_hidden_count, count, count),
+            style = MaterialTheme.typography.labelSmall,
+            color = theme.textDim
         )
     }
 }

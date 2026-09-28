@@ -160,6 +160,66 @@ class CustomTileMenuOrderTest {
         assertTrue(onlyTile.menuActions.drop(onlyTile.menuDangerFromIndex!!).all { it.isDestructive })
     }
 
+    private fun stateWithHidden(): CustomGridState = CustomGridState(
+        tiles = listOf(
+            tile(game),
+            HomeTile(id = 2L, pageIndex = 0, rect = TileRect(6, 0), target = HomeTileTargetRef.Game(8L))
+        ),
+        page = 0,
+        cell = GridCell(0, 0),
+        columns = 4,
+        rows = 4,
+        storedPages = 2
+    )
+
+    @Test
+    fun `hidden tiles lead the page rows, ahead of the destructive fence`() {
+        val actions = stateWithHidden().menuActions
+
+        assertEquals(
+            listOf(
+                CustomTileMenuAction.FIT_COVER,
+                CustomTileMenuAction.ARRANGE,
+                CustomTileMenuAction.HIDDEN_TILES,
+                CustomTileMenuAction.PAGE_BACKDROP,
+                CustomTileMenuAction.PAGE_MUSIC,
+                CustomTileMenuAction.REMOVE,
+                CustomTileMenuAction.DELETE_PAGE
+            ),
+            actions
+        )
+        assertEquals(actions.indexOf(CustomTileMenuAction.REMOVE), stateWithHidden().menuDangerFromIndex)
+    }
+
+    @Test
+    fun `hidden tiles are offered on an empty cell too`() {
+        val state = stateWithHidden().copy(cell = GridCell(2, 2))
+
+        assertTrue(CustomTileMenuAction.HIDDEN_TILES in state.menuActions)
+    }
+
+    @Test
+    fun `a page with nothing hidden offers no hidden tiles row`() {
+        assertTrue(CustomTileMenuAction.HIDDEN_TILES !in stateWith(game).menuActions)
+    }
+
+    @Test
+    fun `the hidden list counts and fences on the hidden tiles alone`() {
+        val state = stateWithHidden().copy(showMenu = true, menuListsHidden = true)
+
+        assertEquals(listOf(2L), state.hiddenTiles.map { it.id })
+        assertEquals(1, state.menuEntryCount)
+        assertNull(state.menuDangerFromIndex)
+    }
+
+    @Test
+    fun `a hidden tile is never drawn or focused`() {
+        val state = stateWithHidden()
+
+        assertEquals(listOf(1L), state.tilesOnPage(0).map { it.id })
+        assertNull(state.tileAt(GridCell(3, 0)))
+    }
+
     @Test
     fun `an empty cell on the only page has nothing to destroy`() {
         val state = stateWith(target = null, pages = 1)

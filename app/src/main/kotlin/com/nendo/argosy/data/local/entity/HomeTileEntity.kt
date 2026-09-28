@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -46,13 +47,16 @@ enum class MediaTilePlayMode {
     indices = [
         Index(value = ["ownerUserId", "pageIndex"]),
         Index(value = ["ownerUserId", "pageIndex", "columnIndex", "rowIndex"]),
-        Index(value = ["pageId"])
+        Index(value = ["pageId"]),
+        Index(value = ["ownerUserId", "gridKind", "pageIndex"])
     ]
 )
 data class HomeTileEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val ownerUserId: Long?,
+    @ColumnInfo(defaultValue = "PAGED")
+    val gridKind: String = "PAGED",
     val pageIndex: Int,
     val pageId: Long? = null,
     val artStyle: String? = null,

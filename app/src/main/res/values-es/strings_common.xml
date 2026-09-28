@@ -409,6 +409,13 @@
     <string name="ui_page_chooser_music_soundtracks_header">Tus bandas sonoras</string>
 
     <string name="ui_custom_grid_add_page">Agregar una página</string>
+    <string name="ui_custom_grid_hidden_tiles_title">Mosaicos ocultos</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">Mosaico sin nombre</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d oculto</item>
+        <item quantity="many">%d ocultos</item>
+        <item quantity="other">%d ocultos</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">Mover</string>
     <string name="ui_custom_grid_edit_resize">Redimensionar</string>
     <string name="ui_custom_grid_confirm_play">Jugar</string>
@@ -530,7 +537,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">Desplázate por toda la biblioteca de una plataforma en lugar de detenerte en Ver todo</string>
     <string name="ui_home_layout_carousel_box_art">Caja 3D</string>
     <string name="ui_home_layout_auto_grid_box_art">Caja 3D</string>
-    <string name="ui_home_layout_custom_grid_lanes">Celdas de ancho</string>
+    <string name="ui_home_layout_custom_grid_columns">Columnas</string>
+    <string name="ui_home_layout_custom_grid_rows">Filas</string>
     <string name="ui_home_layout_custom_grid_auto_add">Agregar descargas nuevas</string>
     <string name="ui_home_layout_custom_grid_empty_slots">Mostrar espacios vacíos</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">Resaltar las celdas donde no hay nada</string>
@@ -538,8 +546,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">Una página agregada permanece aunque no contenga nada</string>
     <string name="ui_home_layout_custom_grid_auto_fit">Ajuste automático de celdas</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">Mueve o reduce los mosaicos donde cae una colocación, en lugar de rechazarla</string>
-    <string name="ui_home_layout_custom_grid_match_screens">Igualar ambas pantallas</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">Mantiene las mismas columnas en ambas pantallas y centra la cuadrícula en la más ancha</string>
     <string name="ui_home_layout_rail_libraries">Bibliotecas multimedia</string>
     <string name="ui_home_layout_rail_libraries_subtitle">Una fila para cada biblioteca de tu servidor multimedia</string>
     <string name="ui_home_layout_rail_continue_watching">Continuar viendo</string>

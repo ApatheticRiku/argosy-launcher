@@ -383,6 +383,11 @@
     <string name="ui_page_chooser_music_soundtracks_header">你的原声音乐</string>
 
     <string name="ui_custom_grid_add_page">添加页面</string>
+    <string name="ui_custom_grid_hidden_tiles_title">隐藏的磁贴</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">未命名磁贴</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="other">%d 个已隐藏</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">移动</string>
     <string name="ui_custom_grid_edit_resize">调整大小</string>
     <string name="ui_custom_grid_confirm_play">开始</string>
@@ -498,7 +503,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">滚动浏览平台的完整游戏库，而不是在“查看全部”处停止</string>
     <string name="ui_home_layout_carousel_box_art">3D立体封面</string>
     <string name="ui_home_layout_auto_grid_box_art">3D立体封面</string>
-    <string name="ui_home_layout_custom_grid_lanes">横向格数</string>
+    <string name="ui_home_layout_custom_grid_columns">列数</string>
+    <string name="ui_home_layout_custom_grid_rows">行数</string>
     <string name="ui_home_layout_custom_grid_auto_add">添加新下载</string>
     <string name="ui_home_layout_custom_grid_empty_slots">显示空白格</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">为空白的格子加上轮廓</string>
@@ -506,8 +512,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">新增的页面即使为空也会保留</string>
     <string name="ui_home_layout_custom_grid_auto_fit">自动适配格子</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">放置内容时移动或缩小占用的磁贴，而不是拒绝放置</string>
-    <string name="ui_home_layout_custom_grid_match_screens">两块屏幕保持一致</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">两块屏幕使用相同列数，在较宽的屏幕上居中显示</string>
     <string name="ui_home_layout_rail_libraries">媒体库</string>
     <string name="ui_home_layout_rail_libraries_subtitle">媒体服务器上每个库对应一行</string>
     <string name="ui_home_layout_rail_continue_watching">继续观看</string>

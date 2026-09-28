@@ -29,6 +29,7 @@ import com.nendo.argosy.data.remote.jellyfin.JellyfinConnectionManager
 import com.nendo.argosy.data.remote.jellyfin.JellyfinSignInCallbacks
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.data.social.SocialAuthManager
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
@@ -1077,6 +1078,8 @@ class SettingsViewModel @Inject constructor(
     fun setHomeBackgroundMode(mode: HomeBackgroundMode) = displayDelegate.setHomeBackgroundMode(viewModelScope, mode)
     fun setHomeLayout(settings: com.nendo.argosy.domain.model.HomeLayoutSettings) =
         displayDelegate.setHomeLayout(viewModelScope, settings)
+    fun customGridShape(): CustomGridShape =
+        displayDelegate.customGridShape()
     fun setPresentationStyle(style: com.nendo.argosy.domain.model.PresentationStyle) =
         displayDelegate.setPresentationStyle(viewModelScope, style)
     fun cycleHomeBackgroundMode(direction: Int = 1) = displayDelegate.cycleHomeBackgroundMode(viewModelScope, direction)

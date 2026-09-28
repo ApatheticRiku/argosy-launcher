@@ -38,6 +38,15 @@ data class TileRect(
      */
     fun atLeast(span: Int): TileRect =
         copy(columnSpan = maxOf(columnSpan, span), rowSpan = maxOf(rowSpan, span))
+
+    /**
+     * The part of this rectangle on a page of [columns] by [rows], anchor unchanged. Spans never drop
+     * below one, so an anchor already off the page stays off it.
+     */
+    fun trimmedTo(columns: Int, rows: Int): TileRect = copy(
+        columnSpan = columnSpan.coerceAtMost(columns - columnIndex).coerceAtLeast(1),
+        rowSpan = rowSpan.coerceAtMost(rows - rowIndex).coerceAtLeast(1)
+    )
 }
 
 /**
@@ -147,19 +156,117 @@ data class HomeTile(
     val rect: TileRect,
     val target: HomeTileTargetRef,
     val playlist: List<String> = emptyList(),
-    val coverScale: TileCoverScale = TileCoverScale.CROP
+    val coverScale: TileCoverScale = TileCoverScale.CROP,
+    val kind: HomeGridKind = HomeGridKind.PAGED
 ) {
     val minSpan: Int get() = minimumSpanFor(target)
 }
 
 /**
- * Places [tiles] onto a page of [columns] by [rows], keeping the ones that fit and reporting the
- * ones that cannot be placed rather than dropping them silently.
- *
- * Tiles are taken in stored order and the first claim on a cell wins. A tile that no longer fits,
- * because the lane count was lowered or two pages were merged by an edit, is trimmed to the largest
- * rectangle still free at its anchor; only when its own anchor is taken is it reported as displaced,
- * so a page survives a narrowing rather than being rebuilt from nothing.
+ * The bound a scrolling grid gives its scroll axis wherever the placement rules take a page size.
+ */
+const val SCROLL_AXIS_BOUND = 100_000
+
+/**
+ * The first [columnSpan] by [rowSpan] rectangle clear of [taken] on a canvas with [lanes] cells
+ * across and no end along [axis], scanning line by line along [axis] and across each line from its
+ * start. The span across the lanes is cut to fit them.
+ */
+fun firstFreeScrollRect(
+    taken: List<TileRect>,
+    lanes: Int,
+    axis: HomeScrollAxis,
+    columnSpan: Int,
+    rowSpan: Int
+): TileRect {
+    val laneCount = lanes.coerceAtLeast(1)
+    val crossSpan = (if (axis == HomeScrollAxis.VERTICAL) columnSpan else rowSpan).coerceIn(1, laneCount)
+    val alongSpan = (if (axis == HomeScrollAxis.VERTICAL) rowSpan else columnSpan).coerceAtLeast(1)
+    val lastLine = taken.maxOfOrNull { if (axis == HomeScrollAxis.VERTICAL) it.lastRow else it.lastColumn } ?: -1
+    for (line in 0..lastLine + 1) {
+        for (lane in 0..laneCount - crossSpan) {
+            val candidate = if (axis == HomeScrollAxis.VERTICAL) {
+                TileRect(lane, line, crossSpan, alongSpan)
+            } else {
+                TileRect(line, lane, alongSpan, crossSpan)
+            }
+            if (taken.none { it.overlaps(candidate) }) return candidate
+        }
+    }
+    return if (axis == HomeScrollAxis.VERTICAL) {
+        TileRect(0, lastLine + 1, crossSpan, alongSpan)
+    } else {
+        TileRect(lastLine + 1, 0, alongSpan, crossSpan)
+    }
+}
+
+/**
+ * How [tiles] show on a scrolling canvas with [lanes] cells across [axis], in stored order. A tile
+ * keeps its stored rectangle, cut to the lanes, where that is clear; any other tile takes the first
+ * free spot of its size. No tile is ever displaced, and nothing here is written back.
+ */
+fun placeScrollTiles(tiles: List<HomeTile>, lanes: Int, axis: HomeScrollAxis): List<HomeTile> {
+    val placed = mutableListOf<HomeTile>()
+    for (tile in tiles) {
+        val sized = scrollSized(tile, lanes, axis)
+        val taken = placed.map { it.rect }
+        val kept = sized.takeIf { rect -> rect.withinLanes(lanes, axis) && taken.none { it.overlaps(rect) } }
+        placed += tile.copy(
+            rect = kept ?: firstFreeScrollRect(taken, lanes, axis, sized.columnSpan, sized.rowSpan)
+        )
+    }
+    return placed
+}
+
+/**
+ * [tiles] repacked onto the scrolling canvas [to] describes, read in [from]'s order: along its
+ * scroll axis first, then across it. Each tile keeps its spans, the one across the lanes cut to
+ * [to]'s lanes but never below the tile's minimum span unless the lanes themselves are narrower.
+ * [tiles] come back unchanged when [from] and [to] are not both scrolling or share axis and lanes.
+ */
+fun reflowScrollTiles(
+    tiles: List<HomeTile>,
+    from: CustomGridLayout,
+    to: CustomGridLayout
+): List<HomeTile> {
+    val fromAxis = from.scrollAxis ?: return tiles
+    val toAxis = to.scrollAxis ?: return tiles
+    if (!from.needsScrollReflowTo(to)) return tiles
+    val readingOrder = if (fromAxis == HomeScrollAxis.VERTICAL) {
+        compareBy<HomeTile>({ it.rect.rowIndex }, { it.rect.columnIndex }, { it.id })
+    } else {
+        compareBy<HomeTile>({ it.rect.columnIndex }, { it.rect.rowIndex }, { it.id })
+    }
+    val placed = mutableListOf<HomeTile>()
+    for (tile in tiles.sortedWith(readingOrder)) {
+        val sized = scrollSized(tile, to.lanes, toAxis)
+        placed += tile.copy(
+            rect = firstFreeScrollRect(placed.map { it.rect }, to.lanes, toAxis, sized.columnSpan, sized.rowSpan)
+        )
+    }
+    return placed
+}
+
+private fun scrollSized(tile: HomeTile, lanes: Int, axis: HomeScrollAxis): TileRect {
+    val laneCount = lanes.coerceAtLeast(1)
+    val floor = tile.minSpan.coerceAtMost(laneCount)
+    val rect = tile.rect.atLeast(tile.minSpan)
+    return if (axis == HomeScrollAxis.VERTICAL) {
+        rect.copy(columnSpan = rect.columnSpan.coerceIn(floor, laneCount))
+    } else {
+        rect.copy(rowSpan = rect.rowSpan.coerceIn(floor, laneCount))
+    }
+}
+
+private fun TileRect.withinLanes(lanes: Int, axis: HomeScrollAxis): Boolean =
+    columnIndex >= 0 && rowIndex >= 0 &&
+        (if (axis == HomeScrollAxis.VERTICAL) lastColumn else lastRow) < lanes
+
+/**
+ * How [tiles] show on a page of [columns] by [rows] on one screen, in stored order with the first
+ * claim on a cell winning. A tile whose anchor is on the page and free is drawn trimmed to the edge
+ * and to its neighbours; it is [TilePlacement.displaced] when its anchor is off the page or taken, or
+ * when the trimmed rectangle falls below its minimum span. Nothing here is ever written back.
  */
 fun placeTiles(tiles: List<HomeTile>, columns: Int, rows: Int): TilePlacement {
     val placed = mutableListOf<HomeTile>()
@@ -170,16 +277,17 @@ fun placeTiles(tiles: List<HomeTile>, columns: Int, rows: Int): TilePlacement {
             displaced += tile
             continue
         }
-        var fitted = tile.rect.atLeast(tile.minSpan)
-        while (
-            !fitted.withinBounds(columns, rows) ||
-            placed.any { it.rect.overlaps(fitted) }
-        ) {
+        var fitted = tile.rect.atLeast(tile.minSpan).trimmedTo(columns, rows)
+        while (placed.any { it.rect.overlaps(fitted) }) {
             fitted = when {
                 fitted.columnSpan > 1 -> fitted.copy(columnSpan = fitted.columnSpan - 1)
                 fitted.rowSpan > 1 -> fitted.copy(rowSpan = fitted.rowSpan - 1)
                 else -> break
             }
+        }
+        if (fitted.columnSpan < tile.minSpan || fitted.rowSpan < tile.minSpan) {
+            displaced += tile
+            continue
         }
         placed += tile.copy(rect = fitted)
     }
@@ -187,31 +295,6 @@ fun placeTiles(tiles: List<HomeTile>, columns: Int, rows: Int): TilePlacement {
 }
 
 data class TilePlacement(val placed: List<HomeTile>, val displaced: List<HomeTile>)
-
-/**
- * The page as it can actually be shown on a grid of [columns] by [rows].
- *
- * A stored tile can fall outside the current shape whenever the shape changes - a different lane
- * count, a rotated handheld, a page authored on a wider screen. Without this pass such a tile is
- * still in the database and still owned by the user, but is drawn beyond the viewport and reads as
- * having vanished. Anything that cannot stay where it is gets the first free cell instead, so a
- * tile is always somewhere its owner can see and move it.
- */
-fun fitTilesToPage(tiles: List<HomeTile>, columns: Int, rows: Int): List<HomeTile> {
-    if (columns <= 0 || rows <= 0) return tiles
-    val placement = placeTiles(tiles, columns, rows)
-    if (placement.displaced.isEmpty()) return placement.placed
-    val settled = placement.placed.toMutableList()
-    for (tile in placement.displaced) {
-        val free = firstFreeCell(settled, columns, rows)
-        if (free == null) {
-            settled += tile
-            continue
-        }
-        settled += tile.copy(rect = anchoredAt(free, tile, columns, rows))
-    }
-    return settled
-}
 
 /**
  * A tile placed at [cell] carrying whatever of its own floor the page has room for. A media tile
@@ -362,6 +445,14 @@ private fun shrinkClear(
 }
 
 private fun firstFreeCell(taken: List<HomeTile>, columns: Int, rows: Int): GridCell? {
+    if (columns >= SCROLL_AXIS_BOUND) {
+        for (column in 0 until columns) {
+            for (row in 0 until rows) {
+                if (fits(TileRect(column, row), taken, columns, rows)) return GridCell(column, row)
+            }
+        }
+        return null
+    }
     for (row in 0 until rows) {
         for (column in 0 until columns) {
             if (fits(TileRect(column, row), taken, columns, rows)) return GridCell(column, row)

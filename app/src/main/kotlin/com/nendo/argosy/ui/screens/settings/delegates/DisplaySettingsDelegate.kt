@@ -36,7 +36,13 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.data.local.entity.GameListItem
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
+import com.nendo.argosy.data.repository.CustomGridShapeStore
 import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.data.repository.HomeTileRepository
+import com.nendo.argosy.domain.model.CustomGridConfig
+import com.nendo.argosy.domain.model.CustomGridLayout
+import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -47,16 +53,23 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 class DisplaySettingsDelegate @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val gameRepository: GameRepository,
     private val ledController: LEDController,
-    private val screenCaptureManager: ScreenCaptureManager
+    private val screenCaptureManager: ScreenCaptureManager,
+    private val customGridShapeStore: CustomGridShapeStore,
+    private val homeTileRepository: HomeTileRepository,
+    private val syncPreferencesRepository: SyncPreferencesRepository
 ) {
     private val _state = MutableStateFlow(DisplayState())
     val state: StateFlow<DisplayState> = _state.asStateFlow()
+
+    private val scrollReflowLock = Mutex()
 
     private val _openBackgroundPickerEvent = MutableSharedFlow<Unit>()
     val openBackgroundPickerEvent: SharedFlow<Unit> = _openBackgroundPickerEvent.asSharedFlow()
@@ -488,9 +501,39 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
+    fun customGridShape(): CustomGridShape =
+        customGridShapeStore.shapeFor(_state.value.homeLayout.customGrid)
+
     fun setHomeLayout(scope: CoroutineScope, settings: com.nendo.argosy.domain.model.HomeLayoutSettings) {
+        val previous = _state.value.homeLayout.customGrid
+        val next = settings.customGrid
+        if (previous.columns == next.columns && previous.rows == next.rows) {
+            storeHomeLayout(scope, settings)
+            return
+        }
+        val from = arrangedFrom(previous)
+        val to = customGridShapeStore.layoutFor(next)
+        val arrangement = to.scrollArrangement ?: from?.scrollArrangement
+        storeHomeLayout(scope, settings.copy(customGrid = next.copy(scrollArrangement = arrangement)))
+        reflowScrollGrid(scope, from, to)
+    }
+
+    private fun storeHomeLayout(scope: CoroutineScope, settings: com.nendo.argosy.domain.model.HomeLayoutSettings) {
         _state.update { it.copy(homeLayout = settings) }
         scope.launch { preferencesRepository.setHomeLayout(settings) }
+    }
+
+    private fun arrangedFrom(previous: CustomGridConfig): CustomGridLayout? =
+        previous.scrollArrangement?.layout
+            ?: customGridShapeStore.layoutFor(previous).takeIf { it.scrollAxis != null }
+
+    private fun reflowScrollGrid(scope: CoroutineScope, from: CustomGridLayout?, to: CustomGridLayout) {
+        if (from == null || !from.needsScrollReflowTo(to)) return
+        scope.launch {
+            scrollReflowLock.withLock {
+                homeTileRepository.reflowScroll(syncPreferencesRepository.getRommUserId(), from, to)
+            }
+        }
     }
 
     fun setPresentationStyle(scope: CoroutineScope, style: com.nendo.argosy.domain.model.PresentationStyle) {

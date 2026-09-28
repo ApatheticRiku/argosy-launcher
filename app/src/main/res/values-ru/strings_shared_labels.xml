@@ -102,6 +102,7 @@
     <string name="custom_tile_menu_action_start_game_queue">Начать очередь</string>
     <string name="custom_tile_menu_action_set_focus_game">Выбрать следующую игру</string>
     <string name="custom_tile_menu_action_advance_focus_game">Отметить пройденной</string>
+    <string name="custom_tile_menu_action_hidden_tiles">Скрытые плитки</string>
     <string name="custom_tile_menu_action_page_backdrop">Фон для этой страницы</string>
     <string name="custom_tile_menu_action_page_music">Музыка для этой страницы</string>
     <string name="custom_tile_menu_action_delete_page">Удалить страницу</string>

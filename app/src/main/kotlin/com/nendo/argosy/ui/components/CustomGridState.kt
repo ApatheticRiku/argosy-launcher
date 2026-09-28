@@ -5,13 +5,21 @@ import com.nendo.argosy.R
 import com.nendo.argosy.data.local.entity.PageAudioKind
 import com.nendo.argosy.data.local.entity.PageBackgroundKind
 import com.nendo.argosy.data.repository.HomeTileRepository
+import com.nendo.argosy.domain.model.CustomGridLayout
+import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.FeatureTileKind
 import com.nendo.argosy.domain.model.GridCell
+import com.nendo.argosy.domain.model.HomeGridKind
+import com.nendo.argosy.domain.model.HomeScrollAxis
 import com.nendo.argosy.domain.model.HomeTile
 import com.nendo.argosy.domain.model.HomeTileTargetRef
+import com.nendo.argosy.domain.model.SCROLL_AXIS_BOUND
 import com.nendo.argosy.domain.model.TileCoverScale
+import com.nendo.argosy.domain.model.TilePlacement
 import com.nendo.argosy.domain.model.TileRect
-import com.nendo.argosy.domain.model.fitTilesToPage
+import com.nendo.argosy.domain.model.gridKindFor
+import com.nendo.argosy.domain.model.placeScrollTiles
+import com.nendo.argosy.domain.model.placeTiles
 
 /**
  * Whether a tile of this target draws a game's cover, and so can choose how that cover sits in
@@ -35,6 +43,7 @@ enum class CustomTileMenuAction {
     START_GAME_QUEUE,
     SET_FOCUS_GAME,
     ADVANCE_FOCUS_GAME,
+    HIDDEN_TILES,
     PAGE_BACKDROP,
     PAGE_MUSIC,
     DELETE_PAGE;
@@ -53,6 +62,7 @@ enum class CustomTileMenuAction {
             START_GAME_QUEUE -> R.string.custom_tile_menu_action_start_game_queue
             SET_FOCUS_GAME -> R.string.custom_tile_menu_action_set_focus_game
             ADVANCE_FOCUS_GAME -> R.string.custom_tile_menu_action_advance_focus_game
+            HIDDEN_TILES -> R.string.custom_tile_menu_action_hidden_tiles
             PAGE_BACKDROP -> R.string.custom_tile_menu_action_page_backdrop
             PAGE_MUSIC -> R.string.custom_tile_menu_action_page_music
             DELETE_PAGE -> R.string.custom_tile_menu_action_delete_page
@@ -199,6 +209,7 @@ data class CustomGridState(
     val storedPages: Int = 0,
     val showMenu: Boolean = false,
     val menuFocusIndex: Int = 0,
+    val menuListsHidden: Boolean = false,
     val showPicker: Boolean = false,
     val pickerQuery: String = "",
     val pickerSearchActive: Boolean = false,
@@ -259,8 +270,81 @@ data class CustomGridState(
     val featureSetup: FeatureTileSetup? = null,
     val showFileBrowser: Boolean = false,
     val pendingAdd: TilePickerEntry? = null,
-    val pendingAddFocusIndex: Int = 0
+    val pendingAddFocusIndex: Int = 0,
+    val scrollAxis: HomeScrollAxis? = null
 ) {
+
+    val isScrolling: Boolean
+        get() = scrollAxis != null
+
+    val kind: HomeGridKind
+        get() = gridKindFor(scrollAxis)
+
+    /**
+     * The bounds tiles are placed and edited within: the page shape, with the scroll axis of a
+     * scrolling grid raised to [SCROLL_AXIS_BOUND].
+     */
+    val layoutColumns: Int
+        get() = if (scrollAxis == HomeScrollAxis.HORIZONTAL) SCROLL_AXIS_BOUND else columns
+
+    val layoutRows: Int
+        get() = if (scrollAxis == HomeScrollAxis.VERTICAL) SCROLL_AXIS_BOUND else rows
+
+    /**
+     * Lines a scrolling grid draws along its scroll axis: the tiles plus one empty line after the
+     * furthest, never fewer than the screen shows or than the cursor needs. Zero for a paged grid.
+     */
+    val scrollExtent: Int
+        get() {
+            val axis = scrollAxis ?: return 0
+            val visible = if (axis == HomeScrollAxis.VERTICAL) rows else columns
+            val furthest = tilesOnPage(page).maxOfOrNull {
+                if (axis == HomeScrollAxis.VERTICAL) it.rect.lastRow else it.rect.lastColumn
+            } ?: -1
+            return maxOf(visible, furthest + 2, cell.lineOn(axis) + 1)
+        }
+
+    /**
+     * The bounds the cursor moves within: the page shape, or the fixed axis by [scrollExtent].
+     */
+    val canvasColumns: Int
+        get() = if (scrollAxis == HomeScrollAxis.HORIZONTAL) scrollExtent else columns
+
+    val canvasRows: Int
+        get() = if (scrollAxis == HomeScrollAxis.VERTICAL) scrollExtent else rows
+
+    val scrollBands: List<IntRange>
+        get() {
+            val axis = scrollAxis ?: return emptyList()
+            val extent = scrollExtent
+            val reach = IntArray(extent) { it }
+            tilesOnPage(page).forEach { tile ->
+                val start = if (axis == HomeScrollAxis.VERTICAL) tile.rect.rowIndex else tile.rect.columnIndex
+                val end = if (axis == HomeScrollAxis.VERTICAL) tile.rect.lastRow else tile.rect.lastColumn
+                if (start in 0 until extent) reach[start] = maxOf(reach[start], end.coerceAtMost(extent - 1))
+            }
+            val bands = mutableListOf<IntRange>()
+            var bandStart = 0
+            var bandEnd = -1
+            for (line in 0 until extent) {
+                bandEnd = maxOf(bandEnd, reach[line])
+                if (line == bandEnd) {
+                    bands += bandStart..bandEnd
+                    bandStart = line + 1
+                }
+            }
+            return bands
+        }
+
+    val focusedBandIndex: Int
+        get() {
+            val axis = scrollAxis ?: return 0
+            val line = cell.lineOn(axis)
+            return scrollBands.indexOfFirst { line in it }.coerceAtLeast(0)
+        }
+
+    private fun GridCell.lineOn(axis: HomeScrollAxis): Int =
+        if (axis == HomeScrollAxis.VERTICAL) rowIndex else columnIndex
 
     /**
      * The kinds this grid can currently be filled from.
@@ -315,10 +399,10 @@ data class CustomGridState(
      * no page at all is not a state the rest of the surface can render.
      */
     val canDeletePage: Boolean
-        get() = !isEditing && realPageCount > 1 && page in 0 until realPageCount
+        get() = !isScrolling && !isEditing && realPageCount > 1 && page in 0 until realPageCount
 
     val isOnAddPage: Boolean
-        get() = page >= pageCount
+        get() = !isScrolling && page >= pageCount
 
     val isEditing: Boolean
         get() = editMode != TileEditMode.NONE
@@ -337,26 +421,45 @@ data class CustomGridState(
      * page exactly as it was.
      */
     fun tilesOnPage(pageIndex: Int): List<HomeTile> {
-        val stored = tiles.filter { it.pageIndex == pageIndex }
-        val fitted = fitTilesToPage(stored, columns, rows)
+        val shown = placementOnPage(pageIndex).placed
         val editingId = editingTileId
         val rect = editingRect
-        if (editingId == null || rect == null) return fitted
-        val withoutEditing = fitted.filter { it.id != editingId }
+        if (editingId == null || rect == null) return shown
+        val withoutEditing = shown.filter { it.id != editingId }
         if (editingPage != pageIndex) return withoutEditing
         val carried = tiles.firstOrNull { it.id == editingId } ?: return withoutEditing
-        return withoutEditing + carried.copy(rect = rect, pageIndex = pageIndex)
+        return withoutEditing + carried.copy(rect = onScreen(rect), pageIndex = pageIndex)
     }
 
     /**
-     * The tile being arranged. Held by id rather than found under the cursor, because once overlap
-     * is allowed two tiles can cover the same cell and the one picked up has to stay the one that
-     * moves.
+     * Stored tiles on [pageIndex] this screen cannot draw, in stored order. The tile being arranged
+     * is never among them.
+     */
+    fun hiddenTilesOnPage(pageIndex: Int): List<HomeTile> =
+        placementOnPage(pageIndex).displaced.filter { it.id != editingTileId }
+
+    val hiddenTiles: List<HomeTile>
+        get() = if (isOnAddPage) emptyList() else hiddenTilesOnPage(page)
+
+    private fun placementOnPage(pageIndex: Int): TilePlacement {
+        val stored = tiles.filter { it.pageIndex == pageIndex && it.kind == kind }
+        if (columns <= 0 || rows <= 0) return TilePlacement(stored, emptyList())
+        val axis = scrollAxis ?: return placeTiles(stored, layoutColumns, layoutRows)
+        val lanes = CustomGridLayout(CustomGridShape(columns, rows), axis).lanes
+        return TilePlacement(placeScrollTiles(stored, lanes, axis), emptyList())
+    }
+
+    private fun onScreen(rect: TileRect): TileRect =
+        if (columns <= 0 || rows <= 0) rect else rect.trimmedTo(layoutColumns, layoutRows)
+
+    /**
+     * The tile being arranged, at its draft rectangle trimmed to this screen. Held by id so the tile
+     * picked up stays the one that moves when two tiles cover the same cell.
      */
     val editingTile: HomeTile?
         get() = editingTileId?.let { id ->
             tiles.firstOrNull { it.id == id }
-                ?.let { if (editingRect != null) it.copy(rect = editingRect) else it }
+                ?.let { if (editingRect != null) it.copy(rect = onScreen(editingRect)) else it }
         }
 
     /**
@@ -369,7 +472,7 @@ data class CustomGridState(
         }
 
     val currentPageSettings: GridPageSettings
-        get() = pageSettings[page] ?: GridPageSettings()
+        get() = if (isScrolling) GridPageSettings() else pageSettings[page] ?: GridPageSettings()
 
     val engagedTile: HomeTile?
         get() = engagedTileId?.let { id -> tiles.firstOrNull { it.id == id } }
@@ -518,8 +621,11 @@ data class CustomGridState(
                 add(CustomTileMenuAction.ARRANGE)
             }
             if (!isOnAddPage) {
-                add(CustomTileMenuAction.PAGE_BACKDROP)
-                add(CustomTileMenuAction.PAGE_MUSIC)
+                if (!isEditing && hiddenTiles.isNotEmpty()) add(CustomTileMenuAction.HIDDEN_TILES)
+                if (!isScrolling) {
+                    add(CustomTileMenuAction.PAGE_BACKDROP)
+                    add(CustomTileMenuAction.PAGE_MUSIC)
+                }
             }
             if (focused != null) add(CustomTileMenuAction.REMOVE)
             if (canDeletePage) add(CustomTileMenuAction.DELETE_PAGE)
@@ -530,8 +636,11 @@ data class CustomGridState(
      * deleting the page and now sits beside it, so the fence opens at whichever of the two the menu
      * reaches first rather than at the page row alone.
      */
+    val menuEntryCount: Int
+        get() = if (menuListsHidden) hiddenTiles.size else menuActions.size
+
     val menuDangerFromIndex: Int?
-        get() = menuActions
+        get() = if (menuListsHidden) null else menuActions
             .indexOfFirst {
                 it == CustomTileMenuAction.REMOVE || it == CustomTileMenuAction.DELETE_PAGE
             }

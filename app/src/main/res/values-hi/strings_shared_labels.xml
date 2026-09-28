@@ -102,6 +102,7 @@
     <string name="custom_tile_menu_action_start_game_queue">कतार शुरू करें</string>
     <string name="custom_tile_menu_action_set_focus_game">अगला गेम चुनें</string>
     <string name="custom_tile_menu_action_advance_focus_game">पूर्ण चिह्नित करें</string>
+    <string name="custom_tile_menu_action_hidden_tiles">छिपी टाइलें</string>
     <string name="custom_tile_menu_action_page_backdrop">इस पेज के लिए बैकड्रॉप</string>
     <string name="custom_tile_menu_action_page_music">इस पेज के लिए संगीत</string>
     <string name="custom_tile_menu_action_delete_page">पेज हटाएँ</string>

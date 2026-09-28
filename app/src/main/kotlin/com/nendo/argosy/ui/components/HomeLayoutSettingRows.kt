@@ -19,7 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.domain.model.CustomGridShape
+import com.nendo.argosy.domain.model.GRID_AXIS_STEPS
+import com.nendo.argosy.domain.model.GridAxis
+import com.nendo.argosy.domain.model.stepIndex
+import com.nendo.argosy.domain.model.stepped
 import com.nendo.argosy.domain.model.HomeFocusPosition
+import com.nendo.argosy.domain.model.HomeGridKind
 import com.nendo.argosy.domain.model.HomeLayoutKind
 import com.nendo.argosy.domain.model.MAX_LANE_COUNT
 import com.nendo.argosy.domain.model.MIN_LANE_COUNT
@@ -55,12 +61,12 @@ enum class HomeLayoutSettingField {
     AUTO_GRID_SHOW_ALL,
     CAROUSEL_BOX_ART,
     AUTO_GRID_BOX_ART,
-    CUSTOM_GRID_LANES,
+    CUSTOM_GRID_COLUMNS,
+    CUSTOM_GRID_ROWS,
     CUSTOM_GRID_AUTO_ADD,
     CUSTOM_GRID_EMPTY_SLOTS,
     CUSTOM_GRID_PERSIST_PAGES,
     CUSTOM_GRID_AUTO_FIT,
-    CUSTOM_GRID_MATCH_SCREENS,
     RAIL_MEDIA_LIBRARIES,
     RAIL_CONTINUE_WATCHING,
     RAIL_NEXT_UP
@@ -104,23 +110,34 @@ fun homeLayoutFieldsFor(kind: HomeLayoutKind): List<HomeLayoutSettingField> = wh
         HomeLayoutSettingField.AUTO_GRID_SHOW_ALL
     )
     HomeLayoutKind.CUSTOM_GRID -> listOf(
-        HomeLayoutSettingField.CUSTOM_GRID_LANES,
+        HomeLayoutSettingField.CUSTOM_GRID_COLUMNS,
+        HomeLayoutSettingField.CUSTOM_GRID_ROWS,
         HomeLayoutSettingField.CUSTOM_GRID_EMPTY_SLOTS,
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_FIT,
-        HomeLayoutSettingField.CUSTOM_GRID_MATCH_SCREENS,
         HomeLayoutSettingField.CUSTOM_GRID_PERSIST_PAGES,
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD
     )
 }
 
 /**
+ * Whether [field] is offered for [settings]: one of the selected layout's fields, less the page rows
+ * a scrolling custom grid has no pages for.
+ */
+fun isHomeLayoutFieldShown(settings: HomeLayoutSettings, field: HomeLayoutSettingField): Boolean =
+    field in homeLayoutFieldsFor(settings.selected) &&
+        !(field == HomeLayoutSettingField.CUSTOM_GRID_PERSIST_PAGES &&
+            settings.customGrid.gridKind == HomeGridKind.SCROLL)
+
+/**
  * Left/right adjustment for [field]. Booleans follow the house rule that left is off and right is
- * on; enums wrap; numbers clamp.
+ * on; enums wrap; numbers clamp. [customGridShape] is the custom grid's current shape, which an axis
+ * locks to when the other axis becomes non-fixed.
  */
 fun adjustHomeLayoutField(
     settings: HomeLayoutSettings,
     field: HomeLayoutSettingField,
-    direction: Int
+    direction: Int,
+    customGridShape: CustomGridShape
 ): HomeLayoutSettings = when (field) {
         HomeLayoutSettingField.ROW_ALIGNMENT ->
             settings.copy(carousel = settings.carousel.copy(rowAlignment = cycle(settings.carousel.rowAlignment, direction)))
@@ -155,8 +172,20 @@ fun adjustHomeLayoutField(
             settings.copy(autoGrid = settings.autoGrid.copy(useBoxArt = direction > 0))
         HomeLayoutSettingField.AUTO_GRID_LANES ->
             settings.copy(autoGrid = settings.autoGrid.copy(laneCount = stepSpan(settings.autoGrid.laneCount, direction)))
-        HomeLayoutSettingField.CUSTOM_GRID_LANES ->
-            settings.copy(customGrid = settings.customGrid.copy(laneCount = stepSpan(settings.customGrid.laneCount, direction)))
+        HomeLayoutSettingField.CUSTOM_GRID_COLUMNS ->
+            settings.copy(
+                customGrid = settings.customGrid.withColumns(
+                    settings.customGrid.columns.stepped(direction),
+                    customGridShape
+                )
+            )
+        HomeLayoutSettingField.CUSTOM_GRID_ROWS ->
+            settings.copy(
+                customGrid = settings.customGrid.withRows(
+                    settings.customGrid.rows.stepped(direction),
+                    customGridShape
+                )
+            )
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD ->
             settings.copy(customGrid = settings.customGrid.copy(autoAdd = cycle(settings.customGrid.autoAdd, direction)))
         HomeLayoutSettingField.CUSTOM_GRID_EMPTY_SLOTS ->
@@ -165,8 +194,6 @@ fun adjustHomeLayoutField(
             settings.copy(customGrid = settings.customGrid.copy(persistBlankPages = direction > 0))
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_FIT ->
             settings.copy(customGrid = settings.customGrid.copy(autoFit = direction > 0))
-        HomeLayoutSettingField.CUSTOM_GRID_MATCH_SCREENS ->
-            settings.copy(customGrid = settings.customGrid.copy(matchOtherScreen = direction > 0))
         HomeLayoutSettingField.RAIL_MEDIA_LIBRARIES ->
             settings.copy(rails = settings.rails.copy(showLibraries = direction > 0))
         HomeLayoutSettingField.RAIL_CONTINUE_WATCHING ->
@@ -211,12 +238,6 @@ fun toggleHomeLayoutField(settings: HomeLayoutSettings, field: HomeLayoutSetting
             )
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_FIT ->
             settings.copy(customGrid = settings.customGrid.copy(autoFit = !settings.customGrid.autoFit))
-        HomeLayoutSettingField.CUSTOM_GRID_MATCH_SCREENS ->
-            settings.copy(
-                customGrid = settings.customGrid.copy(
-                    matchOtherScreen = !settings.customGrid.matchOtherScreen
-                )
-            )
         HomeLayoutSettingField.RAIL_MEDIA_LIBRARIES ->
             settings.copy(rails = settings.rails.copy(showLibraries = !settings.rails.showLibraries))
         HomeLayoutSettingField.RAIL_CONTINUE_WATCHING ->
@@ -405,13 +426,17 @@ fun HomeLayoutSettingRow(
             isFocused = isFocused,
             onAdjust = { delta -> onAdjust(if (delta < 0) -1 else 1) }
         )
-        HomeLayoutSettingField.CUSTOM_GRID_LANES -> SliderPreference(
-            title = stringResource(R.string.ui_home_layout_custom_grid_lanes),
-            value = settings.customGrid.laneCount,
-            minValue = MIN_LANE_COUNT,
-            maxValue = MAX_LANE_COUNT,
+        HomeLayoutSettingField.CUSTOM_GRID_COLUMNS -> GridAxisStepperRow(
+            title = stringResource(R.string.ui_home_layout_custom_grid_columns),
+            axis = settings.customGrid.columns,
             isFocused = isFocused,
-            onAdjust = { delta -> onAdjust(if (delta < 0) -1 else 1) }
+            onAdjust = onAdjust
+        )
+        HomeLayoutSettingField.CUSTOM_GRID_ROWS -> GridAxisStepperRow(
+            title = stringResource(R.string.ui_home_layout_custom_grid_rows),
+            axis = settings.customGrid.rows,
+            isFocused = isFocused,
+            onAdjust = onAdjust
         )
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD -> CyclePreference(
             title = stringResource(R.string.ui_home_layout_custom_grid_auto_add),
@@ -441,13 +466,6 @@ fun HomeLayoutSettingRow(
             isFocused = isFocused,
             onToggle = { onToggle() }
         )
-        HomeLayoutSettingField.CUSTOM_GRID_MATCH_SCREENS -> SwitchPreference(
-            title = stringResource(R.string.ui_home_layout_custom_grid_match_screens),
-            subtitle = stringResource(R.string.ui_home_layout_custom_grid_match_screens_subtitle),
-            isEnabled = settings.customGrid.matchOtherScreen,
-            isFocused = isFocused,
-            onToggle = { onToggle() }
-        )
         HomeLayoutSettingField.RAIL_MEDIA_LIBRARIES -> SwitchPreference(
             title = stringResource(R.string.ui_home_layout_rail_libraries),
             subtitle = stringResource(R.string.ui_home_layout_rail_libraries_subtitle),
@@ -470,6 +488,28 @@ fun HomeLayoutSettingRow(
             onToggle = { onToggle() }
         )
     }
+}
+
+@Composable
+private fun GridAxisStepperRow(
+    title: String,
+    axis: GridAxis,
+    isFocused: Boolean,
+    onAdjust: (Int) -> Unit
+) {
+    SliderPreference(
+        title = title,
+        value = axis.stepIndex,
+        minValue = 0,
+        maxValue = GRID_AXIS_STEPS.lastIndex,
+        isFocused = isFocused,
+        valueLabel = when (axis) {
+            is GridAxis.Fixed -> axis.count.toString()
+            GridAxis.Fill -> stringResource(R.string.ui_home_layout_custom_grid_axis_fill)
+            GridAxis.Scroll -> stringResource(R.string.ui_home_layout_custom_grid_axis_scroll)
+        },
+        onAdjust = { delta -> onAdjust(if (delta < 0) -1 else 1) }
+    )
 }
 
 @Composable

@@ -420,6 +420,13 @@
     <string name="ui_page_chooser_music_soundtracks_header">Vos bandes originales</string>
 
     <string name="ui_custom_grid_add_page">Ajouter une page</string>
+    <string name="ui_custom_grid_hidden_tiles_title">Tuiles masquées</string>
+    <string name="ui_custom_grid_hidden_tile_unnamed">Tuile sans nom</string>
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d masquée</item>
+        <item quantity="many">%d masquées</item>
+        <item quantity="other">%d masquées</item>
+    </plurals>
     <string name="ui_custom_grid_edit_move">Déplacer</string>
     <string name="ui_custom_grid_edit_resize">Redimensionner</string>
     <string name="ui_custom_grid_confirm_play">Jouer</string>
@@ -541,7 +548,8 @@
     <string name="ui_home_layout_show_all_games_subtitle">Faire défiler toute la bibliothèque d\'une plateforme au lieu de s\'arrêter sur Tout afficher</string>
     <string name="ui_home_layout_carousel_box_art">Boîtier 3D</string>
     <string name="ui_home_layout_auto_grid_box_art">Boîtier 3D</string>
-    <string name="ui_home_layout_custom_grid_lanes">Cellules en largeur</string>
+    <string name="ui_home_layout_custom_grid_columns">Colonnes</string>
+    <string name="ui_home_layout_custom_grid_rows">Lignes</string>
     <string name="ui_home_layout_custom_grid_auto_add">Ajouter les nouveaux téléchargements</string>
     <string name="ui_home_layout_custom_grid_empty_slots">Afficher les cases vides</string>
     <string name="ui_home_layout_custom_grid_empty_slots_subtitle">Souligner les cases où rien n\'est placé</string>
@@ -549,8 +557,6 @@
     <string name="ui_home_layout_custom_grid_persist_pages_subtitle">Une page ajoutée reste même si elle ne contient rien</string>
     <string name="ui_home_layout_custom_grid_auto_fit">Ajustement auto des cellules</string>
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">Déplace ou réduit les tuiles sur lesquelles un placement arrive, au lieu de le refuser</string>
-    <string name="ui_home_layout_custom_grid_match_screens">Harmoniser les deux écrans</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">Garde les mêmes colonnes sur les deux écrans et centre la grille sur le plus large</string>
     <string name="ui_home_layout_rail_libraries">Bibliothèques multimédias</string>
     <string name="ui_home_layout_rail_libraries_subtitle">Une ligne pour chaque bibliothèque de votre serveur multimédia</string>
     <string name="ui_home_layout_rail_continue_watching">Continuer à regarder</string>

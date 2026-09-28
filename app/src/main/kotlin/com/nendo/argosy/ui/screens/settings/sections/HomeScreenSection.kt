@@ -31,6 +31,7 @@ import com.nendo.argosy.ui.components.HomeLayoutSettingField
 import com.nendo.argosy.ui.components.HomeLayoutSettingRow
 import com.nendo.argosy.ui.components.adjustHomeLayoutField
 import com.nendo.argosy.ui.components.homeLayoutFieldsFor
+import com.nendo.argosy.ui.components.isHomeLayoutFieldShown
 import com.nendo.argosy.ui.components.homeRailFields
 import com.nendo.argosy.ui.components.toggleHomeLayoutField
 import com.nendo.argosy.ui.components.SliderPreference
@@ -104,11 +105,8 @@ internal sealed class HomeScreenItem(
         visibleWhen = {
             if (field in homeRailFields()) {
                 it.homeLayout.selected != HomeLayoutKind.CUSTOM_GRID
-            } else if (field == HomeLayoutSettingField.CUSTOM_GRID_MATCH_SCREENS) {
-                it.homeLayout.selected == HomeLayoutKind.CUSTOM_GRID &&
-                    it.dualScreenEnabled && it.hasSecondaryDisplay
             } else {
-                field in homeLayoutFieldsFor(it.homeLayout.selected)
+                isHomeLayoutFieldShown(it.homeLayout, field)
             }
         }
     )
@@ -377,7 +375,12 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onAdjust = { direction ->
                         viewModel.setFocusIndex(homeScreenFocusIndexOf(item, display))
                         viewModel.setHomeLayout(
-                            adjustHomeLayoutField(display.homeLayout, item.field, direction)
+                            adjustHomeLayoutField(
+                                display.homeLayout,
+                                item.field,
+                                direction,
+                                viewModel.customGridShape()
+                            )
                         )
                     },
                     onToggle = {

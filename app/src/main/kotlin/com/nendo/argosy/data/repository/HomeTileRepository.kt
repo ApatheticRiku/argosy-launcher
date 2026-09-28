@@ -8,7 +8,10 @@ import com.nendo.argosy.data.local.entity.MediaTilePlayMode
 import com.nendo.argosy.data.model.ActiveSort
 import com.nendo.argosy.data.model.SortOption
 import com.nendo.argosy.data.model.SourceFilter
+import com.nendo.argosy.domain.model.CustomGridLayout
+import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.FeatureTileKind
+import com.nendo.argosy.domain.model.HomeGridKind
 import com.nendo.argosy.domain.model.HomeTile
 import com.nendo.argosy.domain.model.HomeTileTargetRef
 import com.nendo.argosy.domain.model.LibraryLinkFilters
@@ -16,7 +19,9 @@ import com.nendo.argosy.domain.model.PlayerCountBucket
 import com.nendo.argosy.domain.model.RandomTileFilters
 import com.nendo.argosy.domain.model.TileCoverScale
 import com.nendo.argosy.domain.model.TileRect
+import com.nendo.argosy.domain.model.firstFreeScrollRect
 import com.nendo.argosy.domain.model.minimumSpanFor
+import com.nendo.argosy.domain.model.reflowScrollTiles
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import org.json.JSONArray
@@ -41,9 +46,9 @@ class HomeTileRepository @Inject constructor(
      * on every emission is cheaper than a query per tile and, more importantly, keeps a tile and its
      * run arriving as one value instead of a tile that briefly has no run.
      */
-    fun observeTiles(ownerUserId: Long?): Flow<List<HomeTile>> =
+    fun observeTiles(ownerUserId: Long?, kind: HomeGridKind): Flow<List<HomeTile>> =
         combine(
-            homeTileDao.observeTiles(ownerUserId),
+            homeTileDao.observeTiles(ownerUserId, kind.name),
             homeTileDao.observeAllEpisodes()
         ) { rows, episodes ->
             val runs = episodes.groupBy { it.tileId }
@@ -55,36 +60,54 @@ class HomeTileRepository @Inject constructor(
         }
 
     suspend fun pageCount(ownerUserId: Long?): Int =
-        (homeTileDao.getMaxPageIndex(ownerUserId)?.plus(1) ?: 0).coerceAtLeast(DEFAULT_PAGE_COUNT)
+        (homeTileDao.getMaxPageIndex(ownerUserId, HomeGridKind.PAGED.name)?.plus(1) ?: 0)
+            .coerceAtLeast(DEFAULT_PAGE_COUNT)
 
     /**
-     * Stores a tile and, when it was given one, the run it should play.
-     *
-     * [rect] is raised to whatever floor the target's kind imposes before it is written, so no caller
-     * can leave a media tile at a size it is not allowed to be - including the ones that place from a
-     * single cell and never mention a span at all.
+     * Stores a tile on the [kind] grid and, when it was given one, the run it should play. [rect] is
+     * raised to the floor the target's kind imposes before it is written. A scrolling grid has no
+     * pages, so its tiles are stored on page 0 whatever [pageIndex] says.
      */
     suspend fun place(
         ownerUserId: Long?,
+        kind: HomeGridKind,
         pageIndex: Int,
         rect: TileRect,
         target: HomeTileTargetRef,
         playlist: List<String> = emptyList()
     ): Long {
-        val id = homeTileDao.insert(entityFor(ownerUserId, pageIndex, rect, target))
+        val id = homeTileDao.insert(entityFor(ownerUserId, kind, pageIndex, rect, target))
         writePlaylist(id, playlist)
         return id
     }
 
+    /**
+     * Rewrites only the stored row's page and rectangle; every other column keeps its stored value.
+     * [rect] is raised to the target's minimum span, and a scrolling tile stays on page 0.
+     */
     suspend fun move(
         tile: HomeTile,
-        ownerUserId: Long?,
         rect: TileRect,
         pageIndex: Int = tile.pageIndex
     ) {
-        homeTileDao.update(
-            entityFor(ownerUserId, pageIndex, rect, tile.target, tile.coverScale).copy(id = tile.id)
-        )
+        val row = homeTileDao.getById(tile.id) ?: return
+        homeTileDao.update(row.placedAt(pageIndex, rect.atLeast(tile.minSpan)))
+    }
+
+    /**
+     * Repacks the scrolling grid's tiles from [from] onto [to] and writes every moved row in one
+     * update. Paged tiles are never read or written, and nothing happens unless both layouts scroll
+     * and differ in scroll axis or lane count.
+     */
+    suspend fun reflowScroll(ownerUserId: Long?, from: CustomGridLayout, to: CustomGridLayout) {
+        if (!from.needsScrollReflowTo(to)) return
+        val rows = homeTileDao.getPage(ownerUserId, HomeGridKind.SCROLL.name, 0)
+        val stored = rows.associateBy { it.id }
+        val moved = reflowScrollTiles(rows.map { it.toDomain(emptyList()) }, from, to)
+            .mapNotNull { tile ->
+                stored[tile.id]?.takeIf { it.rect() != tile.rect }?.placedAt(0, tile.rect)
+            }
+        if (moved.isNotEmpty()) homeTileDao.updateAll(moved)
     }
 
     suspend fun setCoverScale(tileId: Long, scale: TileCoverScale) {
@@ -93,16 +116,26 @@ class HomeTileRepository @Inject constructor(
     }
 
     /**
-     * Changes what a placed tile plays without moving it. The playlist is replaced, not merged.
+     * Changes what a stored tile points at, reading its page, rectangle and cover scale from the
+     * stored row. The span only grows when the new target's minimum demands it. The playlist is
+     * replaced, not merged.
      */
-    suspend fun retarget(tile: HomeTile, ownerUserId: Long?, target: HomeTileTargetRef, playlist: List<String>) {
+    suspend fun retarget(tileId: Long, target: HomeTileTargetRef, playlist: List<String>) {
+        val row = homeTileDao.getById(tileId) ?: return
         homeTileDao.update(
-            entityFor(ownerUserId, tile.pageIndex, tile.rect, target, tile.coverScale).copy(id = tile.id)
+            entityFor(
+                ownerUserId = row.ownerUserId,
+                kind = gridKindOf(row),
+                pageIndex = row.pageIndex,
+                rect = row.rect(),
+                target = target,
+                coverScale = TileCoverScale.fromString(row.coverScale)
+            ).copy(id = tileId, pageId = row.pageId, artStyle = row.artStyle, createdAt = row.createdAt)
         )
         homeTileDao.replaceEpisodes(
-            tile.id,
+            tileId,
             playlist.mapIndexed { index, itemId ->
-                HomeTileEpisodeEntity(tileId = tile.id, itemId = itemId, orderIndex = index)
+                HomeTileEpisodeEntity(tileId = tileId, itemId = itemId, orderIndex = index)
             }
         )
     }
@@ -124,50 +157,46 @@ class HomeTileRepository @Inject constructor(
      * touched, which is why the confirmation this sits behind says the games stay on the device.
      */
     suspend fun removePage(ownerUserId: Long?, pageIndex: Int) {
-        homeTileDao.deleteEpisodesForPage(ownerUserId, pageIndex)
-        homeTileDao.deletePage(ownerUserId, pageIndex)
-        homeTileDao.shiftPagesDown(ownerUserId, pageIndex)
+        val kind = HomeGridKind.PAGED.name
+        homeTileDao.deleteEpisodesForPage(ownerUserId, kind, pageIndex)
+        homeTileDao.deletePage(ownerUserId, kind, pageIndex)
+        homeTileDao.shiftPagesDown(ownerUserId, kind, pageIndex)
     }
 
     suspend fun pruneMissingGames() = homeTileDao.deleteTilesForMissingGames()
 
     /**
-     * Places [target] in the first cell the last page has free, reading left to right then down.
-     *
-     * The page shape depends on the display, and this runs where no display is in scope, so it
-     * searches the anchors already taken rather than a grid: a cell no tile claims is free on every
-     * shape wide enough to contain it. A row that lands outside a narrower screen is trimmed back by
-     * the placement pass on read, which is the same recovery an edited page gets.
+     * Places [target] on the grid [layout] describes. A paged grid takes the first free spot of its
+     * last page, reading left to right then down, or the top-left of a new page when that page is
+     * full. A scrolling grid takes the first free spot scanning along its scroll axis.
      */
-    suspend fun appendToLastPage(
+    suspend fun append(
         ownerUserId: Long?,
         target: HomeTileTargetRef,
-        columns: Int,
+        layout: CustomGridLayout,
         playlist: List<String> = emptyList()
-    ): Long? {
-        val pageIndex = (homeTileDao.getMaxPageIndex(ownerUserId) ?: 0).coerceAtLeast(0)
-        val taken = homeTileDao.getPage(ownerUserId, pageIndex)
-            .flatMap { tile ->
-                (tile.columnIndex until tile.columnIndex + tile.columnSpan).flatMap { column ->
-                    (tile.rowIndex until tile.rowIndex + tile.rowSpan).map { row -> column to row }
-                }
-            }
-            .toSet()
-        val lanes = columns.coerceAtLeast(1)
-        var row = 0
-        while (row < MAX_APPEND_ROWS) {
-            for (column in 0 until lanes) {
-                if (column to row !in taken) {
-                    return place(ownerUserId, pageIndex, TileRect(column, row), target, playlist)
-                }
-            }
-            row++
+    ): Long {
+        val axis = layout.scrollAxis
+        if (axis != null) {
+            val taken = homeTileDao.getPage(ownerUserId, HomeGridKind.SCROLL.name, 0).map { it.rect() }
+            val span = minimumSpanFor(target)
+            val free = firstFreeScrollRect(taken, layout.lanes, axis, span, span)
+            return place(ownerUserId, HomeGridKind.SCROLL, 0, free, target, playlist)
         }
-        return null
+        val kind = HomeGridKind.PAGED
+        val lastPage = (homeTileDao.getMaxPageIndex(ownerUserId, kind.name) ?: 0).coerceAtLeast(0)
+        val taken = homeTileDao.getPage(ownerUserId, kind.name, lastPage).map { it.rect() }
+        val free = firstFreeRect(taken, layout.shape, minimumSpanFor(target))
+        return if (free != null) {
+            place(ownerUserId, kind, lastPage, free, target, playlist)
+        } else {
+            place(ownerUserId, kind, lastPage + 1, TileRect(0, 0), target, playlist)
+        }
     }
 
     private fun entityFor(
         ownerUserId: Long?,
+        kind: HomeGridKind,
         pageIndex: Int,
         rect: TileRect,
         target: HomeTileTargetRef,
@@ -176,7 +205,8 @@ class HomeTileRepository @Inject constructor(
         val sized = rect.atLeast(minimumSpanFor(target))
         val base = HomeTileEntity(
             ownerUserId = ownerUserId,
-            pageIndex = pageIndex,
+            gridKind = kind.name,
+            pageIndex = if (kind == HomeGridKind.SCROLL) 0 else pageIndex,
             coverScale = coverScale.name,
             columnIndex = sized.columnIndex,
             rowIndex = sized.rowIndex,
@@ -217,8 +247,19 @@ class HomeTileRepository @Inject constructor(
 
     companion object {
         const val DEFAULT_PAGE_COUNT = 2
-        private const val MAX_APPEND_ROWS = 64
     }
+}
+
+private fun firstFreeRect(taken: List<TileRect>, shape: CustomGridShape, span: Int): TileRect? {
+    for (row in 0 until shape.rows) {
+        for (column in 0 until shape.columns) {
+            val candidate = TileRect(column, row).atLeast(span)
+            if (candidate.withinBounds(shape.columns, shape.rows) && taken.none { it.overlaps(candidate) }) {
+                return candidate
+            }
+        }
+    }
+    return null
 }
 
 private fun HomeTileTargetRef.storedType(): String = when (this) {
@@ -322,13 +363,27 @@ private fun decodeFeature(kind: FeatureTileKind, config: String?): HomeTileTarge
     )
 }
 
+private fun HomeTileEntity.rect(): TileRect = TileRect(columnIndex, rowIndex, columnSpan, rowSpan)
+
+private fun HomeTileEntity.placedAt(pageIndex: Int, rect: TileRect): HomeTileEntity = copy(
+    pageIndex = if (gridKindOf(this) == HomeGridKind.SCROLL) 0 else pageIndex,
+    columnIndex = rect.columnIndex,
+    rowIndex = rect.rowIndex,
+    columnSpan = rect.columnSpan,
+    rowSpan = rect.rowSpan
+)
+
+private fun gridKindOf(row: HomeTileEntity): HomeGridKind =
+    HomeGridKind.entries.firstOrNull { it.name == row.gridKind } ?: HomeGridKind.PAGED
+
 private fun HomeTileEntity.toDomain(playlist: List<String>): HomeTile = HomeTile(
     id = id,
     pageIndex = pageIndex,
-    rect = TileRect(columnIndex, rowIndex, columnSpan, rowSpan),
+    rect = rect(),
     target = resolveTarget(),
     playlist = playlist,
-    coverScale = TileCoverScale.fromString(coverScale)
+    coverScale = TileCoverScale.fromString(coverScale),
+    kind = gridKindOf(this)
 )
 
 /**

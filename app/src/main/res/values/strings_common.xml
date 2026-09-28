@@ -797,6 +797,17 @@
 
     <!-- Row at the end of the curated grid's pages. Verb phrase: makes another page. -->
     <string name="ui_custom_grid_add_page">Add a page</string>
+    <!-- Heading of the list of tiles on this page that do not fit on this screen. Choosing one
+         places it at the cursor. Noun phrase. -->
+    <string name="ui_custom_grid_hidden_tiles_title">Hidden tiles</string>
+    <!-- Row in that list for a tile whose game, app or video cannot be named. Noun phrase. -->
+    <string name="ui_custom_grid_hidden_tile_unnamed">Unnamed tile</string>
+    <!-- Marker under the curated grid: how many tiles on this page do not fit on this screen.
+         %d is the count. "Hidden" is an adjective describing the tiles. -->
+    <plurals name="ui_custom_grid_hidden_count">
+        <item quantity="one">%d hidden</item>
+        <item quantity="other">%d hidden</item>
+    </plurals>
     <!-- Replaces the footer's usual confirm hint while a tile is being dragged to a new spot on
          the curated grid. Verb. -->
     <string name="ui_custom_grid_edit_move">Move</string>
@@ -1049,8 +1060,16 @@
     <string name="ui_home_layout_carousel_box_art">3D Box Art</string>
     <!-- The same row on the automatic grid. -->
     <string name="ui_home_layout_auto_grid_box_art">3D Box Art</string>
-    <!-- Settings row: how many cells the curated grid is wide. Noun phrase. -->
-    <string name="ui_home_layout_custom_grid_lanes">Cells across</string>
+    <!-- Settings row: how many columns of cells the curated grid has. Noun, plural. -->
+    <string name="ui_home_layout_custom_grid_columns">Columns</string>
+    <!-- Settings row: how many rows of cells the curated grid has. Noun, plural. -->
+    <string name="ui_home_layout_custom_grid_rows">Rows</string>
+    <!-- Value of the Columns and Rows rows meaning as many cells as fit the screen. The infinity
+         symbol, not a word. -->
+    <string name="ui_home_layout_custom_grid_axis_fill" translatable="false">&#8734;</string>
+    <!-- Value of the Columns and Rows rows meaning the grid scrolls without end along that axis.
+         Arrows either side of the infinity symbol, not a word. -->
+    <string name="ui_home_layout_custom_grid_axis_scroll" translatable="false">&lt;-&#8734;-&gt;</string>
     <!-- Settings row: what happens to a game once it finishes downloading. Verb phrase. -->
     <string name="ui_home_layout_custom_grid_auto_add">Add New Downloads</string>
     <!-- Settings row: whether empty cells are outlined. Verb phrase. -->
@@ -1065,10 +1084,6 @@
     <string name="ui_home_layout_custom_grid_auto_fit">Auto-fit Cells</string>
     <!-- Second line under that row. -->
     <string name="ui_home_layout_custom_grid_auto_fit_subtitle">Move or shrink tiles a placement lands on, instead of refusing it</string>
-    <!-- Custom grid toggle on two-screen devices: keep the same number of grid columns on both
-         screens, centring the grid on the wider one. -->
-    <string name="ui_home_layout_custom_grid_match_screens">Match Both Screens</string>
-    <string name="ui_home_layout_custom_grid_match_screens_subtitle">Keep the same columns on either screen and centre the grid on the wider one</string>
     <!-- Settings row: whether the home screen shows a row per media library. Noun, plural. -->
     <string name="ui_home_layout_rail_libraries">Media Libraries</string>
     <!-- Second line under that row. -->

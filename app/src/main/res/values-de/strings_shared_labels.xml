@@ -102,6 +102,7 @@
     <string name="custom_tile_menu_action_start_game_queue">Warteschlange starten</string>
     <string name="custom_tile_menu_action_set_focus_game">Nächstes Spiel wählen</string>
     <string name="custom_tile_menu_action_advance_focus_game">Als beendet markieren</string>
+    <string name="custom_tile_menu_action_hidden_tiles">Ausgeblendete Kacheln</string>
     <string name="custom_tile_menu_action_page_backdrop">Hintergrund für diese Seite</string>
     <string name="custom_tile_menu_action_page_music">Musik für diese Seite</string>
     <string name="custom_tile_menu_action_delete_page">Seite löschen</string>

@@ -167,6 +167,7 @@ class LibraryTileFilterArrivalTest {
         notificationManager = mockk(relaxed = true),
         preferencesRepository = preferences,
         homeTileRepository = mockk(relaxed = true),
+        customGridShapeStore = mockk(relaxed = true),
         syncPreferencesRepository = mockk(relaxed = true),
         soundManager = mockk(relaxed = true),
         gameActions = mockk(relaxed = true),
