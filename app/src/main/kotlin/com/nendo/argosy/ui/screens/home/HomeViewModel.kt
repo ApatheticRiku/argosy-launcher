@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.SharingStarted
@@ -228,6 +229,18 @@ class HomeViewModel @Inject constructor(
             gameMenuDelegate.resetMenu()
             siblingChoice.reset()
         }.launchIn(viewModelScope)
+
+        combine(_uiState, gameMenuDelegate.state) { state, menu -> showsScreenNumbers(state, menu) }
+            .distinctUntilChanged()
+            .onEach { show ->
+                val manager = DualScreenManagerHolder.instance ?: return@onEach
+                if (show) {
+                    manager.showScreenNumbers(com.nendo.argosy.hardware.DisplayBadgeSize.SMALL)
+                } else {
+                    manager.hideScreenNumbers()
+                }
+            }
+            .launchIn(viewModelScope)
 
         loadData()
         syncDelegate.initializeRomM(
@@ -1562,10 +1575,6 @@ class HomeViewModel @Inject constructor(
                     ?: state
             }
         }
-        if (screens.size > 1) {
-            DualScreenManagerHolder.instance
-                ?.showScreenNumbers(com.nendo.argosy.hardware.DisplayBadgeSize.SMALL)
-        }
         return true
     }
 
@@ -1602,9 +1611,6 @@ class HomeViewModel @Inject constructor(
     override fun dismissAppBarAppMenu() {
         if (_uiState.value.appBarMenu == null) return
         _uiState.update { it.copy(appBarMenu = null) }
-        if (_uiState.value.appDrawer == null) {
-            DualScreenManagerHolder.instance?.hideScreenNumbers()
-        }
     }
 
     override fun openAppDrawer() {
@@ -1638,9 +1644,6 @@ class HomeViewModel @Inject constructor(
     override fun dismissAppDrawer() {
         if (_uiState.value.appDrawer == null) return
         _uiState.update { it.copy(appDrawer = null) }
-        if (_uiState.value.appBarMenu == null) {
-            DualScreenManagerHolder.instance?.hideScreenNumbers()
-        }
     }
 
     override fun openTileCollection(collectionId: Long) {
@@ -1968,7 +1971,6 @@ class HomeViewModel @Inject constructor(
             gameMenuOpenJob?.cancel()
             _uiState.update { it.copy(gameMenuDisplays = emptyList()) }
             gameMenuDelegate.toggleGameMenu()
-            DualScreenManagerHolder.instance?.hideScreenNumbers()
             return
         }
         if (gameMenuOpenJob?.isActive == true) return
@@ -1984,9 +1986,6 @@ class HomeViewModel @Inject constructor(
                 .orEmpty()
             _uiState.update { it.copy(gameMenuDisplays = displays, gameMenuHasSiblingGroup = hasChoice) }
             gameMenuDelegate.toggleGameMenu()
-            if (displays.size > 1) {
-                DualScreenManagerHolder.instance?.showScreenNumbers(com.nendo.argosy.hardware.DisplayBadgeSize.SMALL)
-            }
         }
     }
 
