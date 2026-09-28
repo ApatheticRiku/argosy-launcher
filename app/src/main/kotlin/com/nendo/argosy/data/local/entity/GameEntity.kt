@@ -172,8 +172,6 @@ data class GameEntity(
     val isHackVariant: Boolean = false,
     @ColumnInfo(defaultValue = "0")
     val isTranslationVariant: Boolean = false,
-    @ColumnInfo(defaultValue = "0")
-    val rommMainSibling: Boolean = false,
     @ColumnInfo(defaultValue = "1")
     val isGroupVisible: Boolean = true
 ) {

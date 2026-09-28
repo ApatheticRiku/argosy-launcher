@@ -3862,3 +3862,109 @@ object Migration_198_199 : Migration(198, 199) {
         )
     }
 }
+
+/**
+ * Rebuilds `games` without `rommMainSibling`, whose value `game_user_overlay.rommMainSibling`
+ * took over in 199.
+ */
+object Migration_199_200 : Migration(199, 200) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("PRAGMA foreign_keys=OFF")
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `games_new` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `platformId` INTEGER NOT NULL, " +
+                "`platformSlug` TEXT NOT NULL, `title` TEXT NOT NULL, `sortTitle` TEXT NOT NULL, " +
+                "`searchTitle` TEXT NOT NULL, `localPath` TEXT, " +
+                "`fileOrigin` TEXT NOT NULL DEFAULT 'ADOPTED', `rommId` INTEGER, " +
+                "`rommFileName` TEXT, `igdbId` INTEGER, `raId` INTEGER, `steamAppId` INTEGER, " +
+                "`steamLauncher` TEXT, `steamInstallDir` TEXT, `packageName` TEXT, " +
+                "`launcherSetManually` INTEGER NOT NULL, `source` TEXT NOT NULL, `coverPath` TEXT, " +
+                "`coverAspectRatio` REAL, `gradientColors` TEXT, `backgroundPath` TEXT, " +
+                "`screenshotPaths` TEXT, `cachedScreenshotPaths` TEXT, `boxBackPath` TEXT, " +
+                "`boxSpinePath` TEXT, `logoPath` TEXT, `coverOverridePath` TEXT, " +
+                "`backgroundOverridePath` TEXT, `logoOverridePath` TEXT, " +
+                "`developer` TEXT, `publisher` TEXT, `releaseYear` INTEGER, `genre` TEXT, " +
+                "`description` TEXT, `players` TEXT, `rating` REAL, `regions` TEXT, " +
+                "`languages` TEXT, `gameModes` TEXT, `franchises` TEXT, `genres` TEXT, " +
+                "`collections` TEXT, `alternativeNames` TEXT, `ageRatings` TEXT, `mobyId` INTEGER, " +
+                "`sgdbId` INTEGER, `ssId` INTEGER, `launchboxId` INTEGER, `hasheousId` INTEGER, " +
+                "`tgdbId` INTEGER, `hltbId` INTEGER, `timeToBeatMainSec` INTEGER, " +
+                "`timeToBeatExtraSec` INTEGER, `timeToBeatCompletionistSec` INTEGER, " +
+                "`flashpointId` TEXT, `gamelistId` TEXT, `libretroId` TEXT, `crcHash` TEXT, " +
+                "`md5Hash` TEXT, `sha1Hash` TEXT, `raHash` TEXT, `hasManual` INTEGER NOT NULL, " +
+                "`manualPath` TEXT, `remoteHasSoundtrack` INTEGER NOT NULL, " +
+                "`isIdentified` INTEGER NOT NULL, `userRating` INTEGER NOT NULL, " +
+                "`userDifficulty` INTEGER NOT NULL, `completion` INTEGER NOT NULL, `status` TEXT, " +
+                "`backlogged` INTEGER NOT NULL, `nowPlaying` INTEGER NOT NULL, " +
+                "`isFavorite` INTEGER NOT NULL, `playCount` INTEGER NOT NULL, " +
+                "`playTimeMinutes` INTEGER NOT NULL, " +
+                "`lastPlayed` INTEGER, `addedAt` INTEGER NOT NULL, `isMultiDisc` INTEGER NOT NULL, " +
+                "`lastPlayedDiscId` INTEGER, `m3uPath` TEXT, `activeVariantFileId` INTEGER, " +
+                "`lastPlayedFileId` INTEGER, `achievementCount` INTEGER NOT NULL, " +
+                "`earnedAchievementCount` INTEGER NOT NULL, `titleId` TEXT, " +
+                "`titleIdLocked` INTEGER NOT NULL, `saveTarget` TEXT, `saveTargetLayout` TEXT, " +
+                "`hasFileOnDisk` INTEGER NOT NULL, `storeEnrichStatus` INTEGER NOT NULL, " +
+                "`titleIdCandidates` TEXT, `saveId` TEXT, `saveFeatures` INTEGER, " +
+                "`youtubeVideoId` TEXT, " +
+                "`cheatsFetched` INTEGER NOT NULL, `cheatsFetchedAt` INTEGER, " +
+                "`cheatsSelectedRegion` TEXT, `cheatsSelectedVersion` TEXT, " +
+                "`achievementsFetchedAt` INTEGER, `romHash` TEXT, `verifiedRaId` INTEGER, " +
+                "`raIdVerified` INTEGER NOT NULL, `fileSizeBytes` INTEGER, " +
+                "`perGameSettingsEnabled` INTEGER NOT NULL, " +
+                "`perGameControlsEnabled` INTEGER NOT NULL, `syncDirty` INTEGER NOT NULL, " +
+                "`siblingGroupKey` TEXT, `isHackVariant` INTEGER NOT NULL DEFAULT 0, " +
+                "`isTranslationVariant` INTEGER NOT NULL DEFAULT 0, " +
+                "`isGroupVisible` INTEGER NOT NULL DEFAULT 1, " +
+                "FOREIGN KEY(`platformId`) REFERENCES `platforms`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+
+        val carriedColumns = "`id`, `platformId`, `platformSlug`, `title`, `sortTitle`, " +
+            "`searchTitle`, `localPath`, `fileOrigin`, `rommId`, `rommFileName`, `igdbId`, " +
+            "`raId`, `steamAppId`, `steamLauncher`, `steamInstallDir`, `packageName`, " +
+            "`launcherSetManually`, `source`, `coverPath`, `coverAspectRatio`, `gradientColors`, " +
+            "`backgroundPath`, `screenshotPaths`, `cachedScreenshotPaths`, `boxBackPath`, " +
+            "`boxSpinePath`, `logoPath`, `coverOverridePath`, `backgroundOverridePath`, " +
+            "`logoOverridePath`, `developer`, `publisher`, " +
+            "`releaseYear`, `genre`, `description`, `players`, `rating`, `regions`, " +
+            "`languages`, `gameModes`, `franchises`, `genres`, `collections`, " +
+            "`alternativeNames`, `ageRatings`, `mobyId`, `sgdbId`, `ssId`, `launchboxId`, " +
+            "`hasheousId`, `tgdbId`, `hltbId`, `timeToBeatMainSec`, `timeToBeatExtraSec`, " +
+            "`timeToBeatCompletionistSec`, `flashpointId`, `gamelistId`, `libretroId`, " +
+            "`crcHash`, `md5Hash`, `sha1Hash`, `raHash`, `hasManual`, `manualPath`, " +
+            "`remoteHasSoundtrack`, `isIdentified`, `userRating`, `userDifficulty`, " +
+            "`completion`, `status`, `backlogged`, `nowPlaying`, `isFavorite`, " +
+            "`playCount`, `playTimeMinutes`, `lastPlayed`, `addedAt`, `isMultiDisc`, " +
+            "`lastPlayedDiscId`, `m3uPath`, `activeVariantFileId`, `lastPlayedFileId`, " +
+            "`achievementCount`, `earnedAchievementCount`, `titleId`, `titleIdLocked`, " +
+            "`saveTarget`, `saveTargetLayout`, `hasFileOnDisk`, " +
+            "`storeEnrichStatus`, `titleIdCandidates`, `saveId`, `saveFeatures`, " +
+            "`youtubeVideoId`, `cheatsFetched`, `cheatsFetchedAt`, `cheatsSelectedRegion`, " +
+            "`cheatsSelectedVersion`, `achievementsFetchedAt`, `romHash`, `verifiedRaId`, " +
+            "`raIdVerified`, `fileSizeBytes`, `perGameSettingsEnabled`, " +
+            "`perGameControlsEnabled`, `syncDirty`, `siblingGroupKey`, `isHackVariant`, " +
+            "`isTranslationVariant`, `isGroupVisible`"
+
+        db.execSQL("INSERT INTO `games_new` ($carriedColumns) SELECT $carriedColumns FROM `games`")
+        db.execSQL("DROP TABLE `games`")
+        db.execSQL("ALTER TABLE `games_new` RENAME TO `games`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_platformId` ON `games` (`platformId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_title` ON `games` (`title`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_lastPlayed` ON `games` (`lastPlayed`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_source` ON `games` (`source`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_rommId` ON `games` (`rommId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_steamAppId` ON `games` (`steamAppId`)")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_games_packageName` ON `games` (`packageName`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_regions` ON `games` (`regions`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_gameModes` ON `games` (`gameModes`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_franchises` ON `games` (`franchises`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_genres` ON `games` (`genres`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_games_collections` ON `games` (`collections`)")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_games_siblingGroupKey` ON `games` (`siblingGroupKey`)"
+        )
+
+        db.execSQL("PRAGMA foreign_keys=ON")
+    }
+}

@@ -196,13 +196,6 @@ class RomMGameMetadataTest {
     }
 
     @Test
-    fun `the per-account RomM main flag never lands on the shared row`() {
-        val main = rom().copy(romUser = RomMRomUser(isMainSibling = true))
-
-        assertFalse(existing().withRomMetadata(main).rommMainSibling)
-    }
-
-    @Test
     fun `a save target already on the row is kept`() {
         val local = existing().copy(saveTarget = "LOCALTARGET", saveTargetLayout = "file-exact")
 

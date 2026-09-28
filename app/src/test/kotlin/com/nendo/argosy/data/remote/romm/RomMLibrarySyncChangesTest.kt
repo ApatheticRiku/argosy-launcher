@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -280,7 +279,6 @@ class RomMLibrarySyncChangesTest {
 
         assertEquals("igdb-1-1234", stored.captured.siblingGroupKey)
         assertTrue(stored.captured.isHackVariant)
-        assertFalse(stored.captured.rommMainSibling)
         coVerify(exactly = 1) { overlayWriter.setRommMainSibling(OWNER, 9L, true) }
     }
 
