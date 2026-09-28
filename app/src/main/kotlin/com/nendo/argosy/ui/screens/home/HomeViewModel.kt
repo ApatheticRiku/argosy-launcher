@@ -243,6 +243,7 @@ class HomeViewModel @Inject constructor(
         libraryDelegate.observePinnedCollections(viewModelScope)
         observeRecentlyPlayedChanges()
         observeFocusedGame()
+        observeSiblingPicks()
         observeCollectionModal()
         observeDelegateStates()
         observeHomeTiles()
@@ -455,6 +456,15 @@ class HomeViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun observeSiblingPicks() {
+        siblingChoice.pickChanges
+            .onEach { change ->
+                refreshTileGamesAndFeatures()
+                refreshCurrentRowInternal(anchorGameId = change.refocusTarget(_uiState.value.focusedGame?.id))
+            }
+            .launchIn(viewModelScope)
     }
 
     private fun publishTileShowcase(state: HomeUiState) {
@@ -800,13 +810,13 @@ class HomeViewModel @Inject constructor(
      * cursor is moved off it: Favorites can hold nothing but titles, and those are not gone just
      * because the game half of the answer came back empty.
      */
-    private suspend fun refreshCurrentRowInternal() {
+    private suspend fun refreshCurrentRowInternal(anchorGameId: Long? = null) {
         val state = _uiState.value
         if (state.isMediaRow) {
             flushLibraryState()
             return
         }
-        val focusedGameId = state.focusedGame?.id
+        val focusedGameId = anchorGameId ?: state.focusedGame?.id
         val result = libraryDelegate.refreshCurrentRow(state.currentRow, focusedGameId)
 
         val newIndex = if (focusedGameId != null) {
@@ -1987,9 +1997,7 @@ class HomeViewModel @Inject constructor(
 
     fun openActiveVariant(gameId: Long) {
         toggleGameMenu()
-        siblingChoice.openActiveVariant(viewModelScope, gameId) {
-            viewModelScope.launch { refreshCurrentRowInternal() }
-        }
+        siblingChoice.openActiveVariant(viewModelScope, gameId) { }
     }
 
     fun moveSiblingChoiceFocus(delta: Int) = siblingChoice.moveFocus(delta)

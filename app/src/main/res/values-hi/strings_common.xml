@@ -861,9 +861,7 @@
     <string name="home_grid_local_video_row_subtitle">सीधे आपके स्टोरेज से चलता है</string>
     <string name="ui_quick_settings_swap_displays">डिस्प्ले बदलें</string>
     <string name="ui_sibling_choice_title_download">डाउनलोड के लिए वैरिएंट चुनें</string>
-    <string name="ui_sibling_choice_subtitle_download">डाउनलोड करने के लिए कॉपी चुनें। यही आपकी लाइब्रेरी में दिखेगी।</string>
     <string name="ui_sibling_choice_title_active">सक्रिय वैरिएंट</string>
-    <string name="ui_sibling_choice_subtitle_active">वह कॉपी जो आपकी लाइब्रेरी दिखाती और चलाती है</string>
     <string name="ui_sibling_choice_automatic">स्वचालित</string>
     <string name="ui_sibling_choice_automatic_showing">%1$s दिखा रहा है</string>
     <string name="ui_sibling_choice_loading">लोड हो रहा है...</string>

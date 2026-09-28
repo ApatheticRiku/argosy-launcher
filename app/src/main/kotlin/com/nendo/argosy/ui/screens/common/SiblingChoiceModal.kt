@@ -93,11 +93,6 @@ fun SiblingChoiceModalHost(
         } else {
             stringResource(R.string.ui_sibling_choice_title_active)
         },
-        subtitle = if (isDownload) {
-            stringResource(R.string.ui_sibling_choice_subtitle_download)
-        } else {
-            stringResource(R.string.ui_sibling_choice_subtitle_active)
-        },
         onDismiss = onDismiss
     ) {
         when {

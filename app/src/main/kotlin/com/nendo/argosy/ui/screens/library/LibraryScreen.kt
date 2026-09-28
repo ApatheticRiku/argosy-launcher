@@ -301,7 +301,8 @@ fun LibraryScreen(
         }
     }
 
-    val showAnyOverlay = uiState.showFilterMenu || uiState.showQuickMenu || uiState.showAddToCollectionModal || uiState.syncOverlayState != null || uiState.discPickerState != null || uiState.variantPickerState != null || uiState.memcardPickerState != null
+    val siblingChoiceOpen = viewModel.siblingChoiceState.collectAsState().value != null
+    val showAnyOverlay = uiState.showFilterMenu || uiState.showQuickMenu || uiState.showAddToCollectionModal || uiState.syncOverlayState != null || uiState.discPickerState != null || uiState.variantPickerState != null || uiState.memcardPickerState != null || siblingChoiceOpen
     val modalBlur by animateDpAsState(
         targetValue = if (showAnyOverlay) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,

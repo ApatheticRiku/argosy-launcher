@@ -71,6 +71,7 @@ import com.nendo.argosy.ui.screens.common.GradientExtractionDelegate
 import com.nendo.argosy.ui.screens.common.RefreshAndroidResult
 import com.nendo.argosy.ui.screens.common.DiscPickerState
 import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
+import com.nendo.argosy.ui.screens.common.PendingSiblingFocus
 import com.nendo.argosy.ui.screens.common.SyncOverlayState
 import com.nendo.argosy.ui.screens.gamedetail.CollectionItemUi
 import com.nendo.argosy.ui.screens.home.HomePlatformUi
@@ -482,6 +483,7 @@ class LibraryViewModel @Inject constructor(
     private var cachedPlatformEntities: List<PlatformEntity> = emptyList()
     private var platformStatsCache: Map<Long, PlatformShowcaseStats>? = null
     private var cachedMediaLibraries: List<MediaLibraryEntity> = emptyList()
+    private var pendingSiblingFocus: PendingSiblingFocus? = null
 
     private val pendingCoverRepairs = mutableSetOf<Long>()
 
@@ -792,6 +794,30 @@ class LibraryViewModel @Inject constructor(
             .distinctUntilChanged()
             .onEach { cell -> publishPlatformShowcase(cell) }
             .launchIn(viewModelScope)
+    }
+
+    private fun followSiblingPick(fromGameId: Long, shownGameId: Long) {
+        if (fromGameId == shownGameId) return
+        val state = _uiState.value
+        val gameIds = state.games.map { it.id }
+        if (state.focusedGame?.id != fromGameId && fromGameId in gameIds) return
+        pendingSiblingFocus = PendingSiblingFocus(fromGameId, shownGameId, state.focusedIndex)
+        val index = settleSiblingFocus(gameIds) ?: return
+        _uiState.update { it.copy(focusedIndex = index, sectionJumpTrigger = it.sectionJumpTrigger + 1) }
+        updateCurrentSectionFromFocus()
+        extractGradientsForVisibleGames(index)
+    }
+
+    private fun settleSiblingFocus(gameIds: List<Long>): Int? {
+        val pending = pendingSiblingFocus ?: return null
+        val state = _uiState.value
+        if (!pending.isHeldBy(state.focusedIndex, state.focusedGame?.id)) {
+            pendingSiblingFocus = null
+            return null
+        }
+        val (index, remaining) = pending.resolve(gameIds)
+        pendingSiblingFocus = remaining
+        return index
     }
 
     private val LibraryUiState.focusedPlatformCell: LibraryCellUi?
@@ -1146,16 +1172,23 @@ class LibraryViewModel @Inject constructor(
                     val gamesList = allGamesSorted.map { it.toUi(cachedPlatformDisplayNames) }
 
                     Log.d(TAG, "loadGames: ${games.size} total, ${filteredGames.size} after filters, ${sections.size} sections")
+                    val siblingFocusIndex = settleSiblingFocus(gamesList.map { it.id })
                     _uiState.update { uiState ->
                         val shouldResetFocus = uiState.games.isEmpty()
-                        val newFocusedIndex = if (shouldResetFocus) 0 else uiState.focusedIndex.coerceAtMost((gamesList.size - 1).coerceAtLeast(0))
+                        val newFocusedIndex = siblingFocusIndex
+                            ?: if (shouldResetFocus) 0 else uiState.focusedIndex.coerceAtMost((gamesList.size - 1).coerceAtLeast(0))
                         val currentSectionLabel = computeSectionLabelForGameIndex(newFocusedIndex, sections)
                         uiState.copy(
                             games = gamesList,
                             focusedIndex = newFocusedIndex,
                             gridItems = gridItems,
                             sectionLabels = sectionLabels,
-                            currentSectionLabel = currentSectionLabel
+                            currentSectionLabel = currentSectionLabel,
+                            sectionJumpTrigger = if (siblingFocusIndex != null) {
+                                uiState.sectionJumpTrigger + 1
+                            } else {
+                                uiState.sectionJumpTrigger
+                            }
                         )
                     }
                     extractGradientsForVisibleGames(_uiState.value.focusedIndex)
@@ -1843,7 +1876,9 @@ class LibraryViewModel @Inject constructor(
 
     fun openActiveVariant(gameId: Long) {
         toggleQuickMenu()
-        siblingChoice.openActiveVariant(viewModelScope, gameId) { }
+        siblingChoice.openActiveVariant(viewModelScope, gameId) { shownGameId ->
+            followSiblingPick(gameId, shownGameId)
+        }
     }
 
     fun moveSiblingChoiceFocus(delta: Int) = siblingChoice.moveFocus(delta)
@@ -1937,7 +1972,10 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun downloadGame(gameId: Long) {
-        siblingChoice.requestDownload(viewModelScope, gameId, ::queueDownload)
+        siblingChoice.requestDownload(viewModelScope, gameId) { chosenGameId ->
+            followSiblingPick(gameId, chosenGameId)
+            queueDownload(chosenGameId)
+        }
     }
 
     private fun queueDownload(gameId: Long) {

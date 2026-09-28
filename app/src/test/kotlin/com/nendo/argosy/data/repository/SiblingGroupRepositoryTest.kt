@@ -10,11 +10,15 @@ import com.nendo.argosy.data.local.entity.GameGroupPickEntity
 import com.nendo.argosy.data.local.entity.GameSiblingRow
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.domain.model.SiblingMemberKind
+import com.nendo.argosy.domain.model.SiblingPickChange
 import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -446,5 +450,67 @@ class SiblingGroupRepositoryTest {
         coVerify { pickDao.clear(owner, "g") }
         assertEquals(mapOf(1L to false, 2L to true), rows.mapValues { it.value.isGroupVisible })
         coVerify(exactly = 1) { platformDao.updateGameCount(7, 12) }
+    }
+
+    private fun membersFromRows() {
+        coEvery { gameDao.getById(any()) } answers {
+            val id = firstArg<Long>()
+            entity(id, rows[id]?.siblingGroupKey)
+        }
+        coEvery { gameDao.getGroupMembers(any(), 7, owner) } answers {
+            val key = firstArg<String>()
+            rows.values.filter { it.siblingGroupKey == key }.map {
+                member(it.id, it.rommFileName.orEmpty(), hack = it.isHackVariant, visible = it.isGroupVisible)
+            }
+        }
+    }
+
+    @Test
+    fun `setting a pick announces the picked member as the group's shown entry`() = runTest {
+        put(row(1, "g", regions = "Japan", fileName = "a"), row(2, "g", regions = "USA", fileName = "b"))
+        membersFromRows()
+        coEvery { gameDao.getSiblingGroupKey(1) } returns "g"
+        coEvery { pickDao.set(owner, "g", 1) } answers {
+            picks = listOf(GameGroupPickEntity(ownerUserId = owner, groupKey = "g", gameId = 1))
+        }
+        coEvery { pickDao.pickFor(owner, "g") } answers { picks.firstOrNull()?.gameId }
+        val changes = mutableListOf<SiblingPickChange>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.pickChanges.toList(changes)
+        }
+
+        repository.setPick(1)
+
+        assertEquals(listOf(SiblingPickChange(memberIds = setOf(1L, 2L), shownGameId = 1L)), changes)
+    }
+
+    @Test
+    fun `clearing a pick announces the ranked member as the group's shown entry`() = runTest {
+        put(
+            row(1, "g", regions = "Japan", fileName = "a", visible = true),
+            row(2, "g", regions = "USA", fileName = "b", visible = false)
+        )
+        membersFromRows()
+        val changes = mutableListOf<SiblingPickChange>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.pickChanges.toList(changes)
+        }
+
+        repository.clearPick("g")
+
+        assertEquals(listOf(SiblingPickChange(memberIds = setOf(1L, 2L), shownGameId = 2L)), changes)
+    }
+
+    @Test
+    fun `a game outside every group announces nothing when picked`() = runTest {
+        coEvery { gameDao.getSiblingGroupKey(4) } returns null
+        val changes = mutableListOf<SiblingPickChange>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.pickChanges.toList(changes)
+        }
+
+        repository.setPick(4)
+
+        assertEquals(emptyList<SiblingPickChange>(), changes)
     }
 }

@@ -1,6 +1,8 @@
 package com.nendo.argosy.ui.screens.gamedetail.components
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DocumentSpreadTest {
@@ -32,5 +34,33 @@ class DocumentSpreadTest {
     fun `turning stops at both covers`() {
         assertEquals(0, spreadStartAfter(0, 10, -1))
         assertEquals(9, spreadStartAfter(9, 10, 1))
+    }
+
+    @Test
+    fun `a flat scan of landscape spreads is not paired`() {
+        val astroFang = List(12) { 842 to 252 }
+
+        assertTrue(isFlatSpreadScan(astroFang))
+    }
+
+    @Test
+    fun `portrait and landscape single pages still pair`() {
+        assertFalse(isFlatSpreadScan(List(12) { 600 to 900 }))
+        assertFalse(isFlatSpreadScan(List(12) { 900 to 600 }))
+        assertFalse(isFlatSpreadScan(List(12) { 1000 to 500 }))
+    }
+
+    @Test
+    fun `one wide fold-out among single pages does not unpair the book`() {
+        val pages = List(11) { 600 to 900 } + (1800 to 600)
+
+        assertFalse(isFlatSpreadScan(pages))
+    }
+
+    @Test
+    fun `a spread scan with a single-page cover is still unpaired`() {
+        val pages = listOf(420 to 250) + List(11) { 842 to 252 }
+
+        assertTrue(isFlatSpreadScan(pages))
     }
 }

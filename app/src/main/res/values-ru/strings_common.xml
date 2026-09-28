@@ -895,9 +895,7 @@
     <string name="home_grid_local_video_row_subtitle">Воспроизводится прямо из хранилища</string>
     <string name="ui_quick_settings_swap_displays">Поменять экраны</string>
     <string name="ui_sibling_choice_title_download">ВАРИАНТ ДЛЯ ЗАГРУЗКИ</string>
-    <string name="ui_sibling_choice_subtitle_download">Выберите копию для загрузки. Она станет записью в вашей библиотеке.</string>
     <string name="ui_sibling_choice_title_active">АКТИВНЫЙ ВАРИАНТ</string>
-    <string name="ui_sibling_choice_subtitle_active">Копия, которую библиотека показывает и запускает</string>
     <string name="ui_sibling_choice_automatic">Автоматически</string>
     <string name="ui_sibling_choice_automatic_showing">Показывается: %1$s</string>
     <string name="ui_sibling_choice_loading">Загрузка...</string>

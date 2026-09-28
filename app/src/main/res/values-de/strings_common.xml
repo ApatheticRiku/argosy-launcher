@@ -861,9 +861,7 @@
     <string name="home_grid_local_video_row_subtitle">Spielt direkt von Ihrem Speicher ab</string>
     <string name="ui_quick_settings_swap_displays">Displays tauschen</string>
     <string name="ui_sibling_choice_title_download">VARIANTE WÄHLEN</string>
-    <string name="ui_sibling_choice_subtitle_download">Wählen Sie die Kopie zum Herunterladen. Sie wird zum Eintrag in Ihrer Bibliothek.</string>
     <string name="ui_sibling_choice_title_active">AKTIVE VARIANTE</string>
-    <string name="ui_sibling_choice_subtitle_active">Die Kopie, die Ihre Bibliothek anzeigt und startet</string>
     <string name="ui_sibling_choice_automatic">Automatisch</string>
     <string name="ui_sibling_choice_automatic_showing">Zeigt %1$s</string>
     <string name="ui_sibling_choice_loading">Wird geladen...</string>

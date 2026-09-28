@@ -1702,13 +1702,9 @@
     <!-- Heading of the chooser that opens when a download starts on a game with several copies.
          Verb phrase, rendered in caps in English. -->
     <string name="ui_sibling_choice_title_download">CHOOSE A VARIANT</string>
-    <!-- Second line under that heading. -->
-    <string name="ui_sibling_choice_subtitle_download">Pick the copy to download. It becomes the entry your library shows.</string>
     <!-- Heading of the chooser that sets which copy of a game the library shows. Noun phrase:
          the copy currently in use. Rendered in caps in English. -->
     <string name="ui_sibling_choice_title_active">ACTIVE VARIANT</string>
-    <!-- Second line under that heading. -->
-    <string name="ui_sibling_choice_subtitle_active">The copy your library shows and plays</string>
     <!-- First row of that chooser: the launcher picks the copy by region priority. Adjective
          describing the choice, not a command. -->
     <string name="ui_sibling_choice_automatic">Automatic</string>

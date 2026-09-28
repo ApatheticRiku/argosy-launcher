@@ -17,10 +17,14 @@ import com.nendo.argosy.domain.model.SiblingGroupMember
 import com.nendo.argosy.domain.model.SiblingGroupRanking
 import com.nendo.argosy.domain.model.SiblingMember
 import com.nendo.argosy.domain.model.SiblingMemberKind
+import com.nendo.argosy.domain.model.SiblingPickChange
 import com.nendo.argosy.domain.model.SiblingPickSeed
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -32,6 +36,7 @@ import javax.inject.Singleton
 
 private const val TAG = "SiblingGroupRepository"
 private const val UPDATE_CHUNK = 500
+private const val PICK_CHANGE_BUFFER = 16
 
 @Singleton
 class SiblingGroupRepository @Inject constructor(
@@ -46,6 +51,14 @@ class SiblingGroupRepository @Inject constructor(
 ) {
     private val scope = SafeCoroutineScope(Dispatchers.IO, TAG)
     private val mutex = Mutex()
+
+    private val _pickChanges = MutableSharedFlow<SiblingPickChange>(extraBufferCapacity = PICK_CHANGE_BUFFER)
+
+    /**
+     * One entry per platform of a group whose pick was stored or cleared, emitted once the group's
+     * visibility is rewritten.
+     */
+    val pickChanges: SharedFlow<SiblingPickChange> = _pickChanges.asSharedFlow()
 
     fun start() {
         scope.launch {
@@ -93,6 +106,7 @@ class SiblingGroupRepository @Inject constructor(
         pickDao.set(owner, groupKey, gameId)
         recomputeGroupsFor(owner, listOf(groupKey))
         writeGameCounts(owner, groupKey)
+        announcePickChange(groupKey)
     }
 
     suspend fun clearPick(groupKey: String): Unit = withContext(Dispatchers.IO) {
@@ -100,6 +114,17 @@ class SiblingGroupRepository @Inject constructor(
         pickDao.clear(owner, groupKey)
         recomputeGroupsFor(owner, listOf(groupKey))
         writeGameCounts(owner, groupKey)
+        announcePickChange(groupKey)
+    }
+
+    private suspend fun announcePickChange(groupKey: String) {
+        val covered = HashSet<Long>()
+        gameDao.getSiblingRowsForGroups(listOf(groupKey)).forEach { row ->
+            if (!covered.add(row.id)) return@forEach
+            val group = groupFor(row.id) ?: return@forEach
+            group.members.mapTo(covered) { it.gameId }
+            SiblingPickChange.of(group)?.let { _pickChanges.tryEmit(it) }
+        }
     }
 
     suspend fun onHiddenChanged(gameId: Long): Unit = withContext(Dispatchers.IO) {

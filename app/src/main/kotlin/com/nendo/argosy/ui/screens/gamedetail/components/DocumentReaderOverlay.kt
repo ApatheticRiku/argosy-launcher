@@ -67,13 +67,28 @@ data class DocumentReaderState(
 
     val pageCount: Int get() = if (pages.isNotEmpty()) pages.size else textPages.size
 
-    val usesSpreads: Boolean get() = showsSpreads && pages.size > 1
+    val usesSpreads: Boolean
+        get() = showsSpreads && pages.size > 1 &&
+            !isFlatSpreadScan(pages.map { it.width to it.height })
 
     val fraction: Float get() = if (pageCount > 1) pageIndex.toFloat() / (pageCount - 1) else 0f
 
     val visiblePages: IntRange
         get() = if (usesSpreads) spreadOf(pageIndex, pages.size) else pageIndex..pageIndex
 }
+
+/**
+ * True when most pages of a scanned document are more than [FLAT_SPREAD_MIN_RATIO] times as wide as
+ * they are tall: each page is already an open booklet scanned flat, so pairing them would show two
+ * spreads at once.
+ */
+fun isFlatSpreadScan(pageSizes: List<Pair<Int, Int>>): Boolean {
+    if (pageSizes.isEmpty()) return false
+    val flat = pageSizes.count { (width, height) -> height > 0 && width > height * FLAT_SPREAD_MIN_RATIO }
+    return flat * 2 > pageSizes.size
+}
+
+const val FLAT_SPREAD_MIN_RATIO = 2.0f
 
 /**
  * The pages shown together as a book spread when [pageIndex] is open: the cover alone, then each

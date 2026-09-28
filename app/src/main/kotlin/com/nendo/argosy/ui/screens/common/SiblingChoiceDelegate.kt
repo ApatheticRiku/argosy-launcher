@@ -8,12 +8,14 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.data.repository.SiblingGroupRepository
 import com.nendo.argosy.domain.model.SiblingGroup
 import com.nendo.argosy.domain.model.SiblingGroupMember
+import com.nendo.argosy.domain.model.SiblingPickChange
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -58,6 +60,8 @@ class SiblingChoiceDelegate @Inject constructor(
 ) {
     private val _state = MutableStateFlow<SiblingChoiceState?>(null)
     val state: StateFlow<SiblingChoiceState?> = _state.asStateFlow()
+
+    val pickChanges: SharedFlow<SiblingPickChange> get() = siblingGroupRepository.pickChanges
 
     private var onDownloadChosen: ((Long) -> Unit)? = null
     private var onPickChanged: ((Long) -> Unit)? = null

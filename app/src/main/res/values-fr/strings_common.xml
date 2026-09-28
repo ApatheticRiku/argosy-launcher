@@ -901,9 +901,7 @@
     <string name="home_grid_local_video_row_subtitle">Lit directement depuis votre stockage</string>
     <string name="ui_quick_settings_swap_displays">Permuter les écrans</string>
     <string name="ui_sibling_choice_title_download">CHOISIR UNE VARIANTE</string>
-    <string name="ui_sibling_choice_subtitle_download">Choisissez la copie à télécharger. Elle devient l\'entrée affichée dans votre bibliothèque.</string>
     <string name="ui_sibling_choice_title_active">VARIANTE ACTIVE</string>
-    <string name="ui_sibling_choice_subtitle_active">La copie que votre bibliothèque affiche et lance</string>
     <string name="ui_sibling_choice_automatic">Automatique</string>
     <string name="ui_sibling_choice_automatic_showing">Affiche %1$s</string>
     <string name="ui_sibling_choice_loading">Chargement...</string>

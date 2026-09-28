@@ -484,7 +484,8 @@ private fun GameDetailContent(
         uiState.showSaveCacheDialog || uiState.showRenameDialog || uiState.showScreenshotViewer ||
         uiState.showExtractionFailedPrompt || uiState.showAchievementList ||
         uiState.showReviewList || uiState.reviewEditor != null || uiState.perGameSettings.visible ||
-        viewModel.documentReader.collectAsState().value != null
+        viewModel.documentReader.collectAsState().value != null ||
+        viewModel.siblingChoiceState.collectAsState().value != null
     val modalBlur by animateDpAsState(
         targetValue = if (showAnyOverlay) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
