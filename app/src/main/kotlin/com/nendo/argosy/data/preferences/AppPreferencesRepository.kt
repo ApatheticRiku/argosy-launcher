@@ -58,6 +58,9 @@ class AppPreferencesRepository @Inject constructor(
         val FILE_LOG_LEVEL = stringPreferencesKey("file_log_level")
         val APP_LANGUAGE = stringPreferencesKey("app_language")
         val APP_DISPLAY_TARGETS = stringPreferencesKey("app_display_targets")
+        val SIBLING_PICK_SEEDED_OWNERS = stringPreferencesKey("sibling_pick_seeded_owners")
+        val SIBLING_FULL_PASS_DONE = booleanPreferencesKey("sibling_full_pass_done")
+        val VARIANT_FILE_CLEANUP_DONE = booleanPreferencesKey("variant_file_cleanup_done")
     }
 
     val preferences: Flow<AppPreferences> = dataStore.data.map { prefs ->
@@ -149,6 +152,33 @@ class AppPreferencesRepository @Inject constructor(
 
     suspend fun setPlatformOrderCustomised() {
         dataStore.edit { it[Keys.PLATFORM_ORDER_CUSTOMISED] = true }
+    }
+
+    suspend fun isSiblingPickSeedDone(ownerUserId: Long): Boolean =
+        ownerUserId in parseOwnerIds(dataStore.data.first()[Keys.SIBLING_PICK_SEEDED_OWNERS])
+
+    suspend fun setSiblingPickSeedDone(ownerUserId: Long) {
+        dataStore.edit { prefs ->
+            val seeded = parseOwnerIds(prefs[Keys.SIBLING_PICK_SEEDED_OWNERS]) + ownerUserId
+            prefs[Keys.SIBLING_PICK_SEEDED_OWNERS] = seeded.sorted().joinToString(",")
+        }
+    }
+
+    private fun parseOwnerIds(raw: String?): Set<Long> =
+        raw?.split(",")?.mapNotNull { it.trim().toLongOrNull() }?.toSet().orEmpty()
+
+    suspend fun isVariantFileCleanupDone(): Boolean =
+        dataStore.data.first()[Keys.VARIANT_FILE_CLEANUP_DONE] ?: false
+
+    suspend fun setVariantFileCleanupDone() {
+        dataStore.edit { it[Keys.VARIANT_FILE_CLEANUP_DONE] = true }
+    }
+
+    suspend fun isSiblingFullPassDone(): Boolean =
+        dataStore.data.first()[Keys.SIBLING_FULL_PASS_DONE] ?: false
+
+    suspend fun setSiblingFullPassDone() {
+        dataStore.edit { it[Keys.SIBLING_FULL_PASS_DONE] = true }
     }
 
     suspend fun setLastSeenVersion(version: String) {

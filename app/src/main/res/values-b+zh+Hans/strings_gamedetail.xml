@@ -171,6 +171,7 @@
     <string name="gamedetail_more_options_title_id_missing">未检测到</string>
     <string name="gamedetail_more_options_select_disc">选择光盘</string>
     <string name="gamedetail_more_options_select_variant">选择变体</string>
+    <string name="gamedetail_more_options_active_variant">当前变体</string>
     <string name="gamedetail_more_options_files">文件</string>
     <string name="gamedetail_more_options_refresh_data">刷新游戏数据</string>
     <string name="gamedetail_more_options_add_to_collection">添加到合集</string>

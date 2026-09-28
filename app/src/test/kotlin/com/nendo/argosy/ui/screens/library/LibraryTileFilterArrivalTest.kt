@@ -186,7 +186,8 @@ class LibraryTileFilterArrivalTest {
         steamContentManager = mockk(relaxed = true),
         steamDownloadPromptController = mockk(relaxed = true),
         downloadFileStatusRepository = mockk(relaxed = true),
-        emulatorLaunchTargetResolver = mockk(relaxed = true)
+        emulatorLaunchTargetResolver = mockk(relaxed = true),
+        siblingChoice = mockk(relaxed = true)
     )
 
     private fun LibraryViewModel.platformIds(): Set<Long> =

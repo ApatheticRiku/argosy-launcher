@@ -358,6 +358,8 @@
     <string name="settings_sync_platform_filters_subtitle_empty">सिंक के लिए प्लेटफ़ॉर्म चुनें</string>
 
     <string name="settings_sync_metadata_filters_title">मेटाडेटा फ़िल्टर</string>
+    <string name="settings_sync_region_priority_title">क्षेत्र प्राथमिकता</string>
+    <string name="settings_sync_region_priority_subtitle">पहली पसंद: %1$s</string>
     <string name="settings_sync_metadata_filters_subtitle_none">कोई फ़िल्टर लागू नहीं</string>
     <plurals name="settings_sync_metadata_filters_regions">
         <item quantity="one">%1$d क्षेत्र (%2$s)</item>
@@ -1985,6 +1987,13 @@
     <string name="settings_region_picker_hint_navigate">नेविगेट करें</string>
     <string name="settings_region_picker_hint_toggle">टॉगल करें</string>
     <string name="settings_region_picker_hint_close">बंद करें</string>
+    <string name="settings_region_priority_title">क्षेत्र प्राथमिकता</string>
+    <string name="settings_region_priority_subtitle">जब किसी गेम की कई क्षेत्रों की प्रतियाँ हों, तो इस सूची में सबसे ऊपर वाला क्षेत्र दिखाया जाता है</string>
+    <string name="settings_region_priority_hint_reorder">क्रम बदलें</string>
+    <string name="settings_region_priority_hint_close">बंद करें</string>
+    <string name="settings_region_priority_hint_move">खिसकाएँ</string>
+    <string name="settings_region_priority_hint_drop">रखें</string>
+    <string name="settings_region_priority_hint_cancel">रद्द करें</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->
 

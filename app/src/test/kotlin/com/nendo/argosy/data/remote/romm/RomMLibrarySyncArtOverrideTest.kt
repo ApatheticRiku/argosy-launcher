@@ -133,7 +133,10 @@ class RomMLibrarySyncArtOverrideTest {
             attributionRepository = mockk(relaxed = true),
             userRomsHiddenDao = mockk(relaxed = true),
             pendingSyncQueueDao = mockk(relaxed = true),
-            siblingSplitRepair = mockk(relaxed = true)
+            siblingSplitRepair = mockk(relaxed = true),
+            siblingConfigCarryOver = mockk(relaxed = true),
+            siblingGroupRepository = mockk(relaxed = true),
+            variantFileCleanup = mockk(relaxed = true)
         )
     }
 

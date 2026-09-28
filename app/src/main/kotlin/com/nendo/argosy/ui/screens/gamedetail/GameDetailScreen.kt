@@ -965,6 +965,7 @@ private fun GameDetailModals(
             focusIndex = uiState.moreOptionsFocusIndex,
             isDownloaded = uiState.downloadStatus == GameDownloadStatus.DOWNLOADED,
             hasVariants = uiState.hasVariants,
+            hasSiblingGroup = uiState.hasSiblingGroup,
             updateCount = uiState.updateFiles.size + uiState.dlcFiles.size,
             hasManageableFiles = uiState.hasManageableFiles,
             launchDisplayNumbers = uiState.launchDisplayNumbers,
@@ -1310,6 +1311,15 @@ private fun GameDetailModals(
             )
         }
     }
+
+    val siblingChoiceState by viewModel.siblingChoiceState.collectAsState()
+    com.nendo.argosy.ui.screens.common.SiblingChoiceModalHost(
+        state = siblingChoiceState,
+        onMove = viewModel::moveSiblingChoiceFocus,
+        onFocus = viewModel::setSiblingChoiceFocus,
+        onConfirm = viewModel::confirmSiblingChoice,
+        onDismiss = viewModel::dismissSiblingChoice
+    )
 
     SaveChannelModal(
         state = uiState.saveChannel,

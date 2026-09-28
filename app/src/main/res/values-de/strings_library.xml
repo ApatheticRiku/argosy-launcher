@@ -87,6 +87,7 @@
     <string name="library_quickmenu_details">Details</string>
     <string name="library_quickmenu_add_to_collection">Zur Sammlung hinzufügen</string>
     <string name="library_quickmenu_add_to_grid">Zum Raster hinzufügen</string>
+    <string name="library_quickmenu_active_variant">Aktive Variante</string>
     <string name="library_quickmenu_refresh_data">Daten aktualisieren</string>
     <string name="library_quickmenu_resync_platform">Plattform neu synchronisieren</string>
     <string name="library_quickmenu_uninstall">Deinstallieren</string>

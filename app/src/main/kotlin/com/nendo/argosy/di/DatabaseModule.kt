@@ -147,6 +147,12 @@ object DatabaseModule {
         database.userRomsHiddenDao()
 
     @Provides
+    fun provideGameGroupPickDao(
+        database: ALauncherDatabase
+    ): com.nendo.argosy.data.local.dao.GameGroupPickDao =
+        database.gameGroupPickDao()
+
+    @Provides
     fun provideCollectionMembershipDao(
         database: ALauncherDatabase
     ): com.nendo.argosy.data.local.dao.CollectionMembershipDao =

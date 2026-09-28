@@ -180,6 +180,7 @@ data class MoreOptionsContext(
     val canManageStates: Boolean = false,
     val isMultiDisc: Boolean = false,
     val hasVariants: Boolean = false,
+    val hasSiblingGroup: Boolean = false,
     val hasUpdates: Boolean = false,
     val hasManageableFiles: Boolean = false,
     val platformSlug: String? = null,
@@ -203,6 +204,7 @@ fun buildMoreOptions(ctx: MoreOptionsContext): List<MoreOptionAction> = buildLis
     if (usesTitleId && isEmulatedGame) add(MoreOptionAction.RefreshTitleId)
     if (ctx.isMultiDisc) add(MoreOptionAction.SelectDisc)
     if (ctx.hasVariants && isEmulatedGame) add(MoreOptionAction.SelectVariant)
+    if (ctx.hasSiblingGroup) add(MoreOptionAction.ActiveVariant)
     if ((ctx.hasManageableFiles || ctx.hasUpdates) && ctx.isDownloaded) add(MoreOptionAction.Files)
     if (canTrackProgress) add(MoreOptionAction.RefreshData)
     add(MoreOptionAction.AddToCollection)
@@ -225,6 +227,7 @@ sealed class MoreOptionAction {
     data object PlatformSettings : MoreOptionAction()
     data object SelectDisc : MoreOptionAction()
     data object SelectVariant : MoreOptionAction()
+    data object ActiveVariant : MoreOptionAction()
     data object Files : MoreOptionAction()
     data object RefreshData : MoreOptionAction()
     data object AddToCollection : MoreOptionAction()
@@ -319,6 +322,7 @@ data class GameDetailUiState(
     val reviewListFocusIndex: Int = 0,
     val reviewEditor: ReviewEditorState? = null,
     val hasVariants: Boolean = false,
+    val hasSiblingGroup: Boolean = false,
     val hasSocialAccount: Boolean = false,
     val isPrivate: Boolean = false,
     val perGameSettings: com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsState =

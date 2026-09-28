@@ -698,6 +698,12 @@
 
     <!-- Row opening the rules for which releases of a game to keep. Noun phrase, plural. -->
     <string name="settings_sync_metadata_filters_title">Metadata Filters</string>
+    <!-- Row opening the ordered region list that decides which regional copy of a game is
+         shown. Noun phrase. -->
+    <string name="settings_sync_region_priority_title">Region Priority</string>
+    <!-- Second line of that row. %1$s is the first few regions in order, comma separated, most
+         preferred first. Region names are shown untranslated. -->
+    <string name="settings_sync_region_priority_subtitle">Preferred first: %1$s</string>
     <!-- Second line of that row when no rule is set. -->
     <string name="settings_sync_metadata_filters_subtitle_none">No filters applied</string>
     <!-- Part of that second line, counting the regions picked. %1$d is how many, %2$s is one of
@@ -3789,6 +3795,26 @@
     <string name="settings_region_picker_hint_toggle">Toggle</string>
     <!-- Footer hint. Dismiss the modal. -->
     <string name="settings_region_picker_hint_close">Close</string>
+
+    <!-- ===== Region priority popup (Settings > components > RegionPickerPopup) =====
+         An ordered list of regions. When the library holds several regional copies of one game,
+         the copy from the region highest in this list is the one shown. -->
+
+    <!-- Modal heading. Rendered in caps in English; use whatever casing suits a heading in your
+         language. -->
+    <string name="settings_region_priority_title">REGION PRIORITY</string>
+    <!-- Modal subtitle explaining what the order decides. -->
+    <string name="settings_region_priority_subtitle">When a game has copies from several regions, the highest region in this list is the one shown</string>
+    <!-- Footer hint. Pick up the focused region so it can be moved. Verb. -->
+    <string name="settings_region_priority_hint_reorder">Reorder</string>
+    <!-- Footer hint. Dismiss the modal. -->
+    <string name="settings_region_priority_hint_close">Close</string>
+    <!-- Footer hint while a region is picked up. The d-pad moves it up or down the list. Verb. -->
+    <string name="settings_region_priority_hint_move">Move</string>
+    <!-- Footer hint while a region is picked up. Put it down at its new position. Verb. -->
+    <string name="settings_region_priority_hint_drop">Drop</string>
+    <!-- Footer hint while a region is picked up. Put it back where it was. Verb. -->
+    <string name="settings_region_priority_hint_cancel">Cancel</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) =====
          GPU driver downloads for the built-in emulator. -->

@@ -807,4 +807,17 @@
     <string name="home_grid_local_video_row_title">选择此设备上的视频</string>
     <string name="home_grid_local_video_row_subtitle">直接从存储中播放</string>
     <string name="ui_quick_settings_swap_displays">交换显示屏</string>
+    <string name="ui_sibling_choice_title_download">选择要下载的变体</string>
+    <string name="ui_sibling_choice_subtitle_download">选择要下载的副本。它将成为游戏库中显示的条目。</string>
+    <string name="ui_sibling_choice_title_active">当前变体</string>
+    <string name="ui_sibling_choice_subtitle_active">游戏库显示并运行的副本</string>
+    <string name="ui_sibling_choice_automatic">自动</string>
+    <string name="ui_sibling_choice_automatic_showing">显示 %1$s</string>
+    <string name="ui_sibling_choice_loading">加载中...</string>
+    <string name="ui_sibling_choice_load_failed">无法读取此游戏的副本</string>
+    <string name="ui_sibling_choice_empty">此游戏没有其他副本</string>
+    <string name="ui_sibling_choice_notice_pick_failed">无法更改当前变体</string>
+    <string name="ui_sibling_member_kind_hack">修改版</string>
+    <string name="ui_sibling_member_kind_translation">翻译版</string>
+    <string name="ui_sibling_member_kind_pre_release">预发布版</string>
 </resources>

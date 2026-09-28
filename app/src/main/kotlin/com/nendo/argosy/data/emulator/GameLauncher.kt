@@ -57,11 +57,16 @@ data class DiscOption(
 )
 
 sealed class LaunchResult {
+    /**
+     * @property variantFileId the `game_files` row that launched in place of the primary rom; null
+     * when the primary rom launched, whichever variant the caller requested.
+     */
     data class Success(
         val intent: Intent,
         val discId: Long? = null,
         val alreadyLaunched: Boolean = false,
-        val inProcess: Boolean = false
+        val inProcess: Boolean = false,
+        val variantFileId: Long? = null
     ) : LaunchResult()
     data class SelectDisc(val gameId: Long, val discs: List<DiscOption>) : LaunchResult()
     data class SelectVariant(val gameId: Long, val variants: List<VariantOption>) : LaunchResult()
@@ -210,9 +215,8 @@ class GameLauncher @Inject constructor(
             gameDao.updateLastPlayedFileId(game.id, null)
         }
 
-        // A specific variant was selected - launch its file instead of the primary.
         if (variantFileId != null) {
-            val variantFile = gameFileDao.getById(variantFileId)
+            val variantFile = gameFileDao.getById(variantFileId)?.takeIf { it.isLaunchableVariantOf(game) }
             if (variantFile != null) {
                 val result = launchVariantFile(game, variantFile, forResume)
                 if (result is LaunchResult.Success) {
@@ -220,6 +224,7 @@ class GameLauncher @Inject constructor(
                 }
                 return result
             }
+            Logger.info(TAG, "launch: file $variantFileId is not a launchable variant of gameId=$gameId; launching the primary rom")
         }
 
         val multiDiscGame = backfillDiscModel(game)
@@ -382,7 +387,8 @@ class GameLauncher @Inject constructor(
         return LaunchResult.Success(
             intent,
             alreadyLaunched = alreadyLaunched,
-            inProcess = emulator.launchConfig.isInProcess
+            inProcess = emulator.launchConfig.isInProcess,
+            variantFileId = variantFileId
         )
     }
 
@@ -403,7 +409,8 @@ class GameLauncher @Inject constructor(
                 return LaunchResult.Success(
                     intent,
                     alreadyLaunched = alreadyLaunched,
-                    inProcess = emulator.launchConfig.isInProcess
+                    inProcess = emulator.launchConfig.isInProcess,
+                    variantFileId = variant.id
                 )
             }
             return LaunchResult.Error("Variant M3U file not found")

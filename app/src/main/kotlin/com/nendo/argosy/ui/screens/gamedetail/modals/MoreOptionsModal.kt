@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
@@ -101,6 +102,11 @@ private fun MoreOptionAction.toMenuEntry(
         context.getString(R.string.gamedetail_more_options_select_variant),
         action = this
     )
+    MoreOptionAction.ActiveVariant -> MoreMenuEntry.Option(
+        Icons.Default.Layers,
+        context.getString(R.string.gamedetail_more_options_active_variant),
+        action = this
+    )
     MoreOptionAction.Files -> MoreMenuEntry.Option(
         Icons.Default.Checklist,
         context.getString(R.string.gamedetail_more_options_files),
@@ -161,6 +167,7 @@ fun MoreOptionsModal(
     focusIndex: Int,
     isDownloaded: Boolean,
     hasVariants: Boolean = false,
+    hasSiblingGroup: Boolean = false,
     updateCount: Int = 0,
     hasManageableFiles: Boolean = false,
     launchDisplayNumbers: List<Int> = emptyList(),
@@ -178,6 +185,7 @@ fun MoreOptionsModal(
             canManageStates = game.canManageStates,
             isMultiDisc = game.isMultiDisc,
             hasVariants = hasVariants,
+            hasSiblingGroup = hasSiblingGroup,
             hasUpdates = updateCount > 0,
             hasManageableFiles = hasManageableFiles,
             platformSlug = game.platformSlug,

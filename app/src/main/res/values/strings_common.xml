@@ -1695,4 +1695,38 @@
          (ui/home/grid/CustomGridCoordinator.kt). Verb phrase addressed to the user. -->
     <string name="home_grid_local_video_row_title">Choose a video on this device</string>
     <string name="home_grid_local_video_row_subtitle">Plays straight from your storage</string>
+
+    <!-- Sibling group chooser (ui/screens/common/SiblingChoiceModal). A "variant" here is one of
+         several copies of the same game on the server: a regional release, a revision, a fan
+         translation or a hack. -->
+    <!-- Heading of the chooser that opens when a download starts on a game with several copies.
+         Verb phrase, rendered in caps in English. -->
+    <string name="ui_sibling_choice_title_download">CHOOSE A VARIANT</string>
+    <!-- Second line under that heading. -->
+    <string name="ui_sibling_choice_subtitle_download">Pick the copy to download. It becomes the entry your library shows.</string>
+    <!-- Heading of the chooser that sets which copy of a game the library shows. Noun phrase:
+         the copy currently in use. Rendered in caps in English. -->
+    <string name="ui_sibling_choice_title_active">ACTIVE VARIANT</string>
+    <!-- Second line under that heading. -->
+    <string name="ui_sibling_choice_subtitle_active">The copy your library shows and plays</string>
+    <!-- First row of that chooser: the launcher picks the copy by region priority. Adjective
+         describing the choice, not a command. -->
+    <string name="ui_sibling_choice_automatic">Automatic</string>
+    <!-- Second line under that row. %1$s names the copy picked now by its filename tags, such as
+         "USA, Rev 1". -->
+    <string name="ui_sibling_choice_automatic_showing">Showing %1$s</string>
+    <!-- Shown in the chooser while its copies are being read. -->
+    <string name="ui_sibling_choice_loading">Loading...</string>
+    <!-- Shown in the chooser when its copies could not be read. -->
+    <string name="ui_sibling_choice_load_failed">Could not read the copies of this game</string>
+    <!-- Shown in the chooser when the game has only one copy left. -->
+    <string name="ui_sibling_choice_empty">This game has no other copies</string>
+    <!-- Brief message when the chosen copy could not be stored. -->
+    <string name="ui_sibling_choice_notice_pick_failed">Could not change the active variant</string>
+    <!-- Marker on a copy that is a modified version of the game made by fans. Noun. -->
+    <string name="ui_sibling_member_kind_hack">Hack</string>
+    <!-- Marker on a copy that is a fan translation of the game. Noun. -->
+    <string name="ui_sibling_member_kind_translation">Translation</string>
+    <!-- Marker on a copy that is a demo, beta or prototype. Noun. -->
+    <string name="ui_sibling_member_kind_pre_release">Pre-release</string>
 </resources>

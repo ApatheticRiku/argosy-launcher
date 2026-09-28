@@ -33,7 +33,8 @@ import java.time.Instant
         Index("gameModes"),
         Index("franchises"),
         Index("genres"),
-        Index("collections")
+        Index("collections"),
+        Index("siblingGroupKey")
     ]
 )
 data class GameEntity(
@@ -164,7 +165,17 @@ data class GameEntity(
     val perGameSettingsEnabled: Boolean = false,
     val perGameControlsEnabled: Boolean = false,
 
-    val syncDirty: Boolean = false
+    val syncDirty: Boolean = false,
+
+    val siblingGroupKey: String? = null,
+    @ColumnInfo(defaultValue = "0")
+    val isHackVariant: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val isTranslationVariant: Boolean = false,
+    @ColumnInfo(defaultValue = "0")
+    val rommMainSibling: Boolean = false,
+    @ColumnInfo(defaultValue = "1")
+    val isGroupVisible: Boolean = true
 ) {
     val effectiveRaId: Long? get() = if (raIdVerified) verifiedRaId else (verifiedRaId ?: raId)
 
@@ -248,4 +259,27 @@ data class GameCategoryInfo(
 data class GameRegionInfo(
     val id: Long,
     val regions: String?
+)
+
+data class GameSiblingRow(
+    val id: Long,
+    val siblingGroupKey: String,
+    val isHackVariant: Boolean,
+    val isTranslationVariant: Boolean,
+    val rommMainSibling: Boolean,
+    val rommFileName: String?,
+    val regions: String?,
+    val localPath: String?,
+    val isGroupVisible: Boolean
+)
+
+data class GameGroupMemberRow(
+    val id: Long,
+    val title: String,
+    val rommFileName: String?,
+    val regions: String?,
+    val localPath: String?,
+    val isHackVariant: Boolean,
+    val isTranslationVariant: Boolean,
+    val isGroupVisible: Boolean
 )

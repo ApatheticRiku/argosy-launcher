@@ -96,16 +96,16 @@ class VariantScannerTest {
     }
 
     @Test
-    fun `file in hack subdirectory becomes a hack variant`() = runTest {
+    fun `file in translation subdirectory becomes a translation variant`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        write(File(folder, "hack"), "Some Game - Cool Hack.chd")
+        write(File(folder, "translation"), "Some Game (T-En).chd")
 
         val added = scanner.scanForVariants(game(base.absolutePath))
 
         assertEquals(1, added)
-        assertEquals("hack", inserted.single().category)
-        assertEquals("Some Game - Cool Hack.chd", inserted.single().fileName)
+        assertEquals("translation", inserted.single().category)
+        assertEquals("Some Game (T-En).chd", inserted.single().fileName)
         assertTrue(inserted.single().isLaunchTarget)
     }
 
@@ -113,13 +113,27 @@ class VariantScannerTest {
     fun `category is inferred from the subdirectory name`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        write(File(folder, "mod"), "A Mod.chd")
+        write(File(folder, "demo"), "A Demo.chd")
+        write(File(folder, "prototype"), "A Proto.chd")
         write(File(folder, "translation"), "A Translation.chd")
 
         scanner.scanForVariants(game(base.absolutePath))
 
         val categories = inserted.map { it.category }.toSet()
-        assertEquals(setOf("mod", "translation"), categories)
+        assertEquals(setOf("demo", "prototype", "translation"), categories)
+    }
+
+    @Test
+    fun `hack and mod subdirectories never become launchable variants`() = runTest {
+        val folder = gameFolder("Some Game")
+        val base = write(folder, "Some Game.chd")
+        write(File(folder, "hack"), "Some Game - Cool Hack.chd")
+        write(File(folder, "mod"), "A Mod.chd")
+
+        val added = scanner.scanForVariants(game(base.absolutePath))
+
+        assertEquals(0, added)
+        assertTrue(inserted.isEmpty())
     }
 
     @Test
@@ -152,9 +166,9 @@ class VariantScannerTest {
     fun `patch and disc-component files inside a variant subdir are skipped`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        val hack = File(folder, "hack")
-        write(hack, "patch.ips")
-        write(hack, "data.bin")
+        val translation = File(folder, "translation")
+        write(translation, "patch.ips")
+        write(translation, "data.bin")
 
         val added = scanner.scanForVariants(game(base.absolutePath))
 
@@ -166,8 +180,8 @@ class VariantScannerTest {
     fun `macOS resource forks in a variant subdir are skipped`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        val hack = File(folder, "hack")
-        write(hack, "._Some Game - Cool Hack.chd")
+        val translation = File(folder, "translation")
+        write(translation, "._Some Game (T-En).chd")
 
         val added = scanner.scanForVariants(game(base.absolutePath))
 
@@ -179,14 +193,14 @@ class VariantScannerTest {
     fun `an m3u variant in a subdir is recorded as multi-disc`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        val hack = File(folder, "hack")
-        val hackM3u = write(hack, "Cool Hack.m3u")
+        val translation = File(folder, "translation")
+        val translationM3u = write(translation, "Some Game (T-En).m3u")
 
         scanner.scanForVariants(game(base.absolutePath))
 
         val variant = inserted.single()
         assertTrue(variant.isMultiDisc)
-        assertEquals(hackM3u.absolutePath, variant.m3uPath)
+        assertEquals(translationM3u.absolutePath, variant.m3uPath)
     }
 
     @Test
@@ -233,7 +247,7 @@ class VariantScannerTest {
     fun `excluded platforms are not scanned`() = runTest {
         val folder = gameFolder("Switch Game")
         val base = write(folder, "Switch Game.nsp")
-        write(File(folder, "hack"), "Hacked.nsp")
+        write(File(folder, "translation"), "Translated.nsp")
 
         val added = scanner.scanForVariants(game(base.absolutePath, platformSlug = "switch"))
 
@@ -256,16 +270,16 @@ class VariantScannerTest {
     fun `already-known variant is not inserted again`() = runTest {
         val folder = gameFolder("Some Game")
         val base = write(folder, "Some Game.chd")
-        val hackFile = write(File(folder, "hack"), "Cool Hack.chd")
-        coEvery { dao.getByGameIdAndFileName(1L, "Cool Hack.chd") } returns listOf(
+        val translationFile = write(File(folder, "translation"), "Some Game (T-En).chd")
+        coEvery { dao.getByGameIdAndFileName(1L, "Some Game (T-En).chd") } returns listOf(
             GameFileEntity(
-                id = 9L, gameId = 1L, fileName = "Cool Hack.chd", filePath = hackFile.absolutePath, category = "hack", fileSize = 8L, localPath = hackFile.absolutePath
+                id = 9L, gameId = 1L, fileName = "Some Game (T-En).chd", filePath = translationFile.absolutePath, category = "translation", fileSize = 8L, localPath = translationFile.absolutePath
             )
         )
 
         val added = scanner.scanForVariants(game(base.absolutePath))
 
         assertEquals(0, added)
-        assertFalse(inserted.any { it.fileName == "Cool Hack.chd" })
+        assertFalse(inserted.any { it.fileName == "Some Game (T-En).chd" })
     }
 }

@@ -348,6 +348,7 @@ internal fun routeObserveModalResetSignal(vm: SettingsViewModel) {
         vm.storageDelegate.closePlatformSettingsModal()
         vm.soundsDelegate.dismissSoundPicker()
         vm.syncDelegate.dismissRegionPicker()
+        vm.syncDelegate.dismissRegionPriority()
         vm.steamDelegate.dismissAddSteamGameDialog()
     }.launchIn(vm.viewModelScope)
 }
@@ -818,6 +819,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
 
         vm.syncDelegate.updateState(SyncSettingsState(
             syncFilters = prefs.syncFilters,
+            regionPriority = prefs.regionPriority,
             totalPlatforms = platforms.count { it.gameCount > 0 },
             totalGames = platforms.sumOf { it.gameCount },
             saveSyncEnabled = prefs.saveSyncEnabled,

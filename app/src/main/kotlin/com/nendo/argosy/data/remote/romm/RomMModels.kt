@@ -51,6 +51,7 @@ data class RomMRom(
     @Json(name = "tgdb_id") val tgdbId: Long? = null,
     @Json(name = "hltb_id") val hltbId: Long? = null,
     @Json(name = "flashpoint_id") val flashpointId: String? = null,
+    @Json(name = "steam_id") val steamId: Long? = null,
     @Json(name = "gamelist_id") val gamelistId: String? = null,
     @Json(name = "libretro_id") val libretroId: String? = null,
 
@@ -503,7 +504,8 @@ data class RomMRomUser(
     @Json(name = "backlogged") val backlogged: Boolean = false,
     @Json(name = "now_playing") val nowPlaying: Boolean = false,
     @Json(name = "hidden") val hidden: Boolean = false,
-    @Json(name = "last_played") val lastPlayed: String? = null
+    @Json(name = "last_played") val lastPlayed: String? = null,
+    @Json(name = "is_main_sibling") val isMainSibling: Boolean = false
 )
 
 @JsonClass(generateAdapter = true)

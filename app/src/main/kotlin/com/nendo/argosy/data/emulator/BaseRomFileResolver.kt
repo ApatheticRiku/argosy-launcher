@@ -3,7 +3,6 @@ package com.nendo.argosy.data.emulator
 import android.content.Context
 import com.nendo.argosy.data.download.ZipExtractor
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.VariantCategory
@@ -29,7 +28,6 @@ private const val TAG = "BaseRomFileResolver"
 class BaseRomFileResolver @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
-    private val gameFileDao: GameFileDao,
     private val platformDao: PlatformDao,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
@@ -40,17 +38,6 @@ class BaseRomFileResolver @Inject constructor(
      * provably update/dlc content, preferring an m3u so multi-disc folders keep their playlist.
      */
     suspend fun resolve(game: GameEntity, romFile: File): File {
-        game.activeVariantFileId?.let { fileId ->
-            val chosen = gameFileDao.getById(fileId)?.takeIf { it.gameId == game.id }
-            val chosenPath = chosen?.localPath
-            if (chosen?.versionGroup != null && chosenPath != null && File(chosenPath).exists()) {
-                if (chosenPath != romFile.absolutePath) {
-                    Logger.info(TAG, "honoring active version ${chosen.fileName} for ${game.title}")
-                    gameDao.updateLocalPath(game.id, chosenPath, game.source, game.fileOrigin)
-                }
-                return File(chosenPath)
-            }
-        }
         val excluded = game.platformSlug in VariantCategory.TITLE_ID_PLATFORMS
         val parent = romFile.parentFile ?: return romFile
         val inContentSubfolder = parent.name.lowercase() in ZipExtractor.ADDON_FOLDERS

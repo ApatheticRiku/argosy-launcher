@@ -1,12 +1,16 @@
 package com.nendo.argosy.data.remote.romm
 
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.SyncFilterPreferences
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.repository.GameUserOverlayWriter
+import com.nendo.argosy.data.repository.SiblingGroupRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -32,6 +36,8 @@ class RomMLibrarySyncChangesTest {
     private lateinit var gameDao: GameDao
     private lateinit var platformDao: PlatformDao
     private lateinit var preferencesRepository: UserPreferencesRepository
+    private lateinit var siblingGroupRepository: SiblingGroupRepository
+    private val pendingSyncQueueDao: PendingSyncQueueDao = mockk(relaxed = true)
     private lateinit var service: RomMLibrarySyncService
 
     private val platform = RomMPlatform(id = 1L, slug = "snes", name = "SNES", fsSlug = "snes", romCount = 1)
@@ -64,6 +70,7 @@ class RomMLibrarySyncChangesTest {
         gameDao = mockk(relaxed = true)
         platformDao = mockk(relaxed = true)
         preferencesRepository = mockk(relaxed = true)
+        siblingGroupRepository = mockk(relaxed = true)
         val connectionManager = mockk<RomMConnectionManager>(relaxed = true)
         val overlayWriter = mockk<GameUserOverlayWriter>(relaxed = true)
         val preferences = mockk<UserPreferences>(relaxed = true)
@@ -119,8 +126,11 @@ class RomMLibrarySyncChangesTest {
             androidGameScanner = dagger.Lazy { mockk(relaxed = true) },
             attributionRepository = mockk(relaxed = true),
             userRomsHiddenDao = mockk(relaxed = true),
-            pendingSyncQueueDao = mockk(relaxed = true),
-            siblingSplitRepair = mockk(relaxed = true)
+            pendingSyncQueueDao = pendingSyncQueueDao,
+            siblingSplitRepair = mockk(relaxed = true),
+            siblingConfigCarryOver = mockk(relaxed = true),
+            siblingGroupRepository = siblingGroupRepository,
+            variantFileCleanup = mockk(relaxed = true)
         )
     }
 
@@ -145,6 +155,95 @@ class RomMLibrarySyncChangesTest {
         assertEquals(1, result.gamesAdded + result.gamesUpdated)
         coVerify(exactly = 0) { gameDao.markSyncDirtyForOwner(any(), any(), any()) }
         coVerify(exactly = 0) { gameDao.getSyncDirtyGames(any(), any()) }
+    }
+
+    @Test
+    fun `the changes pass recomputes sibling visibility after storing the roms`() = runTest {
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(rom()), total = 1))
+
+        service.syncLibraryChanges(since)
+
+        coVerify(ordering = io.mockk.Ordering.ORDERED) {
+            gameDao.insert(any())
+            siblingGroupRepository.recomputeAll()
+        }
+    }
+
+    @Test
+    fun `the changes pass writes platform counts after sibling visibility is recomputed`() = runTest {
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(rom()), total = 1))
+        coEvery { gameDao.countByPlatform(1L, null) } returns 7
+
+        service.syncLibraryChanges(since)
+
+        coVerify(ordering = io.mockk.Ordering.ORDERED) {
+            siblingGroupRepository.recomputeAll()
+            platformDao.updateGameCount(1L, 7)
+        }
+    }
+
+    @Test
+    fun `a complete library pass records the sibling full pass and then writes counts`() = runTest {
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
+        coEvery { gameDao.countByPlatform(1L, null) } returns 3
+
+        val result = service.syncLibrary()
+
+        assertTrue("errors: ${result.errors}", result.errors.isEmpty())
+        coVerify(exactly = 0) { siblingGroupRepository.recomputeAll() }
+        coVerify(ordering = io.mockk.Ordering.ORDERED) {
+            siblingGroupRepository.completeFullPass()
+            platformDao.updateGameCount(1L, 3)
+        }
+    }
+
+    @Test
+    fun `a game realigned to a re-uploaded rom carries its queued uploads to the new rom id`() = runTest {
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = emptyList(), total = 0))
+        val dirty = GameEntity(
+            id = 1L, platformId = 1L, platformSlug = "snes", title = "Chrono Trigger", sortTitle = "chrono trigger",
+            localPath = "/roms/snes/ct.sfc", rommId = 42L, rommFileName = "ct.sfc", igdbId = null,
+            source = GameSource.ROMM_SYNCED, syncDirty = true
+        )
+        val successor = dirty.copy(id = 2L, rommId = 77L, localPath = null, syncDirty = false)
+        coEvery { gameDao.getSyncDirtyGames(1L, any()) } returns listOf(dirty)
+        coEvery { gameDao.getCleanSyncedByFileNameAndPlatformForOwner("ct.sfc", 1L, null) } returns listOf(successor)
+
+        service.syncLibrary()
+
+        coVerify(exactly = 1) { pendingSyncQueueDao.realignRommId(1L, 42L, 77L) }
+    }
+
+    @Test
+    fun `a library pass with a failed platform leaves the sibling full pass unrecorded`() = runTest {
+        coEvery { preferencesRepository.getSyncResumeGeneration() } returns null
+        coEvery { api.getRoms(any()) } returns Response.error(500, "".toResponseBody())
+
+        val result = service.syncLibrary()
+
+        assertTrue(result.errors.isNotEmpty())
+        coVerify(exactly = 0) { siblingGroupRepository.completeFullPass() }
+        coVerify { siblingGroupRepository.recomputeAll() }
+    }
+
+    @Test
+    fun `a synced row carries its group key, hack flag and main sibling from the payload`() = runTest {
+        val hackRom = rom().copy(
+            igdbId = 1234L,
+            tags = listOf("patched-kaizo"),
+            romUser = RomMRomUser(isMainSibling = true)
+        )
+        coEvery { api.getRoms(any()) } returns Response.success(RomMRomPage(items = listOf(hackRom), total = 1))
+        val stored = slot<GameEntity>()
+        coEvery { gameDao.insert(capture(stored)) } returns 1L
+
+        service.syncLibraryChanges(since)
+
+        assertEquals("igdb-1-1234", stored.captured.siblingGroupKey)
+        assertTrue(stored.captured.isHackVariant)
+        assertTrue(stored.captured.rommMainSibling)
     }
 
     @Test

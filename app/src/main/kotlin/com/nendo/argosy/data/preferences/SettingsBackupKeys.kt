@@ -130,7 +130,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("library_default_sort_desc", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("library_default_source", SettingsBackupType.STRING),
         SettingsBackupKey("sort_favorites_first", SettingsBackupType.BOOLEAN),
-        SettingsBackupKey("sort_installed_first", SettingsBackupType.BOOLEAN)
+        SettingsBackupKey("sort_installed_first", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("region_priority", SettingsBackupType.STRING)
     )
 
     /**

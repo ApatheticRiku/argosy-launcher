@@ -1,5 +1,6 @@
 package com.nendo.argosy.domain.usecase.sync
 
+import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.remote.romm.SyncResult
@@ -47,19 +48,25 @@ class SyncLibraryUseCase @Inject constructor(
     private val romMRepository: RomMRepository,
     private val notificationManager: NotificationManager,
     private val librarySyncBus: LibrarySyncBus,
-    private val copy: SyncNotificationCopy
+    private val copy: SyncNotificationCopy,
+    private val appPreferencesRepository: AppPreferencesRepository
 ) {
     internal var progressDispatcher: CoroutineDispatcher = Dispatchers.IO
     /**
      * Runs a library pass. With [changesSince] it syncs only what the server changed after that
-     * time, and falls back to a full pass if that fails.
+     * time, and falls back to a full pass if that fails. [changesSince] is ignored until one
+     * complete pass has run with sibling grouping.
      */
     suspend operator fun invoke(
         initializeFirst: Boolean = false,
         changesSince: java.time.Instant? = null,
         onProgress: ((current: Int, total: Int, platform: String) -> Unit)? = null
     ): SyncLibraryResult {
-        Logger.info(TAG, "invoke: starting, initializeFirst=$initializeFirst, changesSince=$changesSince")
+        val deltaSince = changesSince?.takeIf { appPreferencesRepository.isSiblingFullPassDone() }
+        Logger.info(
+            TAG,
+            "invoke: starting, initializeFirst=$initializeFirst, changesSince=$changesSince, deltaSince=$deltaSince"
+        )
 
         if (initializeFirst) {
             romMRepository.initialize()
@@ -122,7 +129,7 @@ class SyncLibraryUseCase @Inject constructor(
                                 }
                             }
                         }
-                        val changes = changesSince?.let { romMRepository.syncLibraryChanges(it) }
+                        val changes = deltaSince?.let { romMRepository.syncLibraryChanges(it) }
                         if (changes != null && changes.errors.isNotEmpty()) {
                             Logger.warn(TAG, "invoke: changes pass failed (${changes.errors}), running a full pass")
                         }

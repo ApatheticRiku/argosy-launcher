@@ -160,7 +160,7 @@ class SettingsViewModel @Inject constructor(
     private var ambientCovers: List<String>? = null
 
     suspend fun ambientShowcaseCovers(): List<String> =
-        ambientCovers ?: gameRepository.showcaseCovers(null).also { ambientCovers = it }
+        ambientCovers ?: gameRepository.showcaseCovers(null, oneEntryPerGroup = false).also { ambientCovers = it }
 
     /**
      * The most recently played game, drawn the way home presents a focused game, so the
@@ -1486,6 +1486,16 @@ class SettingsViewModel @Inject constructor(
     fun moveRegionPickerFocus(delta: Int) = syncDelegate.moveRegionPickerFocus(delta)
     fun confirmRegionPickerSelection() = syncDelegate.confirmRegionPickerSelection(viewModelScope)
     fun toggleRegion(region: String) = syncDelegate.toggleRegion(viewModelScope, region)
+
+    fun showRegionPriority() = routeShowRegionPriority(this)
+    fun backRegionPriority() = routeBackRegionPriority(this)
+    fun dismissRegionPriority() = syncDelegate.dismissRegionPriority()
+    fun focusRegionPriority(index: Int) = syncDelegate.focusRegionPriority(index)
+    fun moveRegionPriorityFocus(delta: Int) = syncDelegate.moveRegionPriorityFocus(delta)
+    fun liftRegionPriority() = syncDelegate.liftRegionPriority()
+    fun liftRegionPriorityAt(region: String) = syncDelegate.liftRegionPriorityAt(region)
+    fun moveRegionPriorityTo(region: String, index: Int) = syncDelegate.moveRegionPriorityTo(region, index)
+    fun dropRegionPriority() = syncDelegate.dropRegionPriority(viewModelScope)
     fun toggleRegionMode() = syncDelegate.toggleRegionMode(viewModelScope)
     fun setExcludeBeta(exclude: Boolean) = syncDelegate.setExcludeBeta(viewModelScope, exclude)
     fun setExcludePrototype(exclude: Boolean) = syncDelegate.setExcludePrototype(viewModelScope, exclude)

@@ -199,6 +199,10 @@
     <!-- Quick action menu entry. Verb phrase, puts the game onto the user's curated home
          grid. "Grid" is that home screen layout, not a table. -->
     <string name="library_quickmenu_add_to_grid">Add to Grid</string>
+    <!-- Quick action menu entry when the server holds several copies of this game (regional
+         releases, revisions, hacks). Noun phrase naming the copy in use; opens the chooser that
+         sets which copy the library shows. -->
+    <string name="library_quickmenu_active_variant">Active Variant</string>
     <!-- Quick action menu entry. Verb phrase, fetches this one game's metadata again from
          the server. -->
     <string name="library_quickmenu_refresh_data">Refresh Data</string>

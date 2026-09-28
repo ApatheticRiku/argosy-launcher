@@ -198,6 +198,7 @@
     <string name="gamedetail_more_options_title_id_missing">पता नहीं चला</string>
     <string name="gamedetail_more_options_select_disc">डिस्क चुनें</string>
     <string name="gamedetail_more_options_select_variant">वैरिएंट चुनें</string>
+    <string name="gamedetail_more_options_active_variant">सक्रिय वैरिएंट</string>
     <string name="gamedetail_more_options_files">फ़ाइलें</string>
     <string name="gamedetail_more_options_refresh_data">गेम डेटा रीफ्रेश करें</string>
     <string name="gamedetail_more_options_add_to_collection">कलेक्शन में जोड़ें</string>

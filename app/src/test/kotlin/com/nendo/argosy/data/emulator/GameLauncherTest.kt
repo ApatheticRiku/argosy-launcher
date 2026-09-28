@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.PlatformLibretroSettingsDao
 import com.nendo.argosy.data.local.entity.EmulatorConfigEntity
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.InstalledAppResolver
 import com.nendo.argosy.data.preferences.UserPreferences
@@ -140,7 +141,6 @@ class GameLauncherTest {
             baseRomFileResolver = BaseRomFileResolver(
                 context = context,
                 gameDao = gameDao,
-                gameFileDao = gameFileDao,
                 platformDao = platformDao,
                 userPreferencesRepository = userPreferencesRepository
             ),
@@ -840,6 +840,81 @@ class GameLauncherTest {
 
         // Doesn't return SelectVariant; proceeds past variant check
         assertTrue(result !is LaunchResult.SelectVariant)
+    }
+
+    private fun stubNoEmulator() {
+        coEvery { emulatorConfigDao.getByGameId(1L) } returns null
+        coEvery { emulatorConfigDao.getDefaultForPlatform(10L) } returns null
+        stubDetectorWith()
+        every { emulatorDetector.getPreferredEmulator(any(), any()) } returns null
+    }
+
+    private fun fileRow(
+        id: Long,
+        category: String,
+        path: String,
+        versionGroup: String? = null
+    ) = GameFileEntity(
+        id = id,
+        gameId = 1L,
+        fileName = java.io.File(path).name,
+        filePath = path,
+        category = category,
+        fileSize = 8L,
+        localPath = path,
+        isLaunchTarget = true,
+        versionGroup = versionGroup
+    )
+
+    @Test
+    fun `a missing variant file launches the primary rom`() = runTest {
+        val game = createGame(localPath = romFile())
+        coEvery { gameDao.getById(1L) } returns game
+        coEvery { gameFileDao.getById(50L) } returns null
+        stubNoEmulator()
+
+        val result = launcher.launch(gameId = 1L, variantFileId = 50L)
+
+        assertTrue(result is LaunchResult.NoEmulator)
+        coVerify { gameDiscDao.getDiscsForGame(1L) }
+        coVerify(exactly = 0) { gameDao.updateLastPlayedFileId(any(), any()) }
+    }
+
+    @Test
+    fun `a hack file id launches the primary rom instead of the hack`() = runTest {
+        val game = createGame(localPath = romFile())
+        coEvery { gameDao.getById(1L) } returns game
+        coEvery { gameFileDao.getById(20L) } returns fileRow(20L, "hack", romFile())
+        stubNoEmulator()
+
+        launcher.launch(gameId = 1L, variantFileId = 20L)
+
+        coVerify { gameDiscDao.getDiscsForGame(1L) }
+    }
+
+    @Test
+    fun `the version-grouped primary file launches as the primary rom, not a variant`() = runTest {
+        val path = romFile()
+        val game = createGame(localPath = path)
+        coEvery { gameDao.getById(1L) } returns game
+        coEvery { gameFileDao.getById(10L) } returns fileRow(10L, "game", path, versionGroup = "romm:100")
+        stubNoEmulator()
+
+        launcher.launch(gameId = 1L, variantFileId = 10L)
+
+        coVerify { gameDiscDao.getDiscsForGame(1L) }
+    }
+
+    @Test
+    fun `a translation file id launches the translation`() = runTest {
+        val game = createGame(localPath = romFile())
+        coEvery { gameDao.getById(1L) } returns game
+        coEvery { gameFileDao.getById(30L) } returns fileRow(30L, "translation", romFile())
+        stubNoEmulator()
+
+        launcher.launch(gameId = 1L, variantFileId = 30L)
+
+        coVerify(exactly = 0) { gameDiscDao.getDiscsForGame(any()) }
     }
 
     // -----------------------------------------------------------------------

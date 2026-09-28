@@ -208,6 +208,10 @@
     <!-- Row in that menu. Verb phrase: opens the list of the user's collections so the game can be
          put in one. -->
     <string name="home_quick_actions_add_to_collection">Add to Collection</string>
+    <!-- Row in that menu when the server holds several copies of this game (regional releases,
+         revisions, hacks). Noun phrase naming the copy in use; opens the chooser that sets which
+         copy the library shows. -->
+    <string name="home_quick_actions_active_variant">Active Variant</string>
     <!-- Row in that menu. Verb phrase: fetches this one game's metadata from the server again. -->
     <string name="home_quick_actions_refresh_data">Refresh Data</string>
     <!-- Row in that menu. Verb phrase: fetches every game of this platform from the server

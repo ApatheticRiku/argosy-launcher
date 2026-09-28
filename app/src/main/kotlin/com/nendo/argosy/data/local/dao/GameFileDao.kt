@@ -186,4 +186,13 @@ interface GameFileDao {
 
     @Query("SELECT * FROM game_files WHERE versionGroup IS NOT NULL")
     suspend fun getVersionGroupedFiles(): List<GameFileEntity>
+
+    @Query("SELECT EXISTS(SELECT 1 FROM game_files WHERE versionGroup IS NOT NULL)")
+    suspend fun hasVersionGroupedFiles(): Boolean
+
+    @Query("UPDATE game_files SET versionGroup = NULL WHERE versionGroup IS NOT NULL")
+    suspend fun clearVersionGroups(): Int
+
+    @Query("UPDATE game_files SET isLaunchTarget = 0 WHERE isLaunchTarget = 1 AND category IN (:categories)")
+    suspend fun clearLaunchTargetForCategories(categories: List<String>): Int
 }

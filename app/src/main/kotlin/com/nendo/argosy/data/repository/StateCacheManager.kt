@@ -21,6 +21,7 @@ import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.sync.SaveStatePayload
+import com.nendo.argosy.data.sync.targetsRomOf
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMApi
@@ -1568,6 +1569,14 @@ class StateCacheManager @Inject constructor(
             }
 
             val game = gameDao.getById(item.gameId)
+            if (!item.targetsRomOf(game)) {
+                Log.w(
+                    TAG,
+                    "[StateSync] UPLOAD itemId=${item.id} | queue rommId=${item.rommId} no longer matches gameId=${item.gameId} rommId=${game?.rommId}; keeping stateId=${state.id} local, removing from queue"
+                )
+                pendingSyncQueueDao.deleteById(item.id)
+                continue
+            }
             val romBaseName = game?.localPath?.let { File(it).nameWithoutExtension } ?: state.platformSlug
             val result = uploadStateToRomM(state, item.rommId, romBaseName, api)
             when (result) {

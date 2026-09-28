@@ -40,7 +40,7 @@ class LaunchGameUseCase @Inject constructor(
                     ?: "",
                 coreName = coreName,
                 isNewGame = true,
-                variantFileId = variantFileId,
+                variantFileId = result.variantFileId,
                 origin = origin
             )
         }

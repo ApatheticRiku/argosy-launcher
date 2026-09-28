@@ -365,6 +365,8 @@
     <string name="settings_sync_platform_filters_subtitle_empty">Sélectionner les plateformes à synchroniser</string>
 
     <string name="settings_sync_metadata_filters_title">Filtres de métadonnées</string>
+    <string name="settings_sync_region_priority_title">Priorité des régions</string>
+    <string name="settings_sync_region_priority_subtitle">Préférées d\'abord : %1$s</string>
     <string name="settings_sync_metadata_filters_subtitle_none">Aucun filtre appliqué</string>
     <plurals name="settings_sync_metadata_filters_regions">
         <item quantity="one">%1$d région (%2$s)</item>
@@ -2035,6 +2037,13 @@
     <string name="settings_region_picker_hint_navigate">Naviguer</string>
     <string name="settings_region_picker_hint_toggle">Basculer</string>
     <string name="settings_region_picker_hint_close">Fermer</string>
+    <string name="settings_region_priority_title">PRIORITÉ DES RÉGIONS</string>
+    <string name="settings_region_priority_subtitle">Quand un jeu existe dans plusieurs régions, la région la plus haute de cette liste est affichée</string>
+    <string name="settings_region_priority_hint_reorder">Réorganiser</string>
+    <string name="settings_region_priority_hint_close">Fermer</string>
+    <string name="settings_region_priority_hint_move">Déplacer</string>
+    <string name="settings_region_priority_hint_drop">Déposer</string>
+    <string name="settings_region_priority_hint_cancel">Annuler</string>
 
     <!-- ===== Fenetre de selection de pilote ===== -->
 

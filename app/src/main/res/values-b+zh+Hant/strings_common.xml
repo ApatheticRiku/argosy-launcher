@@ -831,4 +831,17 @@
     <string name="home_grid_local_video_row_title">選擇此裝置上的影片</string>
     <string name="home_grid_local_video_row_subtitle">直接從您的儲存空間播放</string>
     <string name="ui_quick_settings_swap_displays">交換顯示器</string>
+    <string name="ui_sibling_choice_title_download">選擇要下載的版本</string>
+    <string name="ui_sibling_choice_subtitle_download">選擇要下載的副本。它會成為遊戲庫中顯示的項目。</string>
+    <string name="ui_sibling_choice_title_active">目前版本</string>
+    <string name="ui_sibling_choice_subtitle_active">遊戲庫顯示並執行的副本</string>
+    <string name="ui_sibling_choice_automatic">自動</string>
+    <string name="ui_sibling_choice_automatic_showing">顯示 %1$s</string>
+    <string name="ui_sibling_choice_loading">載入中...</string>
+    <string name="ui_sibling_choice_load_failed">無法讀取此遊戲的副本</string>
+    <string name="ui_sibling_choice_empty">此遊戲沒有其他副本</string>
+    <string name="ui_sibling_choice_notice_pick_failed">無法變更目前版本</string>
+    <string name="ui_sibling_member_kind_hack">修改版</string>
+    <string name="ui_sibling_member_kind_translation">翻譯版</string>
+    <string name="ui_sibling_member_kind_pre_release">預發行版</string>
 </resources>

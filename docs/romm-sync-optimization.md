@@ -406,11 +406,12 @@ non-empty case.
 
 This is not an argument for dropping the field. It is the evidence that a pass
 which does not see a whole platform can still reconstruct a group - which is what
-section 3 needs, and it does not even require the derivation, because the
-grouping is already persisted: `game_files.versionGroup` holds
-`romm:<memberRommId>` against the winner's game id. No sync-path code reads it.
-Consolidation re-derives everything from the response on every pass, and that
-alone is what makes an incremental pull unsafe.
+section 3 needs. Grouping is now persisted per row: `games.siblingGroupKey`
+holds RomM's gallery key (first non-null provider id plus platform, see
+`RomMSiblingIdentity.groupKey`), written from each rom's own payload, so a
+partial pass never needs the rest of its group to key a row. The old
+`game_files.versionGroup` tags from the merge era are no longer written and
+`VariantFileCleanup` clears them once per device.
 
 ### Deferring `files` to a pre-download query
 

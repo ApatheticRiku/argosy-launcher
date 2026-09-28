@@ -894,4 +894,17 @@
     <string name="home_grid_local_video_row_title">Выбрать видео на этом устройстве</string>
     <string name="home_grid_local_video_row_subtitle">Воспроизводится прямо из хранилища</string>
     <string name="ui_quick_settings_swap_displays">Поменять экраны</string>
+    <string name="ui_sibling_choice_title_download">ВАРИАНТ ДЛЯ ЗАГРУЗКИ</string>
+    <string name="ui_sibling_choice_subtitle_download">Выберите копию для загрузки. Она станет записью в вашей библиотеке.</string>
+    <string name="ui_sibling_choice_title_active">АКТИВНЫЙ ВАРИАНТ</string>
+    <string name="ui_sibling_choice_subtitle_active">Копия, которую библиотека показывает и запускает</string>
+    <string name="ui_sibling_choice_automatic">Автоматически</string>
+    <string name="ui_sibling_choice_automatic_showing">Показывается: %1$s</string>
+    <string name="ui_sibling_choice_loading">Загрузка...</string>
+    <string name="ui_sibling_choice_load_failed">Не удалось прочитать копии этой игры</string>
+    <string name="ui_sibling_choice_empty">У этой игры нет других копий</string>
+    <string name="ui_sibling_choice_notice_pick_failed">Не удалось сменить активный вариант</string>
+    <string name="ui_sibling_member_kind_hack">Хак</string>
+    <string name="ui_sibling_member_kind_translation">Перевод</string>
+    <string name="ui_sibling_member_kind_pre_release">Предрелиз</string>
 </resources>

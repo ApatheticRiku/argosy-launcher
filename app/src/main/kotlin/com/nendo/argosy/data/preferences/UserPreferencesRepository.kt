@@ -101,6 +101,7 @@ class UserPreferencesRepository @Inject constructor(
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
             syncFilters = sync.syncFilters,
+            regionPriority = sync.regionPriority,
             syncScreenshotsEnabled = sync.syncScreenshotsEnabled,
             uploadScreenshotsEnabled = sync.uploadScreenshotsEnabled,
             boxArtCacheEnabled = sync.boxArtCacheEnabled,
@@ -375,6 +376,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setLastFavoritesCheckTime(time: Instant) = syncPrefs.setLastFavoritesCheckTime(time)
     suspend fun setSyncFilterRegions(regions: List<String>) = syncPrefs.setSyncFilterRegions(regions)
     suspend fun setSyncFilterRegionMode(mode: RegionFilterMode) = syncPrefs.setSyncFilterRegionMode(mode)
+    suspend fun setRegionPriority(order: List<String>) = syncPrefs.setRegionPriority(order)
     suspend fun setSyncFilterExcludeBeta(exclude: Boolean) = syncPrefs.setSyncFilterExcludeBeta(exclude)
     suspend fun setSyncFilterExcludePrototype(exclude: Boolean) = syncPrefs.setSyncFilterExcludePrototype(exclude)
     suspend fun setSyncFilterExcludeDemo(exclude: Boolean) = syncPrefs.setSyncFilterExcludeDemo(exclude)
@@ -752,6 +754,7 @@ data class UserPreferences(
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
+    val regionPriority: List<String> = SyncFilterPreferences.ALL_KNOWN_REGIONS,
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
     val boxArtCacheEnabled: Boolean = true,

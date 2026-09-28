@@ -181,6 +181,7 @@
     <string name="gamedetail_more_options_title_id_missing">Не обнаружен</string>
     <string name="gamedetail_more_options_select_disc">Выбрать диск</string>
     <string name="gamedetail_more_options_select_variant">Выбрать вариант</string>
+    <string name="gamedetail_more_options_active_variant">Активный вариант</string>
     <string name="gamedetail_more_options_files">Файлы</string>
     <string name="gamedetail_more_options_refresh_data">Обновить данные игры</string>
     <string name="gamedetail_more_options_add_to_collection">Добавить в коллекцию</string>

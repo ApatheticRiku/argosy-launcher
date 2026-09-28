@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class SessionEmulator(val packageName: String, val emulatorId: String)
+
 @Singleton
 class EmulatorResolver @Inject constructor(
     private val emulatorDetector: EmulatorDetector,
@@ -68,6 +70,25 @@ class EmulatorResolver @Inject constructor(
 
     suspend fun getEmulatorIdForGame(gameId: Long, platformId: Long, platformSlug: String): String? {
         return getEmulatorPackageForGame(gameId, platformId, platformSlug)?.let { resolveEmulatorId(it) }
+    }
+
+    /**
+     * The emulator a finished session's saves and states belong to. A non-blank [sessionPackage]
+     * that resolves to a known emulator wins; a blank or unknown one falls back to
+     * [getEmulatorPackageForGame].
+     */
+    suspend fun resolveSessionEmulator(
+        gameId: Long,
+        platformId: Long,
+        platformSlug: String,
+        sessionPackage: String?
+    ): SessionEmulator? {
+        sessionPackage?.takeIf { it.isNotBlank() }?.let { pkg ->
+            resolveEmulatorId(pkg)?.let { return SessionEmulator(pkg, it) }
+        }
+        val launchPackage = getEmulatorPackageForGame(gameId, platformId, platformSlug) ?: return null
+        val launchId = resolveEmulatorId(launchPackage) ?: return null
+        return SessionEmulator(launchPackage, launchId)
     }
 
     fun getInstalledForPlatform(platformSlug: String): List<InstalledEmulator> {

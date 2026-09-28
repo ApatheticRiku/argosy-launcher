@@ -351,6 +351,8 @@
     <string name="settings_sync_platform_filters_subtitle_empty">选择要同步的平台</string>
 
     <string name="settings_sync_metadata_filters_title">元数据筛选</string>
+    <string name="settings_sync_region_priority_title">地区优先级</string>
+    <string name="settings_sync_region_priority_subtitle">优先：%1$s</string>
     <string name="settings_sync_metadata_filters_subtitle_none">未应用筛选条件</string>
     <plurals name="settings_sync_metadata_filters_regions">
         <item quantity="other">%1$d个地区 (%2$s)</item>
@@ -1939,6 +1941,13 @@
     <string name="settings_region_picker_hint_navigate">导航</string>
     <string name="settings_region_picker_hint_toggle">切换</string>
     <string name="settings_region_picker_hint_close">关闭</string>
+    <string name="settings_region_priority_title">地区优先级</string>
+    <string name="settings_region_priority_subtitle">当游戏有多个地区版本时，显示此列表中排名最高的地区</string>
+    <string name="settings_region_priority_hint_reorder">重新排序</string>
+    <string name="settings_region_priority_hint_close">关闭</string>
+    <string name="settings_region_priority_hint_move">移动</string>
+    <string name="settings_region_priority_hint_drop">放下</string>
+    <string name="settings_region_priority_hint_cancel">取消</string>
 
     <!-- ===== Driver version picker modal ===== -->
 

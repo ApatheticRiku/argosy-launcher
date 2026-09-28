@@ -28,6 +28,10 @@ object AccountScopedPreferenceKeys {
         "sync_filter_exclude_unofficial"
     )
 
+    private val REGION_PRIORITY = setOf(
+        "region_priority"
+    )
+
     private val DOWNLOAD_CATEGORIES = setOf(
         "download_category_defaults",
         "download_category_platform_overrides"
@@ -139,7 +143,7 @@ object AccountScopedPreferenceKeys {
     )
 
     val PER_ACCOUNT: Set<String> =
-        RETROACHIEVEMENTS + SYNC_WATERMARKS_AND_FILTERS + DOWNLOAD_CATEGORIES +
+        RETROACHIEVEMENTS + SYNC_WATERMARKS_AND_FILTERS + REGION_PRIORITY + DOWNLOAD_CATEGORIES +
             SOCIAL + QUAYPASS + INTERFACE
 
     fun isPerAccount(key: Preferences.Key<*>): Boolean = key.name in PER_ACCOUNT

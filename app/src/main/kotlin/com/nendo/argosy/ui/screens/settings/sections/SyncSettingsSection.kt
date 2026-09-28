@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -44,6 +45,7 @@ import com.nendo.argosy.ui.screens.settings.SYNC_REGION_MODE_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.PlatformFiltersModal
+import com.nendo.argosy.ui.screens.settings.components.RegionPriorityPopup
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
 import com.nendo.argosy.ui.screens.settings.components.SyncFiltersModal
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
@@ -59,6 +61,7 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
 
     data object PlatformFilters : SyncSettingsItem("platformFilters", "filters")
     data object MetadataFilters : SyncSettingsItem("metadataFilters", "filters")
+    data object RegionPriority : SyncSettingsItem("regionPriority", "filters")
     data object MediaHeader : SyncSettingsItem("mediaHeader", "media")
     data object CacheScreenshots : SyncSettingsItem("cacheScreenshots", "media")
     data object CacheBoxArt : SyncSettingsItem("cacheBoxArt", "media")
@@ -75,6 +78,8 @@ internal sealed class SyncSettingsItem(val key: String, val section: String) {
     }
 }
 
+private const val REGION_PRIORITY_PREVIEW_COUNT = 3
+
 internal fun downloadCategoryLabel(context: android.content.Context, key: String): String =
     if (key == DownloadDefaults.OTHER_KEY) {
         context.getString(R.string.settings_sync_download_category_other)
@@ -86,6 +91,7 @@ private val syncSettingsLayout = SettingsLayout<SyncSettingsItem, Boolean>(
     allItems = listOf(
         SyncSettingsItem.PlatformFilters,
         SyncSettingsItem.MetadataFilters,
+        SyncSettingsItem.RegionPriority,
         SyncSettingsItem.MediaHeader,
         SyncSettingsItem.CacheScreenshots,
         SyncSettingsItem.CacheBoxArt,
@@ -120,7 +126,9 @@ fun SyncSettingsSection(
     viewModel: SettingsViewModel,
     imageCacheProgress: ImageCacheProgress
 ) {
-    val hasAnyModal = uiState.syncSettings.showSyncFiltersModal || uiState.syncSettings.showPlatformFiltersModal
+    val hasAnyModal = uiState.syncSettings.showSyncFiltersModal ||
+        uiState.syncSettings.showPlatformFiltersModal ||
+        uiState.syncSettings.showRegionPriority
     val modalBlur by animateDpAsState(
         targetValue = if (hasAnyModal) Motion.blurRadiusModal else 0.dp,
         animationSpec = Motion.focusSpringDp,
@@ -184,6 +192,20 @@ fun SyncSettingsSection(
                             subtitle = filtersSubtitle,
                             isFocused = isFocused(item),
                             onClick = { viewModel.showSyncFiltersModal() }
+                        )
+                    }
+                    SyncSettingsItem.RegionPriority -> {
+                        ActionPreference(
+                            icon = Icons.Default.SwapVert,
+                            title = stringResource(R.string.settings_sync_region_priority_title),
+                            subtitle = stringResource(
+                                R.string.settings_sync_region_priority_subtitle,
+                                uiState.syncSettings.regionPriority
+                                    .take(REGION_PRIORITY_PREVIEW_COUNT)
+                                    .joinToString(", ")
+                            ),
+                            isFocused = isFocused(item),
+                            onClick = { viewModel.showRegionPriority() }
                         )
                     }
                     SyncSettingsItem.MediaHeader -> {
@@ -315,6 +337,20 @@ fun SyncSettingsSection(
                 onDismissRegionPicker = { viewModel.dismissRegionPicker() },
                 onDismiss = { viewModel.dismissSyncFiltersModal() },
                 regionModePickerToken = if (uiState.enumPickerKey == SYNC_REGION_MODE_PICKER_KEY) uiState.enumPickerToken else 0
+            )
+        }
+
+        if (uiState.syncSettings.showRegionPriority) {
+            RegionPriorityPopup(
+                order = uiState.syncSettings.regionPriority,
+                focusIndex = uiState.syncSettings.regionPriorityFocusIndex,
+                heldRegion = uiState.syncSettings.regionPriorityHeld,
+                onFocus = { viewModel.focusRegionPriority(it) },
+                onLift = { viewModel.liftRegionPriority() },
+                onLiftAt = { viewModel.liftRegionPriorityAt(it) },
+                onMoveTo = { region, index -> viewModel.moveRegionPriorityTo(region, index) },
+                onDrop = { viewModel.dropRegionPriority() },
+                onBack = { viewModel.backRegionPriority() }
             )
         }
     }

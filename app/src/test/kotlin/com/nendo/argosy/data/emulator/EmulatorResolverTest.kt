@@ -240,6 +240,27 @@ class EmulatorResolverTest {
         }
 
     @Test
+    fun `a session keeps the package that ran over the configured one`() = runTest {
+        coEvery { emulatorConfigDao.getByGameId(1L) } returns createConfig(gameId = 1L, packageName = duckstation.packageName)
+        stubDetectorWith(installedEmulator(duckstation), installedEmulator(retroarch))
+
+        val result = resolver.resolveSessionEmulator(1L, 10L, "psx", retroarch.packageName)
+
+        assertEquals(SessionEmulator(retroarch.packageName, "retroarch"), result)
+    }
+
+    @Test
+    fun `a session with a blank or unknown package falls back to the launch resolution`() = runTest {
+        coEvery { emulatorConfigDao.getByGameId(1L) } returns createConfig(gameId = 1L, packageName = duckstation.packageName)
+        stubDetectorWith(installedEmulator(duckstation))
+        every { emulatorDetector.getByPackage("com.unknown.app") } returns null
+
+        val expected = SessionEmulator(duckstation.packageName, "duckstation")
+        assertEquals(expected, resolver.resolveSessionEmulator(1L, 10L, "psx", ""))
+        assertEquals(expected, resolver.resolveSessionEmulator(1L, 10L, "psx", "com.unknown.app"))
+    }
+
+    @Test
     fun `def backed by a registry package canonicalises to that registry id`() {
         assertEquals("duckstation", resolver.canonicalEmulatorId(duckstation))
     }

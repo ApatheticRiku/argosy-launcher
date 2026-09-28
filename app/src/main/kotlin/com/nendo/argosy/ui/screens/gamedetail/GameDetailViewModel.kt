@@ -138,8 +138,11 @@ class GameDetailViewModel @Inject constructor(
     private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
     private val getRelatedGamesUseCase: com.nendo.argosy.domain.usecase.game.GetRelatedGamesUseCase,
     private val gradientExtractionDelegate: com.nendo.argosy.ui.screens.common.GradientExtractionDelegate,
-    private val gameThemeAudio: com.nendo.argosy.ui.audio.GameThemeAudioCoordinator
+    private val gameThemeAudio: com.nendo.argosy.ui.audio.GameThemeAudioCoordinator,
+    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate
 ) : ViewModel() {
+
+    val siblingChoiceState = siblingChoice.state
 
     private val companionOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("game.detail", this)
     private var isDescribing = false
@@ -681,6 +684,7 @@ class GameDetailViewModel @Inject constructor(
 
             variantScanner.scanForVariants(game)
             val hasVariants = variantResolver.getVariantOptions(game) != null
+            val hasSiblingGroup = siblingChoice.hasChoice(gameId)
             val manageableFileCount = gameFileDao.getFilesForGame(gameId).size
 
             val downloadSizeBytes = when {
@@ -728,6 +732,7 @@ class GameDetailViewModel @Inject constructor(
                     dlcFiles = dlcFilesUi,
                     hasManageableFiles = manageableFileCount > 0,
                     hasVariants = hasVariants,
+                    hasSiblingGroup = hasSiblingGroup,
                     siblingGameIds = siblingIds,
                     currentGameIndex = currentIndex,
                     isPrivate = isPrivate,
@@ -990,8 +995,6 @@ class GameDetailViewModel @Inject constructor(
 
     // --- Download delegate forwarding ---
 
-    fun downloadGame() = downloadDelegate.downloadGame(viewModelScope, currentGameId, pageLoadTime, pageLoadDebounceMs)
-
     fun showFilesPicker() {
         toggleMoreOptions()
         viewModelScope.launch {
@@ -1002,16 +1005,45 @@ class GameDetailViewModel @Inject constructor(
     }
 
     fun promptOrDownload() {
+        siblingChoice.requestDownload(viewModelScope, currentGameId) { chosenGameId ->
+            if (chosenGameId == currentGameId) {
+                promptOrDownloadCurrent(debounceFrom = pageLoadTime)
+            } else {
+                _uiState.update { it.copy(menuFocusIndex = 0) }
+                loadGame(chosenGameId)
+                promptOrDownloadCurrent(debounceFrom = 0L)
+            }
+        }
+    }
+
+    private fun promptOrDownloadCurrent(debounceFrom: Long) {
+        val gameId = currentGameId
         viewModelScope.launch {
-            val built = downloadDelegate.buildFilePickerRows(currentGameId)
+            val built = downloadDelegate.buildFilePickerRows(gameId)
             if (built == null) {
-                downloadGame()
+                downloadDelegate.downloadGame(viewModelScope, gameId, debounceFrom, pageLoadDebounceMs)
             } else {
                 val (rows, files) = built
                 pickerModalDelegate.showFilePicker(rows, files)
             }
         }
     }
+
+    private fun showActiveVariantChooser() {
+        toggleMoreOptions()
+        siblingChoice.openActiveVariant(viewModelScope, currentGameId) { shownGameId ->
+            _uiState.update { it.copy(menuFocusIndex = 0) }
+            loadGame(shownGameId)
+        }
+    }
+
+    fun moveSiblingChoiceFocus(delta: Int) = siblingChoice.moveFocus(delta)
+
+    fun setSiblingChoiceFocus(index: Int) = siblingChoice.setFocus(index)
+
+    fun confirmSiblingChoice() = siblingChoice.confirm(viewModelScope)
+
+    fun dismissSiblingChoice() = siblingChoice.dismiss()
 
     fun confirmFilePicker() {
         val picker = pickerModalDelegate.state.value
@@ -1253,6 +1285,7 @@ class GameDetailViewModel @Inject constructor(
             canManageStates = state.game?.canManageStates == true,
             isMultiDisc = state.game?.isMultiDisc == true,
             hasVariants = state.hasVariants,
+            hasSiblingGroup = state.hasSiblingGroup,
             hasUpdates = state.updateFiles.isNotEmpty() || state.dlcFiles.isNotEmpty(),
             hasManageableFiles = state.hasManageableFiles,
             platformSlug = state.game?.platformSlug,
@@ -1342,6 +1375,7 @@ class GameDetailViewModel @Inject constructor(
             MoreOptionAction.ChangeCore -> showCorePicker()
             MoreOptionAction.SelectDisc -> showDiscPicker()
             MoreOptionAction.SelectVariant -> showVariantPickerFromMenu()
+            MoreOptionAction.ActiveVariant -> showActiveVariantChooser()
             MoreOptionAction.Files -> showFilesPicker()
             MoreOptionAction.RefreshData -> refreshAndroidOrRommData()
             MoreOptionAction.RefreshTitleId -> refreshTitleId()
@@ -2374,6 +2408,7 @@ class GameDetailViewModel @Inject constructor(
         artworkDelegate.reset()
         playOptionsDelegate.reset()
         screenshotDelegate.reset()
+        siblingChoice.reset()
         _uiState.update {
             it.copy(
                 showPermissionModal = false,

@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
@@ -1108,14 +1109,7 @@ fun HomeScreen(
                             variant = FooterVariant.SUBTLE,
                             onHintClick = { button ->
                                 when (button) {
-                                    InputButton.A -> {
-                                        when {
-                                            focusedGame.needsInstall -> viewModel.installApk(focusedGame.id)
-                                            focusedGame.isDownloaded -> viewModel.launchGame(focusedGame.id)
-                                            focusedGame.isSteamGame -> viewModel.queueSteamDownload(focusedGame.id)
-                                            else -> viewModel.queueDownload(focusedGame.id)
-                                        }
-                                    }
+                                    InputButton.A -> viewModel.activateFocusedGame(focusedGame)
                                     InputButton.Y -> viewModel.toggleFavorite(focusedGame.id)
                                     InputButton.X -> onGameSelect(focusedGame.id)
                                     else -> {}
@@ -1352,7 +1346,7 @@ fun HomeScreen(
                     onDismiss = { viewModel.toggleGameMenu() },
                     onPrimaryAction = {
                         viewModel.toggleGameMenu()
-                        viewModel.activateGame(focusedGame)
+                        viewModel.activateFocusedGame(focusedGame)
                     },
                     playDisplays = uiState.gameMenuDisplays,
                     onPlayOnDisplay = { index ->
@@ -1368,6 +1362,8 @@ fun HomeScreen(
                         viewModel.toggleGameMenu()
                         viewModel.showAddToCollectionModal(focusedGame.id)
                     },
+                    hasSiblingGroup = uiState.gameMenuHasSiblingGroup,
+                    onActiveVariant = { viewModel.openActiveVariant(focusedGame.id) },
                     onRefresh = { viewModel.refreshGameData(focusedGame.id) },
                     onResyncPlatform = {
                         viewModel.toggleGameMenu()
@@ -1388,6 +1384,15 @@ fun HomeScreen(
                 )
             }
         }
+
+        val siblingChoiceState by viewModel.siblingChoiceState.collectAsState()
+        com.nendo.argosy.ui.screens.common.SiblingChoiceModalHost(
+            state = siblingChoiceState,
+            onMove = viewModel::moveSiblingChoiceFocus,
+            onFocus = viewModel::setSiblingChoiceFocus,
+            onConfirm = viewModel::confirmSiblingChoice,
+            onDismiss = viewModel::dismissSiblingChoice
+        )
 
         val pendingTileAdd = uiState.customGrid.pendingAdd
         if (pendingTileAdd != null) {
@@ -2081,6 +2086,8 @@ private fun GameSelectOverlay(
     onFavorite: () -> Unit,
     onDetails: () -> Unit,
     onAddToCollection: () -> Unit,
+    hasSiblingGroup: Boolean,
+    onActiveVariant: () -> Unit,
     onRefresh: () -> Unit,
     onResyncPlatform: () -> Unit,
     onDelete: () -> Unit,
@@ -2106,6 +2113,7 @@ private fun GameSelectOverlay(
     }
     val detailsLabel = stringResource(R.string.home_quick_actions_details)
     val addToCollectionLabel = stringResource(R.string.home_quick_actions_add_to_collection)
+    val activeVariantLabel = stringResource(R.string.home_quick_actions_active_variant)
     val refreshDataLabel = stringResource(R.string.home_quick_actions_refresh_data)
     val resyncPlatformLabel = stringResource(R.string.home_quick_actions_resync_platform)
     val deleteDownloadLabel = stringResource(R.string.home_quick_actions_delete_download)
@@ -2147,6 +2155,9 @@ private fun GameSelectOverlay(
                 onClick = onAddToCollection
             )
         )
+        if (hasSiblingGroup) {
+            add(MenuEntry(Icons.Default.Layers, activeVariantLabel, onClick = onActiveVariant))
+        }
         if (game.isRommGame || game.isAndroidApp) {
             add(MenuEntry(Icons.Default.Refresh, refreshDataLabel, onClick = onRefresh))
         }

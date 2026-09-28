@@ -89,7 +89,10 @@ class RomMLibrarySyncService @Inject constructor(
     private val attributionRepository: StorageAttributionRepository,
     private val userRomsHiddenDao: com.nendo.argosy.data.local.dao.UserRomsHiddenDao,
     private val pendingSyncQueueDao: com.nendo.argosy.data.local.dao.PendingSyncQueueDao,
-    private val siblingSplitRepair: SiblingSplitRepair
+    private val siblingSplitRepair: SiblingSplitRepair,
+    private val siblingConfigCarryOver: SiblingConfigCarryOver,
+    private val siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository,
+    private val variantFileCleanup: com.nendo.argosy.data.emulator.VariantFileCleanup
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
     private val syncMutex = Mutex()
@@ -109,7 +112,7 @@ class RomMLibrarySyncService @Inject constructor(
 
         if (genreCount == 0 && gameModeCount == 0) {
             val owner = overlayWriter.activeOwnerId()
-            val hasGenres = gameDao.getDistinctGenres(owner).isNotEmpty()
+            val hasGenres = gameDao.getDistinctGenres(owner, oneEntryPerGroup = false).isNotEmpty()
             val hasGameModes = gameDao.getDistinctGameModes(owner).isNotEmpty()
 
             if (hasGenres || hasGameModes) {
@@ -209,9 +212,6 @@ class RomMLibrarySyncService @Inject constructor(
             }
 
             consolidateMultiDiscGames(currentApi, batch.multiDiscGroups, scope)
-            for (storageId in touchedStorageIds) {
-                platformDao.updateGameCount(storageId, gameDao.countByPlatform(storageId, scope.ownerUserId))
-            }
 
             val gamesDeleted = if (filters.deleteOrphans) reconcileDeletedRoms(scope) else 0
 
@@ -219,6 +219,8 @@ class RomMLibrarySyncService @Inject constructor(
             playSessionDao.relinkOrphans(scope.ownerUserId)
             userPreferencesRepository.setLastRommSyncTime(syncStartedAt)
             syncVirtualCollectionsUseCase.get()()
+            recomputeSiblingGroups(completesFullPass = false)
+            writeGameCounts(touchedStorageIds, scope.ownerUserId)
             attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
 
             Logger.info(
@@ -290,6 +292,7 @@ class RomMLibrarySyncService @Inject constructor(
                         return@withLock RomMResult.Error("Platform ${rom.platformId} not found on the server")
                     }
                     syncRom(rom, singleRomScope())
+                    recomputeSiblingGroups(completesFullPass = false)
                     gameDao.getByRommId(rom.id)
                         ?.let { RomMResult.Success(it) }
                         ?: RomMResult.Error("Rom ${rom.id} was not stored")
@@ -384,6 +387,10 @@ class RomMLibrarySyncService @Inject constructor(
 
             syncVirtualCollectionsUseCase.get()()
             phaseClock.mark("syncVirtualCollections")
+
+            recomputeSiblingGroups(completesFullPass = false)
+            writeGameCounts(listOf(storageId), scope.ownerUserId)
+            phaseClock.mark("recomputeSiblingGroups")
 
             updateRow(storageId) {
                 it.copy(
@@ -659,9 +666,13 @@ class RomMLibrarySyncService @Inject constructor(
 
             userPreferencesRepository.clearSyncResume()
 
-            if (errors.isEmpty() && platformsResumed == 0) {
+            val completeUnresumedPass = errors.isEmpty() && platformsResumed == 0
+            if (completeUnresumedPass) {
+                siblingSplitRepair.retryBlockedSaveSyncMoves()
                 siblingSplitRepair.runOnce()
+                siblingConfigCarryOver.runOnce()
             }
+            variantFileCleanup.runOnce()
 
             cleanupLegacyPlatforms(platforms)
 
@@ -676,6 +687,9 @@ class RomMLibrarySyncService @Inject constructor(
 
             syncVirtualCollectionsUseCase.get()()
 
+            recomputeSiblingGroups(completesFullPass = completeUnresumedPass)
+            writeGameCounts(enabledPlatforms.map { storagePlatformId(it) }, scope.ownerUserId)
+
             attributionRepository.markDirty(StorageCategory.IMAGE_CACHE)
 
         } catch (e: Exception) {
@@ -688,6 +702,26 @@ class RomMLibrarySyncService @Inject constructor(
         gameRepository.get().cleanupEmptyNumericFolders()
 
         return SyncResult(platformsSynced, gamesAdded, gamesUpdated, gamesDeleted, errors)
+    }
+
+    private suspend fun recomputeSiblingGroups(completesFullPass: Boolean) {
+        try {
+            if (completesFullPass) {
+                siblingGroupRepository.completeFullPass()
+            } else {
+                siblingGroupRepository.recomputeAll()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.warn(TAG, "recomputeSiblingGroups: failed, visibility kept from the last pass: ${e.message}")
+        }
+    }
+
+    private suspend fun writeGameCounts(platformIds: Collection<Long>, ownerUserId: Long?) {
+        for (platformId in platformIds.distinct()) {
+            platformDao.updateGameCount(platformId, gameDao.countByPlatform(platformId, ownerUserId))
+        }
     }
 
     private suspend fun <T> retryOnThrow(attempts: Int, backoffMs: Long, block: suspend () -> T): T {
@@ -1178,7 +1212,9 @@ class RomMLibrarySyncService @Inject constructor(
             lastPlayed = localDataSource?.lastPlayed,
             addedAt = localDataSource?.addedAt ?: java.time.Instant.now(),
             achievementCount = localDataSource?.achievementCount ?: 0,
-            earnedAchievementCount = localDataSource?.earnedAchievementCount ?: 0
+            earnedAchievementCount = localDataSource?.earnedAchievementCount ?: 0,
+            rommMainSibling = existing?.rommMainSibling ?: false,
+            isGroupVisible = existing?.isGroupVisible ?: true
         ).withRomMetadata(rom)
 
         val isNew = existing == null
@@ -1580,6 +1616,7 @@ class RomMLibrarySyncService @Inject constructor(
             successor.rommId?.let { newRommId ->
                 saveSyncDao.realignToRommId(game.id, scope.ownerUserId, newRommId)
                 saveCacheDao.clearRemoteLinkage(game.id, scope.ownerUserId)
+                game.rommId?.let { pendingSyncQueueDao.realignRommId(game.id, it, newRommId) }
             }
             realigned++
             Logger.info(

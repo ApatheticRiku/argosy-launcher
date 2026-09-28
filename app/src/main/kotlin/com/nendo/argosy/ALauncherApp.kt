@@ -141,6 +141,15 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var pushInstallCoordinator: com.nendo.argosy.data.install.PushInstallCoordinator
 
+    @Inject
+    lateinit var siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository
+
+    @Inject
+    lateinit var siblingGroupDownloadObserver: com.nendo.argosy.data.repository.SiblingGroupDownloadObserver
+
+    @Inject
+    lateinit var variantFileCleanup: com.nendo.argosy.data.emulator.VariantFileCleanup
+
     private val quayPassForegroundObserver = object : androidx.lifecycle.DefaultLifecycleObserver {
         override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
             appScope.launch { quayPassCredentialManager.refreshIfNeeded() }
@@ -151,6 +160,7 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         super.onCreate()
         appScope.launch { userCertStore.initialize() }
         appScope.launch { socialSyncCoordinator.discardQueueWithoutSocialAccount() }
+        appScope.launch { variantFileCleanup.runOnce() }
         UpdateCheckWorker.schedule(this)
         SaveSyncWorker.schedule(this)
         SocialSyncWorker.schedule(this)
@@ -163,6 +173,8 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         downloadServiceController.start()
         syncServiceController.start()
         pushInstallCoordinator.start()
+        siblingGroupRepository.start()
+        siblingGroupDownloadObserver.start()
         appScope.launch {
             val storedOverride = builtinPrefs.getArchitectureOverride().first()
             if (storedOverride != null) {

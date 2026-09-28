@@ -371,6 +371,8 @@
     <string name="settings_sync_platform_filters_subtitle_empty">Выберите платформы для синхронизации</string>
 
     <string name="settings_sync_metadata_filters_title">Фильтры метаданных</string>
+    <string name="settings_sync_region_priority_title">Приоритет регионов</string>
+    <string name="settings_sync_region_priority_subtitle">Сначала: %1$s</string>
     <string name="settings_sync_metadata_filters_subtitle_none">Фильтры не применены</string>
     <plurals name="settings_sync_metadata_filters_regions">
         <item quantity="one">%1$d регион (%2$s)</item>
@@ -2082,6 +2084,13 @@
     <string name="settings_region_picker_hint_navigate">Навигация</string>
     <string name="settings_region_picker_hint_toggle">Переключить</string>
     <string name="settings_region_picker_hint_close">Закрыть</string>
+    <string name="settings_region_priority_title">ПРИОРИТЕТ РЕГИОНОВ</string>
+    <string name="settings_region_priority_subtitle">Если у игры есть копии из нескольких регионов, показывается регион, стоящий выше в этом списке</string>
+    <string name="settings_region_priority_hint_reorder">Изменить порядок</string>
+    <string name="settings_region_priority_hint_close">Закрыть</string>
+    <string name="settings_region_priority_hint_move">Переместить</string>
+    <string name="settings_region_priority_hint_drop">Опустить</string>
+    <string name="settings_region_priority_hint_cancel">Отмена</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->
 

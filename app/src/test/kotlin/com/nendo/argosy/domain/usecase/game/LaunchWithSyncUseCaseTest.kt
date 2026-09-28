@@ -3,9 +3,7 @@ package com.nendo.argosy.domain.usecase.game
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.TitleIdDownloadObserver
-import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.entity.EmulatorConfigEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.UserPreferences
@@ -14,6 +12,7 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.PreLaunchSyncResult
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.repository.SiblingGroupRepository
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.usecase.state.PreLaunchStateSyncUseCase
 import io.mockk.coEvery
@@ -21,6 +20,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -34,7 +34,7 @@ import java.time.Instant
 class LaunchWithSyncUseCaseTest {
 
     private val gameDao = mockk<GameDao>(relaxed = true)
-    private val emulatorConfigDao = mockk<EmulatorConfigDao>(relaxed = true)
+    private val siblingGroupRepository = mockk<SiblingGroupRepository>(relaxed = true)
     private val emulatorResolver = mockk<EmulatorResolver>(relaxed = true)
     private val preferencesRepository = mockk<UserPreferencesRepository>(relaxed = true)
     private val romMRepository = mockk<RomMRepository>(relaxed = true)
@@ -70,24 +70,19 @@ class LaunchWithSyncUseCaseTest {
             gameDao,
             mockk<com.nendo.argosy.data.repository.ActiveSaveRepository>(relaxed = true),
             mockk<com.nendo.argosy.domain.usecase.savechannel.ActivateSaveChannelUseCase>(relaxed = true),
-            emulatorConfigDao, emulatorResolver,
+            emulatorResolver,
             preferencesRepository, romMRepository, saveSyncRepository,
             titleIdDownloadObserver, preLaunchStateSyncUseCase,
             mockk<com.nendo.argosy.data.sync.N3dsSaveCaseRepair>(relaxed = true),
-            mockk<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>(relaxed = true)
+            mockk<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>(relaxed = true),
+            siblingGroupRepository
         )
 
         every { preferencesRepository.userPreferences } returns MutableStateFlow(UserPreferences(saveSyncEnabled = true))
         coEvery { gameDao.getById(gameId) } returns game
-        coEvery { emulatorConfigDao.getByGameId(gameId) } returns EmulatorConfigEntity(
-            id = 1L,
-            platformId = game.platformId,
-            gameId = gameId,
-            packageName = emulatorPackage,
-            displayName = "RetroArch",
-            coreName = null,
-            isDefault = true
-        )
+        coEvery {
+            emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
+        } returns emulatorPackage
         every { emulatorResolver.resolveEmulatorId(emulatorPackage) } returns emulatorId
         coEvery { romMRepository.isConnected() } returns true
     }
@@ -180,6 +175,43 @@ class LaunchWithSyncUseCaseTest {
         io.mockk.coVerify {
             saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = "slot1", secureSaves = true)
         }
+    }
+
+    @Test
+    fun `a failing main-sibling refresh leaves the launch result unchanged`() = runTest {
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } returns PreLaunchSyncResult.NoServerSave
+        val baseline = useCase.invokeWithProgress(gameId).toList()
+        coEvery { siblingGroupRepository.refreshRommMainSibling(gameId) } throws IllegalStateException("offline")
+
+        val progress = useCase.invokeWithProgress(gameId).toList()
+
+        assertEquals(baseline, progress)
+        assertTrue("Expected Launching, got $progress", progress.any { it is SyncProgress.PreLaunch.Launching })
+        io.mockk.coVerify(timeout = 2_000L) { siblingGroupRepository.refreshRommMainSibling(gameId) }
+    }
+
+    @Test
+    fun `a main-sibling refresh that never returns does not hold the launch`() = runTest {
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } returns PreLaunchSyncResult.LocalIsNewer
+        coEvery { siblingGroupRepository.refreshRommMainSibling(gameId) } coAnswers { awaitCancellation() }
+
+        val progress = useCase.invokeWithProgress(gameId).toList()
+
+        assertTrue("Expected Launching, got $progress", progress.any { it is SyncProgress.PreLaunch.Launching })
+        io.mockk.coVerify(timeout = 2_000L) { siblingGroupRepository.refreshRommMainSibling(gameId) }
+    }
+
+    @Test
+    fun `no main-sibling refresh runs when RomM is not connected`() = runTest {
+        coEvery { romMRepository.isConnected() } returns false
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        io.mockk.coVerify(exactly = 0) { siblingGroupRepository.refreshRommMainSibling(any()) }
     }
 
     @Test

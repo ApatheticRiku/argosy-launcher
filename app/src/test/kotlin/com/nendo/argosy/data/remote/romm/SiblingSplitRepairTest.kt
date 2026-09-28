@@ -444,6 +444,65 @@ class SiblingSplitRepairTest {
     }
 
     @Test
+    fun `a blocked save sync row moves on a later pass once its slot frees, not before`() = runBlocking {
+        coEvery { syncPreferences.isSiblingSplitRepairDone() } returns true
+        coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns
+            listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany"))
+        coEvery { gameDao.getByRommId(200L) } returns sibling
+        coEvery { saveSyncDao.getByGameEmulatorAndNullChannel(2L, "argosy", 7L) } returns
+            saveSync(id = 9L, gameId = 2L, rommId = 200L, channel = null) andThen null
+
+        assertEquals(0, repair.retryBlockedSaveSyncMoves())
+        coVerify(exactly = 0) { saveSyncDao.moveToGame(any(), any(), any()) }
+
+        assertEquals(1, repair.retryBlockedSaveSyncMoves())
+        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, null) }
+        coVerify(exactly = 0) { overlayDao.movePlayTotals(any(), any()) }
+    }
+
+    @Test
+    fun `the blocked-row retry never writes over an occupied slot`() = runBlocking {
+        coEvery { syncPreferences.isSiblingSplitRepairDone() } returns true
+        coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns
+            listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany/Slot 1"))
+        coEvery { gameDao.getByRommId(200L) } returns sibling
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(2L, "argosy", "Slot 1", 7L) } returns
+            saveSync(id = 9L, gameId = 2L, rommId = 200L, channel = "Slot 1")
+
+        repeat(3) { assertEquals(0, repair.retryBlockedSaveSyncMoves()) }
+
+        coVerify(exactly = 0) { saveSyncDao.moveToGame(any(), any(), any()) }
+    }
+
+    @Test
+    fun `two blocked rows for one freed slot move only the first`() = runBlocking {
+        coEvery { syncPreferences.isSiblingSplitRepairDone() } returns true
+        coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns listOf(
+            saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Slot 1"),
+            saveSync(id = 6L, gameId = 4L, rommId = 200L, channel = "Slot 1")
+        )
+        coEvery { gameDao.getByRommId(200L) } returns sibling
+
+        assertEquals(1, repair.retryBlockedSaveSyncMoves())
+
+        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, "Slot 1") }
+        coVerify(exactly = 0) { saveSyncDao.moveToGame(6L, any(), any()) }
+    }
+
+    @Test
+    fun `the blocked-row retry waits for the one-time repair to finish`() = runBlocking {
+        coEvery { syncPreferences.isSiblingSplitRepairDone() } returns false
+        coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns
+            listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany"))
+        coEvery { gameDao.getByRommId(200L) } returns sibling
+
+        assertEquals(0, repair.retryBlockedSaveSyncMoves())
+
+        coVerify(exactly = 0) { saveSyncDao.getRowsKeyedToAnotherRom() }
+        coVerify(exactly = 0) { saveSyncDao.moveToGame(any(), any(), any()) }
+    }
+
+    @Test
     fun `the channel prefix falls back to the rom id when the game has no region`() {
         val unregioned = sibling.copy(regions = null)
 

@@ -263,6 +263,7 @@ data class LibraryUiState(
     val showFilterMenu: Boolean = false,
     val showQuickMenu: Boolean = false,
     val quickMenuFocusIndex: Int = 0,
+    val quickMenuHasSiblingGroup: Boolean = false,
     val isCustomGridHome: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val isLoading: Boolean = true,
@@ -448,8 +449,11 @@ class LibraryViewModel @Inject constructor(
     private val emulatorDetector: EmulatorDetector,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
     private val steamDownloadPromptController: com.nendo.argosy.data.steam.SteamDownloadPromptController,
-    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
+    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate
 ) : ViewModel() {
+
+    val siblingChoiceState = siblingChoice.state
 
     private val companionOwner = SlotOwner.of("library", this)
     private val platformShowcaseOwner = SlotOwner.of("library.platforms", this)
@@ -467,6 +471,7 @@ class LibraryViewModel @Inject constructor(
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
 
     private var gamesJob: Job? = null
+    private var quickMenuOpenJob: Job? = null
     private var pendingInitialPlatformId: Long? = null
     private var pendingInitialSourceFilter: SourceFilter? = null
     private var pendingInitialTileFilters: LibraryLinkFilters? = null
@@ -648,6 +653,8 @@ class LibraryViewModel @Inject constructor(
                 showCreateCollectionDialog = false
             )
         }
+        quickMenuOpenJob?.cancel()
+        siblingChoice.reset()
     }
 
     private fun observeSyncOverlay() {
@@ -802,12 +809,12 @@ class LibraryViewModel @Inject constructor(
             LibraryCellTarget.AllGames -> gameShowcaseFor(
                 cell,
                 platformStats().values.reduceOrNull(::combineStats),
-                gameRepository.showcaseCovers(null)
+                gameRepository.showcaseCovers(null, oneEntryPerGroup = true)
             )
             is LibraryCellTarget.Platform -> gameShowcaseFor(
                 cell,
                 platformStats()[target.platformId],
-                gameRepository.showcaseCovers(target.platformId)
+                gameRepository.showcaseCovers(target.platformId, oneEntryPerGroup = true)
             )
             is LibraryCellTarget.Media -> mediaShowcaseFor(
                 cell,
@@ -1027,7 +1034,7 @@ class LibraryViewModel @Inject constructor(
 
     private fun loadFilterOptions() {
         viewModelScope.launch {
-            val genres = gameRepository.getDistinctGenres()
+            val genres = gameRepository.getDistinctGenres(oneEntryPerGroup = true)
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
                 .distinct()
@@ -1739,103 +1746,113 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun toggleQuickMenu() {
-        val wasShowing = _uiState.value.showQuickMenu
-        _uiState.update { it.copy(showQuickMenu = !it.showQuickMenu, quickMenuFocusIndex = 0) }
-        if (!wasShowing) {
-            soundManager.play(SoundType.OPEN_MODAL)
-        } else {
+        if (_uiState.value.showQuickMenu) {
+            quickMenuOpenJob?.cancel()
+            _uiState.update { it.copy(showQuickMenu = false, quickMenuFocusIndex = 0) }
             soundManager.play(SoundType.CLOSE_MODAL)
+            return
         }
+        if (quickMenuOpenJob?.isActive == true) return
+        val gameId = _uiState.value.focusedGame?.id ?: return
+        quickMenuOpenJob = viewModelScope.launch {
+            val hasChoice = siblingChoice.hasChoice(gameId)
+            if (_uiState.value.focusedGame?.id != gameId) return@launch
+            _uiState.update {
+                it.copy(showQuickMenu = true, quickMenuFocusIndex = 0, quickMenuHasSiblingGroup = hasChoice)
+            }
+            soundManager.play(SoundType.OPEN_MODAL)
+        }
+    }
+
+    private fun quickMenuRows(state: LibraryUiState): List<LibraryQuickMenuRow> {
+        val game = state.focusedGame ?: return emptyList()
+        return libraryQuickMenuRows(game, state.isCustomGridHome, state.quickMenuHasSiblingGroup)
     }
 
     fun moveQuickMenuFocus(delta: Int) {
         _uiState.update {
-            val game = it.focusedGame ?: return@update it
-            val canRefresh = game.isRommGame || game.isAndroidApp
-            val hasDelete = game.isDownloaded || game.needsInstall
-            var maxIndex = 5
-            if (it.isCustomGridHome) maxIndex++
-            if (canRefresh) maxIndex++
-            if (hasDelete) maxIndex++
+            val maxIndex = quickMenuRows(it).lastIndex
+            if (maxIndex < 0) return@update it
             val newIndex = (it.quickMenuFocusIndex + delta).coerceIn(0, maxIndex)
             it.copy(quickMenuFocusIndex = newIndex)
         }
     }
 
     fun confirmQuickMenuSelection(onGameSelect: (Long) -> Unit): InputResult {
-        val game = _uiState.value.focusedGame ?: return InputResult.HANDLED
-        val index = _uiState.value.quickMenuFocusIndex
-        val isRommGame = game.isRommGame
-        val isAndroidApp = game.isAndroidApp
-        val canRefresh = isRommGame || isAndroidApp
-        val isDownloaded = game.isDownloaded
-        val needsInstall = game.needsInstall
+        val state = _uiState.value
+        val game = state.focusedGame ?: return InputResult.HANDLED
+        val row = quickMenuRows(state).getOrNull(state.quickMenuFocusIndex) ?: return InputResult.HANDLED
 
-        var currentIdx = 0
-        val playIdx = currentIdx++
-        val favoriteIdx = currentIdx++
-        val detailsIdx = currentIdx++
-        val addToCollectionIdx = currentIdx++
-        val addToGridIdx = if (_uiState.value.isCustomGridHome) currentIdx++ else -1
-        val refreshIdx = if (canRefresh) currentIdx++ else -1
-        val resyncPlatformIdx = currentIdx++
-        val deleteIdx = if (isDownloaded || needsInstall) currentIdx++ else -1
-        val hideIdx = currentIdx
-
-        return when (index) {
-            playIdx -> {
+        return when (row) {
+            LibraryQuickMenuRow.PRIMARY -> {
                 when {
-                    needsInstall -> installApk(game.id)
-                    isDownloaded -> launchGame(game.id)
+                    game.needsInstall -> installApk(game.id)
+                    game.isDownloaded -> launchGame(game.id)
                     game.source == com.nendo.argosy.data.model.GameSource.STEAM -> downloadSteamGame(game.id)
                     else -> downloadGame(game.id)
                 }
                 toggleQuickMenu()
                 InputResult.HANDLED
             }
-            favoriteIdx -> {
+            LibraryQuickMenuRow.FAVORITE -> {
                 val sound = if (game.isFavorite) SoundType.UNFAVORITE else SoundType.FAVORITE
                 toggleFavorite(game.id)
                 InputResult.handled(sound)
             }
-            detailsIdx -> {
-                gameNavigationContext.setContext(_uiState.value.games.map { it.id })
+            LibraryQuickMenuRow.DETAILS -> {
+                gameNavigationContext.setContext(state.games.map { it.id })
                 onGameSelect(game.id)
                 toggleQuickMenu()
                 InputResult.HANDLED
             }
-            addToCollectionIdx -> {
+            LibraryQuickMenuRow.ADD_TO_COLLECTION -> {
                 toggleQuickMenu()
                 showAddToCollectionModal(game.id)
                 InputResult.HANDLED
             }
-            addToGridIdx -> {
+            LibraryQuickMenuRow.ADD_TO_GRID -> {
                 toggleQuickMenu()
                 addGameToHomeGrid(game.id)
                 InputResult.HANDLED
             }
-            refreshIdx -> {
-                if (isAndroidApp) refreshAndroidGameData(game.id) else refreshGameData(game.id)
+            LibraryQuickMenuRow.ACTIVE_VARIANT -> {
+                openActiveVariant(game.id)
                 InputResult.HANDLED
             }
-            resyncPlatformIdx -> {
+            LibraryQuickMenuRow.REFRESH -> {
+                if (game.isAndroidApp) refreshAndroidGameData(game.id) else refreshGameData(game.id)
+                InputResult.HANDLED
+            }
+            LibraryQuickMenuRow.RESYNC_PLATFORM -> {
                 syncCurrentPlatform()
                 toggleQuickMenu()
                 InputResult.HANDLED
             }
-            deleteIdx -> {
-                if (isAndroidApp) uninstallAndroidApp(game.id) else deleteLocalFile(game.id)
+            LibraryQuickMenuRow.DELETE -> {
+                if (game.isAndroidApp) uninstallAndroidApp(game.id) else deleteLocalFile(game.id)
                 toggleQuickMenu()
                 InputResult.HANDLED
             }
-            hideIdx -> {
+            LibraryQuickMenuRow.HIDE -> {
                 if (game.isHidden) unhideGame(game.id) else hideGame(game.id)
                 toggleQuickMenu()
                 InputResult.HANDLED
             }
-            else -> InputResult.HANDLED
         }
     }
+
+    fun openActiveVariant(gameId: Long) {
+        toggleQuickMenu()
+        siblingChoice.openActiveVariant(viewModelScope, gameId) { }
+    }
+
+    fun moveSiblingChoiceFocus(delta: Int) = siblingChoice.moveFocus(delta)
+
+    fun setSiblingChoiceFocus(index: Int) = siblingChoice.setFocus(index)
+
+    fun confirmSiblingChoice() = siblingChoice.confirm(viewModelScope)
+
+    fun dismissSiblingChoice() = siblingChoice.dismiss()
 
     fun hideGame(gameId: Long) {
         viewModelScope.launch {
@@ -1920,6 +1937,10 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun downloadGame(gameId: Long) {
+        siblingChoice.requestDownload(viewModelScope, gameId, ::queueDownload)
+    }
+
+    private fun queueDownload(gameId: Long) {
         viewModelScope.launch {
             when (val result = gameActions.queueDownload(gameId)) {
                 is DownloadResult.Queued -> { }

@@ -2,8 +2,8 @@ package com.nendo.argosy.domain.usecase.save
 
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
-import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.preferences.PersistedSession
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
@@ -20,7 +20,6 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
     private val saveSyncRepository: SaveSyncRepository,
     private val gameDao: GameDao,
     private val activeSaveRepository: ActiveSaveRepository,
-    private val emulatorConfigDao: EmulatorConfigDao,
     private val emulatorResolver: EmulatorResolver,
     private val preferencesRepository: UserPreferencesRepository,
     private val romMRepository: RomMRepository,
@@ -57,14 +56,14 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
         val game = gameDao.getById(gameId) ?: return false
         if (game.rommId == null) return false
 
-        val emulatorConfig = emulatorConfigDao.getByGameId(gameId)
-            ?: emulatorConfigDao.getDefaultForPlatform(game.platformId)
-
-        val packageToResolve = emulatorConfig?.packageName ?: emulatorPackage
-        val emulatorId = emulatorResolver.resolveEmulatorId(packageToResolve) ?: return false
+        val emulatorId = resolveSessionEmulatorId(game, emulatorPackage) ?: return false
 
         return SavePathRegistry.canSyncWithSettings(emulatorId, prefs.saveSyncEnabled)
     }
+
+    private suspend fun resolveSessionEmulatorId(game: GameEntity, emulatorPackage: String): String? =
+        emulatorResolver.resolveSessionEmulator(game.id, game.platformId, game.platformSlug, emulatorPackage)
+            ?.emulatorId
 
     suspend operator fun invoke(session: PersistedSession): Result =
         invoke(
@@ -98,16 +97,12 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
             return Result.NotConfigured
         }
 
-        val emulatorConfig = emulatorConfigDao.getByGameId(gameId)
-            ?: emulatorConfigDao.getDefaultForPlatform(game.platformId)
-
-        val pkgToResolve = emulatorConfig?.packageName ?: emulatorPackage
-        val emulatorId = emulatorResolver.resolveEmulatorId(pkgToResolve)
+        val emulatorId = resolveSessionEmulatorId(game, emulatorPackage)
         if (emulatorId == null) {
-            Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Cannot resolve emulator | configPackage=${emulatorConfig?.packageName}, launchPackage=$emulatorPackage")
+            Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Cannot resolve emulator | launchPackage=$emulatorPackage")
             return Result.NotConfigured
         }
-        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Resolved emulator | emulatorId=$emulatorId, configPackage=${emulatorConfig?.packageName}, launchPackage=$emulatorPackage")
+        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Resolved emulator | emulatorId=$emulatorId, launchPackage=$emulatorPackage")
 
         val saveIdForLookup = game.saveId ?: game.titleId
         var savePath = saveSyncRepository.discoverSavePath(

@@ -189,6 +189,7 @@ class AccountRemovalService @Inject constructor(
         database.withTransaction {
             database.gameUserOverlayDao().deleteForOwner(ownerUserId)
             database.userRomsHiddenDao().deleteForOwner(ownerUserId)
+            database.gameGroupPickDao().deleteForOwner(ownerUserId)
             database.collectionMembershipDao().deleteForOwner(ownerUserId)
             database.saveCacheDao().deleteByOwner(ownerUserId)
             database.pendingConflictDao().deleteByOwner(ownerUserId)

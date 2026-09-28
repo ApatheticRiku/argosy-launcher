@@ -48,6 +48,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -556,6 +557,11 @@ fun LibraryScreen(
             uiState.focusedGame?.let { game ->
                 QuickMenuOverlay(
                     game = game,
+                    rows = libraryQuickMenuRows(
+                        game = game,
+                        isCustomGridHome = uiState.isCustomGridHome,
+                        hasSiblingGroup = uiState.quickMenuHasSiblingGroup
+                    ),
                     focusIndex = uiState.quickMenuFocusIndex,
                     onDismiss = { viewModel.toggleQuickMenu() },
                     onPrimaryAction = {
@@ -576,14 +582,11 @@ fun LibraryScreen(
                         viewModel.toggleQuickMenu()
                         viewModel.showAddToCollectionModal(game.id)
                     },
-                    onAddToGrid = if (uiState.isCustomGridHome) {
-                        {
-                            viewModel.toggleQuickMenu()
-                            viewModel.addGameToHomeGrid(game.id)
-                        }
-                    } else {
-                        null
+                    onAddToGrid = {
+                        viewModel.toggleQuickMenu()
+                        viewModel.addGameToHomeGrid(game.id)
                     },
+                    onActiveVariant = { viewModel.openActiveVariant(game.id) },
                     onRefresh = { viewModel.refreshGameData(game.id) },
                     onResyncPlatform = {
                         viewModel.toggleQuickMenu()
@@ -695,6 +698,15 @@ fun LibraryScreen(
                 }
             }
         }
+
+        val siblingChoiceState by viewModel.siblingChoiceState.collectAsState()
+        com.nendo.argosy.ui.screens.common.SiblingChoiceModalHost(
+            state = siblingChoiceState,
+            onMove = viewModel::moveSiblingChoiceFocus,
+            onFocus = viewModel::setSiblingChoiceFocus,
+            onConfirm = viewModel::confirmSiblingChoice,
+            onDismiss = viewModel::dismissSiblingChoice
+        )
 
         uiState.memcardPickerState?.let { pickerState ->
             MemcardPickerModal(
@@ -1651,17 +1663,19 @@ private fun FilterOptionItem(
 @Composable
 private fun QuickMenuOverlay(
     game: LibraryGameUi,
+    rows: List<LibraryQuickMenuRow>,
     focusIndex: Int,
     onDismiss: () -> Unit,
     onPrimaryAction: () -> Unit,
     onFavorite: () -> Unit,
     onDetails: () -> Unit,
     onAddToCollection: () -> Unit,
+    onAddToGrid: () -> Unit,
+    onActiveVariant: () -> Unit,
     onRefresh: () -> Unit,
     onResyncPlatform: () -> Unit,
     onDelete: () -> Unit,
-    onHide: () -> Unit,
-    onAddToGrid: (() -> Unit)? = null
+    onHide: () -> Unit
 ) {
     val primaryIcon = when {
         game.needsInstall -> Icons.Default.InstallMobile
@@ -1681,80 +1695,60 @@ private fun QuickMenuOverlay(
         val onClick: () -> Unit
     )
 
-    val options = buildList {
-        add(MenuEntry(primaryIcon, primaryLabel, onClick = onPrimaryAction))
-        add(
-            MenuEntry(
-                if (game.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                if (game.isFavorite) {
-                    stringResource(R.string.library_quickmenu_unfavorite)
-                } else {
-                    stringResource(R.string.library_quickmenu_favorite)
-                },
-                onClick = onFavorite
-            )
-        )
-        add(MenuEntry(Icons.Default.Info, stringResource(R.string.library_quickmenu_details), onClick = onDetails))
-        add(
-            MenuEntry(
-                Icons.AutoMirrored.Filled.PlaylistAdd,
-                stringResource(R.string.library_quickmenu_add_to_collection),
-                onClick = onAddToCollection
-            )
-        )
-        if (onAddToGrid != null) {
-            add(
-                MenuEntry(
-                    Icons.Default.GridView,
-                    stringResource(R.string.library_quickmenu_add_to_grid),
-                    onClick = onAddToGrid
-                )
-            )
-        }
-        if (game.isRommGame || game.isAndroidApp) {
-            add(
-                MenuEntry(
-                    Icons.Default.Refresh,
-                    stringResource(R.string.library_quickmenu_refresh_data),
-                    onClick = onRefresh
-                )
-            )
-        }
-        add(
-            MenuEntry(
-                Icons.Default.Refresh,
-                stringResource(R.string.library_quickmenu_resync_platform),
-                onClick = onResyncPlatform
-            )
-        )
+    val favoriteLabel = if (game.isFavorite) {
+        stringResource(R.string.library_quickmenu_unfavorite)
+    } else {
+        stringResource(R.string.library_quickmenu_favorite)
     }
-    val dangerousOptions = buildList {
-        if (game.isDownloaded || game.needsInstall) {
-            add(
-                MenuEntry(
-                    Icons.Default.DeleteOutline,
-                    if (game.isAndroidApp && game.isDownloaded) {
-                        stringResource(R.string.library_quickmenu_uninstall)
-                    } else {
-                        stringResource(R.string.library_quickmenu_delete_download)
-                    },
-                    isDangerous = true,
-                    onClick = onDelete
-                )
-            )
-        }
-        add(
-            MenuEntry(
-                label = if (game.isHidden) {
-                    stringResource(R.string.library_quickmenu_show)
-                } else {
-                    stringResource(R.string.library_quickmenu_hide)
-                },
-                isDangerous = !game.isHidden,
-                onClick = onHide
-            )
-        )
+    val detailsLabel = stringResource(R.string.library_quickmenu_details)
+    val addToCollectionLabel = stringResource(R.string.library_quickmenu_add_to_collection)
+    val addToGridLabel = stringResource(R.string.library_quickmenu_add_to_grid)
+    val activeVariantLabel = stringResource(R.string.library_quickmenu_active_variant)
+    val refreshLabel = stringResource(R.string.library_quickmenu_refresh_data)
+    val resyncLabel = stringResource(R.string.library_quickmenu_resync_platform)
+    val deleteLabel = if (game.isAndroidApp && game.isDownloaded) {
+        stringResource(R.string.library_quickmenu_uninstall)
+    } else {
+        stringResource(R.string.library_quickmenu_delete_download)
     }
+    val hideLabel = if (game.isHidden) {
+        stringResource(R.string.library_quickmenu_show)
+    } else {
+        stringResource(R.string.library_quickmenu_hide)
+    }
+
+    fun LibraryQuickMenuRow.toEntry(): MenuEntry = when (this) {
+        LibraryQuickMenuRow.PRIMARY -> MenuEntry(primaryIcon, primaryLabel, onClick = onPrimaryAction)
+        LibraryQuickMenuRow.FAVORITE -> MenuEntry(
+            if (game.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+            favoriteLabel,
+            onClick = onFavorite
+        )
+        LibraryQuickMenuRow.DETAILS -> MenuEntry(Icons.Default.Info, detailsLabel, onClick = onDetails)
+        LibraryQuickMenuRow.ADD_TO_COLLECTION -> MenuEntry(
+            Icons.AutoMirrored.Filled.PlaylistAdd,
+            addToCollectionLabel,
+            onClick = onAddToCollection
+        )
+        LibraryQuickMenuRow.ADD_TO_GRID -> MenuEntry(Icons.Default.GridView, addToGridLabel, onClick = onAddToGrid)
+        LibraryQuickMenuRow.ACTIVE_VARIANT -> MenuEntry(
+            Icons.Default.Layers,
+            activeVariantLabel,
+            onClick = onActiveVariant
+        )
+        LibraryQuickMenuRow.REFRESH -> MenuEntry(Icons.Default.Refresh, refreshLabel, onClick = onRefresh)
+        LibraryQuickMenuRow.RESYNC_PLATFORM -> MenuEntry(Icons.Default.Refresh, resyncLabel, onClick = onResyncPlatform)
+        LibraryQuickMenuRow.DELETE -> MenuEntry(
+            Icons.Default.DeleteOutline,
+            deleteLabel,
+            isDangerous = true,
+            onClick = onDelete
+        )
+        LibraryQuickMenuRow.HIDE -> MenuEntry(label = hideLabel, isDangerous = !game.isHidden, onClick = onHide)
+    }
+
+    val options = rows.filterNot { it.isDangerous }.map { it.toEntry() }
+    val dangerousOptions = rows.filter { it.isDangerous }.map { it.toEntry() }
 
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)

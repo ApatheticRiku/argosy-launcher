@@ -3,22 +3,25 @@ package com.nendo.argosy.domain.usecase.game
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.TitleIdDownloadObserver
-import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.PreLaunchSyncResult
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.repository.SiblingGroupRepository
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.domain.usecase.state.PreLaunchStateSyncUseCase
 import com.nendo.argosy.util.Logger
+import com.nendo.argosy.util.SafeCoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "LaunchWithSync"
@@ -28,7 +31,6 @@ class LaunchWithSyncUseCase @Inject constructor(
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
     private val activateSaveChannelUseCase:
         com.nendo.argosy.domain.usecase.savechannel.ActivateSaveChannelUseCase,
-    private val emulatorConfigDao: EmulatorConfigDao,
     private val emulatorResolver: EmulatorResolver,
     private val preferencesRepository: UserPreferencesRepository,
     private val romMRepository: RomMRepository,
@@ -37,8 +39,11 @@ class LaunchWithSyncUseCase @Inject constructor(
     private val preLaunchStateSyncUseCase: PreLaunchStateSyncUseCase,
     private val n3dsSaveCaseRepair: com.nendo.argosy.data.sync.N3dsSaveCaseRepair,
     private val syncStatesOnSessionEndUseCase:
-        com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase
+        com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase,
+    private val siblingGroupRepository: SiblingGroupRepository
 ) {
+    private val backgroundScope = SafeCoroutineScope(Dispatchers.IO, TAG)
+
     @Deprecated("Use invokeWithProgress instead", ReplaceWith("invokeWithProgress(gameId)"))
     fun invoke(gameId: Long): Flow<SyncState> = flow {
         val prefs = preferencesRepository.userPreferences.first()
@@ -58,11 +63,7 @@ class LaunchWithSyncUseCase @Inject constructor(
             return@flow
         }
 
-        val emulatorConfig = emulatorConfigDao.getByGameId(gameId)
-            ?: emulatorConfigDao.getDefaultForPlatform(game.platformId)
-
-        val preferredEmulator = emulatorResolver.getPreferredEmulator(game.platformSlug)
-        val emulatorPackage = emulatorConfig?.packageName ?: preferredEmulator?.def?.packageName
+        val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(game.id, game.platformId, game.platformSlug)
         if (emulatorPackage == null) {
             emit(SyncState.Skipped)
             return@flow
@@ -127,6 +128,13 @@ class LaunchWithSyncUseCase @Inject constructor(
             .onFailure { Logger.error(TAG, "Pre-launch state sync failed for gameId=$gameId", it) }
     }
 
+    private fun refreshMainSiblingInBackground(gameId: Long) {
+        backgroundScope.launch {
+            runCatching { siblingGroupRepository.refreshRommMainSibling(gameId) }
+                .onFailure { Logger.warn(TAG, "Main-sibling refresh failed for gameId=$gameId: ${it.message}") }
+        }
+    }
+
     fun invokeWithProgress(
         gameId: Long,
         channelName: String? = null,
@@ -159,11 +167,7 @@ class LaunchWithSyncUseCase @Inject constructor(
             return@flow
         }
 
-        val emulatorConfig = emulatorConfigDao.getByGameId(gameId)
-            ?: emulatorConfigDao.getDefaultForPlatform(game.platformId)
-
-        val preferredEmulator = emulatorResolver.getPreferredEmulator(game.platformSlug)
-        val emulatorPackage = emulatorConfig?.packageName ?: preferredEmulator?.def?.packageName
+        val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(game.id, game.platformId, game.platformSlug)
         if (emulatorPackage == null) {
             emit(SyncProgress.PreLaunch.CheckingSave(channelName, found = false))
             emit(SyncProgress.Skipped)
@@ -179,6 +183,7 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         if (!SavePathRegistry.canSyncWithSettings(emulatorId, prefs.saveSyncEnabled)) {
             if (romMRepository.isConnected()) {
+                refreshMainSiblingInBackground(gameId)
                 syncStatesQuietly(gameId, emulatorPackage, channelName)
             }
             emit(SyncProgress.Skipped)
@@ -195,6 +200,8 @@ class LaunchWithSyncUseCase @Inject constructor(
         }
 
         emit(SyncProgress.PreLaunch.Connecting(channelName, success = true))
+
+        refreshMainSiblingInBackground(gameId)
 
         titleIdDownloadObserver.extractTitleIdForGame(gameId)
 

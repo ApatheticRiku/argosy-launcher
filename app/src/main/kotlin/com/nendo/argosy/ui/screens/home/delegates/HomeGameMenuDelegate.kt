@@ -37,6 +37,7 @@ sealed class GameMenuAction {
     data class ToggleFavorite(val gameId: Long) : GameMenuAction()
     data class ViewDetails(val gameId: Long) : GameMenuAction()
     data class AddToCollection(val gameId: Long) : GameMenuAction()
+    data class ActiveVariant(val gameId: Long) : GameMenuAction()
     data class Refresh(val gameId: Long, val isAndroidApp: Boolean) : GameMenuAction()
     data class ResyncPlatform(val platformId: Long, val platformName: String) : GameMenuAction()
     data class Delete(val gameId: Long) : GameMenuAction()
@@ -82,7 +83,8 @@ class HomeGameMenuDelegate @Inject constructor(
         delta: Int,
         focusedGame: HomeGameUi?,
         isPlatformRow: Boolean,
-        extraRows: Int = 0
+        extraRows: Int = 0,
+        hasSiblingGroup: Boolean = false
     ) {
         _state.update {
             val isDownloaded = focusedGame?.isDownloaded == true
@@ -92,6 +94,7 @@ class HomeGameMenuDelegate @Inject constructor(
             val isSyncable = isPlatformRow && focusedGame != null && focusedGame.platformId > 0
             var maxIndex = if (isDownloaded || needsInstall) MENU_INDEX_MAX_DOWNLOADED else MENU_INDEX_MAX_REMOTE
             maxIndex += extraRows
+            if (hasSiblingGroup) maxIndex++
             if (isRommGame || isAndroidApp) maxIndex++
             if (isAndroidApp) maxIndex++
             if (isSyncable) maxIndex++
@@ -104,7 +107,8 @@ class HomeGameMenuDelegate @Inject constructor(
         focusIndex: Int,
         game: HomeGameUi,
         isPlatformRow: Boolean,
-        playDisplays: List<Int> = emptyList()
+        playDisplays: List<Int> = emptyList(),
+        hasSiblingGroup: Boolean = false
     ): GameMenuAction {
         var currentIdx = 0
         val playIdx = currentIdx++
@@ -124,6 +128,7 @@ class HomeGameMenuDelegate @Inject constructor(
         val favoriteIdx = currentIdx++
         val detailsIdx = currentIdx++
         val addToCollectionIdx = currentIdx++
+        val activeVariantIdx = if (hasSiblingGroup) currentIdx++ else -1
         val refreshIdx = if (game.isRommGame || game.isAndroidApp) currentIdx++ else -1
         val resyncIdx = if (isPlatformRow && game.platformId > 0) currentIdx++ else -1
         val deleteIdx = if (game.isDownloaded || game.needsInstall) currentIdx++ else -1
@@ -135,6 +140,7 @@ class HomeGameMenuDelegate @Inject constructor(
             favoriteIdx -> GameMenuAction.ToggleFavorite(game.id)
             detailsIdx -> GameMenuAction.ViewDetails(game.id)
             addToCollectionIdx -> GameMenuAction.AddToCollection(game.id)
+            activeVariantIdx -> GameMenuAction.ActiveVariant(game.id)
             refreshIdx -> GameMenuAction.Refresh(game.id, game.isAndroidApp)
             resyncIdx -> GameMenuAction.ResyncPlatform(game.platformId, game.platformDisplayName)
             deleteIdx -> GameMenuAction.Delete(game.id)

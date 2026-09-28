@@ -27,7 +27,8 @@ class RomMUserPropertyService @Inject constructor(
     private val syncCoordinator: dagger.Lazy<SyncCoordinator>,
     private val userPreferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository,
     private val gameFileSync: RomMGameFileSync,
-    private val gameFileDao: GameFileDao
+    private val gameFileDao: GameFileDao,
+    private val siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
 
@@ -64,6 +65,7 @@ class RomMUserPropertyService @Inject constructor(
     suspend fun updateHidden(gameId: Long, hidden: Boolean): RomMResult<Unit> {
         val game = gameDao.getById(gameId) ?: return RomMResult.Error("Game not found")
         overlayWriter.setHidden(gameId, hidden)
+        siblingGroupRepository.onHiddenChanged(gameId)
         if (hidden) return RomMResult.Success(Unit)
         val rommId = game.rommId ?: return RomMResult.Success(Unit)
         syncCoordinator.get().queuePropertyChange(gameId, rommId, SyncType.HIDDEN, intValue = 0)
@@ -244,6 +246,9 @@ class RomMUserPropertyService @Inject constructor(
             val current = gameDao.getById(game.id) ?: game
             gameDao.update(updatedGame.withCurrentUserColumns(current))
             gameFileSync.sync(game.id, rom, game.platformSlug, fileListIsAuthoritative = true)
+            siblingGroupRepository.recomputeGroups(
+                listOfNotNull(current.siblingGroupKey, updatedGame.siblingGroupKey)
+            )
             RomMResult.Success(Unit)
         } catch (e: Exception) {
             RomMResult.Error(e.message ?: "Failed to refresh game data")

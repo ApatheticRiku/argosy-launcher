@@ -82,6 +82,7 @@
     <string name="home_quick_actions_unfavorite">Quitar de favoritos</string>
     <string name="home_quick_actions_details">Detalles</string>
     <string name="home_quick_actions_add_to_collection">Agregar a colección</string>
+    <string name="home_quick_actions_active_variant">Variante activa</string>
     <string name="home_quick_actions_refresh_data">Actualizar datos</string>
     <string name="home_quick_actions_resync_platform">Resincronizar plataforma</string>
     <string name="home_quick_actions_delete_download">Eliminar descarga</string>

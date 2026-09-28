@@ -135,10 +135,14 @@ class HomeViewModel @Inject constructor(
     private val homeTilePromptQueue: com.nendo.argosy.data.repository.HomeTilePromptQueue,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
-    private val romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository
+    private val romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository,
+    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate
 ) : ViewModel(), HomeInputActions {
 
+    val siblingChoiceState = siblingChoice.state
+
     private val logoAttempts = mutableSetOf<Long>()
+    private var gameMenuOpenJob: Job? = null
 
     private val companionOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("home", this)
     private val tileShowcaseOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("home.tile", this)
@@ -200,7 +204,7 @@ class HomeViewModel @Inject constructor(
         featureFilterOptions = {
             com.nendo.argosy.ui.components.FeatureFilterOptions(
                 platforms = libraryDelegate.platformOptionsForTiles(),
-                genres = gameRepository.getDistinctGenres(),
+                genres = gameRepository.getDistinctGenres(oneEntryPerGroup = false),
                 series = collectionRepository.getNamesWithGamesByType(CollectionType.SERIES)
             )
         },
@@ -220,7 +224,9 @@ class HomeViewModel @Inject constructor(
 
     init {
         modalResetSignal.signal.onEach {
+            gameMenuOpenJob?.cancel()
             gameMenuDelegate.resetMenu()
+            siblingChoice.reset()
         }.launchIn(viewModelScope)
 
         loadData()
@@ -1828,14 +1834,22 @@ class HomeViewModel @Inject constructor(
      * here. One decision for the rail, the game menu and every tile, so a tile pointing at a game
      * that is not downloaded fetches it the way the rail would rather than failing to launch.
      */
-    override fun activateGame(game: HomeGameUi) {
+    override fun activateGame(game: HomeGameUi) = activate(game, exactRow = false)
+
+    override fun activateExactGame(game: HomeGameUi) = activate(game, exactRow = true)
+
+    fun activateFocusedGame(game: HomeGameUi) =
+        activate(game, exactRow = _uiState.value.layoutKind == HomeLayoutKind.CUSTOM_GRID)
+
+    private fun activate(game: HomeGameUi, exactRow: Boolean) {
         val indicator = downloadIndicators.value[game.id] ?: GameDownloadIndicator.NONE
-        when {
-            game.needsInstall -> installApk(game.id)
-            game.isDownloaded -> launchGame(game.id)
-            indicator.isPaused || indicator.isQueued -> resumeDownload(game.id)
-            game.isSteamGame -> queueSteamDownload(game.id)
-            else -> queueDownload(game.id)
+        when (homeGameActivation(game, indicator, exactRow)) {
+            HomeGameActivation.INSTALL -> installApk(game.id)
+            HomeGameActivation.LAUNCH -> launchGame(game.id)
+            HomeGameActivation.RESUME_DOWNLOAD -> resumeDownload(game.id)
+            HomeGameActivation.STEAM_DOWNLOAD -> queueSteamDownload(game.id)
+            HomeGameActivation.DOWNLOAD_EXACT -> downloadDelegate.queueDownload(viewModelScope, game.id)
+            HomeGameActivation.DOWNLOAD_WITH_CHOICE -> queueDownload(game.id)
         }
     }
 
@@ -1912,7 +1926,9 @@ class HomeViewModel @Inject constructor(
     }
 
     override fun queueDownload(gameId: Long) {
-        downloadDelegate.queueDownload(viewModelScope, gameId)
+        siblingChoice.requestDownload(viewModelScope, gameId) { chosenGameId ->
+            downloadDelegate.queueDownload(viewModelScope, chosenGameId)
+        }
     }
 
     override fun queueSteamDownload(gameId: Long) {
@@ -1926,24 +1942,29 @@ class HomeViewModel @Inject constructor(
     // --- Public API: Game Menu ---
 
     override fun toggleGameMenu() {
-        val opening = !_uiState.value.showGameMenu
-        val displays = if (opening) {
-            DualScreenManagerHolder.instance
+        if (gameMenuDelegate.state.value.showGameMenu) {
+            gameMenuOpenJob?.cancel()
+            _uiState.update { it.copy(gameMenuDisplays = emptyList()) }
+            gameMenuDelegate.toggleGameMenu()
+            DualScreenManagerHolder.instance?.hideScreenNumbers()
+            return
+        }
+        if (gameMenuOpenJob?.isActive == true) return
+        val gameId = _uiState.value.focusedGame?.id
+        gameMenuOpenJob = viewModelScope.launch {
+            val hasChoice = gameId != null && siblingChoice.hasChoice(gameId)
+            if (_uiState.value.focusedGame?.id != gameId) return@launch
+            val displays = DualScreenManagerHolder.instance
                 ?.focusableDisplays()
                 ?.map { screen ->
                     com.nendo.argosy.ui.components.AppLaunchTarget(screen.displayId, screen.number)
                 }
                 .orEmpty()
-        } else {
-            emptyList()
-        }
-        _uiState.update { it.copy(gameMenuDisplays = displays) }
-        gameMenuDelegate.toggleGameMenu()
-        val dsm = DualScreenManagerHolder.instance
-        if (opening && displays.size > 1) {
-            dsm?.showScreenNumbers(com.nendo.argosy.hardware.DisplayBadgeSize.SMALL)
-        } else if (!opening) {
-            dsm?.hideScreenNumbers()
+            _uiState.update { it.copy(gameMenuDisplays = displays, gameMenuHasSiblingGroup = hasChoice) }
+            gameMenuDelegate.toggleGameMenu()
+            if (displays.size > 1) {
+                DualScreenManagerHolder.instance?.showScreenNumbers(com.nendo.argosy.hardware.DisplayBadgeSize.SMALL)
+            }
         }
     }
 
@@ -1955,8 +1976,29 @@ class HomeViewModel @Inject constructor(
         } else {
             0
         }
-        gameMenuDelegate.moveGameMenuFocus(delta, state.focusedGame, isPlatformRow, extraRows)
+        gameMenuDelegate.moveGameMenuFocus(
+            delta,
+            state.focusedGame,
+            isPlatformRow,
+            extraRows,
+            state.gameMenuHasSiblingGroup
+        )
     }
+
+    fun openActiveVariant(gameId: Long) {
+        toggleGameMenu()
+        siblingChoice.openActiveVariant(viewModelScope, gameId) {
+            viewModelScope.launch { refreshCurrentRowInternal() }
+        }
+    }
+
+    fun moveSiblingChoiceFocus(delta: Int) = siblingChoice.moveFocus(delta)
+
+    fun setSiblingChoiceFocus(index: Int) = siblingChoice.setFocus(index)
+
+    fun confirmSiblingChoice() = siblingChoice.confirm(viewModelScope)
+
+    fun dismissSiblingChoice() = siblingChoice.dismiss()
 
     override fun confirmGameMenuSelection(onGameSelect: (Long) -> Unit) {
         val state = _uiState.value
@@ -1967,12 +2009,13 @@ class HomeViewModel @Inject constructor(
             state.gameMenuFocusIndex,
             game,
             isPlatformRow,
-            state.gameMenuDisplays.map { it.displayId }
+            state.gameMenuDisplays.map { it.displayId },
+            state.gameMenuHasSiblingGroup
         )
         when (action) {
             is GameMenuAction.Play -> {
                 toggleGameMenu()
-                activateGame(game)
+                activateFocusedGame(game)
             }
             is GameMenuAction.PlayOnDisplay -> {
                 toggleGameMenu()
@@ -1990,6 +2033,7 @@ class HomeViewModel @Inject constructor(
                 toggleGameMenu()
                 showAddToCollectionModal(action.gameId)
             }
+            is GameMenuAction.ActiveVariant -> openActiveVariant(action.gameId)
             is GameMenuAction.Refresh -> {
                 if (action.isAndroidApp) refreshAndroidGameData(action.gameId)
                 else refreshGameData(action.gameId)

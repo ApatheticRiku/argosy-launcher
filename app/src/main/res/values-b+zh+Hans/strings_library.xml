@@ -81,6 +81,7 @@
     <string name="library_quickmenu_details">详情</string>
     <string name="library_quickmenu_add_to_collection">添加到合集</string>
     <string name="library_quickmenu_add_to_grid">添加到网格</string>
+    <string name="library_quickmenu_active_variant">当前变体</string>
     <string name="library_quickmenu_refresh_data">刷新数据</string>
     <string name="library_quickmenu_resync_platform">重新同步平台</string>
     <string name="library_quickmenu_uninstall">卸载</string>

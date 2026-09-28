@@ -448,6 +448,13 @@ class SyncCoordinator @Inject constructor(
             Logger.debug(TAG, "processSaveFile: dropping queue item for non-local game gameId=${item.gameId}")
             return true
         }
+        if (!item.targetsRomOf(game)) {
+            Logger.warn(
+                TAG,
+                "processSaveFile: queue row rommId=${item.rommId} no longer matches gameId=${item.gameId} rommId=${game.rommId}; keeping the save local and dropping the row"
+            )
+            return true
+        }
         val payload = payloadCodec.decodeSaveFile(item.payloadJson) ?: return false
         val channel = payload.channelName
         if (channel != null && Regex("""^state_""", RegexOption.IGNORE_CASE).containsMatchIn(channel)) {
@@ -573,6 +580,14 @@ class SyncCoordinator @Inject constructor(
     private suspend fun processSaveState(item: PendingSyncQueueEntity, signedInUserId: Long?): Boolean {
         val payload = payloadCodec.decodeSaveState(item.payloadJson) ?: return false
         val state = stateCacheManager.get().getStateById(payload.stateCacheId) ?: return false
+        val game = gameDao.getById(item.gameId)
+        if (!item.targetsRomOf(game)) {
+            Logger.warn(
+                TAG,
+                "processSaveState: queue row rommId=${item.rommId} no longer matches gameId=${item.gameId} rommId=${game?.rommId}; keeping state ${state.id} local and dropping the row"
+            )
+            return true
+        }
         val route = routeForOwner(item.ownerUserId, signedInUserId)
         if (route is OwnerRoute.Unavailable) {
             Logger.warn(
@@ -584,7 +599,6 @@ class SyncCoordinator @Inject constructor(
         val api = (route as? OwnerRoute.Delegated)?.account?.api
             ?: saveSyncRepository.get().getApi()
             ?: return false
-        val game = gameDao.getById(item.gameId)
         val romBaseName = game?.localPath?.let { java.io.File(it).nameWithoutExtension } ?: state.platformSlug
 
         val result = stateCacheManager.get().uploadStateToRomM(state, item.rommId, romBaseName, api)
@@ -691,6 +705,15 @@ class SyncCoordinator @Inject constructor(
         val file = File(payload.localPath)
         if (!file.exists()) {
             Logger.debug(TAG, "processScreenshot: file missing, dropping queue item for gameId=${item.gameId}")
+            return true
+        }
+        val game = gameDao.getById(item.gameId)
+        if (!item.targetsRomOf(game)) {
+            Logger.warn(
+                TAG,
+                "processScreenshot: queue row rommId=${item.rommId} no longer matches gameId=${item.gameId} rommId=${game?.rommId}; dropping the upload copy"
+            )
+            file.delete()
             return true
         }
 

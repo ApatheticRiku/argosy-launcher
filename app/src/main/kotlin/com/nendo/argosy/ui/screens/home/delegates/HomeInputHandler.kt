@@ -117,6 +117,7 @@ interface HomeInputActions {
     fun installApk(gameId: Long)
     fun launchGame(gameId: Long, channelName: String? = null)
     fun activateGame(game: HomeGameUi)
+    fun activateExactGame(game: HomeGameUi)
     fun resumeDownload(gameId: Long)
     fun queueDownload(gameId: Long)
     fun queueSteamDownload(gameId: Long)
@@ -368,14 +369,9 @@ class HomeInputHandler(
         }
     }
 
-    /**
-     * A tile's game goes through the same play-or-fetch decision as a rail card. The resolved game
-     * is what carries the download state; a tile whose game has not been resolved yet falls back to
-     * a plain launch rather than doing nothing.
-     */
     private fun activateTileGame(gameId: Long, state: HomeUiState) {
         val game = state.tileGames[gameId]
-        if (game != null) actions.activateGame(game) else actions.launchGame(gameId)
+        if (game != null) actions.activateExactGame(game) else actions.launchGame(gameId)
     }
 
     private fun confirmFeatureTile(

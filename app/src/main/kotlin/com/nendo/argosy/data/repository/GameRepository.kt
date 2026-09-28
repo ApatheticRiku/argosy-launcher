@@ -972,7 +972,8 @@ class GameRepository @Inject constructor(
         )
     }
 
-    suspend fun getDistinctGenres(): List<String> = gameDao.getDistinctGenres(hiddenOwnerId())
+    suspend fun getDistinctGenres(oneEntryPerGroup: Boolean): List<String> =
+        gameDao.getDistinctGenres(hiddenOwnerId(), oneEntryPerGroup)
 
     suspend fun getDistinctRegions(): List<String> =
         gameDao.getDistinctRegions(hiddenOwnerId())
@@ -1044,8 +1045,8 @@ class GameRepository @Inject constructor(
     suspend fun statsByPlatform(): Map<Long, PlatformShowcaseStats> =
         gameDao.statsByPlatform(hiddenOwnerId()).associateBy { it.platformId }
 
-    suspend fun showcaseCovers(platformId: Long?): List<String> =
-        gameDao.showcaseCovers(platformId, hiddenOwnerId())
+    suspend fun showcaseCovers(platformId: Long?, oneEntryPerGroup: Boolean): List<String> =
+        gameDao.showcaseCovers(platformId, hiddenOwnerId(), oneEntryPerGroup)
 
     suspend fun statsForGames(gameIds: List<Long>): PlatformShowcaseStats? =
         if (gameIds.isEmpty()) null else gameDao.statsForGamesChunked(gameIds, hiddenOwnerId())

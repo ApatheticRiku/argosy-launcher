@@ -537,6 +537,10 @@
     <!-- Row in the options menu when the library holds several editions of the same game. Verb
          phrase: chooses which edition to launch. -->
     <string name="gamedetail_more_options_select_variant">Select Variant</string>
+    <!-- Row in the options menu when the server holds several copies of this game (regional
+         releases, revisions, hacks). Noun phrase naming the copy in use; opens the chooser that
+         sets which copy the library shows. -->
+    <string name="gamedetail_more_options_active_variant">Active Variant</string>
     <!-- Row in the options menu. Noun, plural: opens the list of the game's downloadable files so
          individual ones can be added or removed. -->
     <string name="gamedetail_more_options_files">Files</string>

@@ -2,7 +2,6 @@ package com.nendo.argosy.domain.usecase.state
 
 import android.util.Log
 import com.nendo.argosy.data.emulator.CoreVersionExtractor
-import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.StatePathRegistry
 import com.nendo.argosy.data.local.dao.GameDao
@@ -40,7 +39,6 @@ class SyncStatesOnSessionEndUseCase @Inject constructor(
     private val stateCacheManager: StateCacheManager,
     private val gameDao: GameDao,
     private val activeSaveRepository: ActiveSaveRepository,
-    private val emulatorDetector: EmulatorDetector,
     private val coreVersionExtractor: CoreVersionExtractor,
     private val preferencesRepository: UserPreferencesRepository,
     private val stateOwnershipTracker: StateOwnershipTracker,
@@ -92,7 +90,7 @@ class SyncStatesOnSessionEndUseCase @Inject constructor(
 
     private suspend fun sync(
         gameId: Long,
-        emulatorPackage: String,
+        sessionPackage: String,
         queueUploads: Boolean,
         skipKnownContent: Boolean
     ): StateSyncResult {
@@ -114,12 +112,18 @@ class SyncStatesOnSessionEndUseCase @Inject constructor(
             return StateSyncResult.Error(StateSyncFailureReason.NoLocalPath)
         }
 
-        val emulatorDef = emulatorDetector.getByPackage(emulatorPackage)
-        if (emulatorDef == null) {
-            Log.w(TAG, "Unknown emulator: $emulatorPackage")
+        val sessionEmulator = emulatorResolver.resolveSessionEmulator(
+            game.id,
+            game.platformId,
+            game.platformSlug,
+            sessionPackage
+        )
+        if (sessionEmulator == null) {
+            Log.w(TAG, "Unknown emulator: $sessionPackage")
             return StateSyncResult.NotConfigured
         }
-        val emulatorId = emulatorDef.id
+        val emulatorId = sessionEmulator.emulatorId
+        val emulatorPackage = sessionEmulator.packageName
 
         val config = StatePathRegistry.getConfig(emulatorId)
         if (config == null) {

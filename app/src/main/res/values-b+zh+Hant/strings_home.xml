@@ -82,6 +82,7 @@
     <string name="home_quick_actions_unfavorite">取消最愛</string>
     <string name="home_quick_actions_details">詳情</string>
     <string name="home_quick_actions_add_to_collection">加入合輯</string>
+    <string name="home_quick_actions_active_variant">目前版本</string>
     <string name="home_quick_actions_refresh_data">重新整理資料</string>
     <string name="home_quick_actions_resync_platform">重新同步平台</string>
     <string name="home_quick_actions_delete_download">刪除下載</string>

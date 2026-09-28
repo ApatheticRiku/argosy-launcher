@@ -160,4 +160,39 @@ class RomMGameFileSyncTest {
         assertEquals(VariantCategory.WALKTHROUGH.key, walkthrough.category)
         assertFalse("a guide is not a launch target", walkthrough.isLaunchTarget)
     }
+
+    @Test
+    fun `hack, mod and uncategorized nested files are never launch targets`() = runTest {
+        val captured = slot<List<GameFileEntity>>()
+        coEvery { gameFileDao.insertAll(capture(captured)) } returns Unit
+
+        sync.sync(
+            gameId = 1L,
+            rom = rom(listOf(
+                file(1, "Game (USA).sfc", "game"),
+                file(2, "Game (Hack).sfc", "hack"),
+                file(3, "Game (Mod).sfc", "mod"),
+                file(4, "Game (T-En).sfc", "translation"),
+                file(5, "Game (Demo).sfc", "demo"),
+                file(6, "Game (Proto).sfc", "prototype"),
+                RomMRomFile(
+                    id = 7L,
+                    romId = 11607L,
+                    fileName = "Extra.sfc",
+                    filePath = "roms/switch/extras",
+                    fileSizeBytes = 1024L,
+                    fullPath = "roms/switch/extras/Extra.sfc",
+                    category = null
+                )
+            )),
+            platformSlug = "snes",
+            fileListIsAuthoritative = true
+        )
+
+        val launchable = captured.captured.filter { it.isLaunchTarget }.map { it.fileName }.toSet()
+        assertEquals(
+            setOf("Game (USA).sfc", "Game (T-En).sfc", "Game (Demo).sfc", "Game (Proto).sfc"),
+            launchable
+        )
+    }
 }

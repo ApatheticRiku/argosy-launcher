@@ -646,6 +646,21 @@ internal fun routeDismissRegionPicker(vm: SettingsViewModel) {
     vm.soundManager.play(SoundType.CLOSE_MODAL)
 }
 
+internal fun routeShowRegionPriority(vm: SettingsViewModel) {
+    vm.syncDelegate.showRegionPriority()
+    vm.soundManager.play(SoundType.OPEN_MODAL)
+}
+
+internal fun routeBackRegionPriority(vm: SettingsViewModel) {
+    if (vm.syncDelegate.isHoldingRegionPriority()) {
+        vm.syncDelegate.cancelRegionPriorityHold()
+        vm.soundManager.play(SoundType.BACK)
+    } else {
+        vm.syncDelegate.dismissRegionPriority()
+        vm.soundManager.play(SoundType.CLOSE_MODAL)
+    }
+}
+
 internal fun routeToggleSyncScreenshots(vm: SettingsViewModel) {
     val current = vm._uiState.value.server.syncScreenshotsEnabled
     vm.syncDelegate.toggleSyncScreenshots(vm.viewModelScope, current)

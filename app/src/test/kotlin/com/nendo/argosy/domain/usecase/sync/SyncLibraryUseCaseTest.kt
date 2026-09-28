@@ -1,5 +1,6 @@
 package com.nendo.argosy.domain.usecase.sync
 
+import com.nendo.argosy.data.preferences.AppPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.remote.romm.SyncProgress
@@ -33,6 +34,7 @@ class SyncLibraryUseCaseTest {
     private lateinit var romMRepository: RomMRepository
     private lateinit var notificationManager: NotificationManager
     private lateinit var librarySyncBus: LibrarySyncBus
+    private lateinit var appPreferences: AppPreferencesRepository
     private lateinit var useCase: SyncLibraryUseCase
 
     @Before
@@ -41,11 +43,14 @@ class SyncLibraryUseCaseTest {
         every { romMRepository.syncProgress } returns MutableStateFlow(SyncProgress())
         notificationManager = mockk(relaxed = true)
         librarySyncBus = mockk(relaxed = true)
+        appPreferences = mockk(relaxed = true)
+        coEvery { appPreferences.isSiblingFullPassDone() } returns true
         useCase = SyncLibraryUseCase(
             romMRepository,
             notificationManager,
             librarySyncBus,
-            SyncNotificationCopyResources()
+            SyncNotificationCopyResources(),
+            appPreferences
         ).apply {
             progressDispatcher = UnconfinedTestDispatcher()
         }
@@ -139,6 +144,22 @@ class SyncLibraryUseCaseTest {
         val result = useCase(changesSince = since)
 
         assertEquals(full, (result as SyncLibraryResult.Success).result)
+    }
+
+    @Test
+    fun `a changes time is ignored until the first full pass with sibling grouping`() = runTest {
+        val since = java.time.Instant.parse("2026-09-20T00:00:00Z")
+        val full = SyncResult(5, 0, 12, 0, emptyList())
+        coEvery { appPreferences.isSiblingFullPassDone() } returns false
+        every { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.getPlatformCount() } returns RomMResult.Success(5)
+        coEvery { romMRepository.syncLibrary(any()) } returns full
+
+        val result = useCase(changesSince = since)
+
+        assertEquals(full, (result as SyncLibraryResult.Success).result)
+        coVerify(exactly = 0) { romMRepository.syncLibraryChanges(any()) }
+        coVerify(exactly = 1) { romMRepository.syncLibrary(any()) }
     }
 
     @Test

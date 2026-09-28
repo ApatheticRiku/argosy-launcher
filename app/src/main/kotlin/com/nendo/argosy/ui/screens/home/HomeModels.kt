@@ -335,6 +335,7 @@ data class HomeUiState(
     val showGameMenu: Boolean = false,
     val gameMenuFocusIndex: Int = 0,
     val gameMenuDisplays: List<com.nendo.argosy.ui.components.AppLaunchTarget> = emptyList(),
+    val gameMenuHasSiblingGroup: Boolean = false,
     val showAddToCollectionModal: Boolean = false,
     val collectionGameId: Long? = null,
     val collections: List<CollectionItemUi> = emptyList(),

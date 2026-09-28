@@ -82,6 +82,7 @@
     <string name="home_quick_actions_unfavorite">पसंदीदा हटाएं</string>
     <string name="home_quick_actions_details">विवरण</string>
     <string name="home_quick_actions_add_to_collection">कलेक्शन में जोड़ें</string>
+    <string name="home_quick_actions_active_variant">सक्रिय वैरिएंट</string>
     <string name="home_quick_actions_refresh_data">डेटा रीफ्रेश करें</string>
     <string name="home_quick_actions_resync_platform">प्लेटफ़ॉर्म रीसिंक करें</string>
     <string name="home_quick_actions_delete_download">डाउनलोड हटाएं</string>

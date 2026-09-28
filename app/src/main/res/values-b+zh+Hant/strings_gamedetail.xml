@@ -171,6 +171,7 @@
     <string name="gamedetail_more_options_title_id_missing">未偵測到</string>
     <string name="gamedetail_more_options_select_disc">選擇光碟</string>
     <string name="gamedetail_more_options_select_variant">選擇版本</string>
+    <string name="gamedetail_more_options_active_variant">目前版本</string>
     <string name="gamedetail_more_options_files">檔案</string>
     <string name="gamedetail_more_options_refresh_data">重新整理遊戲資料</string>
     <string name="gamedetail_more_options_add_to_collection">加入合輯</string>

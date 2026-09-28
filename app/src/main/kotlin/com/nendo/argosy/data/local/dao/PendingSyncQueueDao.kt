@@ -117,6 +117,9 @@ interface PendingSyncQueueDao {
     @Query("DELETE FROM pending_sync_queue WHERE gameId = :gameId")
     suspend fun deleteByGameId(gameId: Long)
 
+    @Query("UPDATE pending_sync_queue SET rommId = :newRommId WHERE gameId = :gameId AND rommId = :oldRommId")
+    suspend fun realignRommId(gameId: Long, oldRommId: Long, newRommId: Long): Int
+
     @Query("DELETE FROM pending_sync_queue WHERE gameId IN (SELECT id FROM games WHERE source IN (:sourceNames))")
     suspend fun deleteByGameSources(sourceNames: List<String>)
 

@@ -8,8 +8,10 @@ import androidx.room.Query
 import androidx.room.Update
 import com.nendo.argosy.data.local.entity.GameCategoryInfo
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.GameGroupMemberRow
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.GameRegionInfo
+import com.nendo.argosy.data.local.entity.GameSiblingRow
 import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
@@ -49,14 +51,6 @@ data class ShowcaseCoverCandidate(
     val sortTitle: String
 )
 
-/**
- * Hiding is per account and lives in `user_roms_hidden`, so every list, count and filter here
- * carries the owner it is being run for and tests row existence rather than a column.
- *
- * A row with a null owner is an unattributed hide from an install that predates accounts, and
- * counts for whoever is signed in; the alternative is a user's hidden roms all reappearing the
- * first time they sign in to RomM. `save_cache` reads its unattributed rows the same way.
- */
 @Dao
 interface GameDao {
 
@@ -91,6 +85,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY
             CASE
@@ -111,6 +106,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY
             CASE
@@ -188,7 +184,8 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE isGroupVisible = 1
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY sortTitle ASC
     """)
     fun observeAllList(ownerUserId: Long?): Flow<List<GameListItem>>
@@ -200,6 +197,7 @@ interface GameDao {
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY sortTitle ASC
     """)
@@ -223,7 +221,8 @@ interface GameDao {
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE isGroupVisible = 1
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         AND (source = 'LOCAL_ONLY' OR source = 'ROMM_SYNCED' OR source = 'STEAM' OR source = 'ANDROID_APP')
         AND (source != 'STEAM' OR localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != 'native'))
         ORDER BY sortTitle ASC
@@ -369,6 +368,7 @@ interface GameDao {
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt
         FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         AND (source = 'LOCAL_ONLY' OR source = 'ROMM_SYNCED' OR source = 'STEAM' OR source = 'ANDROID_APP')
         AND (source != 'STEAM' OR localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != 'native'))
@@ -496,6 +496,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE searchTitle LIKE '%' || :query || '%'
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY sortTitle ASC
     """)
@@ -565,6 +566,7 @@ interface GameDao {
     @Query("""
         SELECT COUNT(*) FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
     """)
     suspend fun countByPlatform(platformId: Long, ownerUserId: Long?): Int
@@ -576,22 +578,24 @@ interface GameDao {
      */
     @Query("""
         SELECT platformId, COUNT(*) AS gameCount FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE isGroupVisible = 1
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         GROUP BY platformId
     """)
     suspend fun countsByPlatform(ownerUserId: Long?): List<PlatformGameCount>
 
     @Query("""
         SELECT platformId, COUNT(*) AS gameCount FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE isGroupVisible = 1
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         GROUP BY platformId
     """)
     fun observeCountsByPlatform(ownerUserId: Long?): Flow<List<PlatformGameCount>>
 
     @Query("""
         SELECT platformId,
-               COUNT(*) AS gameCount,
-               SUM(CASE WHEN localPath IS NOT NULL THEN 1 ELSE 0 END) AS installedCount,
+               SUM(CASE WHEN isGroupVisible = 1 THEN 1 ELSE 0 END) AS gameCount,
+               SUM(CASE WHEN isGroupVisible = 1 AND localPath IS NOT NULL THEN 1 ELSE 0 END) AS installedCount,
                SUM(earnedAchievementCount) AS achievementsEarned,
                SUM(achievementCount) AS achievementsTotal,
                SUM(playTimeMinutes) AS playTimeMinutes,
@@ -635,6 +639,7 @@ interface GameDao {
     @Query("""
         SELECT COALESCE(coverOverridePath, coverPath) FROM games
         WHERE (:platformId IS NULL OR platformId = :platformId)
+          AND (:oneEntryPerGroup = 0 OR isGroupVisible = 1)
           AND COALESCE(coverOverridePath, coverPath) IS NOT NULL AND COALESCE(coverOverridePath, coverPath) != ''
           AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY (localPath IS NOT NULL) DESC, isFavorite DESC, rating DESC, sortTitle ASC
@@ -643,6 +648,7 @@ interface GameDao {
     suspend fun showcaseCovers(
         platformId: Long?,
         ownerUserId: Long?,
+        oneEntryPerGroup: Boolean,
         limit: Int = SHOWCASE_COVER_LIMIT
     ): List<String>
 
@@ -653,6 +659,7 @@ interface GameDao {
     @Query("""
         SELECT platformId, COUNT(*) AS gameCount FROM games
         WHERE localPath IS NOT NULL
+          AND isGroupVisible = 1
           AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         GROUP BY platformId
     """)
@@ -674,6 +681,7 @@ interface GameDao {
     @Query("""
         SELECT * FROM games
         WHERE platformId = :platformId
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY sortTitle ASC
     """)
@@ -893,6 +901,51 @@ interface GameDao {
     suspend fun updateLogoPath(gameId: Long, path: String)
 
     @Query(
+        """
+        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant, rommMainSibling,
+               rommFileName, regions, localPath, isGroupVisible
+        FROM games WHERE siblingGroupKey IS NOT NULL
+        """
+    )
+    suspend fun getSiblingRows(): List<GameSiblingRow>
+
+    @Query(
+        """
+        SELECT id, siblingGroupKey, isHackVariant, isTranslationVariant, rommMainSibling,
+               rommFileName, regions, localPath, isGroupVisible
+        FROM games WHERE siblingGroupKey IN (:groupKeys)
+        """
+    )
+    suspend fun getSiblingRowsForGroups(groupKeys: List<String>): List<GameSiblingRow>
+
+    @Query("SELECT siblingGroupKey FROM games WHERE id = :gameId")
+    suspend fun getSiblingGroupKey(gameId: Long): String?
+
+    @Query(
+        """
+        SELECT id, title, rommFileName, regions, localPath, isHackVariant, isTranslationVariant,
+               isGroupVisible
+        FROM games
+        WHERE siblingGroupKey = :groupKey AND platformId = :platformId
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        ORDER BY id
+        """
+    )
+    suspend fun getGroupMembers(groupKey: String, platformId: Long, ownerUserId: Long?): List<GameGroupMemberRow>
+
+    @Query("SELECT DISTINCT platformId FROM games WHERE siblingGroupKey = :groupKey")
+    suspend fun getPlatformIdsForGroup(groupKey: String): List<Long>
+
+    @Query("UPDATE games SET isGroupVisible = :visible WHERE id IN (:gameIds)")
+    suspend fun setGroupVisible(gameIds: List<Long>, visible: Boolean)
+
+    @Query("UPDATE games SET isGroupVisible = 1 WHERE siblingGroupKey IS NULL AND isGroupVisible = 0")
+    suspend fun showUngroupedRows(): Int
+
+    @Query("UPDATE games SET rommMainSibling = :isMain WHERE id = :gameId")
+    suspend fun setRommMainSibling(gameId: Long, isMain: Boolean)
+
+    @Query(
         "SELECT * FROM games WHERE boxBackPath LIKE 'http%' OR boxSpinePath LIKE 'http%' OR logoPath LIKE 'http%'"
     )
     suspend fun getGamesWithUncachedBoxFaces(): List<GameEntity>
@@ -909,6 +962,7 @@ interface GameDao {
     @Query("""
         SELECT DISTINCT regions FROM games
         WHERE regions IS NOT NULL
+        AND isGroupVisible = 1
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
     """)
     suspend fun getDistinctRegions(ownerUserId: Long?): List<String>
@@ -919,9 +973,10 @@ interface GameDao {
     @Query("""
         SELECT DISTINCT genre FROM games
         WHERE genre IS NOT NULL
+        AND (:oneEntryPerGroup = 0 OR isGroupVisible = 1)
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
     """)
-    suspend fun getDistinctGenres(ownerUserId: Long?): List<String>
+    suspend fun getDistinctGenres(ownerUserId: Long?, oneEntryPerGroup: Boolean): List<String>
 
     @Query("""
         SELECT DISTINCT franchises FROM games
@@ -1322,7 +1377,8 @@ interface GameDao {
 
     @Query("""
         SELECT id, title, rating FROM games
-        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        WHERE isGroupVisible = 1
+        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         AND (status IS NULL OR status NOT IN ('retired', 'never_playing'))
     """)
     suspend fun getSearchCandidates(ownerUserId: Long?): List<SearchCandidate>

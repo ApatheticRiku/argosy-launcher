@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.preferences
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -8,10 +9,12 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -32,6 +35,7 @@ data class SyncPreferences(
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,
     val syncFilters: SyncFilterPreferences = SyncFilterPreferences(),
+    val regionPriority: List<String> = SyncFilterPreferences.ALL_KNOWN_REGIONS,
     val syncScreenshotsEnabled: Boolean = false,
     val uploadScreenshotsEnabled: Boolean = true,
     val boxArtCacheEnabled: Boolean = true,
@@ -93,6 +97,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SYNC_FILTER_EXCLUDE_HACK = booleanPreferencesKey("sync_filter_exclude_hack")
         val SYNC_FILTER_EXCLUDE_UNOFFICIAL = booleanPreferencesKey("sync_filter_exclude_unofficial")
         val SYNC_FILTER_DELETE_ORPHANS = booleanPreferencesKey("sync_filter_delete_orphans")
+        val REGION_PRIORITY = stringPreferencesKey("region_priority")
         val SYNC_SCREENSHOTS_ENABLED = booleanPreferencesKey("sync_screenshots_enabled")
         val UPLOAD_SCREENSHOTS_ENABLED = booleanPreferencesKey("upload_screenshots_enabled")
         val BOX_ART_CACHE_ENABLED = booleanPreferencesKey("box_art_cache_enabled")
@@ -125,6 +130,7 @@ class SyncPreferencesRepository @Inject constructor(
         val SAVE_SYNC_LOCAL_REKEY_DONE = booleanPreferencesKey("save_sync_local_rekey_done")
         val SAVE_PATH_CACHE_PURGED = booleanPreferencesKey("save_path_cache_purged")
         val SIBLING_SPLIT_REPAIR_DONE = booleanPreferencesKey("sibling_split_repair_finished")
+        val SIBLING_CONFIG_CARRY_OVER_DONE = booleanPreferencesKey("sibling_config_carry_over_done")
         val QUAYPASS_ENABLED = booleanPreferencesKey("quaypass_enabled")
         val QUAYPASS_AVATAR_SYNC_PENDING = booleanPreferencesKey("quaypass_avatar_sync_pending")
         val QUAYPASS_MESSAGE_SYNC_PENDING = booleanPreferencesKey("quaypass_message_sync_pending")
@@ -203,6 +209,13 @@ class SyncPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.SIBLING_SPLIT_REPAIR_DONE] = true }
     }
 
+    suspend fun isSiblingConfigCarryOverDone(): Boolean =
+        dataStore.data.map { it[Keys.SIBLING_CONFIG_CARRY_OVER_DONE] ?: false }.first()
+
+    suspend fun setSiblingConfigCarryOverDone() {
+        dataStore.edit { it[Keys.SIBLING_CONFIG_CARRY_OVER_DONE] = true }
+    }
+
     suspend fun setQuayPassEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.QUAYPASS_ENABLED] = enabled }
     }
@@ -279,22 +292,8 @@ class SyncPreferencesRepository @Inject constructor(
             lastRommSync = prefs[Keys.LAST_ROMM_SYNC]?.let { Instant.parse(it) },
             lastFavoritesSync = prefs[Keys.LAST_FAVORITES_SYNC]?.let { Instant.parse(it) },
             lastFavoritesCheck = prefs[Keys.LAST_FAVORITES_CHECK]?.let { Instant.parse(it) },
-            syncFilters = SyncFilterPreferences(
-                enabledRegions = prefs[Keys.SYNC_FILTER_REGIONS]
-                    ?.split(",")
-                    ?.filter { it.isNotBlank() }
-                    ?.distinct()
-                    ?: SyncFilterPreferences.DEFAULT_REGIONS,
-                regionMode = prefs[Keys.SYNC_FILTER_REGION_MODE]
-                    ?.let { RegionFilterMode.valueOf(it) }
-                    ?: legacyRegionMode(prefs[Keys.SYNC_FILTER_REGIONS]),
-                excludeBeta = prefs[Keys.SYNC_FILTER_EXCLUDE_BETA] ?: true,
-                excludePrototype = prefs[Keys.SYNC_FILTER_EXCLUDE_PROTO] ?: true,
-                excludeDemo = prefs[Keys.SYNC_FILTER_EXCLUDE_DEMO] ?: true,
-                excludeHack = prefs[Keys.SYNC_FILTER_EXCLUDE_HACK] ?: false,
-                excludeUnofficial = prefs[Keys.SYNC_FILTER_EXCLUDE_UNOFFICIAL] ?: false,
-                deleteOrphans = prefs[Keys.SYNC_FILTER_DELETE_ORPHANS] ?: true
-            ),
+            syncFilters = syncFiltersFrom(prefs),
+            regionPriority = resolveRegionPriority(prefs),
             syncScreenshotsEnabled = prefs[Keys.SYNC_SCREENSHOTS_ENABLED] ?: false,
             boxArtCacheEnabled = prefs[Keys.BOX_ART_CACHE_ENABLED] ?: true,
             uploadScreenshotsEnabled = prefs[Keys.UPLOAD_SCREENSHOTS_ENABLED] ?: true,
@@ -487,12 +486,72 @@ class SyncPreferencesRepository @Inject constructor(
             RegionFilterMode.INCLUDE
         }
 
+    private fun syncFiltersFrom(prefs: Preferences): SyncFilterPreferences = SyncFilterPreferences(
+        enabledRegions = prefs[Keys.SYNC_FILTER_REGIONS]
+            ?.split(",")
+            ?.filter { it.isNotBlank() }
+            ?.distinct()
+            ?: SyncFilterPreferences.DEFAULT_REGIONS,
+        regionMode = prefs[Keys.SYNC_FILTER_REGION_MODE]
+            ?.let { RegionFilterMode.valueOf(it) }
+            ?: legacyRegionMode(prefs[Keys.SYNC_FILTER_REGIONS]),
+        excludeBeta = prefs[Keys.SYNC_FILTER_EXCLUDE_BETA] ?: true,
+        excludePrototype = prefs[Keys.SYNC_FILTER_EXCLUDE_PROTO] ?: true,
+        excludeDemo = prefs[Keys.SYNC_FILTER_EXCLUDE_DEMO] ?: true,
+        excludeHack = prefs[Keys.SYNC_FILTER_EXCLUDE_HACK] ?: false,
+        excludeUnofficial = prefs[Keys.SYNC_FILTER_EXCLUDE_UNOFFICIAL] ?: false,
+        deleteOrphans = prefs[Keys.SYNC_FILTER_DELETE_ORPHANS] ?: true
+    )
+
+    /**
+     * Region order, most preferred first, covering every known region. Collecting it stores the
+     * one-time seed when the account has none yet.
+     */
+    val regionPriority: Flow<List<String>> = dataStore.data
+        .onStart { seedRegionPriorityIfAbsent() }
+        .map { resolveRegionPriority(it) }
+        .distinctUntilChanged()
+
+    /**
+     * Region order, most preferred first, covering every known region. The first call on an
+     * account without a stored order seeds it from the include-mode sync filter order; later
+     * filter changes never alter it.
+     */
+    suspend fun getRegionPriority(): List<String> {
+        seedRegionPriorityIfAbsent()
+        return resolveRegionPriority(dataStore.data.first())
+    }
+
+    suspend fun setRegionPriority(order: List<String>) {
+        dataStore.edit { it[Keys.REGION_PRIORITY] = RegionPriority.serialize(order) }
+    }
+
+    private suspend fun seedRegionPriorityIfAbsent() {
+        if (dataStore.data.first()[Keys.REGION_PRIORITY] != null) return
+        dataStore.edit { seedRegionPriority(it) }
+    }
+
+    private fun seedRegionPriority(prefs: MutablePreferences) {
+        if (prefs[Keys.REGION_PRIORITY] != null) return
+        prefs[Keys.REGION_PRIORITY] = RegionPriority.serialize(RegionPriority.seed(syncFiltersFrom(prefs)))
+    }
+
+    private fun resolveRegionPriority(prefs: Preferences): List<String> =
+        prefs[Keys.REGION_PRIORITY]?.let(RegionPriority::deserialize)
+            ?: RegionPriority.seed(syncFiltersFrom(prefs))
+
     suspend fun setSyncFilterRegions(regions: List<String>) {
-        dataStore.edit { it[Keys.SYNC_FILTER_REGIONS] = regions.joinToString(",") }
+        dataStore.edit {
+            seedRegionPriority(it)
+            it[Keys.SYNC_FILTER_REGIONS] = regions.joinToString(",")
+        }
     }
 
     suspend fun setSyncFilterRegionMode(mode: RegionFilterMode) {
-        dataStore.edit { it[Keys.SYNC_FILTER_REGION_MODE] = mode.name }
+        dataStore.edit {
+            seedRegionPriority(it)
+            it[Keys.SYNC_FILTER_REGION_MODE] = mode.name
+        }
     }
 
     suspend fun setSyncFilterExcludeBeta(exclude: Boolean) {

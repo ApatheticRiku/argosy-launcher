@@ -2,7 +2,11 @@ package com.nendo.argosy.domain.usecase.state
 
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.emulator.EmulatorRegistry
+import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.emulator.InstalledEmulator
+import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.entity.EmulatorConfigEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.preferences.AccountSwitchMarkerStore
@@ -33,7 +37,8 @@ class SyncStatesOnSessionEndUseCaseTest {
 
     private val stateCacheManager = mockk<StateCacheManager>(relaxed = true)
     private val gameDao = mockk<GameDao>()
-    private val emulatorDetector = mockk<EmulatorDetector>()
+    private val emulatorDetector = mockk<EmulatorDetector>(relaxed = true)
+    private val emulatorConfigDao = mockk<EmulatorConfigDao>(relaxed = true)
     private val preferencesRepository = mockk<UserPreferencesRepository>()
     private val ownershipTracker = mockk<StateOwnershipTracker>()
     private val accountSwitchMarkerStore = mockk<AccountSwitchMarkerStore>()
@@ -56,14 +61,18 @@ class SyncStatesOnSessionEndUseCaseTest {
     @Before
     fun setUp() {
         val game = mockk<GameEntity> {
+            every { id } returns GAME_ID
+            every { platformId } returns PLATFORM_ID
             every { localPath } returns "/roms/game.sfc"
             every { platformSlug } returns "snes"
             every { rommId } returns null
         }
         coEvery { gameDao.getById(GAME_ID) } returns game
         every { preferencesRepository.userPreferences } returns preferences
-        every { emulatorDetector.getByPackage(any()) } returns
-            EmulatorRegistry.getByPackage(EmulatorRegistry.BUILTIN_PACKAGE)
+        coEvery { emulatorConfigDao.getByGameId(any()) } returns null
+        coEvery { emulatorConfigDao.getDefaultForPlatform(any()) } returns null
+        every { emulatorDetector.installedEmulators } returns MutableStateFlow(emptyList())
+        every { emulatorDetector.getPreferredEmulator(any(), any()) } returns null
         coEvery { ownershipTracker.claim(any(), any()) } returns StateClaim.Mine
         coEvery { accountSwitchMarkerStore.isSwitching() } returns false
         coEvery {
@@ -78,13 +87,61 @@ class SyncStatesOnSessionEndUseCaseTest {
             stateCacheManager = stateCacheManager,
             gameDao = gameDao,
             activeSaveRepository = mockk(relaxed = true),
-            emulatorDetector = emulatorDetector,
             coreVersionExtractor = mockk(relaxed = true),
             preferencesRepository = preferencesRepository,
             stateOwnershipTracker = ownershipTracker,
-            emulatorResolver = mockk(relaxed = true),
+            emulatorResolver = EmulatorResolver(
+                emulatorDetector = emulatorDetector,
+                emulatorConfigDao = emulatorConfigDao,
+                userPreferencesRepository = preferencesRepository,
+                libretroCoreMgr = mockk(relaxed = true),
+                installedAppResolver = mockk(relaxed = true) { every { isAppInstalled(any()) } returns false }
+            ),
             accountSwitchMarkerStore = accountSwitchMarkerStore
         )
+    }
+
+    @Test
+    fun `session end files states under the emulator that ran, not the configured one`() = runTest {
+        val retroarch = EmulatorRegistry.getById("retroarch")!!
+        coEvery { emulatorConfigDao.getByGameId(GAME_ID) } returns EmulatorConfigEntity(
+            platformId = PLATFORM_ID,
+            gameId = GAME_ID,
+            packageName = EmulatorRegistry.BUILTIN_PACKAGE,
+            displayName = null,
+            coreName = null
+        )
+
+        useCase(GAME_ID, retroarch.packageName, queueUploads = false)
+
+        coVerify {
+            stateCacheManager.discoverStatesForGame(GAME_ID, "retroarch", any(), "snes", retroarch.packageName, any())
+        }
+    }
+
+    @Test
+    fun `a RetroArch fork session files states under the retroarch family id`() = runTest {
+        val forkPackage = "com.retroarch.aarch64.nightly"
+
+        useCase(GAME_ID, forkPackage, queueUploads = false)
+
+        coVerify {
+            stateCacheManager.discoverStatesForGame(GAME_ID, "retroarch", any(), "snes", forkPackage, any())
+        }
+    }
+
+    @Test
+    fun `a session with no recorded package files states under the emulator the launch resolves`() = runTest {
+        val retroarch = EmulatorRegistry.getById("retroarch")!!
+        val installed = InstalledEmulator(def = retroarch, versionName = "1.0", versionCode = 1L)
+        every { emulatorDetector.installedEmulators } returns MutableStateFlow(listOf(installed))
+        every { emulatorDetector.getPreferredEmulator("snes", any()) } returns installed
+
+        useCase(GAME_ID, "", queueUploads = false)
+
+        coVerify {
+            stateCacheManager.discoverStatesForGame(GAME_ID, "retroarch", any(), "snes", retroarch.packageName, any())
+        }
     }
 
     @Test
@@ -179,5 +236,6 @@ class SyncStatesOnSessionEndUseCaseTest {
 
     private companion object {
         const val GAME_ID = 5L
+        const val PLATFORM_ID = 9L
     }
 }

@@ -227,6 +227,7 @@ internal fun routeConfirm(vm: SettingsViewModel): InputResult {
             when (syncSettingsItemAtFocusIndex(state.focusedIndex)) {
                 SyncSettingsItem.PlatformFilters -> vm.showPlatformFiltersModal()
                 SyncSettingsItem.MetadataFilters -> vm.showSyncFiltersModal()
+                SyncSettingsItem.RegionPriority -> vm.showRegionPriority()
                 SyncSettingsItem.CacheScreenshots -> { vm.toggleSyncScreenshots(); return InputResult.handled(SoundType.TOGGLE) }
                 SyncSettingsItem.CacheBoxArt -> { vm.toggleBoxArtCache(); return InputResult.handled(SoundType.TOGGLE) }
                 SyncSettingsItem.UploadScreenshots -> {
@@ -1213,6 +1214,7 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
         state.storage.platformSettingsModalId != null -> { vm.closePlatformSettingsModal(); true }
         state.steam.showAddGameDialog -> { vm.dismissAddSteamGameDialog(); true }
         state.sounds.showSoundPicker -> { vm.dismissSoundPicker(); true }
+        state.syncSettings.showRegionPriority -> { vm.backRegionPriority(); true }
         state.syncSettings.showRegionPicker -> { vm.dismissRegionPicker(); true }
         state.syncSettings.showPlatformFiltersModal -> { vm.dismissPlatformFiltersModal(); true }
         state.syncSettings.showSyncFiltersModal -> { vm.dismissSyncFiltersModal(); true }
@@ -1254,6 +1256,9 @@ internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int): Boolean {
     }
     if (vm._uiState.value.sounds.showSoundPicker) {
         vm.soundsDelegate.moveSoundPickerFocus(delta); return true
+    }
+    if (vm._uiState.value.syncSettings.showRegionPriority) {
+        vm.syncDelegate.moveRegionPriorityFocus(delta); return true
     }
     if (vm._uiState.value.syncSettings.showRegionPicker) {
         vm.syncDelegate.moveRegionPickerFocus(delta); return true

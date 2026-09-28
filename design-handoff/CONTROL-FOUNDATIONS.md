@@ -168,8 +168,9 @@ Each mode has a deliberately distinct silhouette - no two readable as the same t
 
 ### List reorder (sortable list)
 
-THE idiom for ordering items in a vertical list. No surface uses it today; the region picker
-that introduced it became a plain include/exclude list.
+THE idiom for ordering items in a vertical list. Region Priority in Sync settings
+(`RegionPriorityPopup` in `RegionPickerPopup.kt`) uses it; the sync region filter picker
+beside it stays a plain include/exclude list.
 One lift/move/drop state machine drives both modalities; the lifted item is the same
 object either way.
 

@@ -202,6 +202,7 @@
     <string name="gamedetail_more_options_title_id_missing">Non détecté</string>
     <string name="gamedetail_more_options_select_disc">Sélectionner un disque</string>
     <string name="gamedetail_more_options_select_variant">Sélectionner une variante</string>
+    <string name="gamedetail_more_options_active_variant">Variante active</string>
     <string name="gamedetail_more_options_files">Fichiers</string>
     <string name="gamedetail_more_options_refresh_data">Actualiser les données du jeu</string>
     <string name="gamedetail_more_options_add_to_collection">Ajouter à une collection</string>

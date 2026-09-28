@@ -3792,3 +3792,55 @@ object Migration_196_197 : Migration(196, 197) {
         )
     }
 }
+
+/**
+ * Adds the sibling group columns to `games` and the per-account `game_group_picks` table.
+ *
+ * `siblingGroupKey` is backfilled for RomM rows from the provider ids already stored, in RomM's
+ * gallery order. RomM's `steam_id` is not stored on `games`, and Android rows sit on a local
+ * platform id, so both keep a null key until the next library sync writes it.
+ */
+object Migration_197_198 : Migration(197, 198) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `siblingGroupKey` TEXT")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `isHackVariant` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `isTranslationVariant` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `rommMainSibling` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `games` ADD COLUMN `isGroupVisible` INTEGER NOT NULL DEFAULT 1")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_games_siblingGroupKey` ON `games` (`siblingGroupKey`)"
+        )
+
+        db.execSQL(
+            "UPDATE `games` SET `siblingGroupKey` = CASE " +
+                "WHEN `igdbId` IS NOT NULL THEN 'igdb-' || `platformId` || '-' || `igdbId` " +
+                "WHEN `ssId` IS NOT NULL THEN 'ss-' || `platformId` || '-' || `ssId` " +
+                "WHEN `mobyId` IS NOT NULL THEN 'moby-' || `platformId` || '-' || `mobyId` " +
+                "WHEN `raId` IS NOT NULL THEN 'ra-' || `platformId` || '-' || `raId` " +
+                "WHEN `hasheousId` IS NOT NULL THEN 'hasheous-' || `platformId` || '-' || `hasheousId` " +
+                "WHEN `launchboxId` IS NOT NULL THEN 'launchbox-' || `platformId` || '-' || `launchboxId` " +
+                "WHEN `tgdbId` IS NOT NULL THEN 'tgdb-' || `platformId` || '-' || `tgdbId` " +
+                "WHEN `flashpointId` IS NOT NULL THEN 'flashpoint-' || `platformId` || '-' || `flashpointId` " +
+                "END " +
+                "WHERE `rommId` > 0 AND `platformId` > 0"
+        )
+
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `game_group_picks` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`ownerUserId` INTEGER, " +
+                "`groupKey` TEXT NOT NULL, " +
+                "`gameId` INTEGER NOT NULL, " +
+                "FOREIGN KEY(`gameId`) REFERENCES `games`(`id`) " +
+                "ON UPDATE NO ACTION ON DELETE CASCADE )"
+        )
+        db.execSQL(
+            "CREATE UNIQUE INDEX IF NOT EXISTS `index_game_group_picks_ownerUserId_groupKey` " +
+                "ON `game_group_picks` (`ownerUserId`, `groupKey`)"
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_game_group_picks_gameId` " +
+                "ON `game_group_picks` (`gameId`)"
+        )
+    }
+}

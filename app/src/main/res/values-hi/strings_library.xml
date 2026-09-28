@@ -87,6 +87,7 @@
     <string name="library_quickmenu_details">विवरण</string>
     <string name="library_quickmenu_add_to_collection">कलेक्शन में जोड़ें</string>
     <string name="library_quickmenu_add_to_grid">ग्रिड में जोड़ें</string>
+    <string name="library_quickmenu_active_variant">सक्रिय वैरिएंट</string>
     <string name="library_quickmenu_refresh_data">डेटा रीफ्रेश करें</string>
     <string name="library_quickmenu_resync_platform">प्लेटफ़ॉर्म रीसिंक करें</string>
     <string name="library_quickmenu_uninstall">अनइंस्टॉल करें</string>

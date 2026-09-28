@@ -187,6 +187,28 @@ class RomMGameMetadataTest {
     }
 
     @Test
+    fun `the sibling group key and hack flag come from the rom`() {
+        val result = existing().withRomMetadata(rom())
+
+        assertEquals("igdb-1-1234", result.siblingGroupKey)
+        assertFalse(result.isHackVariant)
+        assertTrue(existing().withRomMetadata(rom().copy(tags = listOf("Hack"))).isHackVariant)
+    }
+
+    @Test
+    fun `the RomM main flag follows rom_user and survives a payload without one`() {
+        val main = rom().copy(romUser = RomMRomUser(isMainSibling = true))
+        val marked = existing().withRomMetadata(main)
+
+        assertTrue(marked.rommMainSibling)
+        assertTrue(marked.withRomMetadata(rom()).rommMainSibling)
+        assertFalse(
+            marked.withRomMetadata(rom().copy(romUser = RomMRomUser(isMainSibling = false)))
+                .rommMainSibling
+        )
+    }
+
+    @Test
     fun `a save target already on the row is kept`() {
         val local = existing().copy(saveTarget = "LOCALTARGET", saveTargetLayout = "file-exact")
 

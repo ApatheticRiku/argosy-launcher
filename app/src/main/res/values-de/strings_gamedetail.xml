@@ -199,6 +199,7 @@
     <string name="gamedetail_more_options_title_id_missing">Nicht erkannt</string>
     <string name="gamedetail_more_options_select_disc">Disc auswählen</string>
     <string name="gamedetail_more_options_select_variant">Variante auswählen</string>
+    <string name="gamedetail_more_options_active_variant">Aktive Variante</string>
     <string name="gamedetail_more_options_files">Dateien</string>
     <string name="gamedetail_more_options_refresh_data">Spieldaten aktualisieren</string>
     <string name="gamedetail_more_options_add_to_collection">Zur Sammlung hinzufügen</string>

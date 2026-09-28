@@ -28,6 +28,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         interceptMemcardPicker(state, method)?.let { return it }
         interceptPlatformSettingsModal(state, method)?.let { return it }
         interceptSoundPicker(state, method)?.let { return it }
+        interceptRegionPriority(state, method)?.let { return it }
         interceptRegionPicker(state, method)?.let { return it }
         interceptPlatformFiltersModal(state, method)?.let { return it }
         interceptSyncFiltersModal(state, method)?.let { return it }
@@ -282,6 +283,29 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             InputMethod.DOWN -> { viewModel.moveRegionPickerFocus(1); InputResult.HANDLED }
             InputMethod.CONFIRM -> { viewModel.confirmRegionPickerSelection(); InputResult.handled(SoundType.TOGGLE) }
             InputMethod.BACK -> { viewModel.dismissRegionPicker(); InputResult.HANDLED }
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun interceptRegionPriority(state: SettingsUiState, method: InputMethod): InputResult? {
+        if (!state.syncSettings.showRegionPriority) return null
+        val holding = state.syncSettings.regionPriorityHeld != null
+        return when (method) {
+            InputMethod.UP -> { viewModel.moveRegionPriorityFocus(-1); InputResult.HANDLED }
+            InputMethod.DOWN -> { viewModel.moveRegionPriorityFocus(1); InputResult.HANDLED }
+            InputMethod.CONTEXT_MENU -> if (holding) {
+                InputResult.handled(SoundType.SILENT)
+            } else {
+                viewModel.liftRegionPriority()
+                InputResult.handled(SoundType.SELECT)
+            }
+            InputMethod.CONFIRM -> if (holding) {
+                viewModel.dropRegionPriority()
+                InputResult.handled(SoundType.SELECT)
+            } else {
+                InputResult.handled(SoundType.SILENT)
+            }
+            InputMethod.BACK -> { viewModel.backRegionPriority(); InputResult.handled(SoundType.SILENT) }
             else -> InputResult.HANDLED
         }
     }

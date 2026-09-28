@@ -30,7 +30,7 @@ object DownloadDefaults {
         VariantCategory.PATCH.key to true,
         VariantCategory.TRANSLATION.key to true,
         VariantCategory.MOD.key to false,
-        VariantCategory.HACK.key to true,
+        VariantCategory.HACK.key to false,
         VariantCategory.DEMO.key to false,
         VariantCategory.PROTOTYPE.key to false,
         VariantCategory.CHEAT.key to false,

@@ -444,6 +444,25 @@ keyed by the raw one. `SavePathRegistry` builds the built-in key as
 `EmulatorRegistry.BUILTIN_ID`. `getCanonicalSlug("ngc")` is `gc`, so `retroarch_ngc` is reachable only where
 RomM's raw slug survives. Settle this before adding entries.
 
+## Known limitation: one save folder for several roms
+
+Every rule above maps an id to a path. Two roms that yield the same id resolve to the same
+folder, and Argosy does not separate them on the device. That happens in two cases:
+
+- Regional copies that share one id. A Switch title id often covers every region, so a USA and a
+  Europe copy on the same emulator read and write one folder.
+- A hack that keeps its base game's serial or header id. A PSP hack built on a retail ISO keeps
+  the disc id, and a GameCube hack keeps the 6-character game id, so the hack and its base share
+  one folder (one GCI set for GameCube).
+
+The server side stays separate. An upload goes to the `rommId` of the game row that was played,
+so each rom keeps its own saves in RomM. Only the local folder is shared. Playing one copy and
+then the other starts the second copy on whatever the first left on disk, and an upload from the
+second copy can send that save under the second rom's id.
+
+Saves named after the rom file (RetroArch and the built-in `.srm` layout) do not share, because
+regional copies and hacks have different file names. Argosy leaves serial-keyed folders shared.
+
 ## Why this matters when changing anything
 
 An archive is accepted for a save only if its root entry matches the id under

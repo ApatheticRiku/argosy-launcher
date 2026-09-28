@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.settings.components
 
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,17 +25,24 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.animateScrollToItemCentered
+import com.nendo.argosy.ui.components.dragReorderContainer
+import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -54,6 +62,142 @@ fun RegionPickerPopup(
         focusedIndex = focusIndex
     )
 
+    RegionPopupFrame(
+        title = stringResource(R.string.settings_region_picker_title),
+        subtitle = stringResource(R.string.settings_region_picker_subtitle_toggle),
+        onDismiss = onDismiss
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
+            itemsIndexed(regions, key = { _, region -> region }) { index, region ->
+                RegionPickerItem(
+                    name = region,
+                    rank = null,
+                    isFocused = focusIndex == index,
+                    isSelected = region in enabledRegions,
+                    isHeld = false,
+                    onClick = { onToggle(region) }
+                )
+            }
+        }
+    }
+
+    FooterHints(
+        hints = listOf(
+            InputButton.DPAD to stringResource(R.string.settings_region_picker_hint_navigate),
+            InputButton.A to stringResource(R.string.settings_region_picker_hint_toggle),
+            InputButton.B to stringResource(R.string.settings_region_picker_hint_close)
+        ),
+        onHintClick = { button ->
+            when (button) {
+                InputButton.A -> regions.getOrNull(focusIndex)?.let(onToggle) ?: Unit
+                InputButton.B -> onDismiss()
+                else -> Unit
+            }
+        }
+    )
+}
+
+@Composable
+fun RegionPriorityPopup(
+    order: List<String>,
+    focusIndex: Int,
+    heldRegion: String?,
+    onFocus: (Int) -> Unit,
+    onLift: () -> Unit,
+    onLiftAt: (String) -> Unit,
+    onMoveTo: (String, Int) -> Unit,
+    onDrop: () -> Unit,
+    onBack: () -> Unit
+) {
+    val listState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
+
+    val dragState = rememberDragReorderState(
+        listState = listState,
+        canDrag = { key -> key is String && key in order },
+        onLift = { key ->
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onLiftAt(key as String)
+        },
+        onMove = { key, index -> onMoveTo(key as String, index) },
+        onDrop = onDrop
+    )
+
+    LaunchedEffect(focusIndex) {
+        if (dragState.draggingKey == null) listState.animateScrollToItemCentered(focusIndex)
+    }
+
+    RegionPopupFrame(
+        title = stringResource(R.string.settings_region_priority_title),
+        subtitle = stringResource(R.string.settings_region_priority_subtitle),
+        onDismiss = onBack
+    ) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm)
+                .dragReorderContainer(dragState),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
+            itemsIndexed(order, key = { _, region -> region }) { index, region ->
+                RegionPickerItem(
+                    name = region,
+                    rank = index,
+                    isFocused = focusIndex == index,
+                    isSelected = true,
+                    isHeld = heldRegion == region,
+                    modifier = Modifier
+                        .then(
+                            if (dragState.draggingKey == null || dragState.draggingKey == region) {
+                                Modifier
+                            } else {
+                                Modifier.animateItem()
+                            }
+                        )
+                        .dragReorderItem(dragState, region),
+                    onClick = { if (heldRegion == null) onFocus(index) }
+                )
+            }
+        }
+    }
+
+    FooterHints(
+        forced = heldRegion != null,
+        hints = if (heldRegion != null) {
+            listOf(
+                InputButton.DPAD_VERTICAL to stringResource(R.string.settings_region_priority_hint_move),
+                InputButton.A to stringResource(R.string.settings_region_priority_hint_drop),
+                InputButton.B to stringResource(R.string.settings_region_priority_hint_cancel)
+            )
+        } else {
+            listOf(
+                InputButton.X to stringResource(R.string.settings_region_priority_hint_reorder),
+                InputButton.B to stringResource(R.string.settings_region_priority_hint_close)
+            )
+        },
+        onHintClick = { button ->
+            when (button) {
+                InputButton.X -> if (heldRegion == null) onLift() else Unit
+                InputButton.A -> if (heldRegion != null) onDrop() else Unit
+                InputButton.B -> onBack()
+                else -> Unit
+            }
+        }
+    )
+}
+
+@Composable
+private fun RegionPopupFrame(
+    title: String,
+    subtitle: String,
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit
+) {
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
@@ -74,50 +218,21 @@ fun RegionPickerPopup(
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
             Text(
-                text = stringResource(R.string.settings_region_picker_title),
+                text = title,
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary
             )
             Text(
-                text = stringResource(R.string.settings_region_picker_subtitle_toggle),
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
-                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-            ) {
-                itemsIndexed(regions, key = { _, region -> region }) { index, region ->
-                    RegionPickerItem(
-                        name = region,
-                        isFocused = focusIndex == index,
-                        isSelected = region in enabledRegions,
-                        onClick = { onToggle(region) }
-                    )
-                }
-            }
+            content()
 
             Spacer(modifier = Modifier.height(Dimens.spacingSm))
-
-            FooterHints(
-                hints = listOf(
-                    InputButton.DPAD to stringResource(R.string.settings_region_picker_hint_navigate),
-                    InputButton.A to stringResource(R.string.settings_region_picker_hint_toggle),
-                    InputButton.B to stringResource(R.string.settings_region_picker_hint_close)
-                ),
-                onHintClick = { button ->
-                    when (button) {
-                        InputButton.A -> regions.getOrNull(focusIndex)?.let(onToggle) ?: Unit
-                        InputButton.B -> onDismiss()
-                        else -> Unit
-                    }
-                }
-            )
         }
     }
 }
@@ -125,21 +240,39 @@ fun RegionPickerPopup(
 @Composable
 private fun RegionPickerItem(
     name: String,
+    rank: Int?,
     isFocused: Boolean,
     isSelected: Boolean,
+    isHeld: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
+    val emphasized = isFocused || isHeld
+    val emphasisColor = lerp(theme.focusAccent, Color.White, 0.45f)
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
                 when {
+                    isHeld -> theme.focusAccent.copy(alpha = 0.3f)
+                        .compositeOver(MaterialTheme.colorScheme.surface)
                     isFocused -> theme.focusAccent.copy(alpha = 0.15f)
                         .compositeOver(MaterialTheme.colorScheme.surface)
                     isSelected -> MaterialTheme.colorScheme.surfaceVariant
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                }
+            )
+            .then(
+                if (isHeld) {
+                    Modifier.border(
+                        width = Dimens.borderThin,
+                        color = theme.focusAccent,
+                        shape = RoundedCornerShape(Dimens.radiusMd)
+                    )
+                } else {
+                    Modifier
                 }
             )
             .clickableNoFocus(onClick = onClick)
@@ -150,15 +283,18 @@ private fun RegionPickerItem(
         Text(
             text = name,
             style = MaterialTheme.typography.titleMedium,
-            color = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f)
-                    else MaterialTheme.colorScheme.onSurface
+            color = if (emphasized) emphasisColor else MaterialTheme.colorScheme.onSurface
         )
-        if (isSelected) {
-            Icon(
+        when {
+            rank != null -> Text(
+                text = "${rank + 1}",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (emphasized) emphasisColor else MaterialTheme.colorScheme.primary
+            )
+            isSelected -> Icon(
                 imageVector = Icons.Default.Check,
                 contentDescription = null,
-                tint = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f)
-                       else MaterialTheme.colorScheme.primary,
+                tint = if (isFocused) emphasisColor else MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(Dimens.iconSm)
             )
         }

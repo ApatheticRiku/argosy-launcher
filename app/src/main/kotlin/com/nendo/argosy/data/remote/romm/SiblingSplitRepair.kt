@@ -66,6 +66,27 @@ class SiblingSplitRepair @Inject constructor(
         }
     }
 
+    /**
+     * Moves save sync rows still keyed to a regional copy's rom onto that copy once the copy's
+     * slot is empty. An occupied slot is never overwritten and no row is deleted. Returns 0
+     * until [runOnce] has completed.
+     */
+    suspend fun retryBlockedSaveSyncMoves(): Int = withContext(Dispatchers.IO) {
+        if (!syncPreferences.isSiblingSplitRepairDone()) return@withContext 0
+        try {
+            val moves = pendingSaveSyncMoves()
+            if (moves.isEmpty()) return@withContext 0
+            val moved = moveSaveSyncGroup(moves, mutableMapOf(), mutableSetOf())
+            if (moved > 0) Logger.info(TAG, "retryBlockedSaveSyncMoves: moved $moved of ${moves.size} rows")
+            moved
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.warn(TAG, "retryBlockedSaveSyncMoves: failed, retrying after the next library pass: ${e.message}")
+            0
+        }
+    }
+
     internal suspend fun repair(): SiblingSplitRepairOutcome {
         val pathsHandedOver = handOverForeignLaunchPaths() + releaseSharedPaths() + releaseSharedAdoptedPaths() +
             relinkDownloadsWithoutPath()
@@ -252,12 +273,15 @@ class SiblingSplitRepair @Inject constructor(
 
     private class SaveSyncOutcome(val rowsMoved: Int, val historiesMoved: Int)
 
-    private suspend fun moveForeignSaveSyncRows(owners: MutableMap<Long, MutableSet<GameEntity>>): SaveSyncOutcome {
-        val moves = saveSyncDao.getRowsKeyedToAnotherRom().mapNotNull { row ->
+    private suspend fun pendingSaveSyncMoves(): List<SaveSyncMove> =
+        saveSyncDao.getRowsKeyedToAnotherRom().mapNotNull { row ->
             val owner = gameDao.getByRommId(row.rommId) ?: return@mapNotNull null
             if (owner.id == row.gameId) return@mapNotNull null
             SaveSyncMove(row, owner, stripAbsorbedChannelPrefix(row.channelName, owner))
         }
+
+    private suspend fun moveForeignSaveSyncRows(owners: MutableMap<Long, MutableSet<GameEntity>>): SaveSyncOutcome {
+        val moves = pendingSaveSyncMoves()
         val claimed = mutableSetOf<SaveSlot>()
         var histories = 0
         var moved = 0

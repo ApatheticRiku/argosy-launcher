@@ -94,6 +94,50 @@ class LaunchGameUseCaseTest {
     }
 
     @Test
+    fun `a requested variant that fell back to the primary rom does not tag the session`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, any(), any(), any(), 50L, any(), any(), any()) } returns
+            LaunchResult.Success(intent, variantFileId = null)
+
+        useCase(123L, variantFileId = 50L)
+
+        coVerify {
+            playSessionTracker.startSession(
+                gameId = 123L,
+                emulatorPackage = any(),
+                coreName = any(),
+                isHardcore = any(),
+                isNewGame = true,
+                isNetplayGuest = any(),
+                variantFileId = null,
+                origin = any()
+            )
+        }
+    }
+
+    @Test
+    fun `a variant that launched tags the session with its file`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, any(), any(), any(), 50L, any(), any(), any()) } returns
+            LaunchResult.Success(intent, variantFileId = 50L)
+
+        useCase(123L, variantFileId = 50L)
+
+        coVerify {
+            playSessionTracker.startSession(
+                gameId = 123L,
+                emulatorPackage = any(),
+                coreName = any(),
+                isHardcore = any(),
+                isNewGame = true,
+                isNetplayGuest = any(),
+                variantFileId = 50L,
+                origin = any()
+            )
+        }
+    }
+
+    @Test
     fun `invoke leaves the session to LibretroActivity for an in-process launch`() = runTest {
         val intent = mockk<Intent>(relaxed = true)
         coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns

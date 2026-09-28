@@ -81,6 +81,7 @@
     <string name="library_quickmenu_details">詳情</string>
     <string name="library_quickmenu_add_to_collection">加入合輯</string>
     <string name="library_quickmenu_add_to_grid">加入網格</string>
+    <string name="library_quickmenu_active_variant">目前版本</string>
     <string name="library_quickmenu_refresh_data">重新整理資料</string>
     <string name="library_quickmenu_resync_platform">重新同步平台</string>
     <string name="library_quickmenu_uninstall">解除安裝</string>

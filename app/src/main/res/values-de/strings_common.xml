@@ -860,4 +860,17 @@
     <string name="home_grid_local_video_row_title">Ein Video auf diesem Gerät auswählen</string>
     <string name="home_grid_local_video_row_subtitle">Spielt direkt von Ihrem Speicher ab</string>
     <string name="ui_quick_settings_swap_displays">Displays tauschen</string>
+    <string name="ui_sibling_choice_title_download">VARIANTE WÄHLEN</string>
+    <string name="ui_sibling_choice_subtitle_download">Wählen Sie die Kopie zum Herunterladen. Sie wird zum Eintrag in Ihrer Bibliothek.</string>
+    <string name="ui_sibling_choice_title_active">AKTIVE VARIANTE</string>
+    <string name="ui_sibling_choice_subtitle_active">Die Kopie, die Ihre Bibliothek anzeigt und startet</string>
+    <string name="ui_sibling_choice_automatic">Automatisch</string>
+    <string name="ui_sibling_choice_automatic_showing">Zeigt %1$s</string>
+    <string name="ui_sibling_choice_loading">Wird geladen...</string>
+    <string name="ui_sibling_choice_load_failed">Die Kopien dieses Spiels konnten nicht gelesen werden</string>
+    <string name="ui_sibling_choice_empty">Dieses Spiel hat keine weiteren Kopien</string>
+    <string name="ui_sibling_choice_notice_pick_failed">Aktive Variante konnte nicht geändert werden</string>
+    <string name="ui_sibling_member_kind_hack">Hack</string>
+    <string name="ui_sibling_member_kind_translation">Übersetzung</string>
+    <string name="ui_sibling_member_kind_pre_release">Vorabversion</string>
 </resources>
