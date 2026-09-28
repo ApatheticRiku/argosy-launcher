@@ -28,6 +28,7 @@ class ThorGameWindowMover(
             taskMover.isAvailable()
 
     override suspend fun moveGame(displayId: Int): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
         val activityManager = appContext.getSystemService(ActivityManager::class.java) ?: return false
         val taskId = builtInGameTask(activityManager)?.taskId ?: return false
         return taskMover.moveTask(taskId, displayId)
