@@ -1119,6 +1119,18 @@ class PlaySessionTracker @Inject constructor(
         saveObserved.set(true)
     }
 
+    private val _saveWrites = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+    )
+
+    val saveWrites: kotlinx.coroutines.flow.SharedFlow<Unit> = _saveWrites
+
+    fun reportSaveWritten() {
+        markSaveObserved()
+        _saveWrites.tryEmit(Unit)
+    }
+
     fun getSessionDuration(): Duration? {
         val session = _activeSession.value ?: return null
         return Duration.between(session.startTime, Instant.now())

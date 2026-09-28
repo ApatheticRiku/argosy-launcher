@@ -85,6 +85,7 @@ class GameSessionService : Service() {
     private var presenceJob: Job? = null
     private var currentGameId: Long = -1
     private var currentEmulatorId: String? = null
+    private var currentEmulatorPackage: String? = null
     private var currentSavePath: String? = null
     private var currentChannelName: String? = null
     private var currentIsHardcore: Boolean = false
@@ -150,6 +151,7 @@ class GameSessionService : Service() {
                 currentGameTitle = gameTitle
                 currentGameId = gameId
                 currentEmulatorId = emulatorId
+                currentEmulatorPackage = emulatorPackage
                 currentSavePath = savePath
                 currentChannelName = channelName
                 currentIsHardcore = isHardcore
@@ -369,7 +371,7 @@ class GameSessionService : Service() {
                                 path = "${dir.name}/$path"
                             )
                         }
-                        playSessionTracker.get().markSaveObserved()
+                        playSessionTracker.get().reportSaveWritten()
                         onSaveDetected()
                     }
                 }
@@ -405,7 +407,7 @@ class GameSessionService : Service() {
         com.nendo.argosy.util.SaveDebugLogger.logLiveCacheFire(gameId = gameId, savePath = savePath)
 
         updateNotification(currentGameTitle, NotificationState.SAVE_DETECTED)
-        showOverlayBriefly()
+        if (currentEmulatorPackage != EmulatorRegistry.BUILTIN_PACKAGE) showOverlayBriefly()
 
         // Notify secondary home that save is dirty (being cached)
         broadcastSaveStateChanged(isDirty = true)

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -240,6 +241,8 @@ class LibretroActivity : ComponentActivity() {
     private var vibrator: Vibrator? = null
     private var rewindSetupJob: Job? = null
     private var rollingSaveJob: Job? = null
+    private var saveWriteWatchJob: Job? = null
+    private var saveWrittenAt by mutableStateOf(0L)
     private lateinit var romPath: String
 
     private lateinit var saveStateManager: SaveStateManager
@@ -796,6 +799,12 @@ class LibretroActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             snapshotFlow { isAnyMenuOpen }.collect { open -> if (open) releaseCoreHeldKeys() }
+        }
+        lifecycleScope.launch {
+            playSessionTracker.saveWrites.collect {
+                val now = System.currentTimeMillis()
+                if (now - saveWrittenAt > SAVE_INDICATOR_MERGE_MS) saveWrittenAt = now
+            }
         }
     }
 
@@ -1839,6 +1848,12 @@ class LibretroActivity : ComponentActivity() {
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 24.dp)
                     )
+                    com.nendo.argosy.libretro.ui.SaveWrittenIndicator(
+                        writtenAt = saveWrittenAt,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .navigationBarsPadding()
+                    )
                 }
 
                 if (touchSettingsState.hudEnabled && !isAnyMenuOpen) {
@@ -2372,11 +2387,24 @@ class LibretroActivity : ComponentActivity() {
                 saveStateManager.saveSram(retroView)
             }
         }
+        saveWriteWatchJob = lifecycleScope.launch(Dispatchers.IO) {
+            while (isActive) {
+                reportNewlyWrittenSaves()
+                delay(SAVE_WRITE_CHECK_INTERVAL_MS)
+            }
+        }
+    }
+
+    private fun reportNewlyWrittenSaves() {
+        if (coreDestroyed || isGuestJoinedSession) return
+        if (saveStateManager.takeNewlyWrittenSaves()) playSessionTracker.reportSaveWritten()
     }
 
     private fun stopRollingSave() {
         rollingSaveJob?.cancel()
         rollingSaveJob = null
+        saveWriteWatchJob?.cancel()
+        saveWriteWatchJob = null
     }
 
     private fun rewindBudgetBytes(): Long {
@@ -3657,6 +3685,8 @@ class LibretroActivity : ComponentActivity() {
         private const val CORE_INPUT_PULSE_MS = 50L
 
         private const val ROLLING_SAVE_INTERVAL_MS = 30_000L
+        private const val SAVE_WRITE_CHECK_INTERVAL_MS = 5_000L
+        private const val SAVE_INDICATOR_MERGE_MS = 5_000L
 
         private const val FPS_SAMPLE_INTERVAL_MS = 1_000L
 

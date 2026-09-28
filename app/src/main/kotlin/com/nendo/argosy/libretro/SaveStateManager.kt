@@ -84,6 +84,41 @@ class SaveStateManager(
         return File(savesDir, "$romBaseName.srm")
     }
 
+    private var writtenSaveBaseline: Map<String, Pair<Long, Long>>? = null
+
+    private fun gameSaveFiles(): List<File> {
+        val inSavesDir = savesDir.walkTopDown().maxDepth(2)
+            .filter { it.isFile && it.name.startsWith(romBaseName) }
+            .filterNot { it.extension.lowercase() in IGNORED_SAVE_EXTENSIONS }
+        return (inSavesDir + primarySaveFile).filter { it.isFile }.distinctBy { it.absolutePath }.toList()
+    }
+
+    private fun fingerprints(): Map<String, Pair<Long, Long>> =
+        gameSaveFiles().associate { it.absolutePath to (it.lastModified() to it.length()) }
+
+    fun seedWrittenSaves() {
+        writtenSaveBaseline = fingerprints()
+    }
+
+    fun takeNewlyWrittenSaves(): Boolean {
+        val baseline = writtenSaveBaseline ?: run {
+            seedWrittenSaves()
+            return false
+        }
+        val current = fingerprints()
+        writtenSaveBaseline = current
+        return current.filter { (path, print) -> baseline[path] != print }
+            .keys
+            .any { path -> holdsSaveData(File(path)) }
+    }
+
+    private fun holdsSaveData(file: File): Boolean = try {
+        val bytes = file.readBytes()
+        bytes.isNotEmpty() && bytes.any { it != bytes[0] }
+    } catch (e: Exception) {
+        false
+    }
+
     /**
      * Carries a battery save forward when the file it lives under stops being the one we look for.
      *
@@ -615,6 +650,7 @@ class SaveStateManager(
     companion object {
         private const val TAG = "SaveStateManager"
         private const val LEGACY_CARD_SUFFIX = "_1.mcd"
+        private val IGNORED_SAVE_EXTENSIONS = setOf("rtc", "tmp", "bak", "png")
         private val SHARED_CART_BRAM = Regex("""^(128Kbit|256Kbit|512Kbit|1Mbit|2Mbit|4Mbit)_cart\.brm$""")
         private val SEGACD_REGION_TAGS = listOf("(usa)" to "U", "(europe)" to "E", "(japan)" to "J")
         const val AUTO_SLOT = LibretroStateSlots.AUTO_SLOT
