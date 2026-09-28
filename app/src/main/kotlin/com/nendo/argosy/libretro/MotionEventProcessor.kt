@@ -1,6 +1,7 @@
 package com.nendo.argosy.libretro
 
 import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import com.swordfish.libretrodroid.GLRetroView
 import kotlin.math.abs
@@ -10,19 +11,23 @@ import kotlin.math.hypot
  * @param rightStickDeadzone radial deadzone applied to the right stick before it reaches the
  * core. Platforms that drive digital buttons from the right analog (N64 C buttons) need a
  * large one so a light flick does not register as a press.
+ * @param admitsAnalogKey whether an analog-mapped axis edge on a device may reach the core.
  */
 class MotionEventProcessor(
     private val inputMapper: ControllerInputMapper,
     private val portResolver: ControllerPortResolver,
     private val videoSettings: VideoSettingsManager,
     private val getRetroView: () -> GLRetroView,
-    private val rightStickDeadzone: Float = 0f
+    private val rightStickDeadzone: Float = 0f,
+    private val admitsAnalogKey: (deviceId: Int, axis: Int, pressed: Boolean) -> Boolean
 ) {
     fun processGamepadMotion(event: MotionEvent): Boolean {
         val retroView = getRetroView()
 
         val syntheticEvents = inputMapper.processMotionEvent(event)
         for (synthetic in syntheticEvents) {
+            val pressed = synthetic.action == KeyEvent.ACTION_DOWN
+            if (!admitsAnalogKey(event.deviceId, synthetic.axis, pressed)) continue
             retroView.sendKeyEvent(synthetic.action, synthetic.keyCode, synthetic.port)
         }
 

@@ -5,6 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeFalse
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class RomMCapabilitiesTest {
@@ -125,15 +127,22 @@ class RomMCapabilitiesTest {
 
     @Test
     fun `a development server passes the device install gate in a debug build`() {
-        assertTrue("unit tests run against the debug variant", BuildConfig.DEBUG)
+        assumeTrue(BuildConfig.DEBUG)
         val caps = RomMCapabilities.from("development")
         assertTrue(caps.supportsDeviceInstall)
         assertTrue(caps.isSupportedVersion)
     }
 
     @Test
+    fun `a release build treats a development server as unversioned`() {
+        assumeFalse(BuildConfig.DEBUG)
+        assertEquals("development", RomMCapabilities.comparableVersion("development"))
+        assertFalse(RomMCapabilities.from("development").supportsDeviceInstall)
+    }
+
+    @Test
     fun `a development server keeps its raw version string`() {
-        assertTrue("unit tests run against the debug variant", BuildConfig.DEBUG)
+        assumeTrue(BuildConfig.DEBUG)
         val caps = RomMCapabilities.from("development")
         assertEquals("development", caps.serverVersion)
         assertNotEquals("development", RomMCapabilities.comparableVersion("development"))

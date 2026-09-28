@@ -365,7 +365,7 @@ class LibretroActivity : ComponentActivity() {
     private var speedrunPanelFractionState by mutableStateOf(SPEEDRUN_PANEL_FRACTION_DEFAULT)
     private val speedrunTimer = com.nendo.argosy.libretro.speedrun.SpeedrunTimerEngine()
     private var speedrunStartOnReset = true
-    private val hotkeyConsumedKeys = mutableSetOf<Int>()
+    private val keyPressGate = KeyPressGate()
     private val coreHeldKeys = mutableMapOf<Int, KeyEvent>()
     private val deferredCoreKeys = DeferredCoreKeys<KeyEvent>(
         scope = lifecycleScope,
@@ -588,7 +588,8 @@ class LibretroActivity : ComponentActivity() {
             portResolver = portResolver,
             videoSettings = videoSettings,
             getRetroView = { retroView },
-            rightStickDeadzone = rightStickDeadzoneForPlatform()
+            rightStickDeadzone = rightStickDeadzoneForPlatform(),
+            admitsAnalogKey = keyPressGate::admitsAnalog
         )
 
         buildContentView()
@@ -3099,11 +3100,23 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean =
+        dispatchKeyFrom(event, KeyPressGate.Source.Key, coreBound = true)
+
     @SuppressLint("RestrictedApi")
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    private fun dispatchKeyFrom(event: KeyEvent, source: KeyPressGate.Source, coreBound: Boolean): Boolean {
         if (event.action == KeyEvent.ACTION_UP) {
-            hotkeyConsumedKeys.remove(event.keyCode)
-            if (::hotkeyDispatcher.isInitialized) hotkeyDispatcher.onKeyUp(event.keyCode)
+            val release = keyPressGate.onUp(event.deviceId, event.keyCode, source)
+            if (release.toHotkeys && ::hotkeyDispatcher.isInitialized) hotkeyDispatcher.onKeyUp(event.keyCode)
+            if (!release.toCore && !isAnyMenuOpen) return true
+        } else if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 &&
+            !isAnyMenuOpen && ::hotkeyDispatcher.isInitialized
+        ) {
+            val controllerId = event.device?.let { getControllerId(it) }
+            val forward = keyPressGate.onDown(event.deviceId, event.keyCode, source, coreBound) {
+                hotkeyDispatcher.onKeyDown(event.keyCode, controllerId)
+            }
+            if (!forward) return true
         }
         if (isAnyMenuOpen) {
             if (isMenuHotkeyEvent(event)) {
@@ -3126,14 +3139,19 @@ class LibretroActivity : ComponentActivity() {
         if (isAnyMenuOpen) return
         val event = KeyEvent(action, keyCode)
         if (action == KeyEvent.ACTION_DOWN) {
-            if (hotkeyDispatcher.onKeyDown(keyCode, null)) return
+            val forward = keyPressGate.onDown(event.deviceId, keyCode, KeyPressGate.Source.Touch, coreBound = true) {
+                hotkeyDispatcher.onKeyDown(keyCode, null)
+            }
+            if (!forward) return
             if (hotkeyDispatcher.isPotentialComboKey(keyCode, null)) {
                 deferredCoreKeys.hold(keyCode, event)
                 return
             }
             if (retroView.onKeyDown(keyCode, event)) coreHeldKeys[keyCode] = event
         } else {
-            hotkeyDispatcher.onKeyUp(keyCode)
+            val release = keyPressGate.onUp(event.deviceId, keyCode, KeyPressGate.Source.Touch)
+            if (release.toHotkeys) hotkeyDispatcher.onKeyUp(keyCode)
+            if (!release.toCore) return
             if (deferredCoreKeys.release(keyCode, event)) return
             coreHeldKeys.remove(keyCode)
             retroView.onKeyUp(keyCode, event)
@@ -3143,14 +3161,10 @@ class LibretroActivity : ComponentActivity() {
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (isAnyMenuOpen) return super.onKeyDown(keyCode, event)
 
-        if (event.repeatCount > 0 && keyCode in hotkeyConsumedKeys) return true
+        if (event.repeatCount > 0 && keyPressGate.isWithheld(event.deviceId, keyCode)) return true
         if (event.repeatCount > 0 && deferredCoreKeys.isHolding(keyCode)) return true
         if (event.repeatCount == 0) {
             val controllerId = event.device?.let { getControllerId(it) }
-            if (hotkeyDispatcher.onKeyDown(keyCode, controllerId)) {
-                hotkeyConsumedKeys.add(keyCode)
-                return true
-            }
             if (hotkeyDispatcher.isPotentialComboKey(keyCode, controllerId)) {
                 deferredCoreKeys.hold(keyCode, event)
                 return true
@@ -3189,9 +3203,12 @@ class LibretroActivity : ComponentActivity() {
 
     override fun onGenericMotionEvent(event: MotionEvent): Boolean {
         val device = event.device
-        triggerAxisKeyEmitter.emit(event) { axis ->
-            device != null && inputMapper.hasAnalogMappingForAxis(device, axis)
-        }.forEach { dispatchKeyEvent(it) }
+        triggerAxisKeyEmitter.emitByAxis(event).forEach { (axis, key) ->
+            val analogMapped = device != null && inputMapper.hasAnalogMappingForAxis(device, axis)
+            if (!analogMapped || !isAnyMenuOpen) {
+                dispatchKeyFrom(key, KeyPressGate.Source.Axis(axis), coreBound = !analogMapped)
+            }
+        }
 
         if (isAnyMenuOpen) {
             if (gamepadInputBridge.handleMotionEvent(event)) return true
@@ -3650,6 +3667,7 @@ class LibretroActivity : ComponentActivity() {
      */
     private fun releaseCoreHeldKeys() {
         if (::hotkeyDispatcher.isInitialized) hotkeyDispatcher.releaseHeldInput()
+        keyPressGate.clear()
         deferredCoreKeys.clear()
         if (coreHeldKeys.isEmpty()) return
         val held = coreHeldKeys.toMap()

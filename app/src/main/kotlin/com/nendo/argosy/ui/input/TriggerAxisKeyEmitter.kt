@@ -10,19 +10,20 @@ import javax.inject.Singleton
 class TriggerAxisKeyEmitter @Inject constructor() {
     private val pressedState = mutableMapOf<Pair<Int, Int>, Boolean>()
 
-    fun emit(event: MotionEvent, skipAxis: (axis: Int) -> Boolean = { false }): List<KeyEvent> {
+    fun emit(event: MotionEvent): List<KeyEvent> = emitByAxis(event).map { it.second }
+
+    fun emitByAxis(event: MotionEvent): List<Pair<Int, KeyEvent>> {
         val device = event.device ?: return emptyList()
         val deviceId = device.id
-        val results = mutableListOf<KeyEvent>()
+        val results = mutableListOf<Pair<Int, KeyEvent>>()
         for ((axis, keyCode) in TRIGGER_AXES) {
-            if (skipAxis(axis)) continue
             val isPressed = event.getAxisValue(axis) > THRESHOLD
             val key = deviceId to axis
             val wasPressed = pressedState[key] ?: false
             if (isPressed != wasPressed) {
                 pressedState[key] = isPressed
                 val action = if (isPressed) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP
-                results.add(buildKeyEvent(event, deviceId, action, keyCode))
+                results.add(axis to buildKeyEvent(event, deviceId, action, keyCode))
             }
         }
         return results
@@ -55,5 +56,7 @@ class TriggerAxisKeyEmitter @Inject constructor() {
             MotionEvent.AXIS_RTRIGGER to KeyEvent.KEYCODE_BUTTON_R2,
             MotionEvent.AXIS_GAS to KeyEvent.KEYCODE_BUTTON_R2
         )
+
+        fun keyCodeForAxis(axis: Int): Int? = TRIGGER_AXES.firstOrNull { it.first == axis }?.second
     }
 }

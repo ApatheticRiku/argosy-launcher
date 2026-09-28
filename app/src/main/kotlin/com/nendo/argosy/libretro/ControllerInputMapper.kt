@@ -11,7 +11,8 @@ import com.swordfish.libretrodroid.KeyMapper
 data class SyntheticKeyEvent(
     val keyCode: Int,
     val action: Int,
-    val port: Int
+    val port: Int,
+    val axis: Int
 )
 
 class ControllerInputMapper : KeyMapper {
@@ -68,7 +69,7 @@ class ControllerInputMapper : KeyMapper {
                 newActive.add(analogDir)
                 if (analogDir !in currentActive) {
                     val keyCode = retroButtonToAndroidKeyCode(retroButton)
-                    results.add(SyntheticKeyEvent(keyCode, KeyEvent.ACTION_DOWN, port))
+                    results.add(SyntheticKeyEvent(keyCode, KeyEvent.ACTION_DOWN, port, analogDir.axis))
                 }
             }
         }
@@ -77,7 +78,7 @@ class ControllerInputMapper : KeyMapper {
             if (analogDir !in newActive) {
                 val retroButton = analogMappings[analogDir] ?: continue
                 val keyCode = retroButtonToAndroidKeyCode(retroButton)
-                results.add(SyntheticKeyEvent(keyCode, KeyEvent.ACTION_UP, port))
+                results.add(SyntheticKeyEvent(keyCode, KeyEvent.ACTION_UP, port, analogDir.axis))
             }
         }
 
