@@ -54,7 +54,7 @@ class DownloadNotificationObserver @Inject constructor(
             val currStatus = current.statusFor(gameId)
 
             if (prevStatus?.state != currStatus?.state && currStatus != null) {
-                showTransientNotification(currStatus)
+                showTransientNotification(currStatus, heldOnArrival = prevStatus == null)
             }
         }
 
@@ -66,7 +66,7 @@ class DownloadNotificationObserver @Inject constructor(
         }
     }
 
-    private fun showTransientNotification(progress: DownloadProgress) {
+    private fun showTransientNotification(progress: DownloadProgress, heldOnArrival: Boolean) {
         if (isInitialLoad && progress.state != DownloadState.COMPLETED && progress.state != DownloadState.FAILED) {
             return
         }
@@ -80,8 +80,11 @@ class DownloadNotificationObserver @Inject constructor(
                 Triple(R.string.ui_download_notice_extracting, NotificationType.INFO, false)
             DownloadState.MOVING ->
                 Triple(R.string.ui_download_notice_moving, NotificationType.INFO, false)
-            DownloadState.PAUSED ->
-                Triple(R.string.ui_download_notice_paused, NotificationType.INFO, false)
+            DownloadState.PAUSED -> Triple(
+                if (heldOnArrival) R.string.ui_download_notice_queued else R.string.ui_download_notice_paused,
+                NotificationType.INFO,
+                false
+            )
             DownloadState.COMPLETED ->
                 Triple(R.string.ui_download_notice_completed, NotificationType.SUCCESS, true)
             DownloadState.FAILED ->
