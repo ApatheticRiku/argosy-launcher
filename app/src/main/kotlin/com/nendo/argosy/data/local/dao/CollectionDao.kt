@@ -13,6 +13,8 @@ import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.local.entity.GameEntity
 import kotlinx.coroutines.flow.Flow
 
+private const val SQL_PARAM_CHUNK = 500
+
 @Dao
 interface CollectionDao {
 
@@ -76,6 +78,25 @@ interface CollectionDao {
 
     @Query("DELETE FROM collection_games WHERE collectionId = :collectionId AND gameId = :gameId")
     suspend fun removeGameFromCollection(collectionId: Long, gameId: Long)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun addGamesToCollection(collectionGames: List<CollectionGameEntity>)
+
+    @Query("DELETE FROM collection_games WHERE collectionId = :collectionId AND gameId IN (:gameIds)")
+    suspend fun removeGamesFromCollection(collectionId: Long, gameIds: List<Long>)
+
+    /**
+     * Makes [collectionId] hold exactly [gameIds], writing only the difference.
+     */
+    @Transaction
+    suspend fun setCollectionGames(collectionId: Long, gameIds: Set<Long>) {
+        val current = getGameIdsInCollection(collectionId).toSet()
+        val added = gameIds - current
+        if (added.isNotEmpty()) {
+            addGamesToCollection(added.map { CollectionGameEntity(collectionId = collectionId, gameId = it) })
+        }
+        (current - gameIds).chunked(SQL_PARAM_CHUNK).forEach { removeGamesFromCollection(collectionId, it) }
+    }
 
     @Query("SELECT collectionId FROM collection_games WHERE gameId = :gameId")
     fun observeCollectionIdsForGame(gameId: Long): Flow<List<Long>>

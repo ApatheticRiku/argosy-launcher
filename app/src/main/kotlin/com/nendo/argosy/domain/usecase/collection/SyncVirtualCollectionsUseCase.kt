@@ -3,7 +3,6 @@ package com.nendo.argosy.domain.usecase.collection
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
-import com.nendo.argosy.data.local.entity.CollectionGameEntity
 import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import javax.inject.Inject
@@ -55,16 +54,7 @@ class SyncVirtualCollectionsUseCase @Inject constructor(
                 )
             }
 
-            val currentGameIds = collectionDao.getGameIdsInCollection(collectionId).toSet()
-            val newGameIds = gameIds.toSet()
-
-            for (gameId in currentGameIds - newGameIds) {
-                collectionDao.removeGameFromCollection(collectionId, gameId)
-            }
-
-            for (gameId in newGameIds - currentGameIds) {
-                collectionDao.addGameToCollection(CollectionGameEntity(collectionId, gameId))
-            }
+            collectionDao.setCollectionGames(collectionId, gameIds.toSet())
         }
 
         for (existing in existingCollections) {

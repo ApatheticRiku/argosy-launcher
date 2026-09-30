@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.remote.romm
 
+import androidx.room.withTransaction
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.CollectionEntity
@@ -31,7 +32,8 @@ class RomMCollectionSyncService @Inject constructor(
     private val collectionDao: CollectionDao,
     private val collectionMembershipDao: com.nendo.argosy.data.local.dao.CollectionMembershipDao,
     private val overlayWriter: com.nendo.argosy.data.repository.GameUserOverlayWriter,
-    private val syncCoordinator: dagger.Lazy<SyncCoordinator>
+    private val syncCoordinator: dagger.Lazy<SyncCoordinator>,
+    private val database: com.nendo.argosy.data.local.ALauncherDatabase
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
 
@@ -252,44 +254,50 @@ class RomMCollectionSyncService @Inject constructor(
 
             val remoteCollections = response.body() ?: emptyList()
             Logger.info(TAG, "syncCollections: received ${remoteCollections.size} remote collections")
-            val updatedLocalCollections = collectionDao.getAllCollections()
             val ownerUserId = overlayWriter.activeOwnerId()
+            val rommIdToGameId = gameDao.getRommIdMappings().associate { it.rommId to it.id }
 
-            val remoteByRommId = remoteCollections.associateBy { it.id }
-            val localByRommId = updatedLocalCollections.filter { it.rommId != null }.associateBy { it.rommId }
+            database.withTransaction {
+                val updatedLocalCollections = collectionDao.getAllCollections()
+                val remoteByRommId = remoteCollections.associateBy { it.id }
+                val localByRommId = updatedLocalCollections.filter { it.rommId != null }.associateBy { it.rommId }
 
-            for (remote in remoteCollections) {
-                val existing = localByRommId[remote.id]
-                if (existing != null) {
-                    collectionDao.updateCollection(
-                        existing.copy(
-                            name = remote.name,
-                            description = remote.description,
-                            updatedAt = System.currentTimeMillis()
+                for (remote in remoteCollections) {
+                    val existing = localByRommId[remote.id]
+                    val collectionId = if (existing != null) {
+                        collectionDao.updateCollection(
+                            existing.copy(
+                                name = remote.name,
+                                description = remote.description,
+                                updatedAt = System.currentTimeMillis()
+                            )
                         )
-                    )
-                } else {
-                    collectionDao.insertCollection(
-                        CollectionEntity(
-                            rommId = remote.id,
-                            name = remote.name,
-                            description = remote.description,
-                            isUserCreated = false
+                        existing.id
+                    } else {
+                        collectionDao.insertCollection(
+                            CollectionEntity(
+                                rommId = remote.id,
+                                name = remote.name,
+                                description = remote.description,
+                                isUserCreated = false
+                            )
                         )
+                    }
+
+                    if (ownerUserId != null) {
+                        collectionMembershipDao.setMembership(ownerUserId, collectionId, true)
+                    }
+                    collectionDao.setCollectionGames(
+                        collectionId,
+                        remote.romIds.mapNotNull { rommIdToGameId[it] }.toSet()
                     )
                 }
 
-                val collectionId = collectionDao.getCollectionByRommId(remote.id)?.id ?: continue
-                if (ownerUserId != null) {
-                    collectionMembershipDao.setMembership(ownerUserId, collectionId, true)
+                for (local in updatedLocalCollections) {
+                    if (local.rommId == null || remoteByRommId.containsKey(local.rommId)) continue
+                    if (ownerUserId == null) continue
+                    collectionMembershipDao.setMembership(ownerUserId, local.id, false)
                 }
-                syncCollectionGames(collectionId, remote.romIds)
-            }
-
-            for (local in updatedLocalCollections) {
-                if (local.rommId == null || remoteByRommId.containsKey(local.rommId)) continue
-                if (ownerUserId == null) continue
-                collectionMembershipDao.setMembership(ownerUserId, local.id, false)
             }
 
             Logger.info(TAG, "syncCollections: synced ${remoteCollections.size} collections")
@@ -336,15 +344,15 @@ class RomMCollectionSyncService @Inject constructor(
         remote: List<RomMAutoCollection>,
         rommIdToGameId: Map<Long, Long>,
         ownerUserId: Long?
-    ) {
+    ) = database.withTransaction {
+        val existingByName = collectionDao.getAllByType(type).associateBy { it.name }
         val keptNames = mutableSetOf<String>()
         for (rc in remote) {
             val gameIds = rc.romIds.mapNotNull { rommIdToGameId[it] }.toSet()
             if (gameIds.isEmpty()) continue
             keptNames.add(rc.name)
 
-            val existing = collectionDao.getByTypeAndName(type, rc.name)
-            val collectionId = existing?.id ?: collectionDao.insertCollection(
+            val collectionId = existingByName[rc.name]?.id ?: collectionDao.insertCollection(
                 CollectionEntity(
                     name = rc.name,
                     description = rc.description,
@@ -356,37 +364,15 @@ class RomMCollectionSyncService @Inject constructor(
             if (ownerUserId != null) {
                 collectionMembershipDao.setMembership(ownerUserId, collectionId, true)
             }
+            collectionDao.setCollectionGames(collectionId, gameIds)
+        }
 
-            val current = collectionDao.getGameIdsInCollection(collectionId).toSet()
-            for (gameId in gameIds - current) {
-                collectionDao.addGameToCollection(CollectionGameEntity(collectionId = collectionId, gameId = gameId))
+        if (ownerUserId != null) {
+            for (existing in existingByName.values) {
+                if (existing.name !in keptNames) {
+                    collectionMembershipDao.setMembership(ownerUserId, existing.id, false)
+                }
             }
-            for (gameId in current - gameIds) {
-                collectionDao.removeGameFromCollection(collectionId, gameId)
-            }
-        }
-
-        for (existing in collectionDao.getAllByType(type)) {
-            if (existing.name in keptNames) continue
-            if (ownerUserId == null) continue
-            collectionMembershipDao.setMembership(ownerUserId, existing.id, false)
-        }
-    }
-
-    private suspend fun syncCollectionGames(collectionId: Long, remoteRomIds: List<Long>) {
-        val localGameIds = collectionDao.getGameIdsInCollection(collectionId).toSet()
-        val remoteGameIds = remoteRomIds.mapNotNull { rommId ->
-            gameDao.getByRommId(rommId)?.id
-        }.toSet()
-
-        for (gameId in remoteGameIds - localGameIds) {
-            collectionDao.addGameToCollection(
-                CollectionGameEntity(collectionId = collectionId, gameId = gameId)
-            )
-        }
-
-        for (gameId in localGameIds - remoteGameIds) {
-            collectionDao.removeGameFromCollection(collectionId, gameId)
         }
     }
 
