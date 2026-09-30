@@ -191,6 +191,17 @@
     <string name="settings_navigation_select_swap_subtitle">Choisir si appuyer ou maintenir Select inverse les écrans</string>
     <string name="settings_navigation_select_swap_hold">Maintenir Select</string>
     <string name="settings_navigation_select_swap_tap">Appuyer sur Select</string>
+    <string name="settings_navigation_section_shortcuts">Raccourcis</string>
+    <string name="settings_navigation_open_navigation_title">Ouvrir la navigation</string>
+    <string name="settings_navigation_open_navigation_subtitle">Bouton qui ouvre le panneau de navigation</string>
+    <string name="settings_navigation_open_quick_panel_title">Ouvrir le panneau rapide</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">Bouton qui ouvre les paramètres rapides. Maintenir Retour les ouvre aussi</string>
+    <string name="settings_navigation_shortcut_unassigned">Non attribué</string>
+    <string name="settings_navigation_shortcut_capture_title">Attribuer un bouton</string>
+    <string name="settings_navigation_shortcut_capture_prompt">Appuyez sur un bouton</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">Le bouton ne fera plus rien d\'autre dans les menus d\'Argosy</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s sert à naviguer dans les menus et ne peut pas être attribué</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">Annuler</string>
 
     <!-- ===== Section Ecrans ===== -->
 

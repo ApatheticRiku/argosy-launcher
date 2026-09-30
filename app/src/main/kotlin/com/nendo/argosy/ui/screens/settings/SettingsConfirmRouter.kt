@@ -5,6 +5,7 @@ import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.data.steam.SteamConnectionState
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.UiShortcut
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.libretro.frame.FrameRegistry
@@ -1030,6 +1031,14 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.requestEnumPicker(NavigationItem.SelectSwap.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        NavigationItem.OpenNavigationShortcut -> {
+            vm.startShortcutCapture(UiShortcut.OPEN_NAVIGATION)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
+        NavigationItem.OpenQuickPanelShortcut -> {
+            vm.startShortcutCapture(UiShortcut.OPEN_QUICK_PANEL)
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         else -> {}
     }
     return InputResult.HANDLED
@@ -1230,6 +1239,7 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
         state.builtinControls.showControllerOrderModal -> { vm.hideControllerOrderModal(); true }
         state.builtinControls.showInputMappingModal -> { vm.hideInputMappingModal(); true }
         state.builtinControls.showHotkeysModal -> { vm.hideHotkeysModal(); true }
+        state.controls.shortcutCaptureTarget != null -> { vm.cancelShortcutCapture(); true }
         state.accounts.pairing.active -> { vm.cancelAddAccount(); true }
         state.accounts.switchInProgress -> true
         state.server.rommAddressVerifyPrompt != null -> { vm.cancelUnverifiedRommAddress(); true }

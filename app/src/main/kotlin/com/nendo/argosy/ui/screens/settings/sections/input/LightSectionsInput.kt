@@ -76,6 +76,15 @@ internal class LightSectionsInput(
         return InputResult.UNHANDLED
     }
 
+    override fun onSecondaryAction(): InputResult {
+        val state = viewModel.uiState.value
+        if (state.currentSection != SettingsSection.NAVIGATION) return InputResult.UNHANDLED
+        val shortcut = navigationItemAtFocusIndex(state.focusedIndex, state.controls)?.shortcut
+            ?: return InputResult.UNHANDLED
+        viewModel.clearShortcutKey(shortcut)
+        return InputResult.HANDLED
+    }
+
     override fun onPrevSection(): InputResult = handleSectionJump(-1)
 
     override fun onNextSection(): InputResult = handleSectionJump(1)

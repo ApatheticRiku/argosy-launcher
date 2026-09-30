@@ -419,6 +419,30 @@
     <!-- Value of that row: a quick press of Select swaps the screens. Verb phrase. Select is the
          button's printed name. -->
     <string name="settings_navigation_select_swap_tap">Press Select</string>
+    <!-- Heading over the rows that pick a controller button for opening menus from anywhere.
+         Noun. -->
+    <string name="settings_navigation_section_shortcuts">Shortcuts</string>
+    <!-- Row title: the button that opens the side navigation drawer. Verb phrase. -->
+    <string name="settings_navigation_open_navigation_title">Open Navigation</string>
+    <!-- Second line of that row. -->
+    <string name="settings_navigation_open_navigation_subtitle">Button that opens the navigation drawer</string>
+    <!-- Row title: the button that opens the small settings panel. Verb phrase. -->
+    <string name="settings_navigation_open_quick_panel_title">Open Quick Panel</string>
+    <!-- Second line of that row. "Back" is the back action, whichever button performs it. -->
+    <string name="settings_navigation_open_quick_panel_subtitle">Button that opens Quick Settings. Holding Back opens it too</string>
+    <!-- Value of those two rows when no button is assigned. Adjective. -->
+    <string name="settings_navigation_shortcut_unassigned">Unassigned</string>
+    <!-- Title of the dialog that waits for a button press to assign. Verb phrase. -->
+    <string name="settings_navigation_shortcut_capture_title">Assign Button</string>
+    <!-- Main line of that dialog while it waits. Imperative. -->
+    <string name="settings_navigation_shortcut_capture_prompt">Press a button</string>
+    <!-- Second line of that dialog while it waits. -->
+    <string name="settings_navigation_shortcut_capture_subtitle">The button stops doing anything else in Argosy\'s menus</string>
+    <!-- Second line of that dialog after a refused press. %1$s is the button's printed name,
+         such as A or Start. -->
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s moves through the menus and can\'t be assigned</string>
+    <!-- Button hint that closes that dialog without assigning. Verb. -->
+    <string name="settings_navigation_shortcut_capture_hint_cancel">Cancel</string>
 
     <!-- ===== Displays section ===== -->
 

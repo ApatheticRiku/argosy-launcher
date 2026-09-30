@@ -326,6 +326,7 @@
     <string name="settings_shell_footer_reset_builtinvideo_override">रीसेट करें</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">रीसेट करें</string>
     <string name="settings_shell_footer_back">वापस</string>
+    <string name="settings_shell_footer_unassign_shortcut">हटाएँ</string>
 
     <!-- ===== SettingsScreen: cache clear confirm modals ===== -->
 

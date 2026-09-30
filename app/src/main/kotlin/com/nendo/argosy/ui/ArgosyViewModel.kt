@@ -52,9 +52,12 @@ import com.nendo.argosy.hardware.VolumeController
 import com.nendo.argosy.ui.components.FanMode
 import com.nendo.argosy.ui.components.PerformanceMode
 import com.nendo.argosy.ui.components.QuickSettingsItem
+import com.nendo.argosy.ui.components.QuickSettingsPage
 import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.quickSettingsEffectivePage
 import com.nendo.argosy.ui.components.quickSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.components.quickSettingsMaxFocusIndex
+import com.nendo.argosy.ui.components.quickSettingsVisiblePages
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.util.PServerExecutor
 import com.nendo.argosy.data.repository.GameRepository
@@ -195,7 +198,7 @@ private val NAV_RING_ROUTES = listOf(
     Screen.Settings.route
 )
 
-private const val NAV_BAR_AUTO_HIDE_MS = 2_500L
+private const val NAV_BAR_AUTO_HIDE_MS = 5_000L
 
 private fun isNavRouteAvailable(route: String, socialConnected: Boolean, mediaSignedIn: Boolean): Boolean =
     when (route) {
@@ -949,6 +952,9 @@ class ArgosyViewModel @Inject constructor(
     private val _quickSettingsFocusIndex = MutableStateFlow(0)
     val quickSettingsFocusIndex: StateFlow<Int> = _quickSettingsFocusIndex.asStateFlow()
 
+    private val _quickSettingsPage = MutableStateFlow(QuickSettingsPage.QUICK)
+    val quickSettingsPage: StateFlow<QuickSettingsPage> = _quickSettingsPage.asStateFlow()
+
     private data class DeviceSettingsState(
         val fanMode: FanMode = FanMode.SMART,
         val fanSpeed: Int = 25000,
@@ -1004,6 +1010,7 @@ class ArgosyViewModel @Inject constructor(
         preferencesRepository.userPreferences
             .map {
                 listOf(
+                    InputButton.LB_RB to R.string.ui_quick_settings_hint_page,
                     InputButton.DPAD_VERTICAL to R.string.ui_quick_settings_hint_navigate,
                     InputButton.B to R.string.ui_quick_settings_hint_close
                 )
@@ -1012,6 +1019,7 @@ class ArgosyViewModel @Inject constructor(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
                 initialValue = listOf(
+                    InputButton.LB_RB to R.string.ui_quick_settings_hint_page,
                     InputButton.DPAD_VERTICAL to R.string.ui_quick_settings_hint_navigate,
                     InputButton.B to R.string.ui_quick_settings_hint_close
                 )
@@ -1525,22 +1533,49 @@ class ArgosyViewModel @Inject constructor(
         }
     }
 
+    private fun activeQuickSettingsPage(state: QuickSettingsState): QuickSettingsPage =
+        quickSettingsEffectivePage(_quickSettingsPage.value, state)
+
+    private fun focusedQuickSettingsItem(state: QuickSettingsState): QuickSettingsItem? =
+        quickSettingsItemAtFocusIndex(activeQuickSettingsPage(state), _quickSettingsFocusIndex.value, state)
+
+    fun selectQuickSettingsPage(page: QuickSettingsPage) {
+        if (page == activeQuickSettingsPage(currentQuickSettingsState())) return
+        _quickSettingsPage.update { page }
+        _quickSettingsFocusIndex.update { 0 }
+    }
+
+    private fun cycleQuickSettingsPage(delta: Int): InputResult {
+        val state = currentQuickSettingsState()
+        val pages = quickSettingsVisiblePages(state)
+        if (pages.size < 2) return InputResult.handled(SoundType.BOUNDARY)
+        val index = pages.indexOf(activeQuickSettingsPage(state)).coerceAtLeast(0)
+        selectQuickSettingsPage(pages[(index + delta).mod(pages.size)])
+        return InputResult.HANDLED
+    }
+
     fun createQuickSettingsInputHandler(
         onDismiss: () -> Unit
     ): InputHandler = object : InputHandler {
 
         override fun onUp(): InputResult {
-            val maxIndex = quickSettingsMaxFocusIndex(currentQuickSettingsState())
+            val state = currentQuickSettingsState()
+            val maxIndex = quickSettingsMaxFocusIndex(activeQuickSettingsPage(state), state)
             return moveWrappedFocus(_quickSettingsFocusIndex, -1, maxIndex, uiState.value.menuWrapMode)
         }
 
         override fun onDown(): InputResult {
-            val maxIndex = quickSettingsMaxFocusIndex(currentQuickSettingsState())
+            val state = currentQuickSettingsState()
+            val maxIndex = quickSettingsMaxFocusIndex(activeQuickSettingsPage(state), state)
             return moveWrappedFocus(_quickSettingsFocusIndex, 1, maxIndex, uiState.value.menuWrapMode)
         }
 
+        override fun onPrevSection(): InputResult = cycleQuickSettingsPage(-1)
+
+        override fun onNextSection(): InputResult = cycleQuickSettingsPage(1)
+
         override fun onLeft(): InputResult {
-            return when (quickSettingsItemAtFocusIndex(_quickSettingsFocusIndex.value, currentQuickSettingsState())) {
+            return when (focusedQuickSettingsItem(currentQuickSettingsState())) {
                 QuickSettingsItem.FanSpeed -> {
                     setFanSpeed((_deviceSettings.value.fanSpeed - 1000).coerceAtLeast(25000))
                     InputResult.HANDLED
@@ -1562,7 +1597,7 @@ class ArgosyViewModel @Inject constructor(
         }
 
         override fun onRight(): InputResult {
-            return when (quickSettingsItemAtFocusIndex(_quickSettingsFocusIndex.value, currentQuickSettingsState())) {
+            return when (focusedQuickSettingsItem(currentQuickSettingsState())) {
                 QuickSettingsItem.FanSpeed -> {
                     setFanSpeed((_deviceSettings.value.fanSpeed + 1000).coerceAtMost(35000))
                     InputResult.HANDLED
@@ -1585,7 +1620,7 @@ class ArgosyViewModel @Inject constructor(
 
         override fun onConfirm(): InputResult {
             val state = currentQuickSettingsState()
-            return when (quickSettingsItemAtFocusIndex(_quickSettingsFocusIndex.value, state)) {
+            return when (focusedQuickSettingsItem(state)) {
                 QuickSettingsItem.Performance -> {
                     if (state.deviceSettingsEnabled) cyclePerformanceMode()
                     InputResult.HANDLED

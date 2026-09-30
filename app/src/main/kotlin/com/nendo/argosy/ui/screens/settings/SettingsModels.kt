@@ -350,8 +350,16 @@ data class ControlsState(
     val hasUsageStatsPermission: Boolean = false,
     val hasSecondaryDisplay: Boolean = false,
     val menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode = com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP,
-    val selectSwapMode: com.nendo.argosy.data.preferences.SelectSwapMode = com.nendo.argosy.data.preferences.SelectSwapMode.HOLD
+    val selectSwapMode: com.nendo.argosy.data.preferences.SelectSwapMode = com.nendo.argosy.data.preferences.SelectSwapMode.HOLD,
+    val openNavigationKey: Int = com.nendo.argosy.data.preferences.ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
+    val openQuickPanelKey: Int = com.nendo.argosy.data.preferences.ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
+    val shortcutCaptureTarget: com.nendo.argosy.ui.input.UiShortcut? = null
 )
+
+fun ControlsState.shortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut): Int = when (shortcut) {
+    com.nendo.argosy.ui.input.UiShortcut.OPEN_NAVIGATION -> openNavigationKey
+    com.nendo.argosy.ui.input.UiShortcut.OPEN_QUICK_PANEL -> openQuickPanelKey
+}
 
 data class ManagedInstallerRow(
     val id: Long,

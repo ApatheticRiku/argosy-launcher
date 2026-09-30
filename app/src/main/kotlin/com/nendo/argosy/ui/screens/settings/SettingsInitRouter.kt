@@ -621,7 +621,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             selectRCombo = prefs.selectRCombo,
             hasSecondaryDisplay = vm.displayAffinityHelper.hasSecondaryDisplay,
             menuWrapMode = prefs.menuWrapMode,
-            selectSwapMode = prefs.selectSwapMode
+            selectSwapMode = prefs.selectSwapMode,
+            openNavigationKey = prefs.openNavigationKey,
+            openQuickPanelKey = prefs.openQuickPanelKey
         ))
         vm.controlsDelegate.refreshUsageStatsPermission()
 

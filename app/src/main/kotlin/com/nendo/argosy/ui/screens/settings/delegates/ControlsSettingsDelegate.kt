@@ -3,6 +3,7 @@ package com.nendo.argosy.ui.screens.settings.delegates
 import android.app.Application
 import androidx.annotation.StringRes
 import com.nendo.argosy.R
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -10,7 +11,10 @@ import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.core.input.DetectedLayout
 import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
+import com.nendo.argosy.ui.input.UiShortcut
+import com.nendo.argosy.ui.input.UiShortcutKeys
 import com.nendo.argosy.ui.screens.settings.ControlsState
+import com.nendo.argosy.ui.screens.settings.shortcutKey
 import com.nendo.argosy.util.PermissionHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -182,6 +186,46 @@ class ControlsSettingsDelegate @Inject constructor(
     fun cycleSelectSwapMode(scope: CoroutineScope, direction: Int = 1) {
         val current = _state.value.selectSwapMode
         setSelectSwapMode(scope, SelectSwapMode.entries[(current.ordinal + direction).mod(SelectSwapMode.entries.size)])
+    }
+
+    fun startShortcutCapture(shortcut: UiShortcut) {
+        _state.update { it.copy(shortcutCaptureTarget = shortcut) }
+    }
+
+    fun cancelShortcutCapture() {
+        _state.update { it.copy(shortcutCaptureTarget = null) }
+    }
+
+    fun assignShortcutKey(scope: CoroutineScope, shortcut: UiShortcut, keyCode: Int) {
+        if (!UiShortcutKeys.isBindable(keyCode)) return
+        val current = _state.value
+        val otherShortcut = when (shortcut) {
+            UiShortcut.OPEN_NAVIGATION -> UiShortcut.OPEN_QUICK_PANEL
+            UiShortcut.OPEN_QUICK_PANEL -> UiShortcut.OPEN_NAVIGATION
+        }
+        val otherHoldsKey = current.shortcutKey(otherShortcut) == keyCode
+        _state.update { it.copy(shortcutCaptureTarget = null) }
+        scope.launch {
+            if (otherHoldsKey) writeShortcutKey(otherShortcut, ControlsPreferences.UNASSIGNED_KEY)
+            writeShortcutKey(shortcut, keyCode)
+        }
+    }
+
+    fun clearShortcutKey(scope: CoroutineScope, shortcut: UiShortcut) {
+        scope.launch { writeShortcutKey(shortcut, ControlsPreferences.UNASSIGNED_KEY) }
+    }
+
+    private suspend fun writeShortcutKey(shortcut: UiShortcut, keyCode: Int) {
+        when (shortcut) {
+            UiShortcut.OPEN_NAVIGATION -> {
+                preferencesRepository.setOpenNavigationKey(keyCode)
+                _state.update { it.copy(openNavigationKey = keyCode) }
+            }
+            UiShortcut.OPEN_QUICK_PANEL -> {
+                preferencesRepository.setOpenQuickPanelKey(keyCode)
+                _state.update { it.copy(openQuickPanelKey = keyCode) }
+            }
+        }
     }
 
     fun refreshUsageStatsPermission() {

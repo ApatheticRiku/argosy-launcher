@@ -199,6 +199,17 @@
     <string name="settings_navigation_select_swap_subtitle">Wähle, ob Drücken oder Halten von Select die Bildschirme tauscht</string>
     <string name="settings_navigation_select_swap_hold">Select halten</string>
     <string name="settings_navigation_select_swap_tap">Select drücken</string>
+    <string name="settings_navigation_section_shortcuts">Tastenkürzel</string>
+    <string name="settings_navigation_open_navigation_title">Navigation öffnen</string>
+    <string name="settings_navigation_open_navigation_subtitle">Taste, die die Navigationsleiste öffnet</string>
+    <string name="settings_navigation_open_quick_panel_title">Schnellleiste öffnen</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">Taste, die die Schnelleinstellungen öffnet. Zurück gedrückt halten öffnet sie ebenfalls</string>
+    <string name="settings_navigation_shortcut_unassigned">Nicht belegt</string>
+    <string name="settings_navigation_shortcut_capture_title">Taste belegen</string>
+    <string name="settings_navigation_shortcut_capture_prompt">Drücke eine Taste</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">Die Taste hat in den Argosy-Menüs keine andere Funktion mehr</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s dient zur Menünavigation und kann nicht belegt werden</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">Abbrechen</string>
 
     <!-- ===== Displays section ===== -->
 

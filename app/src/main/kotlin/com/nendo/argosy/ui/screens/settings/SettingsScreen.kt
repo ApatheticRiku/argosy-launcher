@@ -94,6 +94,8 @@ import com.nendo.argosy.ui.screens.settings.sections.DisplaysSection
 import com.nendo.argosy.ui.screens.settings.sections.ScreensSection
 import com.nendo.argosy.ui.screens.settings.sections.ManagedInstallersSection
 import com.nendo.argosy.ui.screens.settings.sections.NavigationSection
+import com.nendo.argosy.ui.screens.settings.sections.navigationItemAtFocusIndex
+import com.nendo.argosy.ui.input.UiShortcutKeys
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinEmulatorSection
 import com.nendo.argosy.ui.screens.settings.sections.EmulatorsSection
 import com.nendo.argosy.ui.screens.settings.sections.PlatformDetailSection
@@ -1719,6 +1721,9 @@ private fun SettingsFooter(
     if (uiState.currentSection == SettingsSection.ACCOUNTS && uiState.accounts.switchInProgress) {
         return
     }
+    if (uiState.controls.shortcutCaptureTarget != null) {
+        return
+    }
 
     val navigateHint = stringResource(R.string.settings_shell_footer_navigate)
     val navigateVerticalHint = stringResource(R.string.settings_shell_footer_navigate_vertical)
@@ -1765,6 +1770,7 @@ private fun SettingsFooter(
     val resetBuiltinVideoOverrideHint = stringResource(R.string.settings_shell_footer_reset_builtinvideo_override)
     val resetBuiltinControlsOverrideHint = stringResource(R.string.settings_shell_footer_reset_builtincontrols_override)
     val backHint = stringResource(R.string.settings_shell_footer_back)
+    val unassignShortcutHint = stringResource(R.string.settings_shell_footer_unassign_shortcut)
 
     val hints = buildList {
         if (uiState.currentSection != SettingsSection.BOX_ART &&
@@ -1808,6 +1814,14 @@ private fun SettingsFooter(
         }
         if (customFrameFocused) {
             add(InputButton.Y to removeFrameHint)
+        }
+        if (uiState.currentSection == SettingsSection.NAVIGATION) {
+            val focusedShortcut = navigationItemAtFocusIndex(uiState.focusedIndex, uiState.controls)?.shortcut
+            if (focusedShortcut != null &&
+                UiShortcutKeys.isBindable(uiState.controls.shortcutKey(focusedShortcut))
+            ) {
+                add(InputButton.Y to unassignShortcutHint)
+            }
         }
         if (uiState.currentSection == SettingsSection.THEME_SOUNDS && uiState.sounds.enabled) {
             val soundsLayout = ThemeSoundsLayoutState.from(uiState)

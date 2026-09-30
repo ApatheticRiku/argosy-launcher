@@ -192,6 +192,17 @@
     <string name="settings_navigation_select_swap_subtitle">Выберите, меняет ли экраны нажатие или удержание Select</string>
     <string name="settings_navigation_select_swap_hold">Удерживать Select</string>
     <string name="settings_navigation_select_swap_tap">Нажать Select</string>
+    <string name="settings_navigation_section_shortcuts">Быстрые кнопки</string>
+    <string name="settings_navigation_open_navigation_title">Открыть навигацию</string>
+    <string name="settings_navigation_open_navigation_subtitle">Кнопка, открывающая панель навигации</string>
+    <string name="settings_navigation_open_quick_panel_title">Открыть быструю панель</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">Кнопка, открывающая быстрые настройки. Удержание кнопки Назад тоже их открывает</string>
+    <string name="settings_navigation_shortcut_unassigned">Не назначено</string>
+    <string name="settings_navigation_shortcut_capture_title">Назначить кнопку</string>
+    <string name="settings_navigation_shortcut_capture_prompt">Нажмите кнопку</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">В меню Argosy кнопка больше не будет делать ничего другого</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s нужна для перемещения по меню и не может быть назначена</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">Отмена</string>
 
     <!-- ===== Displays section ===== -->
 

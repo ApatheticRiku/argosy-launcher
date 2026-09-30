@@ -1,6 +1,10 @@
 package com.nendo.argosy.ui
 
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import androidx.compose.foundation.background
@@ -75,6 +79,8 @@ import com.nendo.argosy.ui.input.LocalGamepadInputHandler
 import com.nendo.argosy.ui.input.LocalABIconsSwapped
 import com.nendo.argosy.ui.input.LocalXYIconsSwapped
 import com.nendo.argosy.ui.input.LocalSwapStartSelect
+import com.nendo.argosy.ui.input.UiShortcut
+import com.nendo.argosy.ui.input.UiShortcutGate
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.NavGraph
 import com.nendo.argosy.ui.navigation.Screen
@@ -120,6 +126,7 @@ fun ArgosyApp(
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
     val isQuickSettingsOpen by viewModel.isQuickSettingsOpen.collectAsState()
     val quickSettingsFocusIndex by viewModel.quickSettingsFocusIndex.collectAsState()
+    val quickSettingsPage by viewModel.quickSettingsPage.collectAsState()
     val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
     val quickSettingsFooterHints by viewModel.quickSettingsFooterHints.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
@@ -815,7 +822,8 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.eventFlow().collect { input ->
             val result = inputDispatcher.dispatch(input)
             val event = input.event
-            if (inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
+            val isBumper = event == GamepadEvent.PrevSection || event == GamepadEvent.NextSection
+            if (!isBumper || inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
             if (!result.handled && !inputDispatcher.hasActiveModal()) {
                 when (event) {
                     GamepadEvent.PrevSection, GamepadEvent.NextSection -> {
@@ -893,6 +901,53 @@ fun ArgosyApp(
                         }
                     }
                     else -> {}
+                }
+            }
+        }
+    }
+
+    val shortcutGate = remember(inputDispatcher, navController) {
+        object : UiShortcutGate {
+            override fun hotkeysAllowed(): Boolean =
+                !uiState.isFirstRun &&
+                    !isEmulatorRunning &&
+                    navController.currentDestination?.route != Screen.FirstRun.route &&
+                    !inputDispatcher.hasCapturingOverlay()
+
+            override fun longBackAllowed(): Boolean =
+                hotkeysAllowed() &&
+                    !isDrawerOpen &&
+                    !isQuickSettingsOpen &&
+                    !quickMenuState.isVisible
+        }
+    }
+
+    DisposableEffect(shortcutGate) {
+        val handler = viewModel.gamepadInputHandler
+        handler.attachShortcutGate(shortcutGate)
+        onDispose { handler.detachShortcutGate(shortcutGate) }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.gamepadInputHandler.shortcutEventFlow().collect { shortcut ->
+            when (shortcut) {
+                UiShortcut.OPEN_NAVIGATION -> {
+                    if (isDrawerOpen) {
+                        closeDrawer()
+                    } else {
+                        if (isQuickSettingsOpen) closeQuickSettings()
+                        if (quickMenuState.isVisible) closeQuickMenu()
+                        openDrawer()
+                    }
+                }
+                UiShortcut.OPEN_QUICK_PANEL -> {
+                    if (isQuickSettingsOpen) {
+                        closeQuickSettings()
+                    } else {
+                        if (isDrawerOpen) closeDrawer()
+                        if (quickMenuState.isVisible) closeQuickMenu()
+                        openQuickSettings()
+                    }
                 }
             }
         }
@@ -1154,7 +1209,7 @@ fun ArgosyApp(
                         onInteract = { viewModel.showNavBar() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = Dimens.footerHeight + Dimens.spacingSm)
+                            .padding(bottom = Dimens.spacingSm)
                     )
                 }
             }
@@ -1219,7 +1274,9 @@ fun ArgosyApp(
                     quayPassEnabled = quickSettingsUiState.quayPassEnabled,
                     isRolesSwapped = isRolesSwapped
                 ),
+                page = quickSettingsPage,
                 focusedIndex = quickSettingsFocusIndex,
+                onPageSelect = { viewModel.selectQuickSettingsPage(it) },
                 onThemeCycle = { viewModel.cycleTheme() },
                 onSoundToggle = { viewModel.toggleSound() },
                 onHapticToggle = { viewModel.toggleHaptic() },
@@ -1307,10 +1364,14 @@ fun ArgosyApp(
                     com.nendo.argosy.DualScreenManagerHolder.instance?.publishControlHints(relayed)
                 }
             } else {
-                FooterHost(
-                    controller = footerHostController,
+                AnimatedVisibility(
+                    visible = !navRingState.isBarVisible,
+                    enter = slideInVertically(tween(Motion.durationSlide)) { it },
+                    exit = slideOutVertically(tween(Motion.durationSlide)) { it },
                     modifier = Modifier.align(Alignment.BottomCenter)
-                )
+                ) {
+                    FooterHost(controller = footerHostController)
+                }
             }
             }
         }

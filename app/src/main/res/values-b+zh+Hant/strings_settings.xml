@@ -176,6 +176,17 @@
     <string name="settings_navigation_select_swap_subtitle">選擇按下還是長按 Select 來交換螢幕</string>
     <string name="settings_navigation_select_swap_hold">長按 Select</string>
     <string name="settings_navigation_select_swap_tap">按下 Select</string>
+    <string name="settings_navigation_section_shortcuts">快捷鍵</string>
+    <string name="settings_navigation_open_navigation_title">開啟導覽</string>
+    <string name="settings_navigation_open_navigation_subtitle">用來開啟導覽抽屜的按鍵</string>
+    <string name="settings_navigation_open_quick_panel_title">開啟快速面板</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">用來開啟快速設定的按鍵。長按返回也能開啟</string>
+    <string name="settings_navigation_shortcut_unassigned">未指派</string>
+    <string name="settings_navigation_shortcut_capture_title">指派按鍵</string>
+    <string name="settings_navigation_shortcut_capture_prompt">請按下一個按鍵</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">此按鍵在 Argosy 選單中將不再執行其他動作</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s 用於選單導覽，無法指派</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">取消</string>
 
     <string name="settings_displays_section_screen_safety">螢幕保護</string>
     <string name="settings_displays_section_displays">顯示器</string>

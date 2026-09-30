@@ -201,6 +201,17 @@
     <string name="settings_navigation_select_swap_subtitle">Elige si pulsar o mantener Select cambia las pantallas</string>
     <string name="settings_navigation_select_swap_hold">Mantener Select</string>
     <string name="settings_navigation_select_swap_tap">Pulsar Select</string>
+    <string name="settings_navigation_section_shortcuts">Atajos</string>
+    <string name="settings_navigation_open_navigation_title">Abrir navegación</string>
+    <string name="settings_navigation_open_navigation_subtitle">Botón que abre el panel de navegación</string>
+    <string name="settings_navigation_open_quick_panel_title">Abrir panel rápido</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">Botón que abre los ajustes rápidos. Mantener Atrás también los abre</string>
+    <string name="settings_navigation_shortcut_unassigned">Sin asignar</string>
+    <string name="settings_navigation_shortcut_capture_title">Asignar botón</string>
+    <string name="settings_navigation_shortcut_capture_prompt">Pulsa un botón</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">El botón deja de hacer cualquier otra cosa en los menús de Argosy</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s sirve para moverse por los menús y no se puede asignar</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">Cancelar</string>
 
     <!-- ===== Displays section ===== -->
 

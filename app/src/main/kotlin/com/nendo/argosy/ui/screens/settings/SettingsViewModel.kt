@@ -1441,6 +1441,12 @@ class SettingsViewModel @Inject constructor(
     fun setMenuWrapMode(mode: com.nendo.argosy.data.preferences.MenuWrapMode) = controlsDelegate.setMenuWrapMode(viewModelScope, mode)
     fun cycleSelectSwapMode(direction: Int = 1) = controlsDelegate.cycleSelectSwapMode(viewModelScope, direction)
     fun setSelectSwapMode(mode: com.nendo.argosy.data.preferences.SelectSwapMode) = controlsDelegate.setSelectSwapMode(viewModelScope, mode)
+    fun startShortcutCapture(shortcut: com.nendo.argosy.ui.input.UiShortcut) = controlsDelegate.startShortcutCapture(shortcut)
+    fun cancelShortcutCapture() = controlsDelegate.cancelShortcutCapture()
+    fun assignShortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut, keyCode: Int) =
+        controlsDelegate.assignShortcutKey(viewModelScope, shortcut, keyCode)
+    fun clearShortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut) =
+        controlsDelegate.clearShortcutKey(viewModelScope, shortcut)
     fun refreshUsageStatsPermission() = controlsDelegate.refreshUsageStatsPermission()
     fun openUsageStatsSettings() = controlsDelegate.openUsageStatsSettings()
     fun openManagedInstallers() = installerDelegate.openScreen(viewModelScope)

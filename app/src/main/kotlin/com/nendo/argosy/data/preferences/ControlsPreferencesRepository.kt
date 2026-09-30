@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.preferences
 
+import android.view.KeyEvent
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -32,8 +33,16 @@ data class ControlsPreferences(
     val selectLCombo: String = "quick_menu",
     val selectRCombo: String = "quick_settings",
     val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
-    val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD
-)
+    val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
+    val openNavigationKey: Int = DEFAULT_OPEN_NAVIGATION_KEY,
+    val openQuickPanelKey: Int = DEFAULT_OPEN_QUICK_PANEL_KEY
+) {
+    companion object {
+        const val DEFAULT_OPEN_NAVIGATION_KEY = KeyEvent.KEYCODE_BUTTON_C
+        const val DEFAULT_OPEN_QUICK_PANEL_KEY = KeyEvent.KEYCODE_BUTTON_Z
+        const val UNASSIGNED_KEY = KeyEvent.KEYCODE_UNKNOWN
+    }
+}
 
 @Singleton
 class ControlsPreferencesRepository @Inject constructor(
@@ -57,6 +66,8 @@ class ControlsPreferencesRepository @Inject constructor(
         val SELECT_R_COMBO = stringPreferencesKey("select_r_combo")
         val MENU_WRAP_MODE = stringPreferencesKey("menu_wrap_mode")
         val SELECT_SWAP_MODE = stringPreferencesKey("select_swap_mode")
+        val OPEN_NAVIGATION_KEY = intPreferencesKey("open_navigation_key")
+        val OPEN_QUICK_PANEL_KEY = intPreferencesKey("open_quick_panel_key")
     }
 
     val preferences: Flow<ControlsPreferences> = dataStore.data.map { prefs ->
@@ -77,7 +88,11 @@ class ControlsPreferencesRepository @Inject constructor(
             selectLCombo = prefs[Keys.SELECT_L_COMBO] ?: "quick_menu",
             selectRCombo = prefs[Keys.SELECT_R_COMBO] ?: "quick_settings",
             menuWrapMode = MenuWrapMode.fromString(prefs[Keys.MENU_WRAP_MODE]),
-            selectSwapMode = SelectSwapMode.fromString(prefs[Keys.SELECT_SWAP_MODE])
+            selectSwapMode = SelectSwapMode.fromString(prefs[Keys.SELECT_SWAP_MODE]),
+            openNavigationKey = prefs[Keys.OPEN_NAVIGATION_KEY]
+                ?: ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
+            openQuickPanelKey = prefs[Keys.OPEN_QUICK_PANEL_KEY]
+                ?: ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY
         )
     }.flowOn(Dispatchers.Default)
 
@@ -193,6 +208,14 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setSelectSwapMode(mode: SelectSwapMode) {
         dataStore.edit { it[Keys.SELECT_SWAP_MODE] = mode.name }
+    }
+
+    suspend fun setOpenNavigationKey(keyCode: Int) {
+        dataStore.edit { it[Keys.OPEN_NAVIGATION_KEY] = keyCode }
+    }
+
+    suspend fun setOpenQuickPanelKey(keyCode: Int) {
+        dataStore.edit { it[Keys.OPEN_QUICK_PANEL_KEY] = keyCode }
     }
 
     private fun parseSoundConfigs(raw: String?): Map<SoundType, SoundConfig> {

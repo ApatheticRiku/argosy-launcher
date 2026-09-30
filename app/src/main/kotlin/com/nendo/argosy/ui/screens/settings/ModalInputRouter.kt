@@ -16,7 +16,8 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         if (state.builtinControls.showControllerOrderModal ||
             state.builtinControls.showInputMappingModal ||
             state.builtinControls.showHotkeysModal ||
-            state.display.showGripControllerModal
+            state.display.showGripControllerModal ||
+            state.controls.shortcutCaptureTarget != null
         ) return null
 
         interceptGpuDriverPrompt(state, method)?.let { return it }

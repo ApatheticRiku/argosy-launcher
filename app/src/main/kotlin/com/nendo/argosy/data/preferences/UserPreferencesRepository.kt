@@ -98,6 +98,8 @@ class UserPreferencesRepository @Inject constructor(
             selectRCombo = controls.selectRCombo,
             menuWrapMode = controls.menuWrapMode,
             selectSwapMode = controls.selectSwapMode,
+            openNavigationKey = controls.openNavigationKey,
+            openQuickPanelKey = controls.openQuickPanelKey,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -459,6 +461,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setGameDetailThemeEnabled(enabled: Boolean) = controlsPrefs.setGameDetailThemeEnabled(enabled)
     suspend fun setMenuWrapMode(mode: MenuWrapMode) = controlsPrefs.setMenuWrapMode(mode)
     suspend fun setSelectSwapMode(mode: SelectSwapMode) = controlsPrefs.setSelectSwapMode(mode)
+    suspend fun setOpenNavigationKey(keyCode: Int) = controlsPrefs.setOpenNavigationKey(keyCode)
+    suspend fun setOpenQuickPanelKey(keyCode: Int) = controlsPrefs.setOpenQuickPanelKey(keyCode)
 
 
     // --- Storage delegates ---
@@ -769,6 +773,8 @@ data class UserPreferences(
     val selectRCombo: String = "quick_settings",
     val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
     val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
+    val openNavigationKey: Int = ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
+    val openQuickPanelKey: Int = ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,

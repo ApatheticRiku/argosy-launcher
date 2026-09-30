@@ -335,6 +335,7 @@
     <string name="settings_shell_footer_reset_builtinvideo_override">Réinitialiser</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">Réinitialiser</string>
     <string name="settings_shell_footer_back">Retour</string>
+    <string name="settings_shell_footer_unassign_shortcut">Retirer</string>
 
     <!-- ===== SettingsScreen: cache clear confirm modals ===== -->
 

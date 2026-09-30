@@ -597,6 +597,14 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Громкость</string>
     <string name="ui_quick_settings_brightness">Яркость</string>
+    <string name="ui_quick_settings_hint_page">Страницы</string>
+    <string name="ui_quick_settings_page_screens">Экраны</string>
+    <string name="ui_quick_settings_page_performance">Производительность</string>
+    <string name="ui_quick_settings_page_friends">Друзья</string>
+    <string name="ui_quick_settings_page_music">Музыка</string>
+    <string name="ui_quick_settings_group_display">Экран</string>
+    <string name="ui_quick_settings_group_audio">Звук</string>
+    <string name="ui_quick_settings_group_other">Прочее</string>
 
     <string name="ui_drawer_tab_navigation">Меню</string>
     <string name="ui_drawer_tab_friends">Друзья</string>

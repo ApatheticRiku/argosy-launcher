@@ -605,6 +605,14 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Volume</string>
     <string name="ui_quick_settings_brightness">Luminosité</string>
+    <string name="ui_quick_settings_hint_page">Pages</string>
+    <string name="ui_quick_settings_page_screens">Écrans</string>
+    <string name="ui_quick_settings_page_performance">Performances</string>
+    <string name="ui_quick_settings_page_friends">Amis</string>
+    <string name="ui_quick_settings_page_music">Musique</string>
+    <string name="ui_quick_settings_group_display">Affichage</string>
+    <string name="ui_quick_settings_group_audio">Audio</string>
+    <string name="ui_quick_settings_group_other">Autres</string>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 

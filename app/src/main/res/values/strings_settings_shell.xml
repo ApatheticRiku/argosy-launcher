@@ -441,6 +441,8 @@
     <!-- Y-button hint that resets a built-in controls per-platform override. Separate site. -->
     <string name="settings_shell_footer_reset_builtincontrols_override">Reset</string>
     <string name="settings_shell_footer_back">Back</string>
+    <!-- Y-button hint on the Shortcuts rows that removes the assigned button. Verb. -->
+    <string name="settings_shell_footer_unassign_shortcut">Unassign</string>
 
     <!-- ===== SettingsScreen: cache clear confirm modals ===== -->
 

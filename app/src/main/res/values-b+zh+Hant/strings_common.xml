@@ -568,6 +568,14 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">音量</string>
     <string name="ui_quick_settings_brightness">亮度</string>
+    <string name="ui_quick_settings_hint_page">翻頁</string>
+    <string name="ui_quick_settings_page_screens">螢幕</string>
+    <string name="ui_quick_settings_page_performance">效能</string>
+    <string name="ui_quick_settings_page_friends">好友</string>
+    <string name="ui_quick_settings_page_music">音樂</string>
+    <string name="ui_quick_settings_group_display">顯示</string>
+    <string name="ui_quick_settings_group_audio">音訊</string>
+    <string name="ui_quick_settings_group_other">其他</string>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 

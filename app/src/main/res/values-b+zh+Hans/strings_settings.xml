@@ -187,6 +187,17 @@
     <string name="settings_navigation_select_swap_subtitle">选择按下还是长按 Select 来交换屏幕</string>
     <string name="settings_navigation_select_swap_hold">长按 Select</string>
     <string name="settings_navigation_select_swap_tap">按下 Select</string>
+    <string name="settings_navigation_section_shortcuts">快捷键</string>
+    <string name="settings_navigation_open_navigation_title">打开导航</string>
+    <string name="settings_navigation_open_navigation_subtitle">用于打开导航抽屉的按键</string>
+    <string name="settings_navigation_open_quick_panel_title">打开快捷面板</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">用于打开快捷设置的按键。长按返回也可打开</string>
+    <string name="settings_navigation_shortcut_unassigned">未分配</string>
+    <string name="settings_navigation_shortcut_capture_title">分配按键</string>
+    <string name="settings_navigation_shortcut_capture_prompt">请按下一个按键</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">该按键在 Argosy 菜单中将不再执行其他操作</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s 用于菜单导航，无法分配</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">取消</string>
 
     <!-- ===== Displays section ===== -->
 

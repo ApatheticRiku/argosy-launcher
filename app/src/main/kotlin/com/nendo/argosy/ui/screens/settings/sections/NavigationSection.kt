@@ -15,14 +15,19 @@ import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.preferences.SelectSwapMode
+import com.nendo.argosy.libretro.HotkeyManager
 import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.input.UiShortcut
+import com.nendo.argosy.ui.input.UiShortcutKeys
 import com.nendo.argosy.ui.screens.settings.ControlsState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
+import com.nendo.argosy.ui.screens.settings.components.ShortcutCaptureModal
 import com.nendo.argosy.ui.screens.settings.delegates.ControlsSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
@@ -68,6 +73,15 @@ internal sealed class NavigationItem(
         visibleWhen = { it.hasSecondaryDisplay }
     )
 
+    data object OpenNavigationShortcut : NavigationItem("openNavigationKey", "shortcuts")
+    data object OpenQuickPanelShortcut : NavigationItem("openQuickPanelKey", "shortcuts")
+
+    val shortcut: UiShortcut? get() = when (this) {
+        OpenNavigationShortcut -> UiShortcut.OPEN_NAVIGATION
+        OpenQuickPanelShortcut -> UiShortcut.OPEN_QUICK_PANEL
+        else -> null
+    }
+
     companion object {
         private val ControllerHeader =
             Header("controllerHeader", "controller", R.string.settings_navigation_section_controller)
@@ -76,6 +90,9 @@ internal sealed class NavigationItem(
             Header("feedbackHeader", "feedback", R.string.settings_navigation_section_feedback)
         private val MenusSpacer = SectionSpacer("menusSpacer", "menus")
         private val MenusHeader = Header("menusHeader", "menus", R.string.settings_navigation_section_menus)
+        private val ShortcutsSpacer = SectionSpacer("shortcutsSpacer", "shortcuts")
+        private val ShortcutsHeader =
+            Header("shortcutsHeader", "shortcuts", R.string.settings_navigation_section_shortcuts)
         val ALL: List<NavigationItem>
             get() = listOf(
                 ControllerHeader,
@@ -83,7 +100,9 @@ internal sealed class NavigationItem(
                 FeedbackSpacer, FeedbackHeader,
                 HapticFeedback, VibrationStrength,
                 MenusSpacer, MenusHeader,
-                MenuWrap, SelectLCombo, SelectRCombo, SelectSwap
+                MenuWrap, SelectLCombo, SelectRCombo, SelectSwap,
+                ShortcutsSpacer, ShortcutsHeader,
+                OpenNavigationShortcut, OpenQuickPanelShortcut
             )
     }
 }
@@ -98,6 +117,7 @@ private val navigationLayout = SettingsLayout<NavigationItem, ControlsState>(
             "controller" -> R.string.settings_navigation_section_controller
             "feedback" -> R.string.settings_navigation_section_feedback
             "menus" -> R.string.settings_navigation_section_menus
+            "shortcuts" -> R.string.settings_navigation_section_shortcuts
             else -> null
         }
     }
@@ -284,8 +304,57 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 pickerRequestToken = pickerToken(item)
             )
 
+            NavigationItem.OpenNavigationShortcut -> ShortcutKeyPreference(
+                title = stringResource(R.string.settings_navigation_open_navigation_title),
+                subtitle = stringResource(R.string.settings_navigation_open_navigation_subtitle),
+                keyCode = controls.openNavigationKey,
+                isFocused = isFocused(item),
+                onClick = { viewModel.startShortcutCapture(UiShortcut.OPEN_NAVIGATION) }
+            )
+
+            NavigationItem.OpenQuickPanelShortcut -> ShortcutKeyPreference(
+                title = stringResource(R.string.settings_navigation_open_quick_panel_title),
+                subtitle = stringResource(R.string.settings_navigation_open_quick_panel_subtitle),
+                keyCode = controls.openQuickPanelKey,
+                isFocused = isFocused(item),
+                onClick = { viewModel.startShortcutCapture(UiShortcut.OPEN_QUICK_PANEL) }
+            )
         }
     }
+
+    controls.shortcutCaptureTarget?.let { target ->
+        ShortcutCaptureModal(
+            actionTitle = stringResource(shortcutTitleRes(target)),
+            onAssign = { keyCode -> viewModel.assignShortcutKey(target, keyCode) },
+            onDismiss = { viewModel.cancelShortcutCapture() }
+        )
+    }
+}
+
+private fun shortcutTitleRes(shortcut: UiShortcut): Int = when (shortcut) {
+    UiShortcut.OPEN_NAVIGATION -> R.string.settings_navigation_open_navigation_title
+    UiShortcut.OPEN_QUICK_PANEL -> R.string.settings_navigation_open_quick_panel_title
+}
+
+@Composable
+private fun ShortcutKeyPreference(
+    title: String,
+    subtitle: String,
+    keyCode: Int,
+    isFocused: Boolean,
+    onClick: () -> Unit
+) {
+    ActionPreference(
+        title = title,
+        subtitle = subtitle,
+        isFocused = isFocused,
+        trailingText = if (UiShortcutKeys.isBindable(keyCode)) {
+            HotkeyManager.getKeyName(keyCode)
+        } else {
+            stringResource(R.string.settings_navigation_shortcut_unassigned)
+        },
+        onClick = onClick
+    )
 }
 
 @Composable

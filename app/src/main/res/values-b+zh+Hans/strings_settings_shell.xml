@@ -324,6 +324,7 @@
     <string name="settings_shell_footer_reset_builtinvideo_override">重置</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">重置</string>
     <string name="settings_shell_footer_back">返回</string>
+    <string name="settings_shell_footer_unassign_shortcut">取消分配</string>
 
     <!-- ===== SettingsScreen: cache clear confirm modals ===== -->
 

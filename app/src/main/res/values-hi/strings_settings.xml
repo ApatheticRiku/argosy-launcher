@@ -189,6 +189,17 @@
     <string name="settings_navigation_select_swap_subtitle">चुनें कि Select दबाने या दबाए रखने से स्क्रीन बदलें</string>
     <string name="settings_navigation_select_swap_hold">Select दबाए रखें</string>
     <string name="settings_navigation_select_swap_tap">Select दबाएँ</string>
+    <string name="settings_navigation_section_shortcuts">शॉर्टकट</string>
+    <string name="settings_navigation_open_navigation_title">नेविगेशन खोलें</string>
+    <string name="settings_navigation_open_navigation_subtitle">वह बटन जो नेविगेशन ड्रॉअर खोलता है</string>
+    <string name="settings_navigation_open_quick_panel_title">क्विक पैनल खोलें</string>
+    <string name="settings_navigation_open_quick_panel_subtitle">वह बटन जो क्विक सेटिंग्स खोलता है। वापस को दबाए रखने से भी यह खुलता है</string>
+    <string name="settings_navigation_shortcut_unassigned">असाइन नहीं</string>
+    <string name="settings_navigation_shortcut_capture_title">बटन असाइन करें</string>
+    <string name="settings_navigation_shortcut_capture_prompt">कोई बटन दबाएँ</string>
+    <string name="settings_navigation_shortcut_capture_subtitle">Argosy के मेनू में यह बटन कोई और काम नहीं करेगा</string>
+    <string name="settings_navigation_shortcut_capture_reserved">%1$s मेनू में चलने के लिए है और असाइन नहीं किया जा सकता</string>
+    <string name="settings_navigation_shortcut_capture_hint_cancel">रद्द करें</string>
 
     <!-- ===== Displays section ===== -->
 

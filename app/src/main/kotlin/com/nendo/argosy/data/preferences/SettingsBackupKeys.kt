@@ -168,6 +168,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("select_l_combo", SettingsBackupType.STRING),
         SettingsBackupKey("select_r_combo", SettingsBackupType.STRING),
         SettingsBackupKey("select_swap_mode", SettingsBackupType.STRING),
+        SettingsBackupKey("open_navigation_key", SettingsBackupType.INT),
+        SettingsBackupKey("open_quick_panel_key", SettingsBackupType.INT),
         SettingsBackupKey("grip_reserve_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("grip_reserve_mode", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_percent", SettingsBackupType.INT)

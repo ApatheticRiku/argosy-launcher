@@ -57,6 +57,7 @@ class GamepadInputHandler @Inject constructor(
 
     private val _events = MutableSharedFlow<GamepadInput>(extraBufferCapacity = 16)
     private val _homeEvents = Channel<Unit>(Channel.BUFFERED)
+    private val _shortcutEvents = Channel<UiShortcut>(Channel.BUFFERED)
     private val scope = SafeCoroutineScope(Dispatchers.Main.immediate, "GamepadInputHandler")
 
     var homeEventEnabled: Boolean = true
@@ -64,6 +65,11 @@ class GamepadInputHandler @Inject constructor(
     private var swapAB = false
     private var swapXY = false
     private var swapStartSelect = false
+    private var openNavigationKey: Int? = null
+    private var openQuickPanelKey: Int? = null
+
+    private var shortcutGate: UiShortcutGate? = null
+    private var claimedShortcutKey: Int? = null
 
     private val selectModifier = SelectModifier()
 
@@ -80,12 +86,23 @@ class GamepadInputHandler @Inject constructor(
                 swapXY = prefs.swapXY
                 swapStartSelect = prefs.swapStartSelect
                 selectModifier.comboMap = SelectModifier.comboMapFrom(prefs.selectLCombo, prefs.selectRCombo)
+                openNavigationKey = prefs.openNavigationKey.takeIf(UiShortcutKeys::isBindable)
+                openQuickPanelKey = prefs.openQuickPanelKey.takeIf(UiShortcutKeys::isBindable)
             }
         }
     }
 
     fun eventFlow(): Flow<GamepadInput> = _events.asSharedFlow()
     fun homeEventFlow(): Flow<Unit> = _homeEvents.receiveAsFlow()
+    fun shortcutEventFlow(): Flow<UiShortcut> = _shortcutEvents.receiveAsFlow()
+
+    fun attachShortcutGate(gate: UiShortcutGate) {
+        shortcutGate = gate
+    }
+
+    fun detachShortcutGate(gate: UiShortcutGate) {
+        if (shortcutGate === gate) shortcutGate = null
+    }
 
     fun injectEvent(event: GamepadEvent) {
         emitWithDebounce(event, isRepeat = false)
@@ -110,6 +127,8 @@ class GamepadInputHandler @Inject constructor(
         if (listener != null) {
             selectHoldJob?.cancel()
             selectModifier.reset()
+            releaseBackPress()
+            claimedShortcutKey = null
         }
     }
 
@@ -122,6 +141,9 @@ class GamepadInputHandler @Inject constructor(
     private var confirmDeferred = false
     private var confirmDeferJob: kotlinx.coroutines.Job? = null
     private var selectHoldJob: kotlinx.coroutines.Job? = null
+    private var backPressClaimed = false
+    private var backDeferred = false
+    private var backDeferJob: kotlinx.coroutines.Job? = null
     private val longPressThresholdMs = 500L
 
     private var lastStickDirection: GamepadEvent? = null
@@ -156,7 +178,9 @@ class GamepadInputHandler @Inject constructor(
     /**
      * Confirm is deferred by the long-press threshold on a coroutine timer rather than decided on
      * release: controllers send repeated ACTION_DOWN and an unreliable ACTION_UP, so the timer
-     * firing while the button is still held is what turns a Confirm into a LongConfirm.
+     * firing while the button is still held is what turns a Confirm into a LongConfirm. Back is
+     * deferred the same way whenever the attached [UiShortcutGate] allows a long Back, and a hold
+     * past the threshold opens the quick panel instead of going back.
      */
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -168,7 +192,11 @@ class GamepadInputHandler @Inject constructor(
             return listener(event)
         }
 
+        if (claimShortcutKey(event)) return true
+
         val gamepadEvent = mapKeyToEvent(event.keyCode) ?: return false
+
+        if (gamepadEvent == GamepadEvent.Back && handleBackPress(event)) return true
 
         if (gamepadEvent == GamepadEvent.Confirm && event.action == KeyEvent.ACTION_DOWN) {
             if (event.repeatCount == 0) {
@@ -217,6 +245,84 @@ class GamepadInputHandler @Inject constructor(
         val signature = InputSignature.of(event)
         emitWithDebounce(emitted, isRepeat, signature)
         return true
+    }
+
+    private fun shortcutFor(keyCode: Int): UiShortcut? = when (keyCode) {
+        openNavigationKey -> UiShortcut.OPEN_NAVIGATION
+        openQuickPanelKey -> UiShortcut.OPEN_QUICK_PANEL
+        else -> null
+    }
+
+    private fun claimShortcutKey(event: KeyEvent): Boolean {
+        val shortcut = shortcutFor(event.keyCode) ?: return false
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> when {
+                event.repeatCount > 0 -> claimedShortcutKey == event.keyCode
+                shortcutGate?.hotkeysAllowed() != true -> false
+                else -> {
+                    claimedShortcutKey = event.keyCode
+                    _shortcutEvents.trySend(shortcut)
+                    true
+                }
+            }
+            KeyEvent.ACTION_UP -> {
+                if (claimedShortcutKey != event.keyCode) {
+                    false
+                } else {
+                    claimedShortcutKey = null
+                    true
+                }
+            }
+            else -> false
+        }
+    }
+
+    private fun handleBackPress(event: KeyEvent): Boolean = when (event.action) {
+        KeyEvent.ACTION_DOWN -> when {
+            event.repeatCount > 0 -> backPressClaimed
+            shortcutGate?.longBackAllowed() != true -> {
+                releaseBackPress()
+                false
+            }
+            else -> {
+                deferBackPress()
+                true
+            }
+        }
+        KeyEvent.ACTION_UP -> {
+            if (!backPressClaimed) {
+                false
+            } else {
+                val shortPress = backDeferred
+                releaseBackPress()
+                if (shortPress) emitWithDebounce(GamepadEvent.Back)
+                true
+            }
+        }
+        else -> backPressClaimed
+    }
+
+    private fun deferBackPress() {
+        backDeferJob?.cancel()
+        backPressClaimed = true
+        backDeferred = true
+        backDeferJob = scope.launch {
+            kotlinx.coroutines.delay(longPressThresholdMs)
+            if (!backDeferred) return@launch
+            backDeferred = false
+            if (shortcutGate?.longBackAllowed() == true) {
+                _shortcutEvents.trySend(UiShortcut.OPEN_QUICK_PANEL)
+            } else {
+                emitWithDebounce(GamepadEvent.Back)
+            }
+        }
+    }
+
+    private fun releaseBackPress() {
+        backDeferJob?.cancel()
+        backDeferJob = null
+        backPressClaimed = false
+        backDeferred = false
     }
 
     private fun trackSelectHold(action: Int, isRepeat: Boolean, holdArmed: Boolean) {

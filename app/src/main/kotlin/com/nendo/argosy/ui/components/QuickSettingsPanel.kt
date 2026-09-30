@@ -20,8 +20,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.outlined.Monitor
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.DarkMode
@@ -42,7 +46,9 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.focus.focusProperties
@@ -58,6 +64,8 @@ import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.primitives.ArgosyToggle
+import com.nendo.argosy.ui.primitives.FocusIndicators
+import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.quaypass.QuayPassIcons
 import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
@@ -109,84 +117,127 @@ data class QuickSettingsState(
     val quayPassEnabled: Boolean = false
 )
 
+enum class QuickSettingsPage(val icon: ImageVector, @StringRes val titleRes: Int) {
+    FRIENDS(Icons.Default.Group, R.string.ui_quick_settings_page_friends),
+    QUICK(Icons.Default.Tune, R.string.ui_quick_settings_title),
+    SCREENS(Icons.Outlined.Monitor, R.string.ui_quick_settings_page_screens),
+    PERFORMANCE(Icons.Default.Speed, R.string.ui_quick_settings_page_performance),
+    MUSIC(Icons.Default.MusicNote, R.string.ui_quick_settings_page_music)
+}
+
+enum class QuickSettingsGroup(val page: QuickSettingsPage, @StringRes val titleRes: Int) {
+    DISPLAY(QuickSettingsPage.QUICK, R.string.ui_quick_settings_group_display),
+    AUDIO(QuickSettingsPage.QUICK, R.string.ui_quick_settings_group_audio),
+    OTHER(QuickSettingsPage.QUICK, R.string.ui_quick_settings_group_other)
+}
+
 sealed class QuickSettingsItem(
     val key: String,
-    val section: String,
+    val page: QuickSettingsPage,
+    val group: QuickSettingsGroup? = null,
     val visibleWhen: (QuickSettingsState) -> Boolean = { true }
 ) {
-    val isFocusable: Boolean get() = this !is Divider
+    val isFocusable: Boolean get() = this !is Header
 
-    class Divider(section: String) : QuickSettingsItem("divider_$section", section)
+    class Header(val headerGroup: QuickSettingsGroup) :
+        QuickSettingsItem("header_${headerGroup.name}", headerGroup.page, headerGroup)
+
+    data object Theme : QuickSettingsItem("theme", QuickSettingsPage.QUICK, QuickSettingsGroup.DISPLAY)
+    data object ScreenBrightness : QuickSettingsItem(
+        "screenBrightness", QuickSettingsPage.QUICK, QuickSettingsGroup.DISPLAY
+    )
+    data object SystemVolume : QuickSettingsItem("systemVolume", QuickSettingsPage.QUICK, QuickSettingsGroup.AUDIO)
+    data object UISounds : QuickSettingsItem("uiSounds", QuickSettingsPage.QUICK, QuickSettingsGroup.AUDIO)
+    data object Haptic : QuickSettingsItem("haptic", QuickSettingsPage.QUICK, QuickSettingsGroup.OTHER)
+    data object VibrationStrength : QuickSettingsItem(
+        "vibrationStrength", QuickSettingsPage.QUICK, QuickSettingsGroup.OTHER,
+        visibleWhen = { it.vibrationSupported && it.hapticEnabled }
+    )
+
+    data object SwapDisplays : QuickSettingsItem(
+        "swapDisplays", QuickSettingsPage.SCREENS,
+        visibleWhen = { it.isDualScreenActive }
+    )
 
     data object Performance : QuickSettingsItem(
-        "performance", "device",
+        "performance", QuickSettingsPage.PERFORMANCE,
         visibleWhen = { it.deviceSettingsSupported }
     )
     data object Fan : QuickSettingsItem(
-        "fan", "device",
+        "fan", QuickSettingsPage.PERFORMANCE,
         visibleWhen = { it.deviceSettingsSupported }
     )
     data object FanSpeed : QuickSettingsItem(
-        "fanSpeed", "device",
+        "fanSpeed", QuickSettingsPage.PERFORMANCE,
         visibleWhen = { it.deviceSettingsSupported && it.deviceSettingsEnabled && it.fanMode == FanMode.CUSTOM }
     )
 
-    data object Theme : QuickSettingsItem("theme", "audioVisual")
-    data object SystemVolume : QuickSettingsItem("systemVolume", "audioVisual")
-    data object ScreenBrightness : QuickSettingsItem("screenBrightness", "audioVisual")
-    data object Haptic : QuickSettingsItem("haptic", "audioVisual")
-    data object VibrationStrength : QuickSettingsItem(
-        "vibrationStrength", "audioVisual",
-        visibleWhen = { it.vibrationSupported && it.hapticEnabled }
-    )
-    data object UISounds : QuickSettingsItem("uiSounds", "audioVisual")
-    data object BGM : QuickSettingsItem("bgm", "audioVisual")
-    data object SwapDisplays : QuickSettingsItem(
-        "swapDisplays", "audioVisual",
-        visibleWhen = { it.isDualScreenActive }
-    )
     data object QuayPass : QuickSettingsItem(
-        "quaypass", "social",
+        "quaypass", QuickSettingsPage.FRIENDS,
         visibleWhen = { it.isSocialLinked }
     )
 
+    data object BGM : QuickSettingsItem("bgm", QuickSettingsPage.MUSIC)
+
     companion object {
-        private val DeviceDivider = Divider("device")
-        private val SocialDivider = Divider("social")
+        private val DisplayHeader = Header(QuickSettingsGroup.DISPLAY)
+        private val AudioHeader = Header(QuickSettingsGroup.AUDIO)
+        private val OtherHeader = Header(QuickSettingsGroup.OTHER)
 
         val ALL: List<QuickSettingsItem>
             get() = listOf(
+                QuayPass,
+                DisplayHeader, Theme, ScreenBrightness,
+                AudioHeader, SystemVolume, UISounds,
+                OtherHeader, Haptic, VibrationStrength,
+                SwapDisplays,
                 Performance, Fan, FanSpeed,
-                DeviceDivider,
-                Theme, SystemVolume, ScreenBrightness,
-                Haptic, VibrationStrength, UISounds, BGM, SwapDisplays,
-                SocialDivider,
-                QuayPass
+                BGM
             )
     }
 }
 
-private val quickSettingsLayout = SettingsLayout<QuickSettingsItem, QuickSettingsState>(
-    allItems = QuickSettingsItem.ALL,
-    isFocusable = { it.isFocusable },
-    visibleWhen = { item, state -> item.visibleWhen(state) },
-    sectionOf = { it.section }
-)
+private val quickSettingsLayouts: Map<QuickSettingsPage, SettingsLayout<QuickSettingsItem, QuickSettingsState>> =
+    QuickSettingsPage.entries.associateWith { page ->
+        SettingsLayout(
+            allItems = QuickSettingsItem.ALL.filter { it.page == page },
+            isFocusable = { it.isFocusable },
+            visibleWhen = { item, state -> item.visibleWhen(state) },
+            sectionOf = { it.group?.name ?: it.page.name }
+        )
+    }
 
-fun quickSettingsMaxFocusIndex(state: QuickSettingsState): Int =
-    quickSettingsLayout.maxFocusIndex(state)
+private fun quickSettingsLayoutFor(page: QuickSettingsPage): SettingsLayout<QuickSettingsItem, QuickSettingsState> =
+    quickSettingsLayouts.getValue(page)
 
-fun quickSettingsItemAtFocusIndex(index: Int, state: QuickSettingsState): QuickSettingsItem? =
-    quickSettingsLayout.itemAtFocusIndex(index, state)
+fun quickSettingsVisiblePages(state: QuickSettingsState): List<QuickSettingsPage> =
+    QuickSettingsPage.entries.filter { quickSettingsLayoutFor(it).focusableItems(state).isNotEmpty() }
 
-fun quickSettingsSections(state: QuickSettingsState): List<ListSection> =
-    quickSettingsLayout.buildSections(state)
+fun quickSettingsEffectivePage(page: QuickSettingsPage, state: QuickSettingsState): QuickSettingsPage {
+    val pages = quickSettingsVisiblePages(state)
+    return when {
+        page in pages -> page
+        QuickSettingsPage.QUICK in pages -> QuickSettingsPage.QUICK
+        else -> pages.firstOrNull() ?: QuickSettingsPage.QUICK
+    }
+}
+
+fun quickSettingsMaxFocusIndex(page: QuickSettingsPage, state: QuickSettingsState): Int =
+    quickSettingsLayoutFor(page).maxFocusIndex(state)
+
+fun quickSettingsItemAtFocusIndex(
+    page: QuickSettingsPage,
+    index: Int,
+    state: QuickSettingsState
+): QuickSettingsItem? = quickSettingsLayoutFor(page).itemAtFocusIndex(index, state)
 
 @Composable
 fun QuickSettingsPanel(
     isVisible: Boolean,
     state: QuickSettingsState,
+    page: QuickSettingsPage,
     focusedIndex: Int,
+    onPageSelect: (QuickSettingsPage) -> Unit,
     onThemeCycle: () -> Unit,
     onSoundToggle: () -> Unit,
     onHapticToggle: () -> Unit,
@@ -207,23 +258,14 @@ fun QuickSettingsPanel(
     modifier: Modifier = Modifier
 ) {
     val permissionMissing = state.deviceSettingsSupported && !state.deviceSettingsEnabled
-    val visibleItems = remember(
-        state.deviceSettingsSupported, state.deviceSettingsEnabled,
-        state.fanMode, state.vibrationSupported, state.hapticEnabled,
-        state.isDualScreenActive
-    ) {
-        quickSettingsLayout.visibleItems(state)
-    }
-    val sections = remember(
-        state.deviceSettingsSupported, state.deviceSettingsEnabled,
-        state.fanMode, state.vibrationSupported, state.hapticEnabled,
-        state.isDualScreenActive
-    ) {
-        quickSettingsLayout.buildSections(state)
-    }
+    val pages = remember(state) { quickSettingsVisiblePages(state) }
+    val activePage = remember(page, state) { quickSettingsEffectivePage(page, state) }
+    val layout = quickSettingsLayoutFor(activePage)
+    val visibleItems = remember(activePage, state) { layout.visibleItems(state) }
+    val sections = remember(activePage, state) { layout.buildSections(state) }
 
     fun isFocused(item: QuickSettingsItem): Boolean =
-        focusedIndex == quickSettingsLayout.focusIndexOf(item, state)
+        focusedIndex == layout.focusIndexOf(item, state)
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -243,157 +285,233 @@ fun QuickSettingsPanel(
             enter = slideInHorizontally(initialOffsetX = { it }),
             exit = slideOutHorizontally(targetOffsetX = { it })
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .width(Dimens.modalWidth - Dimens.footerHeight)
                     .fillMaxHeight()
                     .background(MaterialTheme.colorScheme.surface)
-                    .padding(vertical = Dimens.spacingLg)
             ) {
-                Text(
-                    text = stringResource(R.string.ui_quick_settings_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = Dimens.spacingLg)
-                )
-
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
-
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = Dimens.spacingLg, vertical = Dimens.radiusLg),
-                    color = MaterialTheme.colorScheme.outlineVariant
-                )
-
-                val listState = rememberLazyListState()
-
-                SectionFocusedScroll(
-                    listState = listState,
-                    focusedIndex = focusedIndex,
-                    focusToListIndex = { quickSettingsLayout.focusToListIndex(it, state) },
-                    sections = sections
-                )
-
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.weight(1f)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(vertical = Dimens.spacingLg)
                 ) {
-                    items(visibleItems, key = { it.key }) { item ->
-                        when (item) {
-                            is QuickSettingsItem.Divider -> HorizontalDivider(
-                                modifier = Modifier.padding(
-                                    horizontal = Dimens.spacingLg,
-                                    vertical = Dimens.radiusLg
-                                ),
-                                color = MaterialTheme.colorScheme.outlineVariant
-                            )
+                    Text(
+                        text = stringResource(activePage.titleRes),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(horizontal = Dimens.spacingLg)
+                    )
 
-                            QuickSettingsItem.Performance -> QuickSettingItemTwoLine(
-                                icon = Icons.Default.Speed,
-                                label = stringResource(R.string.ui_quick_settings_performance),
-                                value = stringResource(state.performanceMode.labelRes),
-                                isFocused = isFocused(item),
-                                isDisabled = permissionMissing,
-                                disabledReason = stringResource(
-                                    R.string.ui_quick_settings_performance_disabled
-                                ),
-                                onClick = onPerformanceModeCycle
-                            )
+                    Spacer(modifier = Modifier.height(Dimens.spacingSm))
 
-                            QuickSettingsItem.Fan -> QuickSettingItem(
-                                icon = Icons.Default.Toys,
-                                label = stringResource(R.string.ui_quick_settings_fan),
-                                value = stringResource(state.fanMode.labelRes),
-                                isFocused = isFocused(item),
-                                isDisabled = permissionMissing,
-                                disabledReason = stringResource(
-                                    R.string.ui_quick_settings_fan_disabled
-                                ),
-                                onClick = onFanModeCycle
-                            )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = Dimens.spacingLg, vertical = Dimens.radiusLg),
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
 
-                            QuickSettingsItem.FanSpeed -> FanSpeedSlider(
-                                speed = state.fanSpeed,
-                                isFocused = isFocused(item),
-                                onSpeedChange = onFanSpeedChange
-                            )
+                    val listState = key(activePage) { rememberLazyListState() }
 
-                            QuickSettingsItem.Theme -> QuickSettingItem(
-                                icon = when (state.themeMode) {
-                                    ThemeMode.LIGHT -> Icons.Default.LightMode
-                                    ThemeMode.DARK -> Icons.Default.DarkMode
-                                    ThemeMode.SYSTEM -> Icons.Default.SettingsBrightness
-                                },
-                                label = stringResource(R.string.ui_quick_settings_theme),
-                                value = state.themeMode.displayName,
-                                isFocused = isFocused(item),
-                                onClick = onThemeCycle
-                            )
+                    SectionFocusedScroll(
+                        listState = listState,
+                        focusedIndex = focusedIndex,
+                        focusToListIndex = { layout.focusToListIndex(it, state) },
+                        sections = sections
+                    )
 
-                            QuickSettingsItem.SystemVolume -> SystemVolumeSlider(
-                                volume = state.systemVolume,
-                                isFocused = isFocused(item),
-                                onVolumeChange = onVolumeChange
-                            )
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(visibleItems, key = { it.key }) { item ->
+                            when (item) {
+                                is QuickSettingsItem.Header -> QuickSettingsGroupHeader(
+                                    title = stringResource(item.headerGroup.titleRes)
+                                )
 
-                            QuickSettingsItem.ScreenBrightness -> ScreenBrightnessSlider(
-                                brightness = state.screenBrightness,
-                                isFocused = isFocused(item),
-                                onBrightnessChange = onBrightnessChange
-                            )
+                                QuickSettingsItem.Performance -> QuickSettingItemTwoLine(
+                                    icon = Icons.Default.Speed,
+                                    label = stringResource(R.string.ui_quick_settings_performance),
+                                    value = stringResource(state.performanceMode.labelRes),
+                                    isFocused = isFocused(item),
+                                    isDisabled = permissionMissing,
+                                    disabledReason = stringResource(
+                                        R.string.ui_quick_settings_performance_disabled
+                                    ),
+                                    onClick = onPerformanceModeCycle
+                                )
 
-                            QuickSettingsItem.Haptic -> QuickSettingToggle(
-                                icon = Icons.Default.Vibration,
-                                label = stringResource(R.string.ui_quick_settings_haptics),
-                                isEnabled = state.hapticEnabled,
-                                isFocused = isFocused(item),
-                                onClick = onHapticToggle
-                            )
+                                QuickSettingsItem.Fan -> QuickSettingItem(
+                                    icon = Icons.Default.Toys,
+                                    label = stringResource(R.string.ui_quick_settings_fan),
+                                    value = stringResource(state.fanMode.labelRes),
+                                    isFocused = isFocused(item),
+                                    isDisabled = permissionMissing,
+                                    disabledReason = stringResource(
+                                        R.string.ui_quick_settings_fan_disabled
+                                    ),
+                                    onClick = onFanModeCycle
+                                )
 
-                            QuickSettingsItem.VibrationStrength -> VibrationStrengthSlider(
-                                strength = state.vibrationStrength,
-                                isFocused = isFocused(item),
-                                onStrengthChange = onVibrationStrengthChange
-                            )
+                                QuickSettingsItem.FanSpeed -> FanSpeedSlider(
+                                    speed = state.fanSpeed,
+                                    isFocused = isFocused(item),
+                                    onSpeedChange = onFanSpeedChange
+                                )
 
-                            QuickSettingsItem.UISounds -> QuickSettingToggle(
-                                icon = if (state.soundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
-                                label = stringResource(R.string.ui_quick_settings_ui_sounds),
-                                isEnabled = state.soundEnabled,
-                                isFocused = isFocused(item),
-                                onClick = onSoundToggle
-                            )
+                                QuickSettingsItem.Theme -> QuickSettingItem(
+                                    icon = when (state.themeMode) {
+                                        ThemeMode.LIGHT -> Icons.Default.LightMode
+                                        ThemeMode.DARK -> Icons.Default.DarkMode
+                                        ThemeMode.SYSTEM -> Icons.Default.SettingsBrightness
+                                    },
+                                    label = stringResource(R.string.ui_quick_settings_theme),
+                                    value = state.themeMode.displayName,
+                                    isFocused = isFocused(item),
+                                    onClick = onThemeCycle
+                                )
 
-                            QuickSettingsItem.BGM -> QuickSettingToggle(
-                                icon = if (state.ambientAudioEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
-                                label = stringResource(R.string.ui_quick_settings_bgm),
-                                isEnabled = state.ambientAudioEnabled,
-                                isFocused = isFocused(item),
-                                onClick = onAmbientToggle
-                            )
+                                QuickSettingsItem.SystemVolume -> SystemVolumeSlider(
+                                    volume = state.systemVolume,
+                                    isFocused = isFocused(item),
+                                    onVolumeChange = onVolumeChange
+                                )
 
-                            QuickSettingsItem.SwapDisplays -> QuickSettingToggle(
-                                icon = Icons.Default.SwapHoriz,
-                                label = stringResource(R.string.ui_quick_settings_swap_displays),
-                                isEnabled = state.isRolesSwapped,
-                                isFocused = isFocused(item),
-                                onClick = onSwapDisplays
-                            )
+                                QuickSettingsItem.ScreenBrightness -> ScreenBrightnessSlider(
+                                    brightness = state.screenBrightness,
+                                    isFocused = isFocused(item),
+                                    onBrightnessChange = onBrightnessChange
+                                )
 
-                            QuickSettingsItem.QuayPass -> QuickSettingToggle(
-                                icon = if (state.quayPassEnabled) QuayPassIcons.On else QuayPassIcons.Off,
-                                label = stringResource(R.string.ui_quick_settings_quaypass),
-                                isEnabled = state.quayPassEnabled,
-                                isFocused = isFocused(item),
-                                onClick = onQuayPassToggle
-                            )
+                                QuickSettingsItem.Haptic -> QuickSettingToggle(
+                                    icon = Icons.Default.Vibration,
+                                    label = stringResource(R.string.ui_quick_settings_haptics),
+                                    isEnabled = state.hapticEnabled,
+                                    isFocused = isFocused(item),
+                                    onClick = onHapticToggle
+                                )
+
+                                QuickSettingsItem.VibrationStrength -> VibrationStrengthSlider(
+                                    strength = state.vibrationStrength,
+                                    isFocused = isFocused(item),
+                                    onStrengthChange = onVibrationStrengthChange
+                                )
+
+                                QuickSettingsItem.UISounds -> QuickSettingToggle(
+                                    icon = if (state.soundEnabled) Icons.AutoMirrored.Filled.VolumeUp else Icons.AutoMirrored.Filled.VolumeOff,
+                                    label = stringResource(R.string.ui_quick_settings_ui_sounds),
+                                    isEnabled = state.soundEnabled,
+                                    isFocused = isFocused(item),
+                                    onClick = onSoundToggle
+                                )
+
+                                QuickSettingsItem.BGM -> QuickSettingToggle(
+                                    icon = if (state.ambientAudioEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
+                                    label = stringResource(R.string.ui_quick_settings_bgm),
+                                    isEnabled = state.ambientAudioEnabled,
+                                    isFocused = isFocused(item),
+                                    onClick = onAmbientToggle
+                                )
+
+                                QuickSettingsItem.SwapDisplays -> QuickSettingToggle(
+                                    icon = Icons.Default.SwapHoriz,
+                                    label = stringResource(R.string.ui_quick_settings_swap_displays),
+                                    isEnabled = state.isRolesSwapped,
+                                    isFocused = isFocused(item),
+                                    onClick = onSwapDisplays
+                                )
+
+                                QuickSettingsItem.QuayPass -> QuickSettingToggle(
+                                    icon = if (state.quayPassEnabled) QuayPassIcons.On else QuayPassIcons.Off,
+                                    label = stringResource(R.string.ui_quick_settings_quaypass),
+                                    isEnabled = state.quayPassEnabled,
+                                    isFocused = isFocused(item),
+                                    onClick = onQuayPassToggle
+                                )
+                            }
                         }
                     }
-                }
 
-                FooterHints(hints = footerHints, onHintClick = onHintClick)
-                FooterSpacer()
+                    FooterHints(hints = footerHints, onHintClick = onHintClick)
+                    FooterSpacer()
+                }
+                VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                QuickSettingsRail(
+                    pages = pages,
+                    activePage = activePage,
+                    onPageSelect = onPageSelect
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun QuickSettingsGroupHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(
+            start = Dimens.spacingLg,
+            end = Dimens.spacingLg,
+            top = Dimens.spacingSm,
+            bottom = Dimens.spacingXs
+        )
+    )
+}
+
+@Composable
+private fun QuickSettingsRail(
+    pages: List<QuickSettingsPage>,
+    activePage: QuickSettingsPage,
+    onPageSelect: (QuickSettingsPage) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .padding(horizontal = Dimens.spacingXs, vertical = Dimens.spacingLg),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        pages.forEach { page ->
+            key(page) {
+                QuickSettingsRailIcon(
+                    page = page,
+                    isActive = page == activePage,
+                    onClick = { onPageSelect(page) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickSettingsRailIcon(
+    page: QuickSettingsPage,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    val theme = LocalArgosyTheme.current
+    Box(
+        modifier = Modifier
+            .argosyFocusIndicators(
+                focused = isActive,
+                indicators = FocusIndicators.Pill,
+                shape = CircleShape
+            )
+            .clip(CircleShape)
+            .clickableNoFocus(onClick = onClick)
+            .padding(Dimens.spacingSm),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = page.icon,
+            contentDescription = stringResource(page.titleRes),
+            tint = if (isActive) theme.focusAccent else theme.textDim,
+            modifier = Modifier.size(Dimens.iconMd)
+        )
     }
 }
 
