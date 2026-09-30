@@ -33,7 +33,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import com.nendo.argosy.ui.DrawerItem
 import com.nendo.argosy.ui.primitives.FocusIndicators
-import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -48,7 +47,6 @@ fun FloatingNavBar(
     destinations: List<DrawerItem>,
     currentRoute: String?,
     onNavigate: (String) -> Unit,
-    onCycle: (Int) -> Unit,
     onInteract: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,7 +70,6 @@ fun FloatingNavBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
-            NavBarShoulder(button = InputButton.LB, onClick = { onCycle(-1) })
             destinations.forEach { item ->
                 key(item.route) {
                     NavBarDestination(
@@ -82,7 +79,6 @@ fun FloatingNavBar(
                     )
                 }
             }
-            NavBarShoulder(button = InputButton.RB, onClick = { onCycle(1) })
         }
     }
 }
@@ -130,16 +126,4 @@ private fun NavBarDestination(
             modifier = Modifier.size(Dimens.iconMd)
         )
     }
-}
-
-@Composable
-private fun NavBarShoulder(button: InputButton, onClick: () -> Unit) {
-    InputGlyph(
-        button = button,
-        size = Dimens.iconMd,
-        modifier = Modifier
-            .clip(CircleShape)
-            .clickableNoFocus(onClick = onClick)
-            .padding(Dimens.spacingXs)
-    )
 }

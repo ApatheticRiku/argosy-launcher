@@ -1198,14 +1198,6 @@ fun ArgosyApp(
                             navigateFromDrawer(route)
                             viewModel.showNavBar()
                         },
-                        onCycle = { delta ->
-                            viewModel.navRingRouteFrom(navController.currentDestination?.route, delta)
-                                ?.let { route ->
-                                    viewModel.soundManager.play(SoundType.SECTION_CHANGE)
-                                    navigateFromDrawer(route)
-                                }
-                            viewModel.showNavBar()
-                        },
                         onInteract = { viewModel.showNavBar() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
