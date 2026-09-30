@@ -219,13 +219,7 @@ private fun PortraitExpandedHeader(
                 )
             }
 
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-            ) {
-                PortraitRatingsColumn(game = game)
-                PlayStatsColumn(game = game)
-            }
+            PortraitStatChips(game = game, modifier = Modifier.weight(1f))
         }
     }
 }
@@ -414,17 +408,29 @@ private fun RatingsRow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PortraitRatingsColumn(
+private fun PortraitStatChips(
     game: GameDetailUi,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
-        ScoreChips(game)
-        TimeToBeatChips(game)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
+            ScoreChips(game)
+            TimeToBeatChips(game)
+            game.status?.let { status ->
+                StatusChip(statusValue = status)
+            }
+        }
+        if (game.playTimeMinutes > 0) {
+            PlayTimeChip(minutes = game.playTimeMinutes)
+        }
     }
 }
 
@@ -437,26 +443,6 @@ private fun PlayStatsRow(
         Column(
             modifier = modifier,
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            game.status?.let { status ->
-                StatusChip(statusValue = status)
-            }
-            if (game.playTimeMinutes > 0) {
-                PlayTimeChip(minutes = game.playTimeMinutes)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlayStatsColumn(
-    game: GameDetailUi,
-    modifier: Modifier = Modifier
-) {
-    if (game.playTimeMinutes > 0 || game.status != null) {
-        Column(
-            modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
             game.status?.let { status ->
                 StatusChip(statusValue = status)

@@ -51,6 +51,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -143,16 +145,22 @@ fun GameDetailMenu(
             menuLayout.focusIndexOf(it, layoutState) == displayState.focusedIndex
         }
         if (position < 0) return@LaunchedEffect
-        val layoutInfo = listState.layoutInfo
-        val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == position }
-        val fullyVisible = itemInfo != null &&
-            itemInfo.offset >= layoutInfo.viewportStartOffset &&
-            itemInfo.offset + itemInfo.size <= layoutInfo.viewportEndOffset
-        if (!fullyVisible) listState.animateScrollToItem(position)
+        snapshotFlow { listState.layoutInfo.viewportSize.height }
+            .distinctUntilChanged()
+            .collect {
+                val layoutInfo = listState.layoutInfo
+                val itemInfo = layoutInfo.visibleItemsInfo.firstOrNull { it.index == position }
+                val fullyVisible = itemInfo != null &&
+                    itemInfo.offset >= 0 &&
+                    itemInfo.offset + itemInfo.size <=
+                    layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding
+                if (!fullyVisible) listState.animateScrollToItem(position)
+            }
     }
 
     LazyColumn(
         state = listState,
+        contentPadding = PaddingValues(bottom = Dimens.footerHeight),
         modifier = modifier
             .fillMaxHeight()
             .padding(end = if (isCompact) Dimens.spacingXs else Dimens.spacingMd),
