@@ -114,7 +114,7 @@ class LockScreenArtManager @Inject constructor(
 
     private suspend fun mosaicArt(width: Int, height: Int): Pair<String, Bitmap?>? {
         val grid = LockScreenArtRenderer.grid(width, height)
-        val sources = gameRepository.showcaseCovers(null, oneEntryPerGroup = true).distinct()
+        val sources = gameRepository.coversOnePerTitle().distinct()
         val key = "mosaic:${sources.size}:${sources.take(grid.tileCount * 2).hashCode()}:${width}x$height"
         if (key == shownKey) return key to null
         val covers = mutableListOf<Bitmap>()

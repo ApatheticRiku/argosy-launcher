@@ -665,6 +665,16 @@ interface GameDao {
         limit: Int = SHOWCASE_COVER_LIMIT
     ): List<String>
 
+    @Query("""
+        SELECT COALESCE(coverOverridePath, coverPath) AS coverPath, (localPath IS NOT NULL) AS installed, isFavorite, rating, sortTitle FROM games
+        WHERE isGroupVisible = 1
+          AND COALESCE(coverOverridePath, coverPath) IS NOT NULL AND COALESCE(coverOverridePath, coverPath) != ''
+          AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        ORDER BY (localPath IS NOT NULL) DESC, isFavorite DESC, rating DESC, sortTitle ASC
+        LIMIT :limit
+    """)
+    suspend fun libraryCoverCandidates(ownerUserId: Long?, limit: Int = SHOWCASE_COVER_LIMIT): List<ShowcaseCoverCandidate>
+
     /**
      * Counts only what the library also counts, so a downloaded total can never exceed the total
      * beside it when a game is hidden.

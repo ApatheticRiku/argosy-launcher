@@ -1048,6 +1048,15 @@ class GameRepository @Inject constructor(
     suspend fun showcaseCovers(platformId: Long?, oneEntryPerGroup: Boolean): List<String> =
         gameDao.showcaseCovers(platformId, hiddenOwnerId(), oneEntryPerGroup)
 
+    /**
+     * Library-wide covers with one per title, so a game released on several platforms appears
+     * once. Titles compare without their bracketed region and revision tags.
+     */
+    suspend fun coversOnePerTitle(): List<String> =
+        gameDao.libraryCoverCandidates(hiddenOwnerId())
+            .distinctBy { titleKey(it.sortTitle) }
+            .map { it.coverPath }
+
     suspend fun statsForGames(gameIds: List<Long>): PlatformShowcaseStats? =
         if (gameIds.isEmpty()) null else gameDao.statsForGamesChunked(gameIds, hiddenOwnerId())
 
@@ -1212,3 +1221,11 @@ data class LibraryLinkSummary(
     val coverGameId: Long?,
     val gameIds: List<Long> = emptyList()
 )
+
+private val BRACKETED_TAG = Regex("""\s*[(\[][^)\]]*[)\]]""")
+private val NON_ALPHANUMERIC = Regex("[^a-z0-9]+")
+
+internal fun titleKey(title: String): String =
+    com.nendo.argosy.util.SearchNormalizer.normalize(title.replace(BRACKETED_TAG, ""))
+        .replace(NON_ALPHANUMERIC, " ")
+        .trim()
