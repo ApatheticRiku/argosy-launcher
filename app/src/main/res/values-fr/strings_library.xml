@@ -115,10 +115,6 @@
     <string name="library_notice_extraction_failed">Échec de l\'extraction. Ouvrez la fiche du jeu pour réessayer.</string>
     <string name="library_notice_apk_install_failed">Impossible d\'installer l\'APK</string>
 
-    <string name="library_companion_fact_emulator">Émulateur</string>
-    <string name="library_companion_fact_storage">Stockage</string>
-    <string name="library_companion_storage_downloaded">Téléchargé</string>
-    <string name="library_companion_storage_not_downloaded">Non téléchargé</string>
 
     <string name="library_apps_title">Applications</string>
     <string name="library_apps_title_hidden">Applications masquées</string>

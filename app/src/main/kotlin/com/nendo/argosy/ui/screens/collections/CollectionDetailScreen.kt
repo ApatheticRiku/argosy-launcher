@@ -81,12 +81,15 @@ fun CollectionDetailScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_COLLECTION_DETAIL)
+                viewModel.republishCompanionDetail()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_COLLECTION_DETAIL)
+        viewModel.republishCompanionDetail()
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.clearCompanionDetail()
         }
     }
 

@@ -84,7 +84,6 @@ import com.nendo.argosy.ui.screens.home.toHomePlatformUi
 import com.nendo.argosy.ui.util.GridUtils
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.ui.ModalResetSignal
-import com.nendo.argosy.ui.dualscreen.CompanionDetail
 import com.nendo.argosy.ui.dualscreen.CompanionFact
 import com.nendo.argosy.ui.dualscreen.PresentationSlot
 import com.nendo.argosy.ui.dualscreen.SlotOwner
@@ -467,7 +466,8 @@ class LibraryViewModel @Inject constructor(
     private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate,
     private val socialRepository: SocialRepository,
     private val saveListStatusRepository: SaveListStatusRepository,
-    private val libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration
+    private val libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration,
+    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
 ) : ViewModel() {
 
     val siblingChoiceState = siblingChoice.state
@@ -824,11 +824,12 @@ class LibraryViewModel @Inject constructor(
      * cursor rather than sitting on whatever it was last left showing.
      */
     private fun observeFocusForCompanion() {
-        _uiState
-            .map { if (it.view == LibraryView.PLATFORM_GRID) null else it.focusedGame }
-            .distinctUntilChanged()
-            .onEach { publishCompanionDetail(it) }
-            .launchIn(viewModelScope)
+        viewModelScope.launch {
+            _uiState
+                .map { if (it.view == LibraryView.PLATFORM_GRID) null else it.focusedGame?.id }
+                .distinctUntilChanged()
+                .collectLatest { publishCompanionDetail(it) }
+        }
 
         _uiState
             .map { it.focusedPlatformCell }
@@ -959,46 +960,18 @@ class LibraryViewModel @Inject constructor(
         if (state.view == LibraryView.PLATFORM_GRID) {
             viewModelScope.launch { publishPlatformShowcase(state.focusedPlatformCell) }
         } else {
-            publishCompanionDetail(state.focusedGame)
+            viewModelScope.launch { publishCompanionDetail(state.focusedGame?.id) }
         }
     }
 
-    private fun publishCompanionDetail(game: LibraryGameUi?) {
+    private suspend fun publishCompanionDetail(gameId: Long?) {
         if (!isDescribing) return
-        DualScreenManagerHolder.instance?.setCompanionDetail(
-            companionOwner,
-            game?.let {
-                CompanionDetail(
-                    title = it.title,
-                    subtitle = it.platformDisplayName,
-                    platformSlug = it.platformSlug,
-                    artUrl = it.coverPath,
-                    isGameTitle = true,
-                    facts = buildList {
-                        it.emulatorName?.let { name ->
-                            add(
-                                CompanionFact(
-                                    context.getString(R.string.library_companion_fact_emulator),
-                                    name
-                                )
-                            )
-                        }
-                        add(
-                            CompanionFact(
-                                context.getString(R.string.library_companion_fact_storage),
-                                context.getString(
-                                    if (it.isDownloaded) {
-                                        R.string.library_companion_storage_downloaded
-                                    } else {
-                                        R.string.library_companion_storage_not_downloaded
-                                    }
-                                )
-                            )
-                        )
-                    }
-                )
-            }
-        )
+        val dsm = DualScreenManagerHolder.instance ?: return
+        val friends = _uiState.value.friendsActivity
+        dsm.setCompanionDetail(companionOwner, gameId?.let { showcaseSource.gameDetail(it, friends) })
+        if (gameId != null && showcaseSource.backfillLogo(gameId) && isDescribing) {
+            dsm.setCompanionDetail(companionOwner, showcaseSource.gameDetail(gameId, friends))
+        }
     }
 
     /**

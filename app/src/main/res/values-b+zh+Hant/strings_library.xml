@@ -101,10 +101,6 @@
     <string name="library_notice_extraction_failed">解壓縮失敗，請開啟遊戲詳情頁面重試。</string>
     <string name="library_notice_apk_install_failed">無法安裝APK</string>
 
-    <string name="library_companion_fact_emulator">模擬器</string>
-    <string name="library_companion_fact_storage">儲存狀態</string>
-    <string name="library_companion_storage_downloaded">已下載</string>
-    <string name="library_companion_storage_not_downloaded">尚未下載</string>
 
     <string name="library_apps_title">應用程式</string>
     <string name="library_apps_title_hidden">已隱藏的應用程式</string>

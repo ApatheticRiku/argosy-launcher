@@ -4,6 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import android.util.Log
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.repository.CollectionRepository
+import com.nendo.argosy.ui.common.PresentationFocus
+import com.nendo.argosy.ui.common.PresentationShowcaseSource
+import com.nendo.argosy.ui.common.PresentationTarget
 import com.nendo.argosy.domain.usecase.collection.CategoryWithCount
 import com.nendo.argosy.domain.usecase.collection.CollectionWithCount
 import com.nendo.argosy.domain.usecase.collection.GetCollectionsUseCase
@@ -20,7 +24,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -98,8 +104,12 @@ class CollectionsViewModel @Inject constructor(
     private val refreshAllCollectionsUseCase: RefreshAllCollectionsUseCase,
     private val isPinnedUseCase: IsPinnedUseCase,
     private val pinCollectionUseCase: PinCollectionUseCase,
-    private val unpinCollectionUseCase: UnpinCollectionUseCase
+    private val unpinCollectionUseCase: UnpinCollectionUseCase,
+    private val collectionRepository: CollectionRepository,
+    showcaseSource: PresentationShowcaseSource
 ) : ViewModel() {
+
+    private val presentation = PresentationFocus("collections.list", this, showcaseSource, viewModelScope)
 
     private val _focusedSection = MutableStateFlow(CollectionSection.MY_COLLECTIONS)
     private val _focusedIndex = MutableStateFlow(0)
@@ -118,6 +128,25 @@ class CollectionsViewModel @Inject constructor(
         refreshCollections(force = true)
         loadPinnedIds()
     }
+
+    private fun observePresentationFocus() {
+        viewModelScope.launch {
+            uiState
+                .map { state ->
+                    state.focusedCollection?.let { collection ->
+                        PresentationTarget.GameSet("collection:${collection.id}", collection.name) {
+                            collectionRepository.getGameIdsInCollection(collection.id)
+                        }
+                    } ?: PresentationTarget.Nothing
+                }
+                .distinctUntilChanged()
+                .collect { presentation.show(it) }
+        }
+    }
+
+    fun republishCompanionDetail() = presentation.startDescribing()
+
+    fun clearCompanionDetail() = presentation.stopDescribing()
 
     private fun loadPinnedIds() {
         viewModelScope.launch {
@@ -204,6 +233,10 @@ class CollectionsViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = CollectionsUiState()
     )
+
+    init {
+        observePresentationFocus()
+    }
 
     fun moveUp() {
         val state = uiState.value

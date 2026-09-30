@@ -122,10 +122,6 @@
     <string name="library_notice_extraction_failed">Не удалось распаковать. Откройте страницу игры, чтобы повторить.</string>
     <string name="library_notice_apk_install_failed">Не удалось установить APK</string>
 
-    <string name="library_companion_fact_emulator">Эмулятор</string>
-    <string name="library_companion_fact_storage">Хранилище</string>
-    <string name="library_companion_storage_downloaded">Загружено</string>
-    <string name="library_companion_storage_not_downloaded">Не загружено</string>
 
     <string name="library_apps_title">Приложения</string>
     <string name="library_apps_title_hidden">Скрытые приложения</string>

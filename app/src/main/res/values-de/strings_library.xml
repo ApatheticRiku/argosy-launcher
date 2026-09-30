@@ -108,10 +108,6 @@
     <string name="library_notice_extraction_failed">Extraktion fehlgeschlagen. Öffnen Sie die Spieldetails, um es erneut zu versuchen.</string>
     <string name="library_notice_apk_install_failed">APK konnte nicht installiert werden</string>
 
-    <string name="library_companion_fact_emulator">Emulator</string>
-    <string name="library_companion_fact_storage">Speicher</string>
-    <string name="library_companion_storage_downloaded">Heruntergeladen</string>
-    <string name="library_companion_storage_not_downloaded">Nicht heruntergeladen</string>
 
     <string name="library_apps_title">Apps</string>
     <string name="library_apps_title_hidden">Ausgeblendete Apps</string>

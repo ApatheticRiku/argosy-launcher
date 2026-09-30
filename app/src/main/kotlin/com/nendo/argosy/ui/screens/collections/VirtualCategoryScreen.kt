@@ -81,12 +81,15 @@ fun VirtualCategoryScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_VIRTUAL_BROWSER)
+                viewModel.republishCompanionDetail()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_VIRTUAL_BROWSER)
+        viewModel.republishCompanionDetail()
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.clearCompanionDetail()
         }
     }
 

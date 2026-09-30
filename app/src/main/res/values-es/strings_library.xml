@@ -115,10 +115,6 @@
     <string name="library_notice_extraction_failed">Error al extraer. Abre los detalles del juego para reintentar.</string>
     <string name="library_notice_apk_install_failed">No se pudo instalar el APK</string>
 
-    <string name="library_companion_fact_emulator">Emulador</string>
-    <string name="library_companion_fact_storage">Almacenamiento</string>
-    <string name="library_companion_storage_downloaded">Descargado</string>
-    <string name="library_companion_storage_not_downloaded">No descargado</string>
 
     <string name="library_apps_title">Apps</string>
     <string name="library_apps_title_hidden">Apps ocultas</string>

@@ -247,19 +247,6 @@
     <!-- Toast shown when Android refused to install a downloaded app package. -->
     <string name="library_notice_apk_install_failed">Could not install APK</string>
 
-    <!-- Label of a fact on the second screen while the game list is being browsed. Noun, the
-         emulator program that would run the focused game. Its value is a program name and is
-         not translated. -->
-    <string name="library_companion_fact_emulator">Emulator</string>
-    <!-- Label of a fact on the second screen while the game list is being browsed. Noun,
-         whether the focused game is held on this device. -->
-    <string name="library_companion_fact_storage">Storage</string>
-    <!-- Value of the storage fact when the game is held on this device. Adjective describing
-         the game, not the verb "to download". -->
-    <string name="library_companion_storage_downloaded">Downloaded</string>
-    <!-- Value of the storage fact when the game is only on the server. Adjective describing
-         the game. -->
-    <string name="library_companion_storage_not_downloaded">Not downloaded</string>
 
     <!-- Heading of the installed apps screen in its normal state. Noun, plural, the apps
          installed on the device. -->

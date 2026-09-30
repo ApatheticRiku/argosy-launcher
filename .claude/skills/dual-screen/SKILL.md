@@ -97,8 +97,14 @@ LAW: inside `ArgosyApp` and anything it hosts, reach DSM through the Holder, nev
 | `HomeLayoutPreview` | `HomeScreenSection` via `PresentOnCompanion` |
 | `PlayTime` | `PlayTimePresentation` via `PresentOnCompanion` |
 | `ScreenIdentity` | `ScreensSection`, the numbered badge |
-| `Detail` | `setCompanionDetail` from Home, Library, Media, GameDetail |
-| `PlatformShowcase` | `LibraryViewModel` via `DualScreenManager.presentSlot` while the platform grid is focused |
+| `Detail` | `setCompanionDetail` from Home, Library, Media, and the Collections screens (collection detail, genre/mode game lists) through `PresentationFocus` |
+| `PlatformShowcase` | `LibraryViewModel` while the platform grid is focused; Home's custom-grid collection tiles; the Collections list and genre/mode list through `PresentationFocus` |
+| `GameHero` | `GameDetailViewModel` via `presentSlot` |
+
+A focused game's `Detail` and a set of games' mosaic are built by `ui/common/PresentationShowcaseSource`
+(`gameDetail`, `collectionShowcase`), so they look identical from every screen. A new list screen
+that should drive the presentation screen holds a `ui/common/PresentationFocus`, calls `show()` from a
+focus observer, `startDescribing()` on composition and ON_RESUME, and `stopDescribing()` on dispose.
 | `InGame` | DSM while a session is live |
 
 Three publishing mechanisms, deliberately:

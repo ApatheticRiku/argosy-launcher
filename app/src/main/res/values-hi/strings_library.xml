@@ -108,10 +108,6 @@
     <string name="library_notice_extraction_failed">एक्सट्रैक्शन विफल। फिर से कोशिश करने के लिए गेम विवरण खोलें।</string>
     <string name="library_notice_apk_install_failed">APK इंस्टॉल नहीं हो सका</string>
 
-    <string name="library_companion_fact_emulator">एमुलेटर</string>
-    <string name="library_companion_fact_storage">स्टोरेज</string>
-    <string name="library_companion_storage_downloaded">डाउनलोड हो चुका</string>
-    <string name="library_companion_storage_not_downloaded">डाउनलोड नहीं हुआ</string>
 
     <string name="library_apps_title">ऐप्स</string>
     <string name="library_apps_title_hidden">छिपे हुए ऐप्स</string>

@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.net.URLDecoder
@@ -86,8 +88,16 @@ class VirtualCategoryViewModel @Inject constructor(
     private val downloadGameUseCase: DownloadGameUseCase,
     private val notificationManager: NotificationManager,
     private val positions: VirtualBrowsePositions,
-    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository
+    private val downloadFileStatusRepository: com.nendo.argosy.data.repository.DownloadFileStatusRepository,
+    showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
 ) : ViewModel() {
+
+    private val presentation = com.nendo.argosy.ui.common.PresentationFocus(
+        "collections.category",
+        this,
+        showcaseSource,
+        viewModelScope
+    )
 
     private val type: String = checkNotNull(savedStateHandle["type"])
     private val category: String = URLDecoder.decode(checkNotNull(savedStateHandle["category"]), "UTF-8")
@@ -172,6 +182,22 @@ class VirtualCategoryViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VirtualCategoryUiState(type = type, categoryName = category)
     )
+
+    init {
+        viewModelScope.launch {
+            uiState
+                .map { state ->
+                    state.focusedGame?.let { com.nendo.argosy.ui.common.PresentationTarget.Game(it.id) }
+                        ?: com.nendo.argosy.ui.common.PresentationTarget.Nothing
+                }
+                .distinctUntilChanged()
+                .collect { presentation.show(it) }
+        }
+    }
+
+    fun republishCompanionDetail() = presentation.startDescribing()
+
+    fun clearCompanionDetail() = presentation.stopDescribing()
 
     private fun sectionLabelFor(name: String): String {
         val first = name.trim().firstOrNull()?.uppercaseChar() ?: '#'

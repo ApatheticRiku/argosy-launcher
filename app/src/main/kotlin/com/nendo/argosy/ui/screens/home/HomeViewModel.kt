@@ -79,8 +79,6 @@ import javax.inject.Inject
  * The widgets tab's rows in this surface's words. The list itself is written once in
  * [com.nendo.argosy.ui.common.featureTilePickerEntries].
  */
-private const val SHOWCASE_COVERS = 24
-
 private val HOME_FEATURE_TILE_PICKER_STRINGS = com.nendo.argosy.ui.common.FeatureTilePickerStrings(
     randomTitle = R.string.tile_picker_feature_random_title,
     randomSubtitle = R.string.tile_picker_feature_random_subtitle,
@@ -137,7 +135,8 @@ class HomeViewModel @Inject constructor(
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository,
-    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate
+    private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate,
+    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
 ) : ViewModel(), HomeInputActions {
 
     val siblingChoiceState = siblingChoice.state
@@ -1270,13 +1269,7 @@ class HomeViewModel @Inject constructor(
                 else -> null
             } ?: return@mapNotNull null
             val (name, gameIds) = named
-            tile.id to com.nendo.argosy.ui.common.gameShowcase(
-                context = context,
-                name = name,
-                coverPaths = gameRepository.coverPathsForGames(gameIds, SHOWCASE_COVERS),
-                stats = gameRepository.statsForGames(gameIds),
-                fallbackCount = gameIds.size
-            )
+            tile.id to showcaseSource.collectionShowcase(name, gameIds)
         }.toMap()
 
     private fun featureTileEntries(): List<com.nendo.argosy.ui.components.TilePickerEntry> =

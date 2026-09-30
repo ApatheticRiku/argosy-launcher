@@ -22,7 +22,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -62,8 +64,17 @@ class VirtualBrowserViewModel @Inject constructor(
     private val pinCollectionUseCase: PinCollectionUseCase,
     private val unpinCollectionUseCase: UnpinCollectionUseCase,
     private val refreshAllCollectionsUseCase: RefreshAllCollectionsUseCase,
-    private val positions: VirtualBrowsePositions
+    private val positions: VirtualBrowsePositions,
+    private val collectionRepository: com.nendo.argosy.data.repository.CollectionRepository,
+    showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
 ) : ViewModel() {
+
+    private val presentation = com.nendo.argosy.ui.common.PresentationFocus(
+        "collections.browse",
+        this,
+        showcaseSource,
+        viewModelScope
+    )
 
     private val type: String = checkNotNull(savedStateHandle["type"])
     private val _focusedIndex = MutableStateFlow(positions.get(type))
@@ -144,6 +155,27 @@ class VirtualBrowserViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = VirtualBrowserUiState(type = type, titleRes = titleResFor(type))
     )
+
+    init {
+        viewModelScope.launch {
+            val collectionType = com.nendo.argosy.data.local.entity.CollectionType.valueOf(categoryType.name)
+            uiState
+                .map { state ->
+                    state.focusedCategory?.let { category ->
+                        com.nendo.argosy.ui.common.PresentationTarget.GameSet(
+                            "$type:${category.name}",
+                            category.name
+                        ) { collectionRepository.virtualGameIds(collectionType, category.name) }
+                    } ?: com.nendo.argosy.ui.common.PresentationTarget.Nothing
+                }
+                .distinctUntilChanged()
+                .collect { presentation.show(it) }
+        }
+    }
+
+    fun republishCompanionDetail() = presentation.startDescribing()
+
+    fun clearCompanionDetail() = presentation.stopDescribing()
 
     @StringRes
     private fun titleResFor(type: String): Int =

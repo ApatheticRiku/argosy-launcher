@@ -35,7 +35,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -112,8 +114,16 @@ class CollectionDetailViewModel @Inject constructor(
     private val downloadGameUseCase: DownloadGameUseCase,
     private val notificationManager: NotificationManager,
     private val positions: VirtualBrowsePositions,
-    private val downloadFileStatusRepository: DownloadFileStatusRepository
+    private val downloadFileStatusRepository: DownloadFileStatusRepository,
+    showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
 ) : ViewModel() {
+
+    private val presentation = com.nendo.argosy.ui.common.PresentationFocus(
+        "collections.detail",
+        this,
+        showcaseSource,
+        viewModelScope
+    )
 
     private val collectionId: Long = checkNotNull(savedStateHandle["collectionId"])
     private val stickyKey = "col:$collectionId"
@@ -207,6 +217,28 @@ class CollectionDetailViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = CollectionDetailUiState()
     )
+
+    init {
+        viewModelScope.launch {
+            uiState
+                .map { state ->
+                    state.focusedGame?.let { com.nendo.argosy.ui.common.PresentationTarget.Game(it.id) }
+                        ?: state.collection?.let { collection ->
+                            com.nendo.argosy.ui.common.PresentationTarget.GameSet(
+                                "collection:$collectionId",
+                                collection.name
+                            ) { collectionRepository.getGameIdsInCollection(collectionId) }
+                        }
+                        ?: com.nendo.argosy.ui.common.PresentationTarget.Nothing
+                }
+                .distinctUntilChanged()
+                .collect { presentation.show(it) }
+        }
+    }
+
+    fun republishCompanionDetail() = presentation.startDescribing()
+
+    fun clearCompanionDetail() = presentation.stopDescribing()
 
     private fun sectionLabelFor(name: String): String {
         val first = name.trim().firstOrNull()?.uppercaseChar() ?: '#'

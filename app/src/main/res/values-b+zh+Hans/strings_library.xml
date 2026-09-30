@@ -101,10 +101,6 @@
     <string name="library_notice_extraction_failed">解压失败。打开游戏详情以重试。</string>
     <string name="library_notice_apk_install_failed">无法安装APK</string>
 
-    <string name="library_companion_fact_emulator">模拟器</string>
-    <string name="library_companion_fact_storage">存储</string>
-    <string name="library_companion_storage_downloaded">已下载</string>
-    <string name="library_companion_storage_not_downloaded">未下载</string>
 
     <string name="library_apps_title">应用</string>
     <string name="library_apps_title_hidden">已隐藏的应用</string>
