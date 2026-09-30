@@ -565,6 +565,13 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
+    fun setLockScreenArt(scope: CoroutineScope, enabled: Boolean) {
+        scope.launch {
+            preferencesRepository.setLockScreenArt(enabled)
+            _state.update { it.copy(lockScreenArt = enabled) }
+        }
+    }
+
     fun showGripControllerModal() {
         _state.update { it.copy(showGripControllerModal = true) }
     }

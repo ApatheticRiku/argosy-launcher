@@ -61,6 +61,9 @@ internal class InterfaceSectionInput(
             InterfaceItem.CompactFooter -> return toggleLeftRight(direction, state.display.compactFooter) {
                 viewModel.setCompactFooter(it)
             }
+            InterfaceItem.LockScreenArt -> return toggleLeftRight(direction, state.display.lockScreenArt) {
+                viewModel.setLockScreenArt(it)
+            }
             InterfaceItem.StatusClock -> return toggleLeftRight(direction, state.display.showStatusClock) {
                 viewModel.setShowStatusClock(it)
             }

@@ -153,6 +153,9 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     @Inject
     lateinit var variantFileCleanup: com.nendo.argosy.data.emulator.VariantFileCleanup
 
+    @Inject
+    lateinit var lockScreenArtManager: com.nendo.argosy.data.wallpaper.LockScreenArtManager
+
     private val quayPassForegroundObserver = object : androidx.lifecycle.DefaultLifecycleObserver {
         override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
             appScope.launch { quayPassCredentialManager.refreshIfNeeded() }
@@ -178,6 +181,7 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
         pushInstallCoordinator.start()
         siblingGroupRepository.start()
         siblingGroupDownloadObserver.start()
+        lockScreenArtManager.start()
         appScope.launch {
             val storedOverride = builtinPrefs.getArchitectureOverride().first()
             if (storedOverride != null) {

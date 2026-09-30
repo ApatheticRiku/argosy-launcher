@@ -101,6 +101,8 @@
     <string name="settings_interface_ui_scale_title">界面缩放</string>
     <string name="settings_interface_compact_footer_title">紧凑底栏</string>
     <string name="settings_interface_compact_footer_subtitle">使用更薄的操作提示栏</string>
+    <string name="settings_interface_lock_screen_art_title">锁屏图片</string>
+    <string name="settings_interface_lock_screen_art_subtitle">当 Argosy 是你的主屏幕应用时，锁屏会显示你的游戏库或未退出的游戏。会替换你的锁屏壁纸。</string>
     <string name="settings_interface_controller_grip_title">手柄夹持</string>
     <string name="settings_interface_controller_grip_subtitle">将界面上移，避开夹持配件遮挡的区域</string>
     <string name="settings_interface_home_screen_title">主屏幕</string>

@@ -72,6 +72,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("game_detail_theme", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("use_accent_color_footer", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("compact_footer", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("lock_screen_art", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("system_icon_position", SettingsBackupType.STRING),
         SettingsBackupKey("system_icon_padding", SettingsBackupType.STRING),
         SettingsBackupKey("platform_indicator_style", SettingsBackupType.STRING),

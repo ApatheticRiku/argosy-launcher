@@ -92,6 +92,8 @@
     <string name="settings_interface_ui_scale_title">介面縮放</string>
     <string name="settings_interface_compact_footer_title">精簡頁尾</string>
     <string name="settings_interface_compact_footer_subtitle">使用較窄的操作提示列</string>
+    <string name="settings_interface_lock_screen_art_title">鎖定畫面圖片</string>
+    <string name="settings_interface_lock_screen_art_subtitle">當 Argosy 是你的主畫面應用程式時，鎖定畫面會顯示你的遊戲庫或尚未結束的遊戲。會取代你的鎖定畫面桌布。</string>
     <string name="settings_interface_controller_grip_title">控制器握把</string>
     <string name="settings_interface_controller_grip_subtitle">將介面上移，避開握把遮擋的區域</string>
     <string name="settings_interface_home_screen_title">主畫面</string>

@@ -105,6 +105,8 @@
     <string name="settings_interface_ui_scale_title">Échelle de l\'interface</string>
     <string name="settings_interface_compact_footer_title">Pied de page compact</string>
     <string name="settings_interface_compact_footer_subtitle">Utiliser une barre de contrôle plus fine</string>
+    <string name="settings_interface_lock_screen_art_title">Image de l\'écran de verrouillage</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Quand Argosy est votre application d\'accueil, l\'écran de verrouillage affiche votre bibliothèque ou le jeu laissé en cours. Remplace votre fond d\'écran de verrouillage.</string>
     <string name="settings_interface_controller_grip_title">Grip manette</string>
     <string name="settings_interface_controller_grip_subtitle">Décaler l\'interface hors de la zone couverte par un grip</string>
     <string name="settings_interface_home_screen_title">Écran d\'accueil</string>

@@ -106,6 +106,8 @@
     <string name="settings_interface_ui_scale_title">Масштаб интерфейса</string>
     <string name="settings_interface_compact_footer_title">Компактная панель</string>
     <string name="settings_interface_compact_footer_subtitle">Использовать более тонкую панель подсказок</string>
+    <string name="settings_interface_lock_screen_art_title">Картинка экрана блокировки</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Пока Argosy — ваше приложение главного экрана, на экране блокировки показывается ваша библиотека или незакрытая игра. Заменяет обои экрана блокировки.</string>
     <string name="settings_interface_controller_grip_title">Хват контроллера</string>
     <string name="settings_interface_controller_grip_subtitle">Сдвинуть интерфейс выше зоны, занимаемой хватом</string>
     <string name="settings_interface_home_screen_title">Главный экран</string>

@@ -296,6 +296,11 @@
     <!-- Second line of that row. "Control guide bar" is the strip that says what each button
          does. -->
     <string name="settings_interface_compact_footer_subtitle">Use a thinner control guide bar</string>
+    <!-- Setting title. Noun phrase: the picture Argosy puts behind the device's lock screen. -->
+    <string name="settings_interface_lock_screen_art_title">Lock Screen Art</string>
+    <!-- Setting subtitle. Explains what the switch does and warns that it takes over the lock
+         screen wallpaper. "Home app" is the app the device shows when Home is pressed. -->
+    <string name="settings_interface_lock_screen_art_subtitle">While Argosy is your home app, the lock screen shows your library, or the game you left running. Replaces your lock screen wallpaper.</string>
 
     <!-- Row title. Noun: the time of day shown in the status bar. -->
     <string name="settings_interface_status_clock_title">Clock</string>

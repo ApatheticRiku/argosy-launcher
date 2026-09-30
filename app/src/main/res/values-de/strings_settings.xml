@@ -113,6 +113,8 @@
     <string name="settings_interface_ui_scale_title">UI-Skalierung</string>
     <string name="settings_interface_compact_footer_title">Kompakter Footer</string>
     <string name="settings_interface_compact_footer_subtitle">Schmalere Bedienleiste verwenden</string>
+    <string name="settings_interface_lock_screen_art_title">Sperrbildschirm-Motiv</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Solange Argosy deine Startbildschirm-App ist, zeigt der Sperrbildschirm deine Bibliothek oder das laufende Spiel. Ersetzt dein Sperrbildschirm-Hintergrundbild.</string>
     <string name="settings_interface_controller_grip_title">Controller-Griff</string>
     <string name="settings_interface_controller_grip_subtitle">Schiebt die Oberfläche aus dem vom Griff verdeckten Bereich</string>
     <string name="settings_interface_home_screen_title">Startbildschirm</string>

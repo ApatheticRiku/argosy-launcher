@@ -68,6 +68,7 @@ internal sealed class InterfaceItem(
                 !it.display.secondaryDisplayUnsupported
         }
     )
+    data object LockScreenArt : InterfaceItem("lockScreenArt", SECTION_SCREENS)
     data object StatusClock : InterfaceItem("statusClock", SECTION_STATUS_BAR)
     data object StatusBattery : InterfaceItem("statusBattery", SECTION_STATUS_BAR)
     data object StatusNetwork : InterfaceItem("statusNetwork", SECTION_STATUS_BAR)
@@ -84,7 +85,7 @@ internal sealed class InterfaceItem(
                 Header("generalHeader", SECTION_GENERAL, R.string.settings_interface_section_general),
                 Language, UiScale, CompactFooter, ControllerGrip,
                 Header("screensHeader", SECTION_SCREENS, R.string.settings_interface_section_screens),
-                HomeScreen, LibraryView, BoxArt, Presentation,
+                HomeScreen, LibraryView, BoxArt, Presentation, LockScreenArt,
                 Header("statusBarHeader", SECTION_STATUS_BAR, R.string.settings_interface_section_status_bar),
                 StatusClock, StatusBattery, StatusNetwork
             )
@@ -210,6 +211,14 @@ fun InterfaceSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     isEnabled = display.compactFooter,
                     isFocused = isFocused(item),
                     onToggle = { viewModel.setCompactFooter(it) }
+                )
+
+                InterfaceItem.LockScreenArt -> SwitchPreference(
+                    title = stringResource(R.string.settings_interface_lock_screen_art_title),
+                    subtitle = stringResource(R.string.settings_interface_lock_screen_art_subtitle),
+                    isEnabled = display.lockScreenArt,
+                    isFocused = isFocused(item),
+                    onToggle = { viewModel.setLockScreenArt(it) }
                 )
 
                 InterfaceItem.StatusClock -> SwitchPreference(
