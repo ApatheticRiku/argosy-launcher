@@ -253,6 +253,9 @@ class MusicPlayerViewModel @Inject constructor(
 
     fun onListEndApproached() = maybeLoadMore(force = true)
 
+    val needsRommSignIn: Boolean
+        get() = _uiState.value.browse?.notice == MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
+
     private fun maybeLoadMore(force: Boolean = false) {
         val browse = _uiState.value.browse ?: return
         if (browse.kind != MusicBrowseKind.SOUNDTRACKS || !browse.hasMore || browse.isLoadingMore) return
@@ -394,9 +397,9 @@ class MusicPlayerViewModel @Inject constructor(
     private fun playlistNotice(status: MusicServerStatus): MusicBrowseNotice? = when (status) {
         MusicServerStatus.OFFLINE -> MusicBrowseNotice.OFFLINE
         MusicServerStatus.FAILED -> MusicBrowseNotice.SERVER_FAILED
+        MusicServerStatus.UNAUTHORIZED -> MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
         MusicServerStatus.AVAILABLE,
-        MusicServerStatus.UNSUPPORTED,
-        MusicServerStatus.UNAUTHORIZED -> null
+        MusicServerStatus.UNSUPPORTED -> null
     }
 
     private fun soundtrackNotice(status: MusicServerStatus): MusicBrowseNotice? = when (status) {

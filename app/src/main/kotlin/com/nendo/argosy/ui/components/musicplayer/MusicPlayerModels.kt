@@ -32,7 +32,8 @@ enum class MusicBrowseNotice {
     OFFLINE,
     LOCAL_ONLY,
     SERVER_FAILED,
-    NO_PLAYABLE_TRACKS
+    NO_PLAYABLE_TRACKS,
+    SIGN_IN_FOR_PLAYLISTS
 }
 
 data class MusicBrowseRowUi(

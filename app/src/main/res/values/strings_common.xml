@@ -1257,6 +1257,11 @@
     <string name="ui_quick_settings_music_notice_server_failed">RomM did not respond. Some items may be missing.</string>
     <!-- Shown after picking a playlist or soundtrack that has no song Argosy can play. -->
     <string name="ui_quick_settings_music_notice_no_tracks">Nothing in this selection can be played</string>
+    <!-- Notice above the playlist list when the RomM server has playlists but this device's
+         sign-in predates access to them. Tapping it opens the RomM sign-in settings. -->
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">Sign in to RomM again to see your server playlists</string>
+    <!-- Footer hint on the playlist list. Verb phrase: opens the RomM sign-in settings. -->
+    <string name="ui_quick_settings_music_hint_sign_in">Sign in again</string>
     <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->
     <string name="ui_quick_settings_music_playlist_owner">by %1$s</string>
     <!-- Description of the marker on the list row that is currently playing. -->

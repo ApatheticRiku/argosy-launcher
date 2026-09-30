@@ -635,6 +635,8 @@
     <string name="ui_quick_settings_music_notice_local_only">Affichage des bandes-son téléchargées</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM n\'a pas répondu. Certains éléments peuvent manquer.</string>
     <string name="ui_quick_settings_music_notice_no_tracks">Rien dans cette sélection ne peut être lu</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">Reconnectez-vous à RomM pour voir vos playlists du serveur</string>
+    <string name="ui_quick_settings_music_hint_sign_in">Se reconnecter</string>
     <string name="ui_quick_settings_music_playlist_owner">par %1$s</string>
     <string name="ui_quick_settings_music_now_playing">En cours de lecture</string>
     <string name="ui_quick_settings_music_back">Retour</string>

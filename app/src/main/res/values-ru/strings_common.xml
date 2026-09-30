@@ -627,6 +627,8 @@
     <string name="ui_quick_settings_music_notice_local_only">Показаны загруженные саундтреки</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM не ответил. Некоторые элементы могут отсутствовать.</string>
     <string name="ui_quick_settings_music_notice_no_tracks">В этой подборке нечего воспроизвести</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">Войдите в RomM заново, чтобы увидеть плейлисты с сервера</string>
+    <string name="ui_quick_settings_music_hint_sign_in">Войти заново</string>
     <string name="ui_quick_settings_music_playlist_owner">автор: %1$s</string>
     <string name="ui_quick_settings_music_now_playing">Сейчас играет</string>
     <string name="ui_quick_settings_music_back">Назад</string>

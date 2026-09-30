@@ -5,7 +5,8 @@ import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 
 class MusicPlayerInputHandler(
-    private val viewModel: MusicPlayerViewModel
+    private val viewModel: MusicPlayerViewModel,
+    private val onOpenRommSignIn: () -> Unit
 ) : InputHandler {
 
     private val browseOpen: Boolean get() = viewModel.uiState.value.browse != null
@@ -49,6 +50,12 @@ class MusicPlayerInputHandler(
             return InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         viewModel.confirmRow()
+        return InputResult.HANDLED
+    }
+
+    override fun onSecondaryAction(): InputResult {
+        if (!viewModel.needsRommSignIn) return InputResult.UNHANDLED
+        onOpenRommSignIn()
         return InputResult.HANDLED
     }
 

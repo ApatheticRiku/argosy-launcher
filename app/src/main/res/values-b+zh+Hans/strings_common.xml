@@ -588,6 +588,8 @@
     <string name="ui_quick_settings_music_notice_local_only">正在显示已下载的原声</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM 未响应。部分内容可能缺失。</string>
     <string name="ui_quick_settings_music_notice_no_tracks">此选择中没有可播放的内容</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">重新登录 RomM 以查看服务器播放列表</string>
+    <string name="ui_quick_settings_music_hint_sign_in">重新登录</string>
     <string name="ui_quick_settings_music_playlist_owner">创建者：%1$s</string>
     <string name="ui_quick_settings_music_now_playing">正在播放</string>
     <string name="ui_quick_settings_music_back">返回</string>

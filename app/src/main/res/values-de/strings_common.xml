@@ -611,6 +611,8 @@
     <string name="ui_quick_settings_music_notice_local_only">Heruntergeladene Soundtracks werden angezeigt</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM hat nicht geantwortet. Einige Einträge fehlen eventuell.</string>
     <string name="ui_quick_settings_music_notice_no_tracks">In dieser Auswahl ist nichts abspielbar</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">Melde dich erneut bei RomM an, um deine Server-Playlists zu sehen</string>
+    <string name="ui_quick_settings_music_hint_sign_in">Erneut anmelden</string>
     <string name="ui_quick_settings_music_playlist_owner">von %1$s</string>
     <string name="ui_quick_settings_music_now_playing">Wird abgespielt</string>
     <string name="ui_quick_settings_music_back">Zurück</string>

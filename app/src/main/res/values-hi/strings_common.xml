@@ -611,6 +611,8 @@
     <string name="ui_quick_settings_music_notice_local_only">डाउनलोड किए गए साउंडट्रैक दिखाए जा रहे हैं</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM ने जवाब नहीं दिया। कुछ आइटम छूट सकते हैं।</string>
     <string name="ui_quick_settings_music_notice_no_tracks">इस चयन में चलाने लायक कुछ नहीं है</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">सर्वर प्लेलिस्ट देखने के लिए RomM में फिर से साइन इन करें</string>
+    <string name="ui_quick_settings_music_hint_sign_in">फिर से साइन इन करें</string>
     <string name="ui_quick_settings_music_playlist_owner">%1$s द्वारा</string>
     <string name="ui_quick_settings_music_now_playing">अभी चल रहा है</string>
     <string name="ui_quick_settings_music_back">वापस</string>

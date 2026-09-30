@@ -80,7 +80,7 @@ private const val HEADER_ITEM_COUNT = 1
 private const val LOAD_MORE_LOOKAHEAD = 4
 
 @Composable
-fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel) {
+fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel, onOpenRommSignIn: () -> Unit) {
     val state by viewModel.uiState.collectAsState()
 
     LaunchedEffect(viewModel) {
@@ -94,7 +94,12 @@ fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel) {
     if (browse == null) {
         MusicPlayerMain(state = state, viewModel = viewModel)
     } else {
-        MusicBrowseList(browse = browse, activeSourceId = state.playback.sourceId, viewModel = viewModel)
+        MusicBrowseList(
+            browse = browse,
+            activeSourceId = state.playback.sourceId,
+            viewModel = viewModel,
+            onOpenRommSignIn = onOpenRommSignIn
+        )
     }
 }
 
@@ -393,7 +398,8 @@ private fun MusicCover(coverPath: String?, size: Dp) {
 private fun MusicBrowseList(
     browse: MusicBrowseUi,
     activeSourceId: String,
-    viewModel: MusicPlayerViewModel
+    viewModel: MusicPlayerViewModel,
+    onOpenRommSignIn: () -> Unit
 ) {
     val listState = rememberLazyListState()
     val focusRequester = remember { FocusRequester() }
@@ -439,11 +445,14 @@ private fun MusicBrowseList(
             onTap = { viewModel.focusSearch() }
         )
         browse.notice?.let { notice ->
+            val isSignIn = notice == MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
             Text(
                 text = stringResource(noticeRes(browse.kind, notice)),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingXs)
+                color = if (isSignIn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .then(if (isSignIn) Modifier.clickableNoFocus(onClick = onOpenRommSignIn) else Modifier)
+                    .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingXs)
             )
         }
         Box(modifier = Modifier.weight(1f)) {
@@ -697,6 +706,7 @@ private fun noticeRes(kind: MusicBrowseKind, notice: MusicBrowseNotice): Int = w
     MusicBrowseNotice.LOCAL_ONLY -> R.string.ui_quick_settings_music_notice_local_only
     MusicBrowseNotice.SERVER_FAILED -> R.string.ui_quick_settings_music_notice_server_failed
     MusicBrowseNotice.NO_PLAYABLE_TRACKS -> R.string.ui_quick_settings_music_notice_no_tracks
+    MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS -> R.string.ui_quick_settings_music_notice_sign_in_playlists
 }
 
 private fun formatPlaybackTime(ms: Long): String {

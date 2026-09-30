@@ -624,6 +624,8 @@
     <string name="ui_quick_settings_music_notice_local_only">Se muestran las bandas sonoras descargadas</string>
     <string name="ui_quick_settings_music_notice_server_failed">RomM no respondió. Puede que falten elementos.</string>
     <string name="ui_quick_settings_music_notice_no_tracks">No hay nada reproducible en esta selección</string>
+    <string name="ui_quick_settings_music_notice_sign_in_playlists">Vuelve a iniciar sesión en RomM para ver tus listas del servidor</string>
+    <string name="ui_quick_settings_music_hint_sign_in">Iniciar sesión</string>
     <string name="ui_quick_settings_music_playlist_owner">de %1$s</string>
     <string name="ui_quick_settings_music_now_playing">Reproduciendo</string>
     <string name="ui_quick_settings_music_back">Atrás</string>

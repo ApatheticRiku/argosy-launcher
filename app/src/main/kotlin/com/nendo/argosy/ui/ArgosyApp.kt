@@ -437,7 +437,18 @@ fun ArgosyApp(
     }
 
     // Quick settings input handler
-    val quickSettingsInputHandler = remember(viewModel, musicPlayerViewModel, inputDispatcher) {
+    val openRommSignIn: () -> Unit = remember(viewModel, musicPlayerViewModel, inputDispatcher, navController) {
+        {
+            musicPlayerViewModel.closeBrowse()
+            inputDispatcher.unsubscribeDrawer()
+            viewModel.setQuickSettingsOpen(false)
+            navController.navigate(
+                Screen.Settings.createRoute(section = SettingsSection.ROMM.name)
+            ) { launchSingleTop = true }
+        }
+    }
+
+    val quickSettingsInputHandler = remember(viewModel, musicPlayerViewModel, inputDispatcher, openRommSignIn) {
         QuickSettingsInputRouter(
             panelHandler = viewModel.createQuickSettingsInputHandler(
                 onDismiss = {
@@ -445,7 +456,7 @@ fun ArgosyApp(
                     viewModel.setQuickSettingsOpen(false)
                 }
             ),
-            pageHandler = MusicPlayerInputHandler(musicPlayerViewModel),
+            pageHandler = MusicPlayerInputHandler(musicPlayerViewModel, openRommSignIn),
             pageActive = { viewModel.isQuickSettingsPageActive(QuickSettingsPage.MUSIC) }
         )
     }
@@ -1259,10 +1270,18 @@ fun ArgosyApp(
 
             // Quick Settings Panel (right-side drawer)
             val musicBrowseOpen = musicPageVisible && musicPlayerUiState.browse != null
+            val musicNeedsSignIn = musicBrowseOpen &&
+                musicPlayerUiState.browse?.notice ==
+                com.nendo.argosy.ui.components.musicplayer.MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
+            val signInHint = stringResource(R.string.ui_quick_settings_music_hint_sign_in)
             QuickSettingsPanel(
                 onHintClick = { button ->
-                    if (button == com.nendo.argosy.ui.components.InputButton.B) {
-                        if (musicBrowseOpen) musicPlayerViewModel.closeBrowse() else closeQuickSettings()
+                    when (button) {
+                        com.nendo.argosy.ui.components.InputButton.B ->
+                            if (musicBrowseOpen) musicPlayerViewModel.closeBrowse() else closeQuickSettings()
+                        com.nendo.argosy.ui.components.InputButton.Y ->
+                            if (musicNeedsSignIn) openRommSignIn()
+                        else -> Unit
                     }
                 },
                 isVisible = isQuickSettingsOpen,
@@ -1298,7 +1317,9 @@ fun ArgosyApp(
                 onBrightnessChange = { viewModel.setScreenBrightness(it) },
                 onQuayPassToggle = { viewModel.toggleQuayPassFromQuickSettings() },
                 onSwapDisplays = { dsm?.swapRoles() },
-                musicPage = { QuickSettingsMusicPage(viewModel = musicPlayerViewModel) },
+                musicPage = {
+                    QuickSettingsMusicPage(viewModel = musicPlayerViewModel, onOpenRommSignIn = openRommSignIn)
+                },
                 onDismiss = closeQuickSettings,
                 footerHints = quickSettingsFooterHints.map { (button, labelRes) ->
                     val isBackFromBrowse =
@@ -1306,7 +1327,9 @@ fun ArgosyApp(
                     button to stringResource(
                         if (isBackFromBrowse) R.string.ui_quick_settings_hint_back else labelRes
                     )
-                }
+                } + listOfNotNull(
+                    (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn }
+                )
             )
 
             saveConflictInfo?.let { info ->
