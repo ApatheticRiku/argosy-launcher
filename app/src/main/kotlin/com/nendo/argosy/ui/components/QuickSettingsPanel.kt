@@ -13,7 +13,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.runtime.getValue
+import com.nendo.argosy.ui.theme.Motion
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.min
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -73,7 +78,7 @@ import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
-private const val PANEL_MAX_SCREEN_FRACTION = 0.65f
+private const val MUSIC_PANEL_MAX_SCREEN_FRACTION = 0.65f
 private const val LABEL_WEIGHT = 3f
 private const val VALUE_WEIGHT = 2f
 
@@ -284,6 +289,13 @@ fun QuickSettingsPanel(
             )
         }
 
+        val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+        val musicWidth = min(Dimens.modalWidthLg, screenWidth * MUSIC_PANEL_MAX_SCREEN_FRACTION)
+        val panelWidth by animateDpAsState(
+            targetValue = if (activePage == QuickSettingsPage.MUSIC) musicWidth else Dimens.modalWidth - Dimens.footerHeight,
+            animationSpec = tween(Motion.durationSlide),
+            label = "quickSettingsPanelWidth"
+        )
         AnimatedVisibility(
             visible = isVisible,
             enter = slideInHorizontally(initialOffsetX = { it }),
@@ -291,8 +303,7 @@ fun QuickSettingsPanel(
         ) {
             Row(
                 modifier = Modifier
-                    .fillMaxWidth(PANEL_MAX_SCREEN_FRACTION)
-                    .widthIn(max = Dimens.modalWidthLg)
+                    .width(panelWidth)
                     .fillMaxHeight()
                     .background(MaterialTheme.colorScheme.surface)
             ) {
