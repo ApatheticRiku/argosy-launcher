@@ -5,10 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -16,7 +18,9 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -66,6 +70,7 @@ fun ArtPickerModal(
     onSearch: () -> Unit,
     onChooseFile: () -> Unit,
     onSelect: (ArtCandidate) -> Unit,
+    onSelectSlot: (ArtSlot) -> Unit,
     onDismiss: () -> Unit
 ) {
     val config = slot.pickerConfig
@@ -77,15 +82,17 @@ fun ArtPickerModal(
         }
     }
 
+    val slotHint = stringResource(R.string.gamedetail_art_picker_footer_slot)
     val searchHint = stringResource(R.string.gamedetail_art_picker_footer_search)
     val fileHint = stringResource(R.string.gamedetail_art_picker_footer_from_file)
 
     Modal(
-        title = stringResource(slot.pickerTitleRes),
+        title = stringResource(R.string.gamedetail_artwork_title),
         subtitle = gameTitle,
         baseWidth = DimensionTokens.Layout.modalWidthXl.dp,
         onDismiss = onDismiss,
         footerHints = listOfNotNull(
+            InputButton.LB_RB to slotHint,
             (InputButton.X to searchHint).takeIf { canSearch },
             InputButton.Y to fileHint
         ),
@@ -97,6 +104,11 @@ fun ArtPickerModal(
             }
         }
     ) {
+        ArtSlotTabs(
+            selected = slot,
+            onSelect = onSelectSlot,
+            modifier = Modifier.padding(bottom = Dimens.spacingSm)
+        )
         if (canSearch) {
             ModalSearchField(
                 query = query,
@@ -135,6 +147,7 @@ fun ArtPickerModal(
                     itemsIndexed(candidates, key = { _, candidate -> candidate.source }) { index, candidate ->
                         ArtTile(
                             candidate = candidate,
+                            slot = slot,
                             config = config,
                             isFocused = index == focusIndex,
                             onClick = { onSelect(candidate) }
@@ -147,12 +160,62 @@ fun ArtPickerModal(
 }
 
 @get:StringRes
-val ArtSlot.pickerTitleRes: Int
+private val ArtSlot.tabLabelRes: Int
     get() = when (this) {
-        ArtSlot.COVER -> R.string.gamedetail_art_picker_title_cover
-        ArtSlot.BACKGROUND -> R.string.gamedetail_art_picker_title_background
-        ArtSlot.LOGO -> R.string.gamedetail_art_picker_title_logo
+        ArtSlot.COVER -> R.string.gamedetail_artwork_row_cover
+        ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_background
+        ArtSlot.LOGO -> R.string.gamedetail_artwork_row_logo
     }
+
+@get:StringRes
+private val ArtSlot.revertLabelRes: Int
+    get() = when (this) {
+        ArtSlot.COVER -> R.string.gamedetail_artwork_row_revert_cover
+        ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_revert_background
+        ArtSlot.LOGO -> R.string.gamedetail_artwork_row_revert_logo
+    }
+
+@Composable
+private fun ArtSlotTabs(
+    selected: ArtSlot,
+    onSelect: (ArtSlot) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+    ) {
+        ArtSlot.entries.forEach { slot ->
+            val isSelected = slot == selected
+            val shape = RoundedCornerShape(Dimens.radiusLg)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(shape)
+                    .background(
+                        if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+                        }
+                    )
+                    .clickableNoFocus { onSelect(slot) }
+                    .padding(vertical = Dimens.spacingSm)
+            ) {
+                Text(
+                    text = stringResource(slot.tabLabelRes),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+            }
+        }
+    }
+}
 
 @get:StringRes
 val ArtSlot.fileBrowserTitleRes: Int
@@ -165,6 +228,7 @@ val ArtSlot.fileBrowserTitleRes: Int
 @Composable
 private fun ArtTile(
     candidate: ArtCandidate,
+    slot: ArtSlot,
     config: ArtPickerConfig,
     isFocused: Boolean,
     onClick: () -> Unit
@@ -190,12 +254,33 @@ private fun ArtTile(
                 )
                 .clickableNoFocus(onClick = onClick)
         ) {
-            AsyncImage(
-                model = candidate.thumbUrl ?: candidate.source,
-                contentDescription = null,
-                contentScale = if (config.cropsToTile) ContentScale.Crop else ContentScale.Fit,
-                modifier = Modifier.matchParentSize()
-            )
+            if (candidate.isRevert) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+                    modifier = Modifier.align(Alignment.Center).padding(Dimens.spacingSm)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Restore,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(Dimens.iconMd)
+                    )
+                    Text(
+                        text = stringResource(slot.revertLabelRes),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                AsyncImage(
+                    model = candidate.thumbUrl ?: candidate.source,
+                    contentDescription = null,
+                    contentScale = if (config.cropsToTile) ContentScale.Crop else ContentScale.Fit,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
         }
         val origin = candidate.originRes?.let { stringResource(it) }
         val dimensions = candidate.dimensionLabel

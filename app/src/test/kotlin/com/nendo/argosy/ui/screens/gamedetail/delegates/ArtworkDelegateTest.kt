@@ -6,7 +6,9 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.model.ArtSlot
-import com.nendo.argosy.ui.input.SoundFeedbackManager
+import com.nendo.argosy.ui.screens.gamedetail.ArtCandidate
+import com.nendo.argosy.ui.screens.gamedetail.stepped
+import com.nendo.argosy.ui.screens.gamedetail.withRevertTile
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -14,7 +16,6 @@ import io.mockk.verify
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -24,98 +25,29 @@ class ArtworkDelegateTest {
     private val notificationManager = mockk<NotificationManager>(relaxed = true)
     private val delegate = ArtworkDelegate(
         imageCacheManager = imageCacheManager,
-        notificationManager = notificationManager,
-        soundManager = mockk<SoundFeedbackManager>(relaxed = true)
+        notificationManager = notificationManager
     )
 
-    private val picks = listOf(
-        ArtworkRow.Pick(ArtSlot.COVER),
-        ArtworkRow.Pick(ArtSlot.BACKGROUND),
-        ArtworkRow.Pick(ArtSlot.LOGO)
-    )
+    private val found = listOf(ArtCandidate(source = "https://example.test/a.png"))
 
     @Test
-    fun `without overrides the menu offers only the three pick rows`() {
-        assertEquals(picks, artworkRows(emptySet()))
+    fun `slot tabs cycle in order and wrap at both ends`() {
+        assertEquals(ArtSlot.BACKGROUND, ArtSlot.COVER.stepped(1))
+        assertEquals(ArtSlot.LOGO, ArtSlot.COVER.stepped(-1))
+        assertEquals(ArtSlot.COVER, ArtSlot.LOGO.stepped(1))
     }
 
     @Test
-    fun `each overridden slot adds its revert row after the pick rows`() {
-        assertEquals(
-            picks + ArtworkRow.Revert(ArtSlot.LOGO),
-            artworkRows(setOf(ArtSlot.LOGO))
-        )
-        assertEquals(
-            picks + listOf(
-                ArtworkRow.Revert(ArtSlot.COVER),
-                ArtworkRow.Revert(ArtSlot.BACKGROUND),
-                ArtworkRow.Revert(ArtSlot.LOGO)
-            ),
-            artworkRows(setOf(ArtSlot.LOGO, ArtSlot.COVER, ArtSlot.BACKGROUND))
-        )
+    fun `an overridden slot leads with a revert tile`() {
+        val listed = withRevertTile(ArtSlot.LOGO, setOf(ArtSlot.LOGO), found)
+
+        assertTrue(listed.first().isRevert)
+        assertEquals(found, listed.drop(1))
     }
 
     @Test
-    fun `opening the menu focuses the first row`() {
-        delegate.showArtworkMenu()
-        delegate.moveFocus(1, 3)
-        delegate.dismissArtworkMenu()
-
-        delegate.showArtworkMenu()
-
-        assertTrue(delegate.state.value.showArtworkMenu)
-        assertEquals(0, delegate.state.value.artworkFocusIndex)
-    }
-
-    @Test
-    fun `focus wraps past both ends`() {
-        delegate.showArtworkMenu()
-
-        delegate.moveFocus(-1, 4)
-        assertEquals(3, delegate.state.value.artworkFocusIndex)
-
-        delegate.moveFocus(1, 4)
-        assertEquals(0, delegate.state.value.artworkFocusIndex)
-    }
-
-    @Test
-    fun `the focused row resolves against the current overrides`() {
-        delegate.showArtworkMenu()
-        delegate.moveFocus(-1, artworkRows(setOf(ArtSlot.BACKGROUND)).size)
-
-        assertEquals(ArtworkRow.Revert(ArtSlot.BACKGROUND), delegate.focusedRow(setOf(ArtSlot.BACKGROUND)))
-    }
-
-    @Test
-    fun `back from the menu closes it`() {
-        delegate.showArtworkMenu()
-
-        delegate.dismissArtworkMenu()
-
-        assertFalse(delegate.state.value.showArtworkMenu)
-    }
-
-    @Test
-    fun `leaving for the picker and coming back keeps the focused row`() {
-        delegate.showArtworkMenu()
-        delegate.moveFocus(2, 3)
-
-        delegate.leaveForPicker()
-        assertFalse(delegate.state.value.showArtworkMenu)
-
-        delegate.returnFromPicker(3)
-        assertTrue(delegate.state.value.showArtworkMenu)
-        assertEquals(2, delegate.state.value.artworkFocusIndex)
-    }
-
-    @Test
-    fun `losing the focused revert row pulls focus onto the last remaining row`() {
-        delegate.showArtworkMenu()
-        delegate.moveFocus(-1, 4)
-
-        delegate.clampFocus(3)
-
-        assertEquals(2, delegate.state.value.artworkFocusIndex)
+    fun `a slot showing server art has no revert tile`() {
+        assertEquals(found, withRevertTile(ArtSlot.COVER, setOf(ArtSlot.LOGO), found))
     }
 
     @Test

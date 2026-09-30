@@ -55,8 +55,6 @@ import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
 import com.nendo.argosy.core.event.GameUpdateBus
 import com.nendo.argosy.ui.screens.gamedetail.delegates.AchievementDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.ArtworkDelegate
-import com.nendo.argosy.ui.screens.gamedetail.delegates.ArtworkRow
-import com.nendo.argosy.ui.screens.gamedetail.delegates.artworkRows
 import com.nendo.argosy.ui.screens.gamedetail.delegates.DownloadDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.MoreOptionsDelegate
 import com.nendo.argosy.ui.screens.gamedetail.delegates.PerGameSettingsDelegate
@@ -356,17 +354,6 @@ class GameDetailViewModel @Inject constructor(
                         statusPickerValue = rsState.statusPickerValue,
                         showRatingsStatusMenu = rsState.showRatingsStatusMenu,
                         ratingsStatusFocusIndex = rsState.ratingsStatusFocusIndex
-                    )
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            artworkDelegate.state.collect { artState ->
-                _uiState.update {
-                    it.copy(
-                        showArtworkMenu = artState.showArtworkMenu,
-                        artworkFocusIndex = artState.artworkFocusIndex
                     )
                 }
             }
@@ -1387,7 +1374,7 @@ class GameDetailViewModel @Inject constructor(
                 speedrunSplitsDelegate.open(viewModelScope, currentGameId, _uiState.value.game?.title ?: "")
             }
             MoreOptionAction.AddToCollection -> showAddToCollectionModal()
-            MoreOptionAction.Artwork -> showArtworkMenu()
+            MoreOptionAction.Artwork -> showArtwork()
             MoreOptionAction.Delete -> {
                 toggleMoreOptions()
                 val gameUi = _uiState.value.game
@@ -1805,45 +1792,35 @@ class GameDetailViewModel @Inject constructor(
 
     private fun overriddenArtSlots(): Set<ArtSlot> = _uiState.value.game?.overriddenArtSlots.orEmpty()
 
-    fun showArtworkMenu() {
+    fun showArtwork() {
         if (_uiState.value.game == null) return
         moreOptionsDelegate.reset()
-        artworkDelegate.showArtworkMenu()
+        showArtPicker(ArtSlot.COVER)
     }
 
-    fun dismissArtworkMenu() {
-        artworkDelegate.dismissArtworkMenu()
-        moreOptionsDelegate.toggleMoreOptions()
-    }
+    fun switchArtSlot(delta: Int) = selectArtSlot(pickerModalDelegate.state.value.artPickerSlot.stepped(delta))
 
-    fun moveArtworkFocus(delta: Int) =
-        artworkDelegate.moveFocus(delta, artworkRows(overriddenArtSlots()).size)
-
-    fun confirmArtworkSelection() {
-        when (val row = artworkDelegate.focusedRow(overriddenArtSlots())) {
-            is ArtworkRow.Pick -> showArtPicker(row.slot)
-            is ArtworkRow.Revert -> revertArtwork(row.slot)
-            null -> {}
-        }
-    }
-
-    fun tapArtworkRow(index: Int) {
-        artworkDelegate.setFocus(index, artworkRows(overriddenArtSlots()).size)
-        confirmArtworkSelection()
+    fun selectArtSlot(slot: ArtSlot) {
+        val picker = pickerModalDelegate.state.value
+        if (!picker.showArtPicker || picker.artPickerSlot == slot) return
+        showArtPicker(slot, switching = true)
     }
 
     private fun revertArtwork(slot: ArtSlot) {
         val gameId = currentGameId
-        artworkDelegate.clampFocus(artworkRows(overriddenArtSlots() - slot).size)
+        closeArtwork()
         artworkDelegate.revertOverride(viewModelScope, gameId, slot) { loadGame(gameId) }
     }
 
-    private fun showArtPicker(slot: ArtSlot) {
+    private fun showArtPicker(slot: ArtSlot, switching: Boolean = false) {
         val state = _uiState.value
         val game = state.game ?: return
         val canSearch = slot.pickerConfig.canSearch(state.canSearchCovers)
-        artworkDelegate.leaveForPicker()
-        pickerModalDelegate.showArtPicker(slot, game.title, canSearch)
+        if (switching) {
+            pickerModalDelegate.switchArtSlot(slot, game.title, canSearch)
+        } else {
+            pickerModalDelegate.showArtPicker(slot, game.title, canSearch)
+        }
         serverArtCandidates = emptyList()
         pickerModalDelegate.setArtPickerSearching()
         viewModelScope.launch {
@@ -1854,10 +1831,13 @@ class GameDetailViewModel @Inject constructor(
             if (canSearch) {
                 searchArtwork(game.title)
             } else {
-                pickerModalDelegate.setArtCandidates(offlineArtCandidates(slot))
+                showArtCandidates(slot, offlineArtCandidates(slot))
             }
         }
     }
+
+    private fun showArtCandidates(slot: ArtSlot, candidates: List<ArtCandidate>, error: String? = null) =
+        pickerModalDelegate.setArtCandidates(withRevertTile(slot, overriddenArtSlots(), candidates), error)
 
     private suspend fun loadServerArt(slot: ArtSlot): List<ArtCandidate> {
         val rommId = gameRepository.getById(currentGameId)?.rommId ?: return emptyList()
@@ -1893,7 +1873,7 @@ class GameDetailViewModel @Inject constructor(
         val slot = picker.artPickerSlot
         val term = query.trim()
         if (term.isEmpty()) {
-            pickerModalDelegate.setArtCandidates(offlineArtCandidates(slot))
+            showArtCandidates(slot, offlineArtCandidates(slot))
             return
         }
         pickerModalDelegate.setArtPickerSearching()
@@ -1903,7 +1883,8 @@ class GameDetailViewModel @Inject constructor(
             val current = pickerModalDelegate.state.value
             if (!current.showArtPicker || current.artPickerSlot != slot) return@launch
             when (result) {
-                is RomMResult.Success -> pickerModalDelegate.setArtCandidates(
+                is RomMResult.Success -> showArtCandidates(
+                    slot,
                     serverArtCandidates + result.data.mapNotNull { resource ->
                         resource.url?.let { url ->
                             ArtCandidate(
@@ -1916,7 +1897,8 @@ class GameDetailViewModel @Inject constructor(
                         }
                     } + screenshotCandidates(slot).takeIf { serverArtCandidates.isEmpty() }.orEmpty()
                 )
-                is RomMResult.Error -> pickerModalDelegate.setArtCandidates(
+                is RomMResult.Error -> showArtCandidates(
+                    slot,
                     onServer,
                     error = context.getString(R.string.gamedetail_art_picker_error, result.message)
                 )
@@ -1925,25 +1907,28 @@ class GameDetailViewModel @Inject constructor(
     }
 
     fun selectArtCandidate(candidate: ArtCandidate) {
-        applyArtwork(pickerModalDelegate.state.value.artPickerSlot, candidate.source)
+        val slot = pickerModalDelegate.state.value.artPickerSlot
+        if (candidate.isRevert) revertArtwork(slot) else applyArtwork(slot, candidate.source)
     }
 
     fun selectArtFile(path: String) {
         applyArtwork(pickerModalDelegate.state.value.artPickerSlot, path)
     }
 
+    fun closeArtFileBrowser() = pickerModalDelegate.closeArtFileBrowser()
+
     private fun applyArtwork(slot: ArtSlot, source: String) {
         val gameId = currentGameId
-        returnToArtworkMenu()
+        closeArtwork()
         artworkDelegate.applyOverride(viewModelScope, gameId, slot, source) { loadGame(gameId) }
     }
 
-    fun dismissArtPicker() = returnToArtworkMenu()
-
-    private fun returnToArtworkMenu() {
-        pickerModalDelegate.dismissArtPicker()
-        artworkDelegate.returnFromPicker(artworkRows(overriddenArtSlots()).size)
+    fun dismissArtPicker() {
+        closeArtwork()
+        moreOptionsDelegate.toggleMoreOptions()
     }
+
+    private fun closeArtwork() = pickerModalDelegate.dismissArtPicker()
 
     fun moveArtPickerFocus(delta: Int) = pickerModalDelegate.moveArtPickerFocus(delta)
 
@@ -2434,7 +2419,6 @@ class GameDetailViewModel @Inject constructor(
         moreOptionsDelegate.reset()
         perGameSettingsDelegate.reset()
         ratingsStatus.reset()
-        artworkDelegate.reset()
         playOptionsDelegate.reset()
         screenshotDelegate.reset()
         siblingChoice.reset()
@@ -2493,7 +2477,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(-1); InputResult.HANDLED }
                 state.showAddToCollectionModal -> { moveCollectionFocusUp(); InputResult.HANDLED }
                 state.showRatingsStatusMenu -> { changeRatingsStatusFocus(-1); InputResult.HANDLED }
-                state.showArtworkMenu -> { moveArtworkFocus(-1); InputResult.HANDLED }
                 state.showPlayOptions -> { movePlayOptionsFocus(-1); InputResult.HANDLED }
                 state.showMoreOptions -> { moveOptionsFocus(-1); InputResult.HANDLED }
                 state.showAchievementList -> { moveAchievementListFocus(-1); InputResult.HANDLED }
@@ -2527,7 +2510,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showSteamLauncherPicker -> { moveSteamLauncherPickerFocus(1); InputResult.HANDLED }
                 state.showAddToCollectionModal -> { moveCollectionFocusDown(); InputResult.HANDLED }
                 state.showRatingsStatusMenu -> { changeRatingsStatusFocus(1); InputResult.HANDLED }
-                state.showArtworkMenu -> { moveArtworkFocus(1); InputResult.HANDLED }
                 state.showPlayOptions -> { movePlayOptionsFocus(1); InputResult.HANDLED }
                 state.showMoreOptions -> { moveOptionsFocus(1); InputResult.HANDLED }
                 state.showAchievementList -> { moveAchievementListFocus(1); InputResult.HANDLED }
@@ -2567,7 +2549,7 @@ class GameDetailViewModel @Inject constructor(
                     if (isLaunchDisplayRowFocused()) cycleLaunchDisplay(-1)
                     return InputResult.HANDLED
                 }
-                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showArtworkMenu || state.showPlayOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
+                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionLeft(); return InputResult.HANDLED }
             }
         }
@@ -2603,7 +2585,7 @@ class GameDetailViewModel @Inject constructor(
                     if (isLaunchDisplayRowFocused()) cycleLaunchDisplay(1)
                     return InputResult.HANDLED
                 }
-                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showArtworkMenu || state.showPlayOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
+                state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt -> return InputResult.HANDLED
                 else -> { onSectionRight(); return InputResult.HANDLED }
             }
         }
@@ -2613,6 +2595,7 @@ class GameDetailViewModel @Inject constructor(
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
             if (state.reviewEditor != null) return InputResult.HANDLED
+            if (pickerState.showArtPicker && !pickerState.showArtFileBrowser) { switchArtSlot(-1); return InputResult.HANDLED }
             if (pickerState.showFilePicker) { jumpFilePickerGroup(-1); return InputResult.HANDLED }
             if (saveState.isVisible) {
                 if (saveState.supportsStates) {
@@ -2624,7 +2607,7 @@ class GameDetailViewModel @Inject constructor(
                 return InputResult.HANDLED
             }
             if (state.showPermissionModal || state.showAchievementList) return InputResult.HANDLED
-            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showArtworkMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
+            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
             onPrevGame(); return InputResult.HANDLED
         }
 
@@ -2633,6 +2616,7 @@ class GameDetailViewModel @Inject constructor(
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
             if (state.reviewEditor != null) return InputResult.HANDLED
+            if (pickerState.showArtPicker && !pickerState.showArtFileBrowser) { switchArtSlot(1); return InputResult.HANDLED }
             if (pickerState.showFilePicker) { jumpFilePickerGroup(1); return InputResult.HANDLED }
             if (saveState.isVisible) {
                 if (saveState.supportsStates) {
@@ -2646,7 +2630,7 @@ class GameDetailViewModel @Inject constructor(
                 return InputResult.HANDLED
             }
             if (state.showPermissionModal || state.showAchievementList) return InputResult.HANDLED
-            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showArtworkMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
+            if (saveState.showRestoreConfirmation || state.showScreenshotViewer || state.showRatingPicker || state.showStatusPicker || state.showAddToCollectionModal || state.showRatingsStatusMenu || state.showPlayOptions || state.showMoreOptions || pickerState.hasAnyPickerOpen || state.showMissingDiscPrompt || state.showExtractionFailedPrompt) return InputResult.HANDLED
             onNextGame(); return InputResult.HANDLED
         }
 
@@ -2683,7 +2667,6 @@ class GameDetailViewModel @Inject constructor(
                 pickerState.showSteamLauncherPicker -> confirmSteamLauncherSelection()
                 state.showAddToCollectionModal -> confirmCollectionSelection()
                 state.showRatingsStatusMenu -> confirmRatingsStatusSelection()
-                state.showArtworkMenu -> confirmArtworkSelection()
                 state.showPlayOptions -> confirmPlayOptionSelection()
                 state.showMoreOptions -> confirmOptionSelection(onBack, onNavigateToPlatformSettings)
                 menuLayout.itemAtFocusIndex(state.menuFocusIndex, menuLayoutState()) == MenuItem.RelatedGames ->
@@ -2727,7 +2710,6 @@ class GameDetailViewModel @Inject constructor(
                 state.showPermissionModal -> dismissPermissionModal()
                 state.showAddToCollectionModal -> dismissAddToCollectionModal()
                 state.showRatingsStatusMenu -> dismissRatingsStatusMenu()
-                state.showArtworkMenu -> dismissArtworkMenu()
                 state.showPlayOptions -> dismissPlayOptions()
                 state.showMoreOptions -> toggleMoreOptions()
                 else -> onBack()
@@ -2755,7 +2737,6 @@ class GameDetailViewModel @Inject constructor(
             if (pickerState.showCorePicker) { dismissCorePicker(); return InputResult.UNHANDLED }
             if (state.showPlayOptions) { dismissPlayOptions(); return InputResult.UNHANDLED }
             if (state.showMoreOptions) { toggleMoreOptions(); return InputResult.UNHANDLED }
-            if (state.showArtworkMenu) { artworkDelegate.dismissArtworkMenu(); return InputResult.UNHANDLED }
             if (pickerState.showArtPicker) { pickerModalDelegate.dismissArtPicker(); return InputResult.UNHANDLED }
             if (pickerState.showEmulatorPicker) { dismissEmulatorPicker(); return InputResult.UNHANDLED }
             if (pickerState.showSteamLauncherPicker) { dismissSteamLauncherPicker(); return InputResult.UNHANDLED }
@@ -2770,7 +2751,6 @@ class GameDetailViewModel @Inject constructor(
             if (pickerModalDelegate.state.value.showArtPicker) {
                 openArtFileBrowser(); return InputResult.HANDLED
             }
-            if (state.showArtworkMenu) return InputResult.HANDLED
             if (saveState.isVisible && !saveState.showRestoreConfirmation && !saveState.showRenameDialog && !saveState.showDeleteConfirmation && !saveState.showMigrateConfirmation && !saveState.showDeleteLegacyConfirmation) {
                 saveChannelSecondaryAction(); return InputResult.HANDLED
             }
@@ -2784,7 +2764,6 @@ class GameDetailViewModel @Inject constructor(
             if (pickerModalDelegate.state.value.showArtPicker) {
                 searchArtwork(); return InputResult.HANDLED
             }
-            if (state.showArtworkMenu) return InputResult.HANDLED
             if (pickerModalDelegate.state.value.showFilePicker) { confirmFilePicker(); return InputResult.HANDLED }
             if (saveState.isVisible && !saveState.showRestoreConfirmation && !saveState.showRenameDialog && !saveState.showDeleteConfirmation && !saveState.showMigrateConfirmation && !saveState.showDeleteLegacyConfirmation) {
                 saveChannelTertiaryAction(); return InputResult.HANDLED
@@ -2814,7 +2793,7 @@ class GameDetailViewModel @Inject constructor(
         private fun hasOpenModal(): Boolean {
             val state = _uiState.value
             val pickerState = pickerModalDelegate.state.value
-            return state.showMoreOptions || state.showArtworkMenu || state.showPlayOptions ||
+            return state.showMoreOptions || state.showPlayOptions ||
                 pickerState.hasAnyPickerOpen || state.showRatingPicker || state.showStatusPicker ||
                 state.showMissingDiscPrompt || state.showScreenshotViewer ||
                 state.saveChannel.isVisible || state.reviewEditor != null

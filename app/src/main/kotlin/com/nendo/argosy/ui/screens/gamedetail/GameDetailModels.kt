@@ -168,7 +168,8 @@ data class ArtCandidate(
     val thumbUrl: String? = null,
     val width: Int? = null,
     val height: Int? = null,
-    @StringRes val originRes: Int? = null
+    @StringRes val originRes: Int? = null,
+    val isRevert: Boolean = false
 ) {
     val dimensionLabel: String?
         get() = if (width != null && height != null) "$width x $height" else null
@@ -302,8 +303,6 @@ data class GameDetailUiState(
     val statusPickerValue: String? = null,
     val showRatingsStatusMenu: Boolean = false,
     val ratingsStatusFocusIndex: Int = 0,
-    val showArtworkMenu: Boolean = false,
-    val artworkFocusIndex: Int = 0,
     val showMissingDiscPrompt: Boolean = false,
     val missingDiscNumbers: List<Int> = emptyList(),
     val updateFiles: List<UpdateFileUi> = emptyList(),

@@ -103,6 +103,20 @@ class PickerModalDelegate @Inject constructor(
     }
 
     fun showArtPicker(slot: ArtSlot, query: String, canSearch: Boolean) {
+        openArtSlot(slot, query, canSearch)
+        soundManager.play(SoundType.OPEN_MODAL)
+    }
+
+    fun switchArtSlot(slot: ArtSlot, query: String, canSearch: Boolean) {
+        openArtSlot(slot, query, canSearch)
+        soundManager.play(SoundType.NAVIGATE)
+    }
+
+    fun closeArtFileBrowser() {
+        _state.update { it.copy(showArtFileBrowser = false) }
+    }
+
+    private fun openArtSlot(slot: ArtSlot, query: String, canSearch: Boolean) {
         _state.update {
             it.copy(
                 showArtPicker = true,
@@ -116,7 +130,6 @@ class PickerModalDelegate @Inject constructor(
                 showArtFileBrowser = false
             )
         }
-        soundManager.play(SoundType.OPEN_MODAL)
     }
 
     fun setArtPickerQuery(query: String) {

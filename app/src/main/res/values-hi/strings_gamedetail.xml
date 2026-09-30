@@ -315,9 +315,7 @@
 
     <!-- ================================ Artwork picker ================================= -->
 
-    <string name="gamedetail_art_picker_title_cover">कवर आर्ट</string>
-    <string name="gamedetail_art_picker_title_background">बैकग्राउंड</string>
-    <string name="gamedetail_art_picker_title_logo">लोगो</string>
+    <string name="gamedetail_art_picker_footer_slot">चित्र का प्रकार</string>
     <string name="gamedetail_art_picker_footer_search">खोजें</string>
     <string name="gamedetail_art_picker_footer_from_file">फ़ाइल से</string>
     <string name="gamedetail_art_picker_search_placeholder">आर्टवर्क खोजें...</string>

@@ -46,6 +46,16 @@ val ArtSlot.pickerConfig: ArtPickerConfig
         )
     }
 
+fun ArtSlot.stepped(delta: Int): ArtSlot =
+    ArtSlot.entries[(ordinal + delta).mod(ArtSlot.entries.size)]
+
+/**
+ * [candidates] as the picker lists them for [slot]: led by a tile that puts the server's art
+ * back when the user has overridden the slot.
+ */
+fun withRevertTile(slot: ArtSlot, overridden: Set<ArtSlot>, candidates: List<ArtCandidate>): List<ArtCandidate> =
+    if (slot in overridden) listOf(ArtCandidate(source = "revert:${slot.name}", isRevert = true)) + candidates else candidates
+
 /**
  * Next focus index in a grid of [size] tiles laid out [columns] wide. A step within a row wraps
  * across the whole list; a step of a full row wraps to the same column at the other end.

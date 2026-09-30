@@ -282,9 +282,7 @@
     <string name="gamedetail_variant_picker_subtitle">Выберите версию для запуска</string>
     <string name="gamedetail_variant_picker_original">По умолчанию (Оригинал)</string>
 
-    <string name="gamedetail_art_picker_title_cover">ОБЛОЖКА</string>
-    <string name="gamedetail_art_picker_title_background">ФОН</string>
-    <string name="gamedetail_art_picker_title_logo">ЛОГОТИП</string>
+    <string name="gamedetail_art_picker_footer_slot">Тип изображения</string>
     <string name="gamedetail_art_picker_footer_search">Поиск</string>
     <string name="gamedetail_art_picker_footer_from_file">Из файла</string>
     <string name="gamedetail_art_picker_search_placeholder">Поиск изображений...</string>

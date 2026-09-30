@@ -788,13 +788,9 @@
 
     <!-- ================================ Artwork picker ================================= -->
 
-    <!-- Heading of the picker for the game's box art. Noun phrase. Rendered in caps in English. -->
-    <string name="gamedetail_art_picker_title_cover">COVER ART</string>
-    <!-- Heading of the picker for the wide picture behind the game page. Noun. Rendered in caps in
-         English. Not a colour or a process running in the background. -->
-    <string name="gamedetail_art_picker_title_background">BACKGROUND</string>
-    <!-- Heading of the picker for the game's title logo. Noun. Rendered in caps in English. -->
-    <string name="gamedetail_art_picker_title_logo">LOGO</string>
+    <!-- Footer hint in the artwork picker, beside the bumper buttons. Noun phrase: they switch
+         between the cover, background and logo tabs. -->
+    <string name="gamedetail_art_picker_footer_slot">Art type</string>
     <!-- Footer hint in the artwork picker. Verb: runs the search again with what is typed. -->
     <string name="gamedetail_art_picker_footer_search">Search</string>
     <!-- Footer hint in the artwork picker. Adverb phrase: takes the picture from the device's own

@@ -95,7 +95,6 @@ import com.nendo.argosy.ui.screens.gamedetail.modals.PerGameSettingsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.PlayOptionsModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingsStatusModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.ArtPickerModal
-import com.nendo.argosy.ui.screens.gamedetail.modals.ArtworkModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.fileBrowserTitleRes
 import com.nendo.argosy.ui.screens.gamedetail.modals.PermissionRequiredModal
 import com.nendo.argosy.ui.screens.gamedetail.modals.RatingPickerModal
@@ -479,7 +478,7 @@ private fun GameDetailContent(
     val downloadProgressState = viewModel.downloadProgress.collectAsState()
     val isAnySyncing = uiState.isSyncing || uiState.syncOverlayState != null
     val showAnyOverlay = uiState.showMoreOptions || uiState.showPlayOptions ||
-        uiState.showRatingsStatusMenu || uiState.showArtworkMenu || pickerState.hasAnyPickerOpen ||
+        uiState.showRatingsStatusMenu || pickerState.hasAnyPickerOpen ||
         uiState.showRatingPicker || uiState.showMissingDiscPrompt || isAnySyncing ||
         uiState.showSaveCacheDialog || uiState.showRenameDialog || uiState.showScreenshotViewer ||
         uiState.showExtractionFailedPrompt || uiState.showAchievementList ||
@@ -1060,19 +1059,6 @@ private fun GameDetailModals(
     }
 
     AnimatedVisibility(
-        visible = uiState.showArtworkMenu,
-        enter = fadeIn(),
-        exit = fadeOut()
-    ) {
-        ArtworkModal(
-            game = game,
-            focusIndex = uiState.artworkFocusIndex,
-            onRowClick = viewModel::tapArtworkRow,
-            onDismiss = viewModel::dismissArtworkMenu
-        )
-    }
-
-    AnimatedVisibility(
         visible = pickerState.showFilePicker,
         enter = fadeIn(),
         exit = fadeOut()
@@ -1242,6 +1228,7 @@ private fun GameDetailModals(
             onSearch = { viewModel.searchArtwork() },
             onChooseFile = viewModel::openArtFileBrowser,
             onSelect = viewModel::selectArtCandidate,
+            onSelectSlot = viewModel::selectArtSlot,
             onDismiss = viewModel::dismissArtPicker
         )
     }
@@ -1253,7 +1240,7 @@ private fun GameDetailModals(
                 extensions = setOf("png", "jpg", "jpeg", "webp")
             ),
             onPathSelected = viewModel::selectArtFile,
-            onDismiss = viewModel::dismissArtPicker
+            onDismiss = viewModel::closeArtFileBrowser
         )
     }
 

@@ -320,9 +320,7 @@
 
     <!-- ================================ Artwork picker ================================= -->
 
-    <string name="gamedetail_art_picker_title_cover">JAQUETTE</string>
-    <string name="gamedetail_art_picker_title_background">ARRIÈRE-PLAN</string>
-    <string name="gamedetail_art_picker_title_logo">LOGO</string>
+    <string name="gamedetail_art_picker_footer_slot">Type d\'image</string>
     <string name="gamedetail_art_picker_footer_search">Rechercher</string>
     <string name="gamedetail_art_picker_footer_from_file">Depuis un fichier</string>
     <string name="gamedetail_art_picker_search_placeholder">Rechercher des illustrations...</string>
