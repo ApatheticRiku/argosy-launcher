@@ -195,6 +195,7 @@ private val NAV_RING_ROUTES = listOf(
     Screen.Collections.route,
     Screen.Social.route,
     Screen.MediaLibrary.route,
+    Screen.Downloads.route,
     Screen.Settings.route
 )
 
