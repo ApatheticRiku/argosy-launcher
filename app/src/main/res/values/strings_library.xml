@@ -13,10 +13,10 @@
     <!-- Value of the platform stepper in the game list header when no platform is chosen, so
          the list is showing every platform at once. Noun phrase, not a command. -->
     <string name="library_header_all_platforms">All Platforms</string>
-    <!-- Screen reader text for the left bumper arrow beside the platform name. It steps the
+    <!-- Screen reader text for the left trigger glyph beside the platform name. It steps the
          list back one platform. Verb phrase describing the action. -->
     <string name="library_header_previous_platform">Previous platform</string>
-    <!-- Screen reader text for the right bumper arrow beside the platform name. It steps the
+    <!-- Screen reader text for the right trigger glyph beside the platform name. It steps the
          list forward one platform. Verb phrase describing the action. -->
     <string name="library_header_next_platform">Next platform</string>
     <!-- How many games the game list is currently showing, in its header. -->
@@ -149,9 +149,15 @@
          modal. Same word as the search tab's hint, deliberately a separate key. -->
     <string name="library_filter_hint_close_options">Close</string>
 
-    <!-- Button hint under the game list. Verb phrase, jumps the cursor to the next alphabet
-         or date section of the list. -->
-    <string name="library_footer_hint_jump_section">Jump Section</string>
+    <!-- Button hint under the game list, beside the trigger glyphs. Verb phrase, steps the
+         list to the previous or next platform. -->
+    <string name="library_footer_hint_switch_platform">Switch Platform</string>
+    <!-- Button hint while the cursor is on the A-Z rail beside the game list. Verb, moves the
+         list to the section under the cursor. -->
+    <string name="library_footer_hint_rail_jump">Jump</string>
+    <!-- Button hint while the cursor is on the A-Z rail beside the game list. Verb, returns
+         the cursor to the games without moving the list. -->
+    <string name="library_footer_hint_rail_back">Back</string>
     <!-- Button hint under the game list. Noun, opens the focused game's detail screen. -->
     <string name="library_footer_hint_details">Details</string>
     <!-- Button hint under the game list while the hidden games are being viewed. Verb, puts

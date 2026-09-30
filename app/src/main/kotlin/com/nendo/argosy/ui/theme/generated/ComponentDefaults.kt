@@ -325,4 +325,9 @@ object ComponentDefaults {
         const val checkerCellDp = 8
     }
 
+    object AlphabetRail {
+        const val widthDp = 40
+        const val backgroundAlpha = 0.8f
+    }
+
 }

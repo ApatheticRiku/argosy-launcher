@@ -105,6 +105,7 @@ import com.nendo.argosy.ui.components.AddToCollectionModal
 import com.nendo.argosy.ui.components.FooterHint
 import androidx.compose.ui.text.style.TextAlign
 import com.nendo.argosy.ui.components.AlphabetSidebar
+import com.nendo.argosy.ui.components.AlphabetSidebarWidth
 import com.nendo.argosy.ui.components.CollectionItem
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
@@ -396,7 +397,7 @@ fun LibraryScreen(
                             }
 
                             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                                val sidebarWidth = if (uiState.showSectionSidebar) 40.dp else 0.dp
+                                val sidebarWidth = if (uiState.showSectionSidebar) AlphabetSidebarWidth else 0.dp
                                 val totalSpacing = gridSpacing * (columnsCount + 1)
                                 val columnWidth = (maxWidth - totalSpacing - sidebarWidth) / columnsCount
                                 val cardHeight = columnWidth / aspectRatio
@@ -483,6 +484,7 @@ fun LibraryScreen(
                                     AlphabetSidebar(
                                         availableLetters = uiState.sectionLabels,
                                         currentLetter = uiState.currentSectionLabel,
+                                        focusedLetter = uiState.sectionRailFocusedLabel,
                                         onLetterClick = { viewModel.jumpToSection(it) },
                                         modifier = Modifier
                                             .align(Alignment.CenterEnd)
@@ -521,10 +523,16 @@ fun LibraryScreen(
                     LibraryFooter(
                         focusedGame = uiState.focusedGame,
                         isViewingHidden = isViewingHidden,
-                        showSectionJump = uiState.sectionLabels.size > 1,
+                        canSwitchPlatform = uiState.platforms.isNotEmpty(),
+                        isSectionRailFocused = uiState.isSectionRailFocused,
                         onHintClick = { button ->
                             when (button) {
-                                InputButton.A -> uiState.focusedGame?.let { onGameSelect(it.id) }
+                                InputButton.A -> if (uiState.isSectionRailFocused) {
+                                    viewModel.confirmSectionRail()
+                                } else {
+                                    uiState.focusedGame?.let { onGameSelect(it.id) }
+                                }
+                                InputButton.B -> viewModel.exitSectionRail()
                                 InputButton.Y -> uiState.focusedGame?.let {
                                     if (isViewingHidden) viewModel.unhideGame(it.id)
                                     else viewModel.toggleFavorite(it.id)
@@ -901,7 +909,7 @@ private fun LibraryHeader(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = InputIcons.BumperLeft,
+                            painter = InputIcons.TriggerLeft,
                             contentDescription = stringResource(R.string.library_header_previous_platform),
                             tint = navIconTint,
                             modifier = Modifier.size(Dimens.iconSm)
@@ -925,7 +933,7 @@ private fun LibraryHeader(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = InputIcons.BumperRight,
+                            painter = InputIcons.TriggerRight,
                             contentDescription = stringResource(R.string.library_header_next_platform),
                             tint = navIconTint,
                             modifier = Modifier.size(Dimens.iconSm)
@@ -982,7 +990,7 @@ private fun LibraryHeader(
 
 /**
  * Header for the platform landing. It carries no platform stepper: the grid itself is the chooser,
- * so the bumper arrows the game list needs would point at nothing here. Nor does it echo the focused
+ * so the trigger arrows the game list needs would point at nothing here. Nor does it echo the focused
  * cell's name, which the cell under the cursor is already saying.
  *
  * The count names the media libraries only when there are any, so a device with no media account
@@ -1266,14 +1274,19 @@ private fun LibraryGameCard(
 private fun LibraryFooter(
     focusedGame: LibraryGameUi?,
     isViewingHidden: Boolean = false,
-    showSectionJump: Boolean = false,
+    canSwitchPlatform: Boolean = false,
+    isSectionRailFocused: Boolean = false,
     onHintClick: ((InputButton) -> Unit)? = null
 ) {
     val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
     val selectSwapsRoles = selectSwapMode == SelectSwapMode.TAP
-    val hints = buildList {
-        if (showSectionJump) {
-            add(InputButton.LT_RT to stringResource(R.string.library_footer_hint_jump_section))
+    val railHints = listOf(
+        InputButton.A to stringResource(R.string.library_footer_hint_rail_jump),
+        InputButton.B to stringResource(R.string.library_footer_hint_rail_back)
+    )
+    val hints = if (isSectionRailFocused) railHints else buildList {
+        if (canSwitchPlatform) {
+            add(InputButton.LT_RT to stringResource(R.string.library_footer_hint_switch_platform))
         }
         add(
             InputButton.A to stringResource(

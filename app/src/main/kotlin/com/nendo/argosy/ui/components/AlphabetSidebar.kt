@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,35 +23,48 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.primitives.FocusIndicators
+import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.ui.util.touchOnly
 
+val AlphabetSidebarWidth: Dp = ComponentDefaults.AlphabetRail.widthDp.dp
+
+/**
+ * [focusedLetter] is the letter the gamepad cursor sits on while the rail holds focus, or null
+ * while focus is elsewhere; [currentLetter] is the section the list is showing.
+ */
 @Composable
 fun AlphabetSidebar(
     availableLetters: List<String>,
     currentLetter: String,
     onLetterClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    focusedLetter: String? = null,
     topPadding: Dp = Dimens.headerHeightLg,
     bottomPadding: Dp = Dimens.footerHeight
 ) {
     val listState = rememberLazyListState()
-    val currentIndex = availableLetters.indexOf(currentLetter).coerceAtLeast(0)
+    val anchorLetter = focusedLetter ?: currentLetter
+    val anchorIndex = availableLetters.indexOf(anchorLetter).coerceAtLeast(0)
 
-    LaunchedEffect(currentLetter) {
-        if (availableLetters.isNotEmpty() && currentLetter.isNotEmpty()) {
+    LaunchedEffect(anchorLetter) {
+        if (availableLetters.isNotEmpty() && anchorLetter.isNotEmpty()) {
             val viewportHeight = listState.layoutInfo.viewportSize.height
             val itemHeight = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 32
             val centerOffset = (viewportHeight - itemHeight) / 2
-            val targetIndex = currentIndex.coerceIn(0, availableLetters.lastIndex)
+            val targetIndex = anchorIndex.coerceIn(0, availableLetters.lastIndex)
             listState.animateScrollToItem(targetIndex, -centerOffset)
         }
     }
 
     Box(
         modifier = modifier
-            .width(40.dp)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.8f))
+            .width(AlphabetSidebarWidth)
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = ComponentDefaults.AlphabetRail.backgroundAlpha)
+            )
             .padding(top = topPadding, bottom = bottomPadding)
     ) {
         LazyColumn(
@@ -75,9 +89,14 @@ fun AlphabetSidebar(
                         MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                     modifier = Modifier
+                        .argosyFocusIndicators(
+                            focused = letter == focusedLetter,
+                            indicators = FocusIndicators.Pill,
+                            shape = RoundedCornerShape(Dimens.radiusSm)
+                        )
                         .graphicsLayer { scaleX = scale; scaleY = scale }
                         .touchOnly { onLetterClick(letter) }
-                        .padding(vertical = 4.dp, horizontal = 8.dp)
+                        .padding(vertical = Dimens.spacingXs, horizontal = Dimens.spacingSm)
                 )
             }
         }

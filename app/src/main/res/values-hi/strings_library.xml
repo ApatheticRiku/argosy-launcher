@@ -68,7 +68,9 @@
     <string name="library_filter_hint_select">चुनें</string>
     <string name="library_filter_hint_close_options">बंद करें</string>
 
-    <string name="library_footer_hint_jump_section">सेक्शन पर जाएं</string>
+    <string name="library_footer_hint_switch_platform">प्लेटफ़ॉर्म बदलें</string>
+    <string name="library_footer_hint_rail_jump">जाएं</string>
+    <string name="library_footer_hint_rail_back">वापस</string>
     <string name="library_footer_hint_details">विवरण</string>
     <string name="library_footer_hint_unhide">अनहाइड</string>
     <string name="library_footer_hint_unfavorite">पसंदीदा हटाएं</string>

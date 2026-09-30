@@ -213,7 +213,7 @@ enum class LibraryView {
 }
 
 sealed interface LibraryGridItem {
-    data class Header(val label: String) : LibraryGridItem
+    data class Header(val label: String, val sidebarLabel: String = label) : LibraryGridItem
     data class Game(val game: LibraryGameUi, val gameIndex: Int) : LibraryGridItem
 }
 
@@ -304,10 +304,17 @@ data class LibraryUiState(
     val showSectionOverlay: Boolean = false,
     val overlaySectionLabel: String = "",
     val sectionJumpTrigger: Int = 0,
+    val sectionRailFocusIndex: Int? = null,
     val hiddenGameCount: Int = 0
 ) {
     val showSectionSidebar: Boolean
-        get() = sectionLabels.size >= 3
+        get() = sectionLabels.size >= MIN_SECTION_RAIL_LABELS
+
+    val isSectionRailFocused: Boolean
+        get() = sectionRailFocusIndex != null
+
+    val sectionRailFocusedLabel: String?
+        get() = sectionRailFocusIndex?.let { sectionLabels.getOrNull(it) }
 
     val isPlatformGrid: Boolean
         get() = view == LibraryView.PLATFORM_GRID
@@ -427,6 +434,8 @@ data class LibraryUiState(
 }
 
 private const val TAG = "LibraryVM"
+private const val MIN_SECTION_RAIL_LABELS = 3
+private const val FILTER_OPTION_PAGE = 5
 
 sealed class LibraryEvent {
     data class LaunchIntent(val intent: Intent, val options: android.os.Bundle? = null) : LibraryEvent()
@@ -668,7 +677,8 @@ class LibraryViewModel @Inject constructor(
                 showFilterMenu = false,
                 showQuickMenu = false,
                 showAddToCollectionModal = false,
-                showCreateCollectionDialog = false
+                showCreateCollectionDialog = false,
+                sectionRailFocusIndex = null
             )
         }
         quickMenuOpenJob?.cancel()
@@ -1174,7 +1184,7 @@ class LibraryViewModel @Inject constructor(
 
                     var gameOffset = 0
                     val gridItems = sections.flatMap { section ->
-                        val header = LibraryGridItem.Header(section.label)
+                        val header = LibraryGridItem.Header(section.label, section.sidebarLabel)
                         val gameItems = section.games.mapIndexed { i, game ->
                             LibraryGridItem.Game(game.toUi(cachedPlatformDisplayNames), gameIndex = gameOffset + i)
                         }
@@ -1198,6 +1208,9 @@ class LibraryViewModel @Inject constructor(
                             gridItems = gridItems,
                             sectionLabels = sectionLabels,
                             currentSectionLabel = currentSectionLabel,
+                            sectionRailFocusIndex = uiState.sectionRailFocusIndex
+                                ?.takeIf { sectionLabels.size >= MIN_SECTION_RAIL_LABELS }
+                                ?.coerceAtMost(sectionLabels.lastIndex),
                             sectionJumpTrigger = if (siblingFocusIndex != null) {
                                 uiState.sectionJumpTrigger + 1
                             } else {
@@ -1238,7 +1251,7 @@ class LibraryViewModel @Inject constructor(
     private fun findSectionLabelForGridItem(gridItems: List<LibraryGridItem>, gridIndex: Int): String {
         for (i in gridIndex downTo 0) {
             val item = gridItems[i]
-            if (item is LibraryGridItem.Header) return item.label
+            if (item is LibraryGridItem.Header) return item.sidebarLabel
         }
         return ""
     }
@@ -1258,7 +1271,7 @@ class LibraryViewModel @Inject constructor(
         resetStickyColumn()
         val state = _uiState.value
         val headerIndex = state.gridItems.indexOfFirst {
-            it is LibraryGridItem.Header && it.label == sectionLabel
+            it is LibraryGridItem.Header && it.sidebarLabel == sectionLabel
         }
         val firstGameInSection = if (headerIndex >= 0) {
             state.gridItems.getOrNull(headerIndex + 1) as? LibraryGridItem.Game
@@ -1281,6 +1294,7 @@ class LibraryViewModel @Inject constructor(
                         focusedIndex = targetGame.gameIndex,
                         currentSectionLabel = sectionLabel,
                         isTouchMode = false,
+                        sectionRailFocusIndex = null,
                         sectionJumpTrigger = it.sectionJumpTrigger + 1
                     )
                 }
@@ -1295,6 +1309,7 @@ class LibraryViewModel @Inject constructor(
                 focusedIndex = firstGameInSection.gameIndex,
                 currentSectionLabel = sectionLabel,
                 isTouchMode = false,
+                sectionRailFocusIndex = null,
                 sectionJumpTrigger = it.sectionJumpTrigger + 1
             )
         }
@@ -1302,24 +1317,34 @@ class LibraryViewModel @Inject constructor(
         if (showOverlay) showSectionOverlay(sectionLabel)
     }
 
-    fun jumpToNextSection() {
+    /**
+     * Moves gamepad focus off the games onto the A-Z rail, at the letter of the section the cursor
+     * is in. Returns false when the rail is not shown.
+     */
+    fun enterSectionRail(): Boolean {
         val state = _uiState.value
-        val labels = state.sectionLabels
-        if (labels.isEmpty()) return
-
-        val currentIndex = labels.indexOf(state.currentSectionLabel)
-        val nextIndex = if (currentIndex < 0 || currentIndex >= labels.lastIndex) 0 else currentIndex + 1
-        jumpToSection(labels[nextIndex])
+        if (!state.showSectionSidebar) return false
+        val index = state.sectionLabels.indexOf(state.currentSectionLabel).coerceAtLeast(0)
+        _uiState.update { it.copy(sectionRailFocusIndex = index, isTouchMode = false) }
+        return true
     }
 
-    fun jumpToPreviousSection() {
-        val state = _uiState.value
-        val labels = state.sectionLabels
-        if (labels.isEmpty()) return
+    fun moveSectionRailFocus(delta: Int) {
+        _uiState.update { state ->
+            val index = state.sectionRailFocusIndex ?: return@update state
+            if (state.sectionLabels.isEmpty()) return@update state.copy(sectionRailFocusIndex = null)
+            state.copy(sectionRailFocusIndex = (index + delta).mod(state.sectionLabels.size))
+        }
+    }
 
-        val currentIndex = labels.indexOf(state.currentSectionLabel)
-        val prevIndex = if (currentIndex <= 0) labels.lastIndex else currentIndex - 1
-        jumpToSection(labels[prevIndex])
+    fun confirmSectionRail() {
+        val label = _uiState.value.sectionRailFocusedLabel
+        exitSectionRail()
+        label?.let { jumpToSection(it) }
+    }
+
+    fun exitSectionRail() {
+        _uiState.update { it.copy(sectionRailFocusIndex = null) }
     }
 
     fun gameIndexToGridIndex(gameIndex: Int): Int {
@@ -1343,7 +1368,9 @@ class LibraryViewModel @Inject constructor(
 
         Log.d(TAG, "nextPlatform: changing to index $nextIndex")
         resetStickyColumn()
-        _uiState.update { it.copy(currentPlatformIndex = nextIndex, focusedIndex = 0) }
+        _uiState.update {
+            it.copy(currentPlatformIndex = nextIndex, focusedIndex = 0, sectionRailFocusIndex = null)
+        }
         loadGames()
     }
 
@@ -1360,7 +1387,9 @@ class LibraryViewModel @Inject constructor(
 
         Log.d(TAG, "previousPlatform: changing to index $prevIndex")
         resetStickyColumn()
-        _uiState.update { it.copy(currentPlatformIndex = prevIndex, focusedIndex = 0) }
+        _uiState.update {
+            it.copy(currentPlatformIndex = prevIndex, focusedIndex = 0, sectionRailFocusIndex = null)
+        }
         loadGames()
     }
 
@@ -1509,7 +1538,8 @@ class LibraryViewModel @Inject constructor(
                 canReturnToPlatformGrid = true,
                 platformGridFocusedIndex = index,
                 currentPlatformIndex = platformIndex,
-                focusedIndex = 0
+                focusedIndex = 0,
+                sectionRailFocusIndex = null
             )
         }
         loadGames()
@@ -1520,7 +1550,7 @@ class LibraryViewModel @Inject constructor(
      * downloaded or deleted while the list was open.
      */
     fun returnToPlatformGrid() {
-        _uiState.update { it.copy(view = LibraryView.PLATFORM_GRID) }
+        _uiState.update { it.copy(view = LibraryView.PLATFORM_GRID, sectionRailFocusIndex = null) }
         viewModelScope.launch { refreshPlatformCells() }
     }
 
@@ -2093,7 +2123,7 @@ class LibraryViewModel @Inject constructor(
         )
 
     fun enterTouchMode() {
-        _uiState.update { it.copy(isTouchMode = true, hasSelectedGame = false) }
+        _uiState.update { it.copy(isTouchMode = true, hasSelectedGame = false, sectionRailFocusIndex = null) }
     }
 
     fun exitTouchMode() {
@@ -2125,7 +2155,14 @@ class LibraryViewModel @Inject constructor(
 
         if (!state.hasSelectedGame || index != state.focusedIndex) {
             resetStickyColumn()
-            _uiState.update { it.copy(focusedIndex = index, hasSelectedGame = true, isTouchMode = true) }
+            _uiState.update {
+                it.copy(
+                    focusedIndex = index,
+                    hasSelectedGame = true,
+                    isTouchMode = true,
+                    sectionRailFocusIndex = null
+                )
+            }
             soundManager.play(SoundType.NAVIGATE)
             return
         }
@@ -2143,6 +2180,7 @@ class LibraryViewModel @Inject constructor(
             resetStickyColumn()
             _uiState.update { it.copy(focusedIndex = index, hasSelectedGame = true, isTouchMode = true) }
         }
+        exitSectionRail()
         toggleQuickMenu()
     }
 
@@ -2161,6 +2199,7 @@ class LibraryViewModel @Inject constructor(
                 state.showAddToCollectionModal -> { moveCollectionFocusUp(); InputResult.HANDLED }
                 state.showFilterMenu -> { moveFilterOptionFocus(-1); InputResult.HANDLED }
                 state.showQuickMenu -> { moveQuickMenuFocus(-1); InputResult.HANDLED }
+                state.isSectionRailFocused -> { moveSectionRailFocus(-1); InputResult.HANDLED }
                 else -> if (moveFocus(FocusMove.UP)) InputResult.HANDLED else InputResult.UNHANDLED
             }
         }
@@ -2173,6 +2212,7 @@ class LibraryViewModel @Inject constructor(
                 state.showAddToCollectionModal -> { moveCollectionFocusDown(); InputResult.HANDLED }
                 state.showFilterMenu -> { moveFilterOptionFocus(1); InputResult.HANDLED }
                 state.showQuickMenu -> { moveQuickMenuFocus(1); InputResult.HANDLED }
+                state.isSectionRailFocused -> { moveSectionRailFocus(1); InputResult.HANDLED }
                 else -> if (moveFocus(FocusMove.DOWN)) InputResult.HANDLED else InputResult.UNHANDLED
             }
         }
@@ -2185,6 +2225,10 @@ class LibraryViewModel @Inject constructor(
                 state.showAddToCollectionModal -> InputResult.HANDLED
                 state.showFilterMenu -> { moveFilterCategoryFocus(-1); InputResult.HANDLED }
                 state.showQuickMenu -> InputResult.HANDLED
+                state.isSectionRailFocused -> {
+                    confirmSectionRail()
+                    InputResult.handled(SoundType.SECTION_CHANGE)
+                }
                 else -> if (moveFocus(FocusMove.LEFT)) InputResult.HANDLED else InputResult.UNHANDLED
             }
         }
@@ -2197,7 +2241,9 @@ class LibraryViewModel @Inject constructor(
                 state.showAddToCollectionModal -> InputResult.HANDLED
                 state.showFilterMenu -> { moveFilterCategoryFocus(1); InputResult.HANDLED }
                 state.showQuickMenu -> InputResult.HANDLED
-                else -> if (moveFocus(FocusMove.RIGHT)) InputResult.HANDLED else InputResult.UNHANDLED
+                state.isSectionRailFocused -> InputResult.handled(SoundType.BOUNDARY)
+                moveFocus(FocusMove.RIGHT) || enterSectionRail() -> InputResult.HANDLED
+                else -> InputResult.UNHANDLED
             }
         }
 
@@ -2217,6 +2263,10 @@ class LibraryViewModel @Inject constructor(
                     InputResult.HANDLED
                 }
                 state.showQuickMenu -> confirmQuickMenuSelection(onGameSelect)
+                state.isSectionRailFocused -> {
+                    confirmSectionRail()
+                    InputResult.handled(SoundType.SECTION_CHANGE)
+                }
                 else -> {
                     state.focusedGame?.let { game -> onGameSelect(game.id) }
                     InputResult.HANDLED
@@ -2241,6 +2291,10 @@ class LibraryViewModel @Inject constructor(
                 }
                 state.showQuickMenu -> {
                     toggleQuickMenu()
+                    InputResult.HANDLED
+                }
+                state.isSectionRailFocused -> {
+                    exitSectionRail()
                     InputResult.HANDLED
                 }
                 state.canReturnToPlatformGrid && !state.isPlatformGrid -> {
@@ -2271,6 +2325,7 @@ class LibraryViewModel @Inject constructor(
 
         override fun onSecondaryAction(): InputResult {
             if (_uiState.value.isPlatformGrid) return InputResult.HANDLED
+            if (_uiState.value.isSectionRailFocused) return InputResult.HANDLED
             val game = _uiState.value.focusedGame ?: return InputResult.UNHANDLED
             if (_uiState.value.showAddToCollectionModal || _uiState.value.showQuickMenu || _uiState.value.showFilterMenu) return InputResult.HANDLED
             if (_uiState.value.activeFilters.source == SourceFilter.HIDDEN) {
@@ -2289,6 +2344,7 @@ class LibraryViewModel @Inject constructor(
                 clearCurrentCategoryFilters()
                 return InputResult.HANDLED
             }
+            if (_uiState.value.isSectionRailFocused) return InputResult.HANDLED
             toggleFilterMenu()
             return InputResult.HANDLED
         }
@@ -2297,6 +2353,7 @@ class LibraryViewModel @Inject constructor(
             if (_uiState.value.showAddToCollectionModal) return InputResult.HANDLED
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
             if (_uiState.value.isPlatformGrid) return InputResult.HANDLED
+            if (_uiState.value.isSectionRailFocused) return InputResult.HANDLED
             if (_uiState.value.focusedGame != null) {
                 toggleQuickMenu()
             }
@@ -2309,54 +2366,39 @@ class LibraryViewModel @Inject constructor(
         override fun onLongConfirm(): InputResult {
             if (_uiState.value.isPlatformGrid) return InputResult.handled(SoundType.BOUNDARY)
             if (_uiState.value.focusedGame == null) return InputResult.handled(SoundType.BOUNDARY)
+            if (_uiState.value.isSectionRailFocused) return InputResult.handled(SoundType.BOUNDARY)
             toggleQuickMenu()
             return InputResult.HANDLED
         }
 
-        override fun onPrevSection(): InputResult {
+        override fun onPrevSection(): InputResult = bumper(-FILTER_OPTION_PAGE)
+
+        override fun onNextSection(): InputResult = bumper(FILTER_OPTION_PAGE)
+
+        override fun onPrevTrigger(): InputResult = trigger { previousPlatform() }
+
+        override fun onNextTrigger(): InputResult = trigger { nextPlatform() }
+
+        private fun bumper(filterPage: Int): InputResult {
             val state = _uiState.value
-            when {
-                state.isPlatformGrid -> return InputResult.HANDLED
-                state.showAddToCollectionModal -> return InputResult.HANDLED
-                state.showFilterMenu -> moveFilterOptionFocus(-5)
-                state.showQuickMenu -> return InputResult.HANDLED
-                else -> previousPlatform()
+            return when {
+                state.showFilterMenu -> { moveFilterOptionFocus(filterPage); InputResult.HANDLED }
+                state.hasInternalFocus && !state.isOnPlatformLanding -> InputResult.HANDLED
+                else -> InputResult.UNHANDLED
             }
+        }
+
+        private fun trigger(switchPlatform: () -> Unit): InputResult {
+            if (_uiState.value.hasInternalFocus) return InputResult.HANDLED
+            switchPlatform()
             return InputResult.HANDLED
-        }
-
-        override fun onNextSection(): InputResult {
-            val state = _uiState.value
-            when {
-                state.isPlatformGrid -> return InputResult.HANDLED
-                state.showAddToCollectionModal -> return InputResult.HANDLED
-                state.showFilterMenu -> moveFilterOptionFocus(5)
-                state.showQuickMenu -> return InputResult.HANDLED
-                else -> nextPlatform()
-            }
-            return InputResult.HANDLED
-        }
-
-        override fun onPrevTrigger(): InputResult {
-            val state = _uiState.value
-            if (state.isPlatformGrid) return InputResult.HANDLED
-            if (state.showAddToCollectionModal || state.showFilterMenu || state.showQuickMenu) {
-                return InputResult.HANDLED
-            }
-            if (state.sectionLabels.isEmpty()) return InputResult.UNHANDLED
-            jumpToPreviousSection()
-            return InputResult.handled(SoundType.SECTION_CHANGE)
-        }
-
-        override fun onNextTrigger(): InputResult {
-            val state = _uiState.value
-            if (state.isPlatformGrid) return InputResult.HANDLED
-            if (state.showAddToCollectionModal || state.showFilterMenu || state.showQuickMenu) {
-                return InputResult.HANDLED
-            }
-            if (state.sectionLabels.isEmpty()) return InputResult.UNHANDLED
-            jumpToNextSection()
-            return InputResult.handled(SoundType.SECTION_CHANGE)
         }
     }
+
+    private val LibraryUiState.hasInternalFocus: Boolean
+        get() = isPlatformGrid || showAddToCollectionModal || showFilterMenu || showQuickMenu ||
+            isSectionRailFocused
+
+    private val LibraryUiState.isOnPlatformLanding: Boolean
+        get() = isPlatformGrid && !showAddToCollectionModal && !showFilterMenu && !showQuickMenu
 }
