@@ -55,15 +55,13 @@ class MusicPlayerViewModel @Inject constructor(
             ambientAudioManager.playback.collect { playback ->
                 _uiState.update { state ->
                     val lastTrack = (playback.tracks.size - 1).coerceAtLeast(0)
-                    state.copy(
-                        playback = playback,
-                        trackFocus = state.trackFocus.coerceIn(0, lastTrack),
-                        focusedRow = if (playback.tracks.isEmpty() && state.focusedRow == MusicPlayerRow.TRACKS) {
-                            MusicPlayerRow.SOURCES
-                        } else {
-                            state.focusedRow
-                        }
-                    )
+                    val next = state.copy(playback = playback, trackFocus = state.trackFocus.coerceIn(0, lastTrack))
+                    val rowGone = when (state.focusedRow) {
+                        MusicPlayerRow.TRANSPORT -> !next.hasQueue
+                        MusicPlayerRow.TRACKS -> playback.tracks.isEmpty()
+                        MusicPlayerRow.SOURCES -> false
+                    }
+                    if (rowGone) next.copy(focusedRow = MusicPlayerRow.SOURCES) else next
                 }
             }
         }
@@ -101,7 +99,7 @@ class MusicPlayerViewModel @Inject constructor(
         val next: MusicPlayerUiState = when (state.focusedRow) {
             MusicPlayerRow.TRANSPORT -> if (delta > 0) state.copy(focusedRow = MusicPlayerRow.SOURCES) else state
             MusicPlayerRow.SOURCES -> when {
-                delta < 0 -> state.copy(focusedRow = MusicPlayerRow.TRANSPORT)
+                delta < 0 -> if (state.hasQueue) state.copy(focusedRow = MusicPlayerRow.TRANSPORT) else state
                 trackCount > 0 -> state.copy(
                     focusedRow = MusicPlayerRow.TRACKS,
                     trackFocus = state.playback.index.coerceIn(0, trackCount - 1)

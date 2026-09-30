@@ -337,6 +337,7 @@ object ComponentDefaults {
 
     object MusicPlayer {
         const val coverSizeDp = 64
+        const val coverExpandedMaxHeightDp = 280
         const val transportButtonDp = 40
         const val playButtonDp = 48
         const val progressHeightDp = 4

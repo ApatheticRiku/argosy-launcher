@@ -1,6 +1,9 @@
 package com.nendo.argosy.ui.components.musicplayer
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import com.nendo.argosy.ui.theme.Motion
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,6 +79,7 @@ import kotlinx.coroutines.isActive
 import java.util.Locale
 
 private const val LOAD_MORE_LOOKAHEAD = 4
+private const val EXPANDED_COVER_WEIGHT = 2f
 
 @Composable
 fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel, onOpenRommSignIn: () -> Unit) {
@@ -104,14 +109,26 @@ fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel, onOpenRommSignIn: ()
 private fun MusicPlayerMain(state: MusicPlayerUiState, viewModel: MusicPlayerViewModel) {
     val launcherLabel = stringResource(R.string.ui_quick_settings_music_source_launcher)
     Column(modifier = Modifier.fillMaxSize()) {
-        NowPlayingHeader(state = state, launcherLabel = launcherLabel)
-        TransportRow(
-            state = state,
-            onButton = { button ->
-                viewModel.focusTransport(button)
-                viewModel.activateTransport(button)
+        if (state.hasQueue) {
+            val coverPath = state.playback.coverPath.takeIf { state.playback.overrideTitle == null }
+            val expanded = state.focusedRow == MusicPlayerRow.TRANSPORT && coverPath != null
+            if (expanded) {
+                ExpandedCover(
+                    coverPath = coverPath,
+                    modifier = Modifier
+                        .weight(EXPANDED_COVER_WEIGHT, fill = false)
+                        .padding(start = Dimens.spacingLg, end = Dimens.spacingLg, top = Dimens.spacingSm)
+                )
             }
-        )
+            NowPlayingHeader(state = state, launcherLabel = launcherLabel, expanded = expanded)
+            TransportRow(
+                state = state,
+                onButton = { button ->
+                    viewModel.focusTransport(button)
+                    viewModel.activateTransport(button)
+                }
+            )
+        }
         SourceRow(
             state = state,
             onSelect = { kind ->
@@ -282,7 +299,7 @@ private fun TrackRow(
 }
 
 @Composable
-private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String) {
+private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String, expanded: Boolean) {
     val playback = state.playback
     val overrideTitle = playback.overrideTitle
     val title = overrideTitle ?: playback.trackTitle
@@ -299,57 +316,105 @@ private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String) {
         null
     }
 
+    val coverPath = if (overrideTitle == null) playback.coverPath else null
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .animateContentSize(animationSpec = tween(Motion.durationContent))
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            MusicCover(
-                coverPath = if (overrideTitle == null) playback.coverPath else null,
-                size = ComponentDefaults.MusicPlayer.coverSizeDp.dp
-            )
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        if (expanded) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                NowPlayingText(
+                    title = title,
+                    gameTitle = gameTitle,
+                    sourceLabel = sourceLabel,
+                    position = position,
+                    alignment = Alignment.CenterHorizontally
                 )
-                if (gameTitle != null) {
-                    Text(
-                        text = gameTitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                    if (sourceLabel.isNotEmpty()) {
-                        Text(
-                            text = sourceLabel,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false)
-                        )
-                    }
-                    if (position != null) {
-                        Text(
-                            text = position,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
+            }
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MusicCover(coverPath = coverPath, size = ComponentDefaults.MusicPlayer.coverSizeDp.dp)
+                Spacer(modifier = Modifier.width(Dimens.spacingMd))
+                NowPlayingText(
+                    title = title,
+                    gameTitle = gameTitle,
+                    sourceLabel = sourceLabel,
+                    position = position,
+                    alignment = Alignment.Start,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
         Spacer(modifier = Modifier.height(Dimens.spacingSm))
         PlaybackProgress(positionMs = state.positionMs, durationMs = state.durationMs)
+    }
+}
+
+@Composable
+private fun ExpandedCover(coverPath: String?, modifier: Modifier = Modifier) {
+    val model = rememberFileImageModel(coverPath) ?: return
+    AsyncImage(
+        model = model,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = ComponentDefaults.MusicPlayer.coverExpandedMaxHeightDp.dp)
+            .clip(RoundedCornerShape(Dimens.radiusMd))
+    )
+}
+
+@Composable
+private fun NowPlayingText(
+    title: String,
+    gameTitle: String?,
+    sourceLabel: String,
+    position: String?,
+    alignment: Alignment.Horizontal,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier, horizontalAlignment = alignment) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (gameTitle != null) {
+            Text(
+                text = gameTitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
+            if (sourceLabel.isNotEmpty()) {
+                Text(
+                    text = sourceLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+            }
+            if (position != null) {
+                Text(
+                    text = position,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
