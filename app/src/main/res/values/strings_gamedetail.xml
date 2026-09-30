@@ -363,9 +363,9 @@
 
     <!-- Score inside a rating or difficulty chip. %1$d is the user's score, out of ten. -->
     <string name="gamedetail_chip_rating_value">%1$d/10</string>
-    <!-- Drawn inside a rating or difficulty chip the user has not scored yet. A dash, not a
-         word. -->
-    <string name="gamedetail_chip_rating_unset">--</string>
+    <!-- Drawn inside a rating or difficulty chip the user has not scored yet. Short adjective
+         phrase: no score has been given, not an error. -->
+    <string name="gamedetail_chip_rating_unset">Not set</string>
     <!-- Score inside the community rating chip. %1$d is the share of players who liked the game, as
          a whole number out of a hundred. -->
     <string name="gamedetail_chip_community_rating_value">%1$d%%</string>

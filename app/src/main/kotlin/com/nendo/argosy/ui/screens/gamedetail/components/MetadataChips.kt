@@ -85,7 +85,7 @@ fun RatingChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isSet) iconColor else iconColor.copy(alpha = 0.3f),
+                tint = if (isSet) iconColor else iconColor.copy(alpha = 0.5f),
                 modifier = Modifier.size(Dimens.iconXs)
             )
             Text(
@@ -98,18 +98,14 @@ fun RatingChip(
                 color = if (isSet) {
                     MaterialTheme.colorScheme.onSurface
                 } else {
-                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                    MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )
         }
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isSet) {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

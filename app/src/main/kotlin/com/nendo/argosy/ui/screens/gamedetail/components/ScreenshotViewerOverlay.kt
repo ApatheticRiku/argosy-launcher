@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.FooterHints
@@ -54,7 +54,7 @@ fun ScreenshotViewerOverlay(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = Dimens.settingsItemMinHeight)
+                    .padding(bottom = Dimens.settingsItemMinHeight * 2)
             )
         } else {
             AsyncImage(
@@ -63,7 +63,7 @@ fun ScreenshotViewerOverlay(
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(bottom = Dimens.settingsItemMinHeight),
+                    .padding(bottom = Dimens.settingsItemMinHeight * 2),
                 onError = { cacheLoadFailed = true }
             )
         }
@@ -89,18 +89,23 @@ fun ScreenshotViewerOverlay(
             )
         }
 
-        Text(
-            text = stringResource(
-                R.string.gamedetail_screenshot_viewer_position,
-                currentIndex + 1,
-                screenshots.size
-            ),
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 64.dp)  // Keep as interaction threshold
-        )
+                .padding(bottom = Dimens.settingsItemMinHeight)
+                .height(Dimens.settingsItemMinHeight)
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.gamedetail_screenshot_viewer_position,
+                    currentIndex + 1,
+                    screenshots.size
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White
+            )
+        }
 
         FooterHints(
             hints = listOf(

@@ -104,7 +104,7 @@
     <string name="gamedetail_chip_play_time_label">遊玩時間</string>
 
     <string name="gamedetail_chip_rating_value">%1$d/10</string>
-    <string name="gamedetail_chip_rating_unset">--</string>
+    <string name="gamedetail_chip_rating_unset">未設定</string>
     <string name="gamedetail_chip_community_rating_value">%1$d%%</string>
 
     <string name="gamedetail_chip_play_time_minutes">%1$dm</string>
