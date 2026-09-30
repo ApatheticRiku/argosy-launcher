@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -72,6 +73,7 @@ import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
+private const val PANEL_MAX_SCREEN_FRACTION = 0.65f
 private const val LABEL_WEIGHT = 3f
 private const val VALUE_WEIGHT = 2f
 
@@ -289,7 +291,8 @@ fun QuickSettingsPanel(
         ) {
             Row(
                 modifier = Modifier
-                    .width(Dimens.modalWidth - Dimens.footerHeight)
+                    .fillMaxWidth(PANEL_MAX_SCREEN_FRACTION)
+                    .widthIn(max = Dimens.modalWidthLg)
                     .fillMaxHeight()
                     .background(MaterialTheme.colorScheme.surface)
             ) {

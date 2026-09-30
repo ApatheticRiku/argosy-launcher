@@ -207,6 +207,7 @@ private fun TrackList(
     LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
         itemsIndexed(tracks, key = { position, track -> "$position:${track.id}" }) { position, track ->
             TrackRow(
+                number = position + 1,
                 title = track.title,
                 gameTitle = track.gameTitle.takeIf { showGame },
                 isCurrent = position == state.playback.index,
@@ -219,6 +220,7 @@ private fun TrackList(
 
 @Composable
 private fun TrackRow(
+    number: Int,
     title: String,
     gameTitle: String?,
     isCurrent: Boolean,
@@ -240,13 +242,20 @@ private fun TrackRow(
             .clickableNoFocus(onClick = onClick)
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
     ) {
-        Box(modifier = Modifier.size(Dimens.iconMd), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.width(Dimens.iconLg), contentAlignment = Alignment.Center) {
             if (isCurrent) {
                 Icon(
                     imageVector = Icons.Default.GraphicEq,
                     contentDescription = stringResource(R.string.ui_quick_settings_music_now_playing),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(Dimens.iconSm)
+                )
+            } else {
+                Text(
+                    text = number.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
                 )
             }
         }
