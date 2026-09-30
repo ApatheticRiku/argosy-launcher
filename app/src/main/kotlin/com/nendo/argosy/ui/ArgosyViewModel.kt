@@ -180,6 +180,30 @@ data class DrawerItem(
     @StringRes val labelRes: Int
 )
 
+data class NavRingState(
+    val destinations: List<DrawerItem> = emptyList(),
+    val homeAppBarConfigured: Boolean = false,
+    val isBarVisible: Boolean = false
+)
+
+private val NAV_RING_ROUTES = listOf(
+    Screen.Home.route,
+    Screen.Library.route,
+    Screen.Collections.route,
+    Screen.Social.route,
+    Screen.MediaLibrary.route,
+    Screen.Settings.route
+)
+
+private const val NAV_BAR_AUTO_HIDE_MS = 2_500L
+
+private fun isNavRouteAvailable(route: String, socialConnected: Boolean, mediaSignedIn: Boolean): Boolean =
+    when (route) {
+        Screen.Social.route -> socialConnected
+        Screen.MediaLibrary.route -> mediaSignedIn
+        else -> true
+    }
+
 @HiltViewModel
 class ArgosyViewModel @Inject constructor(
     private val application: Application,
@@ -623,15 +647,63 @@ class ArgosyViewModel @Inject constructor(
 
     val drawerItems: List<DrawerItem>
         get() {
-            var items = allDrawerItems
-            if (socialRepository.connectionState.value !is SocialConnectionState.Connected) {
-                items = items.filter { it.route != Screen.Social.route }
-            }
-            if (!_isMediaSignedIn) {
-                items = items.filter { it.route != Screen.MediaLibrary.route }
-            }
-            return items
+            val socialConnected = socialRepository.connectionState.value is SocialConnectionState.Connected
+            return allDrawerItems.filter { isNavRouteAvailable(it.route, socialConnected, _isMediaSignedIn) }
         }
+
+    private val navRingItems: List<DrawerItem> = NAV_RING_ROUTES.mapNotNull { route ->
+        allDrawerItems.firstOrNull { it.route == route }
+    }
+
+    private val _navBarVisible = MutableStateFlow(false)
+    private var navBarHideJob: kotlinx.coroutines.Job? = null
+
+    val navRingState: StateFlow<NavRingState> = combine(
+        socialRepository.connectionState,
+        preferencesRepository.userPreferences,
+        _navBarVisible
+    ) { social, prefs, barVisible ->
+        val socialConnected = social is SocialConnectionState.Connected
+        NavRingState(
+            destinations = navRingItems.filter {
+                isNavRouteAvailable(it.route, socialConnected, prefs.isJellyfinSignedIn)
+            },
+            homeAppBarConfigured = prefs.secondaryHomeApps.isNotEmpty(),
+            isBarVisible = barVisible
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = NavRingState()
+    )
+
+    fun isNavRingRoute(route: String?): Boolean {
+        val visible = drawerItems
+        return navRingItems.any { it.route == route && it in visible }
+    }
+
+    fun navRingRouteFrom(currentRoute: String?, delta: Int): String? {
+        val visible = drawerItems
+        val ring = navRingItems.filter { it in visible }
+        val index = ring.indexOfFirst { it.route == currentRoute }
+        if (index < 0 || ring.size < 2) return null
+        return ring[(index + delta).mod(ring.size)].route
+    }
+
+    fun showNavBar() {
+        navBarHideJob?.cancel()
+        _navBarVisible.update { true }
+        navBarHideJob = viewModelScope.launch {
+            delay(NAV_BAR_AUTO_HIDE_MS)
+            _navBarVisible.update { false }
+        }
+    }
+
+    fun hideNavBar() {
+        navBarHideJob?.cancel()
+        navBarHideJob = null
+        _navBarVisible.update { false }
+    }
 
     fun setDualScreenMode(enabled: Boolean) {
         _isDualScreenMode = enabled

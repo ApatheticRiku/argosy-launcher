@@ -45,7 +45,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nendo.argosy.ui.components.BackgroundSyncConflictDialog
+import com.nendo.argosy.ui.components.FloatingNavBar
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.revealOnBottomEdgeTouch
 import com.nendo.argosy.ui.components.FooterHost
 import com.nendo.argosy.ui.components.FooterHostController
 import com.nendo.argosy.ui.components.LocalFooterHost
@@ -64,6 +66,7 @@ import com.nendo.argosy.ui.components.ScreenDimmerOverlay
 import com.nendo.argosy.ui.input.BackgroundConflictInputHandler
 import com.nendo.argosy.ui.input.CapturingInputHandler
 import com.nendo.argosy.ui.input.GamepadEvent
+import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.InputDispatcher
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
@@ -132,6 +135,7 @@ fun ArgosyApp(
     val netplayInvitePrompt by viewModel.netplayInvitePrompt.collectAsState()
     val netplayInviteFocusIndex by viewModel.netplayInviteFocusIndex.collectAsState()
     val netplayJoinState by viewModel.netplayJoinState.collectAsState()
+    val navRingState by viewModel.navRingState.collectAsState()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val activity = context as? com.nendo.argosy.MainActivity
@@ -401,6 +405,7 @@ fun ArgosyApp(
     val openDrawer = remember(drawerInputHandler) {
         wizardGuard@{
             if (uiState.isFirstRun) return@wizardGuard
+            viewModel.hideNavBar()
             inputDispatcher.subscribeDrawer(drawerInputHandler)
             viewModel.setDrawerOpen(true)
             val parentRoute = navController.previousBackStackEntry?.destination?.route
@@ -430,6 +435,7 @@ fun ArgosyApp(
     val openQuickSettings = remember(quickSettingsInputHandler) {
         wizardGuard@{
             if (uiState.isFirstRun) return@wizardGuard
+            viewModel.hideNavBar()
             inputDispatcher.subscribeDrawer(quickSettingsInputHandler)
             viewModel.setQuickSettingsOpen(true)
             viewModel.soundManager.play(SoundType.OPEN_MODAL)
@@ -468,6 +474,7 @@ fun ArgosyApp(
             if (uiState.isFirstRun) return@wizardGuard
             if (isDrawerOpen) closeDrawer()
             if (isQuickSettingsOpen) closeQuickSettings()
+            viewModel.hideNavBar()
             inputDispatcher.subscribeDrawer(quickMenuInputHandler)
             quickMenuViewModel.show()
             viewModel.soundManager.play(SoundType.OPEN_MODAL)
@@ -701,6 +708,14 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.homeEventEnabled = !isHome
     }
 
+    LaunchedEffect(currentRoute, uiState.isFirstRun) {
+        if (!uiState.isFirstRun && viewModel.isNavRingRoute(currentRoute)) {
+            viewModel.showNavBar()
+        } else {
+            viewModel.hideNavBar()
+        }
+    }
+
     // Sync ViewModel drawer state -> Compose drawer animation
     LaunchedEffect(isDrawerOpen) {
         if (isDrawerOpen && !drawerState.isOpen) {
@@ -800,8 +815,29 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.eventFlow().collect { input ->
             val result = inputDispatcher.dispatch(input)
             val event = input.event
+            if (inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
             if (!result.handled && !inputDispatcher.hasActiveModal()) {
                 when (event) {
+                    GamepadEvent.PrevSection, GamepadEvent.NextSection -> {
+                        val delta = if (event == GamepadEvent.PrevSection) -1 else 1
+                        val target = if (
+                            !input.isRepeat &&
+                            !uiState.isFirstRun &&
+                            !isDrawerOpen &&
+                            !isQuickSettingsOpen &&
+                            !quickMenuState.isVisible
+                        ) {
+                            viewModel.navRingRouteFrom(navController.currentDestination?.route, delta)
+                        } else {
+                            null
+                        }
+                        if (target != null) {
+                            viewModel.hapticManager.vibrate(HapticPattern.FOCUS_CHANGE)
+                            viewModel.soundManager.play(SoundType.SECTION_CHANGE)
+                            navigateFromDrawer(target)
+                            viewModel.showNavBar()
+                        }
+                    }
                     GamepadEvent.Menu -> {
                         if (isDrawerOpen) {
                             closeDrawer()
@@ -1056,23 +1092,71 @@ fun ArgosyApp(
                 )
                 val contentBlur = maxOf(drawerBlur, quickMenuBlur)
 
-                NavGraph(
-                    navController = navController,
-                    startDestination = startDestination,
-                    onDrawerToggle = { if (isDrawerOpen) closeDrawer() else openDrawer() },
-                    argosyViewModel = viewModel,
-                    onPlayMedia = { itemId, startOver ->
-                        dsm?.playMediaItem(itemId, startOver)
-                            ?: PlayerActivity.start(
-                                context = context,
-                                args = PlayerArgs(
-                                    itemId = itemId,
-                                    startPositionMs = if (startOver) 0L else -1L
+                val onRingDestination = navRingState.destinations.any { it.route == currentRoute }
+                val homeAppBarOwnsBottom = currentRoute == Screen.Home.route &&
+                    hasPresentationScreen && navRingState.homeAppBarConfigured
+                val appPromptShowing = saveConflictInfo != null ||
+                    backgroundConflictInfo != null ||
+                    coreCrashPrompt != null ||
+                    netplayInvitePrompt != null ||
+                    netplayJoinModalActive ||
+                    steamDownloadPrompt != null
+                val navBarAllowed = onRingDestination &&
+                    !homeAppBarOwnsBottom &&
+                    !uiState.isFirstRun &&
+                    !isDrawerOpen &&
+                    !isQuickSettingsOpen &&
+                    !quickMenuState.isVisible &&
+                    !appPromptShowing
+                val currentNavBarAllowed by rememberUpdatedState(navBarAllowed)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .revealOnBottomEdgeTouch(Dimens.footerHeight) {
+                            if (currentNavBarAllowed) viewModel.showNavBar()
+                        }
+                ) {
+                    NavGraph(
+                        navController = navController,
+                        startDestination = startDestination,
+                        onDrawerToggle = { if (isDrawerOpen) closeDrawer() else openDrawer() },
+                        argosyViewModel = viewModel,
+                        onPlayMedia = { itemId, startOver ->
+                            dsm?.playMediaItem(itemId, startOver)
+                                ?: PlayerActivity.start(
+                                    context = context,
+                                    args = PlayerArgs(
+                                        itemId = itemId,
+                                        startPositionMs = if (startOver) 0L else -1L
+                                    )
                                 )
-                            )
-                    },
-                    modifier = Modifier.blur(contentBlur)
-                )
+                        },
+                        modifier = Modifier.blur(contentBlur)
+                    )
+
+                    FloatingNavBar(
+                        visible = navBarAllowed && navRingState.isBarVisible,
+                        destinations = navRingState.destinations,
+                        currentRoute = currentRoute,
+                        onNavigate = { route ->
+                            navigateFromDrawer(route)
+                            viewModel.showNavBar()
+                        },
+                        onCycle = { delta ->
+                            viewModel.navRingRouteFrom(navController.currentDestination?.route, delta)
+                                ?.let { route ->
+                                    viewModel.soundManager.play(SoundType.SECTION_CHANGE)
+                                    navigateFromDrawer(route)
+                                }
+                            viewModel.showNavBar()
+                        },
+                        onInteract = { viewModel.showNavBar() },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = Dimens.footerHeight + Dimens.spacingSm)
+                    )
+                }
             }
 
             val mutedNotificationKeys = if (currentRoute == Screen.SyncMonitor.route) {
