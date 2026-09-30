@@ -1206,6 +1206,68 @@
     <!-- Sub-heading on that panel over the remaining rows, such as haptics. Adjective used as a
          noun: everything else. -->
     <string name="ui_quick_settings_group_other">Other</string>
+    <!-- Footer hint on that panel while a list opened from the music page is showing. Verb:
+         returns to the music page. -->
+    <string name="ui_quick_settings_hint_back">Back</string>
+    <!-- Music page of that panel: shown in place of a song title when nothing is queued. -->
+    <string name="ui_quick_settings_music_nothing_playing">Nothing playing</string>
+    <!-- Music page: name of the playlist the reader builds in Argosy's own music settings. Noun
+         phrase. -->
+    <string name="ui_quick_settings_music_source_launcher">Launcher music</string>
+    <!-- Music page: position of the current song in the playing list, for example "3 of 12". -->
+    <string name="ui_quick_settings_music_track_position">%1$d of %2$d</string>
+    <!-- Music page button description: goes to the previous song. -->
+    <string name="ui_quick_settings_music_previous">Previous track</string>
+    <!-- Music page button description: starts the music. Verb. -->
+    <string name="ui_quick_settings_music_play">Play</string>
+    <!-- Music page button description: stops the music where it is. Verb. -->
+    <string name="ui_quick_settings_music_pause">Pause</string>
+    <!-- Music page button description: goes to the next song. -->
+    <string name="ui_quick_settings_music_next">Next track</string>
+    <!-- Music page button description: plays the list in random order. Verb. -->
+    <string name="ui_quick_settings_music_shuffle">Shuffle</string>
+    <!-- Music page row that opens the list of playlists. Noun, plural. -->
+    <string name="ui_quick_settings_music_playlists">Playlists</string>
+    <!-- Music page row that opens the list of games whose soundtrack can be played. Noun
+         phrase, plural. -->
+    <string name="ui_quick_settings_music_soundtracks">Game soundtracks</string>
+    <!-- Placeholder inside the search box over the playlist list. Verb phrase. -->
+    <string name="ui_quick_settings_music_search_playlists">Search playlists</string>
+    <!-- Placeholder inside the search box over the game soundtrack list. Verb phrase. -->
+    <string name="ui_quick_settings_music_search_soundtracks">Search soundtracks</string>
+    <!-- Shown when a music list could not be loaded. -->
+    <string name="ui_quick_settings_music_load_failed">Could not load this list</string>
+    <!-- Row under that message that loads the list again. Verb phrase. -->
+    <string name="ui_quick_settings_music_retry">Try again</string>
+    <!-- Shown when no playlist matches the search. -->
+    <string name="ui_quick_settings_music_empty_playlists">No playlists match</string>
+    <!-- Shown when no game soundtrack matches the search or none is available. -->
+    <string name="ui_quick_settings_music_empty_soundtracks">No soundtracks found</string>
+    <!-- Note over the playlist list when the RomM server cannot be reached. "RomM" is a product
+         name; leave it untranslated. -->
+    <string name="ui_quick_settings_music_notice_playlists_offline">RomM playlists need a connection</string>
+    <!-- Note over the soundtrack list when the RomM server cannot be reached and only files on
+         the device are listed. -->
+    <string name="ui_quick_settings_music_notice_soundtracks_offline">Offline. Showing downloaded soundtracks.</string>
+    <!-- Note over the soundtrack list when the server cannot list soundtracks and only files on
+         the device are listed. -->
+    <string name="ui_quick_settings_music_notice_local_only">Showing downloaded soundtracks</string>
+    <!-- Note over a music list when the RomM server answered with an error. "RomM" is a product
+         name; leave it untranslated. -->
+    <string name="ui_quick_settings_music_notice_server_failed">RomM did not respond. Some items may be missing.</string>
+    <!-- Shown after picking a playlist or soundtrack that has no song Argosy can play. -->
+    <string name="ui_quick_settings_music_notice_no_tracks">Nothing in this selection can be played</string>
+    <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->
+    <string name="ui_quick_settings_music_playlist_owner">by %1$s</string>
+    <!-- Description of the marker on the list row that is currently playing. -->
+    <string name="ui_quick_settings_music_now_playing">Now playing</string>
+    <!-- Description of the back arrow at the top of a music list. Verb. -->
+    <string name="ui_quick_settings_music_back">Back</string>
+    <!-- Number of songs in a playlist or soundtrack. -->
+    <plurals name="ui_quick_settings_music_track_count">
+        <item quantity="one">%d track</item>
+        <item quantity="other">%d tracks</item>
+    </plurals>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 

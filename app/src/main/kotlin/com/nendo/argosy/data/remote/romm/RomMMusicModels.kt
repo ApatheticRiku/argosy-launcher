@@ -21,7 +21,38 @@ data class RomMMusicTrack(
     @Json(name = "platform_slug") val platformSlug: String,
     @Json(name = "platform_name") val platformName: String,
     @Json(name = "stream_url") val streamUrl: String,
-    @Json(name = "cover_url") val coverUrl: String? = null
+    @Json(name = "cover_url") val coverUrl: String? = null,
+    @Json(name = "game_cover_url") val gameCoverUrl: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMMusicPlaylist(
+    @Json(name = "id") val id: Long,
+    @Json(name = "name") val name: String,
+    @Json(name = "description") val description: String? = null,
+    @Json(name = "is_public") val isPublic: Boolean = false,
+    @Json(name = "user_id") val userId: Long,
+    @Json(name = "owner_username") val ownerUsername: String? = null,
+    @Json(name = "track_count") val trackCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMMusicGame(
+    @Json(name = "rom_id") val romId: Long,
+    @Json(name = "name") val name: String,
+    @Json(name = "platform_id") val platformId: Long,
+    @Json(name = "platform_slug") val platformSlug: String,
+    @Json(name = "platform_name") val platformName: String,
+    @Json(name = "cover_url") val coverUrl: String? = null,
+    @Json(name = "count") val count: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMMusicGamePage(
+    @Json(name = "items") val items: List<RomMMusicGame>,
+    @Json(name = "total") val total: Int = 0,
+    @Json(name = "limit") val limit: Int? = null,
+    @Json(name = "offset") val offset: Int? = null
 )
 
 @JsonClass(generateAdapter = true)

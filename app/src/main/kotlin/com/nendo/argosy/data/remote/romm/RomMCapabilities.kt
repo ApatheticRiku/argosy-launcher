@@ -13,6 +13,9 @@ data class RomMCapabilities(
     val supportsMusicApi: Boolean,
     val supportsCoverSearch: Boolean = false,
     val supportsDeviceInstall: Boolean = false,
+    val supportsMusicPlaylists: Boolean = false,
+    val supportsMusicTrackRomFilter: Boolean = false,
+    val supportsMusicGames: Boolean = false,
 ) {
     companion object {
         /**
@@ -29,6 +32,9 @@ data class RomMCapabilities(
         const val SCREENSHOT_UPLOAD_MIN_VERSION = "5.0.0"
         const val MUSIC_API_MIN_VERSION = "5.0.0"
         const val DEVICE_INSTALL_MIN_VERSION = "5.4.0"
+        const val MUSIC_PLAYLISTS_MIN_VERSION = "5.1.0"
+        const val MUSIC_TRACK_ROM_FILTER_MIN_VERSION = "5.1.0"
+        const val MUSIC_GAMES_MIN_VERSION = "5.3.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -65,6 +71,10 @@ data class RomMCapabilities(
                 supportsMusicApi = compareVersions(gate, MUSIC_API_MIN_VERSION) >= 0,
                 supportsCoverSearch = steamGridDbEnabled == true,
                 supportsDeviceInstall = compareVersions(gate, DEVICE_INSTALL_MIN_VERSION) >= 0,
+                supportsMusicPlaylists = compareVersions(gate, MUSIC_PLAYLISTS_MIN_VERSION) >= 0,
+                supportsMusicTrackRomFilter =
+                    compareVersions(gate, MUSIC_TRACK_ROM_FILTER_MIN_VERSION) >= 0,
+                supportsMusicGames = compareVersions(gate, MUSIC_GAMES_MIN_VERSION) >= 0,
             )
         }
 

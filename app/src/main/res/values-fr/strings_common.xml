@@ -613,6 +613,36 @@
     <string name="ui_quick_settings_group_display">Affichage</string>
     <string name="ui_quick_settings_group_audio">Audio</string>
     <string name="ui_quick_settings_group_other">Autres</string>
+    <string name="ui_quick_settings_hint_back">Retour</string>
+    <string name="ui_quick_settings_music_nothing_playing">Aucune lecture</string>
+    <string name="ui_quick_settings_music_source_launcher">Musique du launcher</string>
+    <string name="ui_quick_settings_music_track_position">%1$d sur %2$d</string>
+    <string name="ui_quick_settings_music_previous">Piste précédente</string>
+    <string name="ui_quick_settings_music_play">Lire</string>
+    <string name="ui_quick_settings_music_pause">Mettre en pause</string>
+    <string name="ui_quick_settings_music_next">Piste suivante</string>
+    <string name="ui_quick_settings_music_shuffle">Lecture aléatoire</string>
+    <string name="ui_quick_settings_music_playlists">Playlists</string>
+    <string name="ui_quick_settings_music_soundtracks">Bandes-son de jeux</string>
+    <string name="ui_quick_settings_music_search_playlists">Rechercher des playlists</string>
+    <string name="ui_quick_settings_music_search_soundtracks">Rechercher des bandes-son</string>
+    <string name="ui_quick_settings_music_load_failed">Impossible de charger cette liste</string>
+    <string name="ui_quick_settings_music_retry">Réessayer</string>
+    <string name="ui_quick_settings_music_empty_playlists">Aucune playlist ne correspond</string>
+    <string name="ui_quick_settings_music_empty_soundtracks">Aucune bande-son trouvée</string>
+    <string name="ui_quick_settings_music_notice_playlists_offline">Les playlists RomM nécessitent une connexion</string>
+    <string name="ui_quick_settings_music_notice_soundtracks_offline">Hors ligne. Affichage des bandes-son téléchargées.</string>
+    <string name="ui_quick_settings_music_notice_local_only">Affichage des bandes-son téléchargées</string>
+    <string name="ui_quick_settings_music_notice_server_failed">RomM n\'a pas répondu. Certains éléments peuvent manquer.</string>
+    <string name="ui_quick_settings_music_notice_no_tracks">Rien dans cette sélection ne peut être lu</string>
+    <string name="ui_quick_settings_music_playlist_owner">par %1$s</string>
+    <string name="ui_quick_settings_music_now_playing">En cours de lecture</string>
+    <string name="ui_quick_settings_music_back">Retour</string>
+    <plurals name="ui_quick_settings_music_track_count">
+        <item quantity="one">%d piste</item>
+        <item quantity="many">%d pistes</item>
+        <item quantity="other">%d pistes</item>
+    </plurals>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 

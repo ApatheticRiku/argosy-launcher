@@ -576,6 +576,34 @@
     <string name="ui_quick_settings_group_display">顯示</string>
     <string name="ui_quick_settings_group_audio">音訊</string>
     <string name="ui_quick_settings_group_other">其他</string>
+    <string name="ui_quick_settings_hint_back">返回</string>
+    <string name="ui_quick_settings_music_nothing_playing">未在播放</string>
+    <string name="ui_quick_settings_music_source_launcher">啟動器音樂</string>
+    <string name="ui_quick_settings_music_track_position">第 %1$d 首，共 %2$d 首</string>
+    <string name="ui_quick_settings_music_previous">上一首</string>
+    <string name="ui_quick_settings_music_play">播放</string>
+    <string name="ui_quick_settings_music_pause">暫停</string>
+    <string name="ui_quick_settings_music_next">下一首</string>
+    <string name="ui_quick_settings_music_shuffle">隨機播放</string>
+    <string name="ui_quick_settings_music_playlists">播放清單</string>
+    <string name="ui_quick_settings_music_soundtracks">遊戲原聲</string>
+    <string name="ui_quick_settings_music_search_playlists">搜尋播放清單</string>
+    <string name="ui_quick_settings_music_search_soundtracks">搜尋原聲</string>
+    <string name="ui_quick_settings_music_load_failed">無法載入此清單</string>
+    <string name="ui_quick_settings_music_retry">重試</string>
+    <string name="ui_quick_settings_music_empty_playlists">沒有符合的播放清單</string>
+    <string name="ui_quick_settings_music_empty_soundtracks">找不到原聲</string>
+    <string name="ui_quick_settings_music_notice_playlists_offline">RomM 播放清單需要連線</string>
+    <string name="ui_quick_settings_music_notice_soundtracks_offline">離線。正在顯示已下載的原聲。</string>
+    <string name="ui_quick_settings_music_notice_local_only">正在顯示已下載的原聲</string>
+    <string name="ui_quick_settings_music_notice_server_failed">RomM 未回應。部分內容可能缺少。</string>
+    <string name="ui_quick_settings_music_notice_no_tracks">此選擇中沒有可播放的內容</string>
+    <string name="ui_quick_settings_music_playlist_owner">建立者：%1$s</string>
+    <string name="ui_quick_settings_music_now_playing">正在播放</string>
+    <string name="ui_quick_settings_music_back">返回</string>
+    <plurals name="ui_quick_settings_music_track_count">
+        <item quantity="other">%d 首</item>
+    </plurals>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 

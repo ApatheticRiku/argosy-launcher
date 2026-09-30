@@ -4,6 +4,7 @@ import android.util.Log
 import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.data.music.BgmPlaylistRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.domain.usecase.music.GetLauncherQueueUseCase
 import com.nendo.argosy.domain.usecase.music.MeasureTrackLoudnessUseCase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +32,8 @@ class BgmPlaylistCoordinator @Inject constructor(
     private val repository: BgmPlaylistRepository,
     private val ambientAudioManager: AmbientAudioManager,
     private val preferencesRepository: UserPreferencesRepository,
-    private val measureTrackLoudness: MeasureTrackLoudnessUseCase
+    private val measureTrackLoudness: MeasureTrackLoudnessUseCase,
+    private val getLauncherQueue: GetLauncherQueueUseCase
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var watchJob: Job? = null
@@ -96,14 +98,14 @@ class BgmPlaylistCoordinator @Inject constructor(
     suspend fun reorder(orderedIds: List<Long>) = repository.reorder(orderedIds)
 
     private suspend fun pushPlaylist() {
-        val paths = repository.resolvePlaybackPaths()
+        val tracks = getLauncherQueue()
         withContext(Dispatchers.Main) {
-            ambientAudioManager.setPlaylistSource(paths) {
+            ambientAudioManager.setLauncherSource(tracks) {
                 repository.reconcileFolderSources()
-                repository.resolvePlaybackPaths()
+                getLauncherQueue()
             }
         }
-        scheduleLoudnessMeasurement(paths)
+        scheduleLoudnessMeasurement(tracks.mapNotNull { it.localPath })
     }
 
     private fun scheduleLoudnessMeasurement(paths: List<String>) {

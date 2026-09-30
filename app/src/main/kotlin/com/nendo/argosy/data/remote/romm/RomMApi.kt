@@ -108,6 +108,20 @@ interface RomMApi {
         @QueryMap params: Map<String, String>
     ): Response<RomMMusicFacetPage>
 
+    @GET("api/music/games")
+    suspend fun getMusicGames(
+        @QueryMap params: Map<String, String>
+    ): Response<RomMMusicGamePage>
+
+    @GET("api/music/playlists")
+    suspend fun getMusicPlaylists(): Response<List<RomMMusicPlaylist>>
+
+    @GET("api/music/playlists/{id}/tracks")
+    suspend fun getMusicPlaylistTracks(
+        @Path("id") playlistId: Long,
+        @QueryMap params: Map<String, String>
+    ): Response<RomMMusicTrackPage>
+
     @PUT("api/roms/{id}/props")
     suspend fun updateRomUserProps(
         @Path("id") romId: Long,

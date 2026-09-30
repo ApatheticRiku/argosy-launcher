@@ -58,6 +58,11 @@ private val DEVICE_AUTH_SCOPES = listOf(
     "devices.read", "devices.write",
 )
 
+private const val PLAYLISTS_READ_SCOPE = "playlists.read"
+
+private fun deviceAuthScopesFor(capabilities: RomMCapabilities): List<String> =
+    if (capabilities.supportsMusicPlaylists) DEVICE_AUTH_SCOPES + PLAYLISTS_READ_SCOPE else DEVICE_AUTH_SCOPES
+
 sealed class ConnectionState {
     data object Disconnected : ConnectionState()
     data object Connecting : ConnectionState()
@@ -535,7 +540,8 @@ class RomMConnectionManager @Inject constructor(
                     continue
                 }
                 val version = hb.body()?.version ?: "unknown"
-                if (!RomMCapabilities.from(version).supportsDeviceAuth) {
+                val capabilities = RomMCapabilities.from(version)
+                if (!capabilities.supportsDeviceAuth) {
                     return RomMResult.Error(
                         "Device pairing requires RomM ${RomMCapabilities.DEVICE_AUTH_MIN_VERSION}+ (server is $version)"
                     )
@@ -545,7 +551,7 @@ class RomMConnectionManager @Inject constructor(
                     clientDeviceIdentifier = clientDeviceIdentifier(),
                     name = deviceDisplayName(),
                     clientVersion = BuildConfig.VERSION_NAME,
-                    requestedScopes = DEVICE_AUTH_SCOPES,
+                    requestedScopes = deviceAuthScopesFor(capabilities),
                 )
                 val initResponse = tempApi.deviceAuthInit(request)
                 if (initResponse.isSuccessful) {

@@ -31,7 +31,6 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Person
@@ -73,7 +72,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 @Composable
-private fun quickFocusBackground(isFocused: Boolean): Color =
+internal fun quickFocusBackground(isFocused: Boolean): Color =
     if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f) else Color.Transparent
 
 enum class FanMode(val value: Int, @StringRes val labelRes: Int) {
@@ -103,7 +102,6 @@ data class QuickSettingsState(
     val hapticEnabled: Boolean = true,
     val vibrationStrength: Float = 0.5f,
     val vibrationSupported: Boolean = false,
-    val ambientAudioEnabled: Boolean = false,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = 25000,
     val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
@@ -177,7 +175,7 @@ sealed class QuickSettingsItem(
         visibleWhen = { it.isSocialLinked }
     )
 
-    data object BGM : QuickSettingsItem("bgm", QuickSettingsPage.MUSIC)
+    data object MusicPlayer : QuickSettingsItem("musicPlayer", QuickSettingsPage.MUSIC)
 
     companion object {
         private val DisplayHeader = Header(QuickSettingsGroup.DISPLAY)
@@ -192,7 +190,7 @@ sealed class QuickSettingsItem(
                 OtherHeader, Haptic, VibrationStrength,
                 SwapDisplays,
                 Performance, Fan, FanSpeed,
-                BGM
+                MusicPlayer
             )
     }
 }
@@ -242,7 +240,6 @@ fun QuickSettingsPanel(
     onSoundToggle: () -> Unit,
     onHapticToggle: () -> Unit,
     onVibrationStrengthChange: (Float) -> Unit,
-    onAmbientToggle: () -> Unit,
     onFanModeCycle: () -> Unit,
     onFanSpeedChange: (Int) -> Unit,
     onPerformanceModeCycle: () -> Unit,
@@ -250,6 +247,7 @@ fun QuickSettingsPanel(
     onBrightnessChange: (Float) -> Unit,
     onQuayPassToggle: () -> Unit = {},
     onSwapDisplays: () -> Unit = {},
+    musicPage: @Composable () -> Unit = {},
     onDismiss: () -> Unit,
     footerHints: List<Pair<InputButton, String>> = listOf(
         InputButton.B to stringResource(R.string.ui_quick_settings_footer_close)
@@ -406,13 +404,11 @@ fun QuickSettingsPanel(
                                     onClick = onSoundToggle
                                 )
 
-                                QuickSettingsItem.BGM -> QuickSettingToggle(
-                                    icon = if (state.ambientAudioEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
-                                    label = stringResource(R.string.ui_quick_settings_bgm),
-                                    isEnabled = state.ambientAudioEnabled,
-                                    isFocused = isFocused(item),
-                                    onClick = onAmbientToggle
-                                )
+                                QuickSettingsItem.MusicPlayer -> Box(
+                                    modifier = Modifier.fillParentMaxSize()
+                                ) {
+                                    musicPage()
+                                }
 
                                 QuickSettingsItem.SwapDisplays -> QuickSettingToggle(
                                     icon = Icons.Default.SwapHoriz,
@@ -516,7 +512,7 @@ private fun QuickSettingsRailIcon(
 }
 
 @Composable
-private fun QuickSettingItem(
+internal fun QuickSettingItem(
     icon: ImageVector,
     label: String,
     value: String,
@@ -639,7 +635,7 @@ private fun QuickSettingItemTwoLine(
 }
 
 @Composable
-private fun QuickSettingToggle(
+internal fun QuickSettingToggle(
     icon: ImageVector,
     label: String,
     isEnabled: Boolean,

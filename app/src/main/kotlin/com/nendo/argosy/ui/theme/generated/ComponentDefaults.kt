@@ -335,4 +335,14 @@ object ComponentDefaults {
         const val backgroundAlpha = 0.8f
     }
 
+    object MusicPlayer {
+        const val coverSizeDp = 64
+        const val transportButtonDp = 40
+        const val playButtonDp = 48
+        const val progressHeightDp = 4
+        const val rowCoverDp = 40
+        const val positionPollMs = 500
+        const val searchDebounceMs = 350
+    }
+
 }

@@ -57,8 +57,13 @@ import com.nendo.argosy.ui.components.FooterHostController
 import com.nendo.argosy.ui.components.LocalFooterHost
 import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.ui.components.MainDrawer
+import com.nendo.argosy.ui.components.QuickSettingsInputRouter
+import com.nendo.argosy.ui.components.QuickSettingsPage
 import com.nendo.argosy.ui.components.QuickSettingsPanel
 import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.musicplayer.MusicPlayerInputHandler
+import com.nendo.argosy.ui.components.musicplayer.MusicPlayerViewModel
+import com.nendo.argosy.ui.components.musicplayer.QuickSettingsMusicPage
 import com.nendo.argosy.ui.components.NetplayInviteModal
 import com.nendo.argosy.ui.components.NetplayJoinModal
 import com.nendo.argosy.ui.input.NetplayJoinInputHandler
@@ -115,6 +120,7 @@ private const val NAV_READY_TIMEOUT_MS = 45_000L
 fun ArgosyApp(
     viewModel: ArgosyViewModel = hiltViewModel(),
     quickMenuViewModel: QuickMenuViewModel = hiltViewModel(),
+    musicPlayerViewModel: MusicPlayerViewModel = hiltViewModel(),
     onStartupComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -129,6 +135,7 @@ fun ArgosyApp(
     val quickSettingsPage by viewModel.quickSettingsPage.collectAsState()
     val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
     val quickSettingsFooterHints by viewModel.quickSettingsFooterHints.collectAsState()
+    val musicPlayerUiState by musicPlayerViewModel.uiState.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
     val quickMenuState by quickMenuViewModel.uiState.collectAsState()
@@ -430,13 +437,22 @@ fun ArgosyApp(
     }
 
     // Quick settings input handler
-    val quickSettingsInputHandler = remember(viewModel, inputDispatcher) {
-        viewModel.createQuickSettingsInputHandler(
-            onDismiss = {
-                inputDispatcher.unsubscribeDrawer()
-                viewModel.setQuickSettingsOpen(false)
-            }
+    val quickSettingsInputHandler = remember(viewModel, musicPlayerViewModel, inputDispatcher) {
+        QuickSettingsInputRouter(
+            panelHandler = viewModel.createQuickSettingsInputHandler(
+                onDismiss = {
+                    inputDispatcher.unsubscribeDrawer()
+                    viewModel.setQuickSettingsOpen(false)
+                }
+            ),
+            pageHandler = MusicPlayerInputHandler(musicPlayerViewModel),
+            pageActive = { viewModel.isQuickSettingsPageActive(QuickSettingsPage.MUSIC) }
         )
+    }
+
+    val musicPageVisible = isQuickSettingsOpen && quickSettingsPage == QuickSettingsPage.MUSIC
+    LaunchedEffect(musicPageVisible) {
+        if (!musicPageVisible) musicPlayerViewModel.onPageHidden()
     }
 
     val openQuickSettings = remember(quickSettingsInputHandler) {
@@ -1242,9 +1258,12 @@ fun ArgosyApp(
             )
 
             // Quick Settings Panel (right-side drawer)
+            val musicBrowseOpen = musicPageVisible && musicPlayerUiState.browse != null
             QuickSettingsPanel(
                 onHintClick = { button ->
-                    if (button == com.nendo.argosy.ui.components.InputButton.B) closeQuickSettings()
+                    if (button == com.nendo.argosy.ui.components.InputButton.B) {
+                        if (musicBrowseOpen) musicPlayerViewModel.closeBrowse() else closeQuickSettings()
+                    }
                 },
                 isVisible = isQuickSettingsOpen,
                 state = QuickSettingsState(
@@ -1253,7 +1272,6 @@ fun ArgosyApp(
                     hapticEnabled = quickSettingsUiState.hapticEnabled,
                     vibrationStrength = quickSettingsUiState.vibrationStrength,
                     vibrationSupported = quickSettingsUiState.vibrationSupported,
-                    ambientAudioEnabled = quickSettingsUiState.ambientAudioEnabled,
                     fanMode = quickSettingsUiState.fanMode,
                     fanSpeed = quickSettingsUiState.fanSpeed,
                     performanceMode = quickSettingsUiState.performanceMode,
@@ -1273,7 +1291,6 @@ fun ArgosyApp(
                 onSoundToggle = { viewModel.toggleSound() },
                 onHapticToggle = { viewModel.toggleHaptic() },
                 onVibrationStrengthChange = { viewModel.setVibrationStrength(it) },
-                onAmbientToggle = { viewModel.toggleAmbientAudio() },
                 onFanModeCycle = { viewModel.cycleFanMode() },
                 onFanSpeedChange = { viewModel.setFanSpeed(it) },
                 onPerformanceModeCycle = { viewModel.cyclePerformanceMode() },
@@ -1281,9 +1298,14 @@ fun ArgosyApp(
                 onBrightnessChange = { viewModel.setScreenBrightness(it) },
                 onQuayPassToggle = { viewModel.toggleQuayPassFromQuickSettings() },
                 onSwapDisplays = { dsm?.swapRoles() },
+                musicPage = { QuickSettingsMusicPage(viewModel = musicPlayerViewModel) },
                 onDismiss = closeQuickSettings,
                 footerHints = quickSettingsFooterHints.map { (button, labelRes) ->
-                    button to stringResource(labelRes)
+                    val isBackFromBrowse =
+                        musicBrowseOpen && button == com.nendo.argosy.ui.components.InputButton.B
+                    button to stringResource(
+                        if (isBackFromBrowse) R.string.ui_quick_settings_hint_back else labelRes
+                    )
                 }
             )
 

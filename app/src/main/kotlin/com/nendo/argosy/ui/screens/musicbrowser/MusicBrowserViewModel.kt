@@ -13,6 +13,7 @@ import com.nendo.argosy.data.remote.romm.RomMMusicFacet
 import com.nendo.argosy.data.remote.romm.RomMMusicTrack
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
+import com.nendo.argosy.domain.usecase.music.BGM_MIN_DURATION_SECONDS
 import com.nendo.argosy.domain.usecase.music.DownloadMusicTrackUseCase
 import com.nendo.argosy.domain.usecase.music.GetLocalGameCoversUseCase
 import com.nendo.argosy.domain.usecase.music.GetLocalMusicTrackStateUseCase
@@ -50,7 +51,6 @@ private const val FACET_LIMIT = 200
 private const val PREFETCH_THRESHOLD = 8
 private const val SEARCH_DEBOUNCE_MS = 400L
 private const val NOTICE_DURATION_MS = 3000L
-private const val BGM_MIN_DURATION_SECONDS = 30.0
 
 @OptIn(FlowPreview::class)
 @HiltViewModel

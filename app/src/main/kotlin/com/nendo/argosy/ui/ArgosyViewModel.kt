@@ -154,7 +154,6 @@ data class QuickSettingsUiState(
     val hapticEnabled: Boolean = true,
     val vibrationStrength: Float = 0.5f,
     val vibrationSupported: Boolean = false,
-    val ambientAudioEnabled: Boolean = false,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = 25000,
     val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
@@ -986,7 +985,6 @@ class ArgosyViewModel @Inject constructor(
             hapticEnabled = prefs.hapticEnabled,
             vibrationStrength = vibrationStrength,
             vibrationSupported = hapticManager.supportsSystemVibration,
-            ambientAudioEnabled = prefs.ambientAudioEnabled,
             fanMode = device.fanMode,
             fanSpeed = device.fanSpeed,
             performanceMode = device.performanceMode,
@@ -1412,15 +1410,6 @@ class ArgosyViewModel @Inject constructor(
         hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
     }
 
-    fun toggleAmbientAudio(): Boolean {
-        val current = quickSettingsState.value.ambientAudioEnabled
-        val newState = !current
-        viewModelScope.launch {
-            preferencesRepository.setAmbientAudioEnabled(newState)
-        }
-        return newState
-    }
-
     private var volumeInputTimestamp = 0L
 
     fun setSystemVolume(volume: Float) {
@@ -1513,7 +1502,6 @@ class ArgosyViewModel @Inject constructor(
             hapticEnabled = qs.hapticEnabled,
             vibrationStrength = qs.vibrationStrength,
             vibrationSupported = qs.vibrationSupported,
-            ambientAudioEnabled = qs.ambientAudioEnabled,
             fanMode = qs.fanMode,
             fanSpeed = qs.fanSpeed,
             performanceMode = qs.performanceMode,
@@ -1536,6 +1524,9 @@ class ArgosyViewModel @Inject constructor(
 
     private fun activeQuickSettingsPage(state: QuickSettingsState): QuickSettingsPage =
         quickSettingsEffectivePage(_quickSettingsPage.value, state)
+
+    fun isQuickSettingsPageActive(page: QuickSettingsPage): Boolean =
+        activeQuickSettingsPage(currentQuickSettingsState()) == page
 
     private fun focusedQuickSettingsItem(state: QuickSettingsState): QuickSettingsItem? =
         quickSettingsItemAtFocusIndex(activeQuickSettingsPage(state), _quickSettingsFocusIndex.value, state)
@@ -1640,10 +1631,6 @@ class ArgosyViewModel @Inject constructor(
                 }
                 QuickSettingsItem.UISounds -> {
                     val enabled = toggleSound()
-                    InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-                }
-                QuickSettingsItem.BGM -> {
-                    val enabled = toggleAmbientAudio()
                     InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
                 }
                 QuickSettingsItem.QuayPass -> {

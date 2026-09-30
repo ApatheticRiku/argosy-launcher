@@ -589,6 +589,35 @@
     <string name="ui_quick_settings_group_display">डिस्प्ले</string>
     <string name="ui_quick_settings_group_audio">ऑडियो</string>
     <string name="ui_quick_settings_group_other">अन्य</string>
+    <string name="ui_quick_settings_hint_back">वापस</string>
+    <string name="ui_quick_settings_music_nothing_playing">कुछ नहीं चल रहा</string>
+    <string name="ui_quick_settings_music_source_launcher">लॉन्चर संगीत</string>
+    <string name="ui_quick_settings_music_track_position">%2$d में से %1$d</string>
+    <string name="ui_quick_settings_music_previous">पिछला ट्रैक</string>
+    <string name="ui_quick_settings_music_play">चलाएं</string>
+    <string name="ui_quick_settings_music_pause">रोकें</string>
+    <string name="ui_quick_settings_music_next">अगला ट्रैक</string>
+    <string name="ui_quick_settings_music_shuffle">शफ़ल</string>
+    <string name="ui_quick_settings_music_playlists">प्लेलिस्ट</string>
+    <string name="ui_quick_settings_music_soundtracks">गेम साउंडट्रैक</string>
+    <string name="ui_quick_settings_music_search_playlists">प्लेलिस्ट खोजें</string>
+    <string name="ui_quick_settings_music_search_soundtracks">साउंडट्रैक खोजें</string>
+    <string name="ui_quick_settings_music_load_failed">यह सूची लोड नहीं हो सकी</string>
+    <string name="ui_quick_settings_music_retry">फिर से कोशिश करें</string>
+    <string name="ui_quick_settings_music_empty_playlists">कोई प्लेलिस्ट मेल नहीं खाती</string>
+    <string name="ui_quick_settings_music_empty_soundtracks">कोई साउंडट्रैक नहीं मिला</string>
+    <string name="ui_quick_settings_music_notice_playlists_offline">RomM प्लेलिस्ट के लिए कनेक्शन ज़रूरी है</string>
+    <string name="ui_quick_settings_music_notice_soundtracks_offline">ऑफ़लाइन। डाउनलोड किए गए साउंडट्रैक दिखाए जा रहे हैं।</string>
+    <string name="ui_quick_settings_music_notice_local_only">डाउनलोड किए गए साउंडट्रैक दिखाए जा रहे हैं</string>
+    <string name="ui_quick_settings_music_notice_server_failed">RomM ने जवाब नहीं दिया। कुछ आइटम छूट सकते हैं।</string>
+    <string name="ui_quick_settings_music_notice_no_tracks">इस चयन में चलाने लायक कुछ नहीं है</string>
+    <string name="ui_quick_settings_music_playlist_owner">%1$s द्वारा</string>
+    <string name="ui_quick_settings_music_now_playing">अभी चल रहा है</string>
+    <string name="ui_quick_settings_music_back">वापस</string>
+    <plurals name="ui_quick_settings_music_track_count">
+        <item quantity="one">%d ट्रैक</item>
+        <item quantity="other">%d ट्रैक</item>
+    </plurals>
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 
