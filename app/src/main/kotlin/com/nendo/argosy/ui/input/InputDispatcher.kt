@@ -116,6 +116,11 @@ class InputDispatcher(
         drawerHandler = null
     }
 
+    fun releaseDrawer(handler: InputHandler): Boolean {
+        if (drawerHandler !== handler) return false
+        drawerHandler = null
+        return true
+    }
     fun subscribeView(handler: InputHandler) {
         clearModals()
         viewHandler = handler

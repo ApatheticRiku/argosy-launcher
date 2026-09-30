@@ -703,7 +703,20 @@ fun ArgosyApp(
             steamDownloadPrompt != null -> inputDispatcher.subscribeDrawer(steamDownloadPromptInputHandler)
             netplayJoinNeedsInput || netplayJoinModalActive -> inputDispatcher.subscribeDrawer(netplayJoinInputHandler)
             netplayInvitePrompt != null -> inputDispatcher.subscribeDrawer(netplayInviteInputHandler)
-            else -> inputDispatcher.unsubscribeDrawer()
+            else -> {
+                val released = listOf(
+                    steamDownloadPromptInputHandler,
+                    netplayJoinInputHandler,
+                    netplayInviteInputHandler
+                ).any { inputDispatcher.releaseDrawer(it) }
+                if (released) {
+                    when {
+                        viewModel.isQuickSettingsOpen.value -> inputDispatcher.subscribeDrawer(quickSettingsInputHandler)
+                        viewModel.isDrawerOpen.value -> inputDispatcher.subscribeDrawer(drawerInputHandler)
+                        quickMenuViewModel.uiState.value.isVisible -> inputDispatcher.subscribeDrawer(quickMenuInputHandler)
+                    }
+                }
+            }
         }
     }
 
@@ -846,8 +859,7 @@ fun ArgosyApp(
 
     // Collect gamepad events (Menu toggles drawer, L3 toggles quick menu, R3 toggles quick settings)
     LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.eventFlow().collect { input ->
-            val result = inputDispatcher.dispatch(input)
+        viewModel.gamepadInputHandler.eventFlow().collect { input ->            val result = inputDispatcher.dispatch(input)
             val event = input.event
             val isBumper = event == GamepadEvent.PrevSection || event == GamepadEvent.NextSection
             if (!isBumper || inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
