@@ -2,6 +2,9 @@ package com.nendo.argosy.data.remote.romm
 
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtProvider
+import com.nendo.argosy.data.model.ArtSlot
+import com.nendo.argosy.data.model.ServerArt
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.util.Logger
 import javax.inject.Inject
@@ -57,6 +60,48 @@ class RomMApiClient @Inject constructor(
      */
     fun buildLogoUrls(rom: RomMRom): List<String> =
         (listOfNotNull(buildResourceUrl(rom.ssMetadata?.logoPath)) + rom.clearLogoUrls).distinct()
+
+    /**
+     * The game's background candidates for library sync, in preference order: the ScreenScraper
+     * fanart RomM stored, then LaunchBox's "Fanart - Background" images, then screenshots.
+     * ScreenScraper's own fanart url is left out, so a whole-library sync never fetches from
+     * ScreenScraper under RomM's developer credentials.
+     */
+    fun buildBackgroundUrls(rom: RomMRom): List<String> =
+        backgroundArt(rom, includeProviderUrls = false).map { it.url }
+
+    /**
+     * Every piece of art the server knows of for [slot], best first, each tagged with the
+     * provider it came from. The artwork picker lists these ahead of an online search, one game
+     * at a time, so ScreenScraper's fanart url stands in when RomM did not store the file.
+     */
+    fun serverArt(rom: RomMRom, slot: ArtSlot): List<ServerArt> {
+        val tagged = when (slot) {
+            ArtSlot.COVER -> listOfNotNull(
+                buildMediaUrl(rom.coverLarge)?.let { ServerArt(it, ArtProvider.ROMM) },
+                buildResourceUrl(rom.ssMetadata?.box2dPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+            ) + rom.boxFrontUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+            ArtSlot.BACKGROUND -> backgroundArt(rom, includeProviderUrls = true)
+            ArtSlot.LOGO -> listOfNotNull(
+                buildResourceUrl(rom.ssMetadata?.logoPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+            ) + rom.clearLogoUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+        }
+        return tagged.distinctBy { it.url }
+    }
+
+    private fun backgroundArt(rom: RomMRom, includeProviderUrls: Boolean): List<ServerArt> {
+        val allScreenshots = rom.screenshotUrls.ifEmpty {
+            rom.screenshotPaths?.mapNotNull { buildMediaUrl(it) }.orEmpty()
+        }
+        val screenshots = listOfNotNull(allScreenshots.getOrNull(1)) + allScreenshots
+        val ssFanart = buildResourceUrl(rom.ssMetadata?.fanartPath)
+            ?: rom.ssMetadata?.fanartUrl?.takeIf { includeProviderUrls && it.startsWith("http") }
+        return (
+            listOfNotNull(ssFanart?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }) +
+                rom.backgroundUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) } +
+                screenshots.map { ServerArt(it, ArtProvider.ROMM) }
+            ).distinctBy { it.url }
+    }
 
     fun isVersionAtLeast(minVersion: String): Boolean =
         connectionManager.isVersionAtLeast(minVersion)

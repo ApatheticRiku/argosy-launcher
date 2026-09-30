@@ -85,6 +85,7 @@ class RomMLibrarySyncChangesTest {
         } answers { callOriginal() }
         every { apiClient.buildCoverUrls(any()) } returns emptyList()
         every { apiClient.buildLogoUrls(any()) } returns emptyList()
+        every { apiClient.buildBackgroundUrls(any()) } returns emptyList()
         every { apiClient.buildMediaUrl(any()) } returns null
         every { apiClient.buildResourceUrl(any()) } returns null
         coEvery { api.getPlatforms() } returns Response.success(listOf(platform))

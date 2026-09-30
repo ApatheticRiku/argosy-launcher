@@ -1,6 +1,8 @@
 package com.nendo.argosy.data.remote.romm
 
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtSlot
+import com.nendo.argosy.data.model.ServerArt
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -172,6 +174,12 @@ class RomMRepository @Inject constructor(
         searchTerm: String,
         artType: RomMCoverArtType
     ): RomMResult<List<RomMCoverResource>> = apiClient.searchCovers(searchTerm, artType)
+
+    suspend fun getServerArt(romId: Long, slot: ArtSlot): RomMResult<List<ServerArt>> =
+        when (val rom = apiClient.getRom(romId)) {
+            is RomMResult.Success -> RomMResult.Success(apiClient.serverArt(rom.data, slot))
+            is RomMResult.Error -> rom
+        }
 
     fun getCapabilities(): RomMCapabilities = apiClient.getCapabilities()
 

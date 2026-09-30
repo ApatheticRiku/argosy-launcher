@@ -118,6 +118,7 @@ class RomMLibrarySyncUnsentUserPropsTest {
         coEvery { apiClient.getRom(romId) } returns RomMResult.Success(rom())
         every { apiClient.buildCoverUrls(any()) } returns emptyList()
         every { apiClient.buildLogoUrls(any()) } returns emptyList()
+        every { apiClient.buildBackgroundUrls(any()) } returns emptyList()
         every { apiClient.buildMediaUrl(any()) } returns null
         every { apiClient.buildResourceUrl(any()) } returns null
         coEvery { platformDao.getById(1L) } returns mockk<PlatformEntity>(relaxed = true) {

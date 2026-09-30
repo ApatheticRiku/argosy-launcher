@@ -197,7 +197,14 @@ private fun ArtTile(
                 modifier = Modifier.matchParentSize()
             )
         }
-        candidate.dimensionLabel?.let { label ->
+        val origin = candidate.originRes?.let { stringResource(it) }
+        val dimensions = candidate.dimensionLabel
+        val caption = when {
+            origin != null && dimensions != null ->
+                stringResource(R.string.gamedetail_art_picker_caption, origin, dimensions)
+            else -> origin ?: dimensions
+        }
+        caption?.let { label ->
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,

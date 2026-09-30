@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.gamedetail
 
 import android.content.Intent
+import androidx.annotation.StringRes
 import com.nendo.argosy.core.game.AchievementUi
 import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.domain.model.SyncProgress
@@ -166,7 +167,8 @@ data class ArtCandidate(
     val source: String,
     val thumbUrl: String? = null,
     val width: Int? = null,
-    val height: Int? = null
+    val height: Int? = null,
+    @StringRes val originRes: Int? = null
 ) {
     val dimensionLabel: String?
         get() = if (width != null && height != null) "$width x $height" else null

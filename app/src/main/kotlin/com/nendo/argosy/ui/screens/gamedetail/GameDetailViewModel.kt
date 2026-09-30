@@ -45,6 +45,7 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.common.isAndroidApp
+import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.common.reportTitleIdRecheck
 import com.nendo.argosy.ui.common.isSteamGame
 import com.nendo.argosy.ui.common.toHomeGameUi
@@ -181,6 +182,7 @@ class GameDetailViewModel @Inject constructor(
     private val achievementRefetchThresholdMs = 5 * 60 * 1000L
 
     private var backgroundRepairPending = false
+    private var serverArtCandidates: List<ArtCandidate> = emptyList()
     private var gameFilesObserverJob: kotlinx.coroutines.Job? = null
     private var gameEntityObserverJob: kotlinx.coroutines.Job? = null
     private var activeSaveObserverJob: kotlinx.coroutines.Job? = null
@@ -1842,12 +1844,33 @@ class GameDetailViewModel @Inject constructor(
         val canSearch = slot.pickerConfig.canSearch(state.canSearchCovers)
         artworkDelegate.leaveForPicker()
         pickerModalDelegate.showArtPicker(slot, game.title, canSearch)
-        if (canSearch) {
-            searchArtwork(game.title)
-        } else {
-            pickerModalDelegate.setArtCandidates(screenshotCandidates(slot))
+        serverArtCandidates = emptyList()
+        pickerModalDelegate.setArtPickerSearching()
+        viewModelScope.launch {
+            val serverArt = loadServerArt(slot)
+            val current = pickerModalDelegate.state.value
+            if (!current.showArtPicker || current.artPickerSlot != slot) return@launch
+            serverArtCandidates = serverArt
+            if (canSearch) {
+                searchArtwork(game.title)
+            } else {
+                pickerModalDelegate.setArtCandidates(offlineArtCandidates(slot))
+            }
         }
     }
+
+    private suspend fun loadServerArt(slot: ArtSlot): List<ArtCandidate> {
+        val rommId = gameRepository.getById(currentGameId)?.rommId ?: return emptyList()
+        return when (val result = romMRepository.getServerArt(rommId, slot)) {
+            is RomMResult.Success -> result.data.map { art ->
+                ArtCandidate(source = art.url, originRes = art.provider.labelRes)
+            }
+            is RomMResult.Error -> emptyList()
+        }
+    }
+
+    private fun offlineArtCandidates(slot: ArtSlot): List<ArtCandidate> =
+        serverArtCandidates.ifEmpty { screenshotCandidates(slot) }
 
     private fun screenshotCandidates(slot: ArtSlot): List<ArtCandidate> {
         if (!slot.pickerConfig.offersScreenshots) return emptyList()
@@ -1870,30 +1893,31 @@ class GameDetailViewModel @Inject constructor(
         val slot = picker.artPickerSlot
         val term = query.trim()
         if (term.isEmpty()) {
-            pickerModalDelegate.setArtCandidates(screenshotCandidates(slot))
+            pickerModalDelegate.setArtCandidates(offlineArtCandidates(slot))
             return
         }
         pickerModalDelegate.setArtPickerSearching()
         viewModelScope.launch {
-            val screenshots = screenshotCandidates(slot)
+            val onServer = offlineArtCandidates(slot)
             val result = romMRepository.searchCovers(term, RomMCoverArtType.forSlot(slot))
             val current = pickerModalDelegate.state.value
             if (!current.showArtPicker || current.artPickerSlot != slot) return@launch
             when (result) {
                 is RomMResult.Success -> pickerModalDelegate.setArtCandidates(
-                    result.data.mapNotNull { resource ->
+                    serverArtCandidates + result.data.mapNotNull { resource ->
                         resource.url?.let { url ->
                             ArtCandidate(
                                 source = url,
                                 thumbUrl = resource.thumb,
                                 width = resource.width,
-                                height = resource.height
+                                height = resource.height,
+                                originRes = R.string.gamedetail_art_picker_origin_steamgriddb
                             )
                         }
-                    } + screenshots
+                    } + screenshotCandidates(slot).takeIf { serverArtCandidates.isEmpty() }.orEmpty()
                 )
                 is RomMResult.Error -> pickerModalDelegate.setArtCandidates(
-                    screenshots,
+                    onServer,
                     error = context.getString(R.string.gamedetail_art_picker_error, result.message)
                 )
             }

@@ -139,6 +139,16 @@ data class RomMRom(
             ?.map { it.url }
             ?: emptyList()
 
+    val boxFrontUrls: List<String>
+        get() = launchboxMetadata?.images
+            ?.filter {
+                it.type.startsWith("Box - Front", ignoreCase = true) ||
+                    it.type.equals("Fanart - Box - Front", ignoreCase = true)
+            }
+            ?.map { it.url }
+            ?.filter { it.startsWith("http://") || it.startsWith("https://") }
+            ?: emptyList()
+
     /**
      * LaunchBox "Clear Logo" images reachable over http(s). A local-LaunchBox server hands out
      * `launchbox-file://` urls the client cannot fetch, so those are left out.
@@ -333,7 +343,9 @@ data class RomMSsMetadata(
     @Json(name = "box2d_path") val box2dPath: String? = null,
     @Json(name = "box2d_back_path") val box2dBackPath: String? = null,
     @Json(name = "box2d_side_path") val box2dSidePath: String? = null,
-    @Json(name = "logo_path") val logoPath: String? = null
+    @Json(name = "logo_path") val logoPath: String? = null,
+    @Json(name = "fanart_path") val fanartPath: String? = null,
+    @Json(name = "fanart_url") val fanartUrl: String? = null
 )
 
 @JsonClass(generateAdapter = true)

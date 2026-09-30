@@ -1115,9 +1115,7 @@ class RomMLibrarySyncService @Inject constructor(
             decodedImageCacheDirty = true
         }
 
-        val backgroundUrls = (
-            rom.backgroundUrls + listOfNotNull(screenshotUrls.getOrNull(1)) + screenshotUrls
-        ).distinct()
+        val backgroundUrls = apiClient.buildBackgroundUrls(rom)
         val cachedBackground = when {
             !contentChanged && existing?.backgroundPath?.startsWith("/") == true -> existing.backgroundPath
             backgroundUrls.isNotEmpty() -> {
