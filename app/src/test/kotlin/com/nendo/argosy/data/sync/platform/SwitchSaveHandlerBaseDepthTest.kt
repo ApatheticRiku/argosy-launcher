@@ -90,6 +90,24 @@ class SwitchSaveHandlerBaseDepthTest {
     }
 
     @Test
+    fun `a patch id finds the save under its application id`() {
+        val expected = File(saveRoot(), "$userFolder/$profileFolder/$titleId").apply { mkdirs() }
+
+        val result = handler.findSaveFolderBySaveId(saveRoot().absolutePath, "01002DA013484800")
+
+        assertEquals(expected.absolutePath, result)
+    }
+
+    @Test
+    fun `an add-on content id finds the save under its application id`() {
+        val expected = File(profileDir(), titleId).apply { mkdirs() }
+
+        val result = handler.findSaveFolderBySaveId(profileDir().absolutePath, "01002DA013485003")
+
+        assertEquals(expected.absolutePath, result)
+    }
+
+    @Test
     fun `the save root still skips a title id sitting directly under it`() {
         val root = saveRoot()
         File(root, titleId).apply { mkdirs() }

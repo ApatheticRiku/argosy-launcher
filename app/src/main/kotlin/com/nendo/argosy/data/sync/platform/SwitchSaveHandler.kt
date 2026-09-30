@@ -4,6 +4,7 @@ import android.content.Context
 import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.SwitchProfileParser
+import com.nendo.argosy.data.emulator.SwitchTitleIds
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.storage.FileInfo
 import com.nendo.argosy.data.sync.SaveArchiver
@@ -186,7 +187,8 @@ class SwitchSaveHandler @Inject constructor(
 
         val isValid = isValidUserFolderId(userFolder) &&
             isValidProfileFolderId(profileFolder) &&
-            isValidTitleId(titleId)
+            isValidTitleId(titleId) &&
+            SwitchTitleIds.baseApplicationId(titleId).equals(titleId, ignoreCase = true)
 
         if (!isValid) {
             Logger.debug(TAG, "isValidCachedSavePath: invalid | path=$path, user=$userFolder, profile=$profileFolder, titleId=$titleId")
@@ -217,7 +219,7 @@ class SwitchSaveHandler @Inject constructor(
                 ?: resolvedPaths.firstOrNull()
         } ?: return null
 
-        val normalizedTitleId = titleId.uppercase()
+        val normalizedTitleId = SwitchTitleIds.baseApplicationId(titleId).uppercase()
         val isDeviceSave = normalizedTitleId in DEVICE_SAVE_TITLE_IDS
 
         val profileFolder = if (isDeviceSave) {
@@ -301,7 +303,7 @@ class SwitchSaveHandler @Inject constructor(
             return null
         }
 
-        val normalizedSaveId = saveId.uppercase()
+        val normalizedSaveId = SwitchTitleIds.baseApplicationId(saveId).uppercase()
         Logger.debug(TAG, "findSaveFolderBySaveId: scanning | path=$basePath, saveId=$normalizedSaveId")
 
         if (isProfileLevel(basePath)) {
@@ -372,7 +374,7 @@ class SwitchSaveHandler @Inject constructor(
         saveId: String,
         emulatorPackage: String? = null
     ): String {
-        val normalizedSaveId = saveId.uppercase()
+        val normalizedSaveId = SwitchTitleIds.baseApplicationId(saveId).uppercase()
         val profileFolder = if (isDeviceSave(normalizedSaveId)) {
             findOrCreateZeroProfileFolder(baseDir)
         } else {

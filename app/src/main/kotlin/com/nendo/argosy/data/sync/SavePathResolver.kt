@@ -5,6 +5,7 @@ import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.RetroArchConfigParser
 import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
+import com.nendo.argosy.data.emulator.SwitchTitleIds
 import com.nendo.argosy.data.emulator.TitleIdExtractor
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
@@ -416,8 +417,12 @@ class SavePathResolver @Inject constructor(
         val isSwitchPlatform = platformSlug == "switch"
 
         val validatedCachedSaveId = if (cachedSaveId != null && isSwitchPlatform) {
-            if (switchSaveHandler.isValidTitleId(cachedSaveId)) {
-                cachedSaveId
+            val baseCachedSaveId = SwitchTitleIds.baseApplicationId(cachedSaveId)
+            if (switchSaveHandler.isValidTitleId(baseCachedSaveId)) {
+                if (gameId != null && baseCachedSaveId != cachedSaveId) {
+                    rebaseStoredSwitchIds(gameId)
+                }
+                baseCachedSaveId
             } else {
                 Logger.warn(TAG, "[SaveSync] DISCOVER | Invalid cached titleId=$cachedSaveId (doesn't start with 01), clearing")
                 if (gameId != null) {
@@ -479,7 +484,11 @@ class SavePathResolver @Inject constructor(
 
         val allCandidates = mutableListOf<String>()
         if (gameId != null) {
-            allCandidates.addAll(titleDbRepository.getCachedCandidates(gameId))
+            allCandidates.addAll(
+                titleDbRepository.getCachedCandidates(gameId)
+                    .map { if (isSwitchPlatform) SwitchTitleIds.baseApplicationId(it) else it }
+                    .distinct()
+            )
         }
         if (gameId != null && gameTitle != null) {
             val remoteCandidates = titleDbRepository.resolveTitleIdCandidates(gameId, gameTitle, platformSlug)
@@ -555,6 +564,19 @@ class SavePathResolver @Inject constructor(
     ): String? {
         val gciPaths = gciSaveHandler.discoverAllSavePaths(config, romPath, basePathOverride)
         return gciPaths.firstOrNull()
+    }
+
+    private suspend fun rebaseStoredSwitchIds(gameId: Long) {
+        val game = gameDao.getById(gameId) ?: return
+        val titleId = game.titleId?.let(SwitchTitleIds::baseApplicationId)
+        val saveId = game.saveId?.let(SwitchTitleIds::baseApplicationId)
+        if (titleId == game.titleId && saveId == game.saveId) return
+        Logger.info(
+            TAG,
+            "[SaveSync] DISCOVER | Rebasing stored Switch ids onto the application | gameId=$gameId, " +
+                "titleId=${game.titleId}->$titleId, saveId=${game.saveId}->$saveId"
+        )
+        gameDao.setTitleAndSaveIdWithLock(gameId, titleId, saveId, game.titleIdLocked)
     }
 
     private fun findSaveFolderBySaveId(basePath: String, titleId: String, platformSlug: String): String? {

@@ -2,6 +2,7 @@ package com.nendo.argosy.data.titledb
 
 import android.content.Context
 import android.provider.Settings
+import com.nendo.argosy.data.emulator.SwitchTitleIds
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.util.Logger
 import com.squareup.moshi.Moshi
@@ -12,6 +13,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "TitleDbRepository"
+private const val SWITCH = "switch"
 
 @Singleton
 class TitleDbRepository @Inject constructor(
@@ -45,9 +47,9 @@ class TitleDbRepository @Inject constructor(
             return null
         }
 
-        val cached = gameDao.getTitleId(gameId)
+        val cached = gameDao.getTitleId(gameId)?.let { baseTitleId(it, mappedPlatform) }
         if (cached != null) {
-            if (mappedPlatform == "switch" && !isValidSwitchTitleId(cached)) {
+            if (mappedPlatform == SWITCH && !isValidSwitchTitleId(cached)) {
                 Logger.warn(TAG, "Invalid cached titleId=$cached for game=$gameId (doesn't start with 01), clearing")
                 gameDao.updateTitleId(gameId, null)
             } else {
@@ -68,9 +70,10 @@ class TitleDbRepository @Inject constructor(
         }
 
         if (result != null) {
-            Logger.info(TAG, "Found titleId=${result.titleId} for game=$gameId (score=${result.score})")
-            gameDao.updateTitleId(gameId, result.titleId)
-            return result.titleId
+            val titleId = baseTitleId(result.titleId, mappedPlatform)
+            Logger.info(TAG, "Found titleId=$titleId (lookup=${result.titleId}) for game=$gameId (score=${result.score})")
+            gameDao.updateTitleId(gameId, titleId)
+            return titleId
         }
 
         Logger.debug(TAG, "No titleId found for game=$gameId")
@@ -107,13 +110,13 @@ class TitleDbRepository @Inject constructor(
             return emptyList()
         }
 
-        val cached = getCachedCandidates(gameId)
+        val mappedPlatform = mapPlatformSlug(platform)
+        val cached = getCachedCandidates(gameId).map { baseTitleId(it, mappedPlatform) }.distinct()
         if (cached.isNotEmpty()) {
             Logger.debug(TAG, "Using cached candidates for game=$gameId: $cached")
             return cached
         }
 
-        val mappedPlatform = mapPlatformSlug(platform)
         if (mappedPlatform == null) {
             Logger.debug(TAG, "Platform $platform not supported for TitleDB lookup")
             return emptyList()
@@ -131,7 +134,7 @@ class TitleDbRepository @Inject constructor(
         }
 
         if (result != null && result.candidates.isNotEmpty()) {
-            val titleIds = result.candidates.map { it.titleId }
+            val titleIds = result.candidates.map { baseTitleId(it.titleId, mappedPlatform) }.distinct()
             Logger.info(TAG, "Found ${titleIds.size} candidates for game=$gameId: $titleIds")
 
             val json = stringListAdapter.toJson(titleIds)
@@ -160,12 +163,15 @@ class TitleDbRepository @Inject constructor(
 
     private fun mapPlatformSlug(platform: String): String? {
         return when (platform.lowercase()) {
-            "switch", "nintendo_switch", "ns" -> "switch"
+            "switch", "nintendo_switch", "ns" -> SWITCH
             "wiiu", "wii_u", "wup" -> "wiiu"
             "3ds", "nintendo_3ds", "n3ds" -> "3ds"
             else -> null
         }
     }
+
+    private fun baseTitleId(titleId: String, mappedPlatform: String?): String =
+        if (mappedPlatform == SWITCH) SwitchTitleIds.baseApplicationId(titleId) else titleId
 
     private fun isValidSwitchTitleId(titleId: String): Boolean {
         return titleId.length == 16 &&

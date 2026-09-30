@@ -207,6 +207,18 @@ emulator's user and profile directories:
 Both intermediate levels are discovered. `isValidCachedSavePath` re-checks the
 shape before trusting a cached path.
 
+The title id in the path is always the application id. A merged NSP or XCI can
+report its patch (`application + 0x800`) or add-on content
+(`(application & ~0xFFF) + 0x1000 + index`) id instead, per nxdumptool's
+`include/core/title.h`, and
+the emulator never keeps a save under either. `SwitchTitleIds.baseApplicationId`
+maps both back to the application. `TitleIdExtractor` applies it to sigil
+output, `TitleDbRepository` to lookup results and cached candidates, and
+`SwitchSaveHandler` to every id it searches for, builds a path from, or reads
+out of a restore zip. `isValidCachedSavePath` rejects a cached path whose last
+segment is a patch or add-on content id, and discovery rewrites a stored row
+still holding one.
+
 ### PS3 (`Ps3FolderHandler`)
 
 `save_id` is the 9-character title id (`BCUS99086`) read from `PARAM.SFO`,

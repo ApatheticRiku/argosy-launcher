@@ -104,6 +104,42 @@ class SwitchSaveHandlerIdentityTest {
     }
 
     @Test
+    fun `isValidCachedSavePath rejects a folder named for a patch or add-on content id`() {
+        assertFalse(
+            "Patch id folder",
+            handler.isValidCachedSavePath("/save/0000000000000000/FEDCBA9876543210FEDCBA9876543210/01007EF00011E800")
+        )
+        assertFalse(
+            "Add-on content id folder",
+            handler.isValidCachedSavePath("/save/0000000000000000/FEDCBA9876543210FEDCBA9876543210/01007EF00011F001")
+        )
+    }
+
+    @Test
+    fun `constructSavePath places a patch id under its application id`() {
+        val base = File(tempDir, "save").apply { mkdirs() }
+        val userDir = File(base, "0000000000000000").apply { mkdirs() }
+        val profileDir = File(userDir, "FEDCBA9876543210FEDCBA9876543210").apply { mkdirs() }
+        File(profileDir, "marker.bin").writeBytes(byteArrayOf(1))
+
+        val path = handler.constructSavePath(base.absolutePath, "01007EF00011E800", emulatorPackage = null)
+
+        assertEquals("${profileDir.absolutePath}/01007EF00011E000", path)
+    }
+
+    @Test
+    fun `constructSavePath routes an add-on content id of a device-save title to the zero profile`() {
+        val base = File(tempDir, "save").apply { mkdirs() }
+
+        val path = handler.constructSavePath(base.absolutePath, "01006F8002327002", emulatorPackage = null)
+
+        assertEquals(
+            "${base.absolutePath}/0000000000000000/00000000000000000000000000000000/01006F8002326000",
+            path,
+        )
+    }
+
+    @Test
     fun `findOrCreateZeroProfileFolder creates the canonical zero path under basePath`() {
         val base = File(tempDir, "save").apply { mkdirs() }
         val created = handler.findOrCreateZeroProfileFolder(base.absolutePath)

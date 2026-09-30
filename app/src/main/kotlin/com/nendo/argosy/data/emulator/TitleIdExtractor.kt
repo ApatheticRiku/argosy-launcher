@@ -40,7 +40,9 @@ data class TitleIdResult(
  *   - expose the legacy Kotlin API surface used by SavePathResolver,
  *     TitleIdDownloadObserver, and SaveDownloader, and
  *   - resolve the Switch prod.keys path (Android-specific filesystem
- *     discovery - sigil knows about ROMs, not about Android storage).
+ *     discovery - sigil knows about ROMs, not about Android storage), and
+ *   - map a Switch patch or add-on content id to its application id
+ *     ([SwitchTitleIds.baseApplicationId]), the id saves are keyed by.
  */
 @Singleton
 class TitleIdExtractor @Inject constructor(
@@ -56,7 +58,8 @@ class TitleIdExtractor @Inject constructor(
         platformId: String,
         emulatorPackage: String? = null
     ): TitleIdResult? {
-        val prodKeys = if (platformId == "switch" || platformId == "nsw") {
+        val isSwitch = platformId == "switch" || platformId == "nsw"
+        val prodKeys = if (isSwitch) {
             emulatorPackage?.let { switchKeyManager.findProdKeysPath(it) }
         } else null
 
@@ -72,13 +75,17 @@ class TitleIdExtractor @Inject constructor(
         Logger.debug(
             TAG,
             "[SaveSync] DETECT | sigil hit | file=${romFile.name}, platform=$platformId, " +
-                "titleId=${r.titleId}, raw=${r.rawSerial}, saveId=${r.saveId}, source=${r.source}, usage=${r.usage}"
+                "titleId=${r.titleId}, raw=${r.rawSerial}, saveId=${r.saveId}, source=${r.source}, usage=${r.usage}, " +
+                "switchContentType=${r.switchContentType}"
         )
+        val titleId = if (isSwitch) SwitchTitleIds.baseApplicationId(r.titleId) else r.titleId
+        val saveId = r.saveId.ifBlank { r.titleId }
+            .let { if (isSwitch) SwitchTitleIds.baseApplicationId(it) else it }
         return TitleIdResult(
-            titleId = r.titleId,
+            titleId = titleId,
             fromBinary = r.source == SigilResult.Source.Binary,
             rawSerial = r.rawSerial,
-            saveId = r.saveId.ifBlank { r.titleId },
+            saveId = saveId,
             usage = when (r.usage) {
                 SigilResult.Usage.FolderExact  -> TitleIdResult.SaveUsage.FOLDER_EXACT
                 SigilResult.Usage.FolderPrefix -> TitleIdResult.SaveUsage.FOLDER_PREFIX

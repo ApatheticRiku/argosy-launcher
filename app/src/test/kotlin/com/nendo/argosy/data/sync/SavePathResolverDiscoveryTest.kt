@@ -293,6 +293,62 @@ class SavePathResolverDiscoveryTest {
     }
 
     @Test
+    fun `a cached patch id is searched as its application and the stored row is rebased`() = runTest {
+        val patchId = "01007EF00011E800"
+        coEvery { gameDao.getById(1L) } returns
+            rommGame().copy(titleId = patchId, saveId = patchId, titleIdLocked = true)
+        every {
+            switchSaveHandler.findSaveFolderBySaveId(any(), titleId)
+        } returns "/path/found/$titleId"
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "eden", gameTitle = "BOTW", platformSlug = "switch",
+            romPath = "/roms/botw.nsp", cachedSaveId = patchId, emulatorPackage = "dev.eden.eden_emulator",
+            gameId = 1L,
+        )
+
+        assertEquals("/path/found/$titleId", result)
+        coVerify(exactly = 1) { gameDao.setTitleAndSaveIdWithLock(1L, titleId, titleId, true) }
+        coVerify(exactly = 0) { gameDao.updateTitleId(any(), any()) }
+    }
+
+    @Test
+    fun `a cached application id leaves the stored row alone`() = runTest {
+        coEvery { gameDao.getById(1L) } returns
+            rommGame().copy(titleId = titleId, saveId = titleId, titleIdLocked = true)
+        every {
+            switchSaveHandler.findSaveFolderBySaveId(any(), titleId)
+        } returns "/path/found/$titleId"
+
+        resolver.discoverSavePath(
+            emulatorId = "eden", gameTitle = "BOTW", platformSlug = "switch",
+            romPath = "/roms/botw.nsp", cachedSaveId = titleId, emulatorPackage = "dev.eden.eden_emulator",
+            gameId = 1L,
+        )
+
+        coVerify(exactly = 0) { gameDao.setTitleAndSaveIdWithLock(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `cached titledb candidates are searched as their application ids`() = runTest {
+        val dlcCandidate = "01007EF00011F002"
+        coEvery { titleDbRepository.getCachedCandidates(1L) } returns listOf(dlcCandidate)
+        val matched = File(basePath, "0000000000000000/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB/$titleId").apply { mkdirs() }
+        every {
+            switchSaveHandler.findSaveFolderBySaveId(any(), titleId)
+        } returns matched.absolutePath
+
+        val result = resolver.discoverSavePath(
+            emulatorId = "eden", gameTitle = "BOTW", platformSlug = "switch",
+            romPath = "/roms/botw.nsp", cachedSaveId = null, emulatorPackage = "dev.eden.eden_emulator",
+            gameId = 1L,
+        )
+
+        assertEquals(matched.absolutePath, result)
+        coVerify(exactly = 1) { gameDao.updateTitleId(1L, titleId) }
+    }
+
+    @Test
     fun `invalid cached titleId is cleared and falls through to extraction`() = runTest {
         val invalidCached = "FF007EF00011E000"
         every { titleIdExtractor.extractTitleIdWithSource(any(), "switch", any()) } returns
@@ -355,7 +411,7 @@ class SavePathResolverDiscoveryTest {
 
     @Test
     fun `titleDb candidate fallback caches the winning titleId on best match`() = runTest {
-        val candidateA = "0100ABC000DEF000"
+        val candidateA = "0100ABC000DEE000"
         val candidateB = titleId
         every { titleIdExtractor.extractTitleIdWithSource(any(), "switch", any()) } returns null
         coEvery { titleDbRepository.getCachedCandidates(1L) } returns listOf(candidateA, candidateB)

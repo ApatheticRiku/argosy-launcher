@@ -129,6 +129,21 @@ class SwitchSaveHandlerResolveTargetTest {
         )
     }
 
+    @Test
+    fun `a zip rooted at a patch id restores into the application folder`() {
+        val source = SaveFixtures.switchTitleFolder(File(tempDir, "source"), "01007EF00011E800")
+        val zip = File(tempDir, "patch.zip")
+        assertTrue(archiver.zipFolder(source, zip))
+
+        val basePath = File(tempDir, "base").apply { mkdirs() }
+        val profileDir = File(basePath, "0000000000000000/FEDCBA9876543210FEDCBA9876543210").apply { mkdirs() }
+        File(profileDir, "marker.bin").writeBytes(byteArrayOf(1))
+
+        val target = handler.resolveSaveTargetPath(zip, config(), emulatorPackage = null, basePathOverride = basePath.absolutePath)
+
+        assertEquals("${profileDir.absolutePath}/$titleId", target)
+    }
+
     private fun config() = SavePathConfig(
         emulatorId = "eden",
         defaultPaths = listOf("/storage/Android/data/{package}/files/nand/user/save"),
