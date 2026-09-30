@@ -57,6 +57,9 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val OFFLINE_GRACE_MS = 20_000L
+private const val ONLINE_NOTICE_MIN_OFFLINE_MS = 5 * 60_000L
+
 @Singleton
 class SocialRepository @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -80,6 +83,8 @@ class SocialRepository @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var hasCompletedInitialSync = false
+    private val pendingOffline = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    private val offlineSince = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private var achievementSyncSuppressed = false
 
     private val _connectionState = MutableStateFlow<SocialConnectionState>(SocialConnectionState.Disconnected)
@@ -337,41 +342,7 @@ class SocialRepository @Inject constructor(
                         val update = message.update
                         val newPresence = PresenceStatus.fromValue(update.status)
                         Log.d(TAG, "Presence update for ${update.userId}: ${update.status}, game=${update.game?.title}")
-
-                        _friends.value = _friends.value.map { friend ->
-                            if (friend.id == update.userId) {
-                                val oldPresence = friend.presence
-                                val oldGame = friend.currentGame
-
-                                // Server sometimes emits IN_GAME presence refreshes without re-sending
-                                // the game/netplay_session payload. Replacing blindly flips the UI to
-                                // "Online" mid-session; preserve old game info when the new payload is
-                                // silent about it but status still implies play.
-                                val statusImpliesTitle = newPresence == PresenceStatus.IN_GAME ||
-                                    newPresence == PresenceStatus.WATCHING
-                                val mergedGame = if (statusImpliesTitle && update.game == null) {
-                                    oldGame
-                                } else {
-                                    update.game
-                                }
-
-                                showPresenceNotificationIfNeeded(
-                                    friend = friend,
-                                    oldPresence = oldPresence,
-                                    newPresence = newPresence,
-                                    oldGame = oldGame,
-                                    newGame = mergedGame
-                                )
-
-                                friend.copy(
-                                    presence = newPresence,
-                                    currentGame = mergedGame,
-                                    deviceName = update.deviceName
-                                )
-                            } else {
-                                friend
-                            }
-                        }
+                        onPresenceUpdate(update, newPresence)
                     }
                     is ArgosSocialService.IncomingMessage.FavoriteFriendUpdated -> {
                         Log.d(TAG, "Favorite updated: ${message.friendId} -> ${message.isFavorite}")
@@ -1525,12 +1496,64 @@ class SocialRepository @Inject constructor(
         return inSampleSize
     }
 
+    private fun onPresenceUpdate(update: PresenceUpdate, newPresence: PresenceStatus) {
+        pendingOffline.remove(update.userId)?.cancel()
+        val shownOnline = _friends.value.firstOrNull { it.id == update.userId }
+            ?.presence
+            ?.let { it != PresenceStatus.OFFLINE } == true
+        if (newPresence == PresenceStatus.OFFLINE && shownOnline) {
+            pendingOffline[update.userId] = scope.launch {
+                delay(OFFLINE_GRACE_MS)
+                pendingOffline.remove(update.userId)
+                applyPresenceUpdate(update, newPresence)
+            }
+            return
+        }
+        applyPresenceUpdate(update, newPresence)
+    }
+
+    private fun applyPresenceUpdate(update: PresenceUpdate, newPresence: PresenceStatus) {
+        val friend = _friends.value.firstOrNull { it.id == update.userId } ?: return
+        val statusImpliesTitle = newPresence == PresenceStatus.IN_GAME ||
+            newPresence == PresenceStatus.WATCHING
+        val mergedGame = if (statusImpliesTitle && update.game == null) friend.currentGame else update.game
+        val now = System.currentTimeMillis()
+        val offlineAt = offlineSince[update.userId]
+        val briefDrop = friend.presence == PresenceStatus.OFFLINE && offlineAt != null &&
+            now - offlineAt < ONLINE_NOTICE_MIN_OFFLINE_MS
+        if (newPresence == PresenceStatus.OFFLINE) {
+            if (friend.presence != PresenceStatus.OFFLINE) offlineSince[update.userId] = now
+        } else {
+            offlineSince.remove(update.userId)
+        }
+
+        showPresenceNotificationIfNeeded(
+            friend = friend,
+            oldPresence = friend.presence,
+            newPresence = newPresence,
+            oldGame = friend.currentGame,
+            newGame = mergedGame,
+            suppressOnlineNotice = briefDrop
+        )
+
+        _friends.update { friends ->
+            friends.map {
+                if (it.id == update.userId) {
+                    it.copy(presence = newPresence, currentGame = mergedGame, deviceName = update.deviceName)
+                } else {
+                    it
+                }
+            }
+        }
+    }
+
     private fun showPresenceNotificationIfNeeded(
         friend: Friend,
         oldPresence: PresenceStatus?,
         newPresence: PresenceStatus,
         oldGame: PresenceGameInfo?,
-        newGame: PresenceGameInfo?
+        newGame: PresenceGameInfo?,
+        suppressOnlineNotice: Boolean = false
     ) {
         if (!hasCompletedInitialSync) return
 
@@ -1570,7 +1593,8 @@ class SocialRepository @Inject constructor(
                         accentColor = avatarColorInt
                     )
                 }
-                wasOfflineOrAway && isNowOnline && !startedPlayingNewGame && prefs.socialNotifyFriendOnline -> {
+                wasOfflineOrAway && isNowOnline && !startedPlayingNewGame && !suppressOnlineNotice &&
+                    prefs.socialNotifyFriendOnline -> {
                     title = friend.displayName
                     subtitle = context.getString(R.string.notif_social_friend_online)
                     notificationManager.show(
