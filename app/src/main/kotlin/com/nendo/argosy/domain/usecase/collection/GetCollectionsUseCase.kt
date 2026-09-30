@@ -1,17 +1,10 @@
 package com.nendo.argosy.domain.usecase.collection
 
-import android.util.Log
-import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.entity.CollectionType
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import com.nendo.argosy.data.repository.CollectionOverviewSource
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 data class CollectionWithCount(
@@ -25,36 +18,23 @@ data class CollectionWithCount(
 )
 
 class GetCollectionsUseCase @Inject constructor(
-    private val collectionDao: CollectionDao
+    private val overviewSource: CollectionOverviewSource
 ) {
-    @OptIn(ExperimentalCoroutinesApi::class)
-    operator fun invoke(): Flow<List<CollectionWithCount>> {
-        return combine(
-            collectionDao.observeByTypes(listOf(CollectionType.REGULAR, CollectionType.SMART)),
-            collectionDao.observeLocalGameCounts(),
-            collectionDao.observeLocalCoverPaths()
-        ) { collections, counts, covers ->
-            val countById = counts.associate { it.collectionId to it.gameCount }
-            val coversById = covers.groupBy { it.collectionId }
-            collections
+    operator fun invoke(): Flow<List<CollectionWithCount>> =
+        overviewSource.overview.map { overview ->
+            overview.collections
+                .filter { it.type == CollectionType.REGULAR || it.type == CollectionType.SMART }
                 .filter { it.name.isNotBlank() && it.name.lowercase() != "favorites" }
                 .map { collection ->
                     CollectionWithCount(
                         id = collection.id,
                         name = collection.name,
                         description = collection.description,
-                        gameCount = countById[collection.id] ?: 0,
-                        coverPaths = coversById[collection.id]
-                            ?.take(COLLECTION_COVER_LIMIT)
-                            ?.map { cover -> cover.coverPath }
-                            ?: emptyList(),
+                        gameCount = overview.gameCountById[collection.id] ?: 0,
+                        coverPaths = overview.coverPathsById[collection.id].orEmpty(),
                         isUserCreated = collection.isUserCreated,
                         rommId = collection.rommId
                     )
                 }
-        }
-            .distinctUntilChanged()
-            .onStart { emit(emptyList()) }
-            .flowOn(Dispatchers.IO)
-    }
+        }.distinctUntilChanged()
 }
