@@ -1173,9 +1173,6 @@
     <string name="ui_quick_settings_haptics">Haptics</string>
     <!-- Row of that panel: whether the launcher makes a sound on a press. Noun phrase. -->
     <string name="ui_quick_settings_ui_sounds">UI Sounds</string>
-    <!-- Row of that panel: whether the launcher plays music. Abbreviation of "background
-         music". -->
-    <string name="ui_quick_settings_bgm">BGM</string>
     <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
          other's role. -->
     <string name="ui_quick_settings_swap_displays">Swap Displays</string>
@@ -1226,11 +1223,16 @@
     <string name="ui_quick_settings_music_next">Next track</string>
     <!-- Music page button description: plays the list in random order. Verb. -->
     <string name="ui_quick_settings_music_shuffle">Shuffle</string>
-    <!-- Music page row that opens the list of playlists. Noun, plural. -->
+    <!-- Heading of the Music page list of playlists. Noun, plural. -->
     <string name="ui_quick_settings_music_playlists">Playlists</string>
-    <!-- Music page row that opens the list of games whose soundtrack can be played. Noun
+    <!-- Heading of the Music page list of games whose soundtrack can be played. Noun
          phrase, plural. -->
     <string name="ui_quick_settings_music_soundtracks">Game soundtracks</string>
+    <!-- Half-width Music page button that opens the playlist list. Noun, plural; keep short. -->
+    <string name="ui_quick_settings_music_button_playlists">Playlists</string>
+    <!-- Half-width Music page button that opens the game soundtrack list. Noun, plural; keep
+         short. -->
+    <string name="ui_quick_settings_music_button_soundtracks">Soundtracks</string>
     <!-- Placeholder inside the search box over the playlist list. Verb phrase. -->
     <string name="ui_quick_settings_music_search_playlists">Search playlists</string>
     <!-- Placeholder inside the search box over the game soundtrack list. Verb phrase. -->
@@ -1262,6 +1264,8 @@
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Sign in to RomM again to see your server playlists</string>
     <!-- Footer hint on the playlist list. Verb phrase: opens the RomM sign-in settings. -->
     <string name="ui_quick_settings_music_hint_sign_in">Sign in again</string>
+    <!-- Shown where the track list of the Music page would be when nothing is queued. -->
+    <string name="ui_quick_settings_music_queue_empty">Pick a playlist or soundtrack to start</string>
     <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->
     <string name="ui_quick_settings_music_playlist_owner">by %1$s</string>
     <!-- Description of the marker on the list row that is currently playing. -->

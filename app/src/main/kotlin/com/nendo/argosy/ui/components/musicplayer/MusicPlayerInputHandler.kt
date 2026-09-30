@@ -26,30 +26,11 @@ class MusicPlayerInputHandler(
 
     private fun horizontal(delta: Int): InputResult {
         if (browseOpen) return InputResult.handled(SoundType.SILENT)
-        return when (viewModel.uiState.value.focusedRow) {
-            MusicPlayerRow.TRANSPORT -> {
-                viewModel.moveTransport(delta)
-                InputResult.HANDLED
-            }
-            MusicPlayerRow.LAUNCHER_TOGGLE -> {
-                val enabled = viewModel.setLauncherMusic(delta > 0)
-                InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-            }
-            MusicPlayerRow.PLAYLISTS,
-            MusicPlayerRow.SOUNDTRACKS -> InputResult.handled(SoundType.SILENT)
-        }
+        return if (viewModel.moveHorizontal(delta)) InputResult.HANDLED else InputResult.handled(SoundType.SILENT)
     }
 
     override fun onConfirm(): InputResult {
-        if (browseOpen) {
-            viewModel.confirmBrowse()
-            return InputResult.HANDLED
-        }
-        if (viewModel.uiState.value.focusedRow == MusicPlayerRow.LAUNCHER_TOGGLE) {
-            val enabled = viewModel.toggleLauncherMusic()
-            return InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-        }
-        viewModel.confirmRow()
+        if (browseOpen) viewModel.confirmBrowse() else viewModel.confirmRow()
         return InputResult.HANDLED
     }
 

@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.MusicOff
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -63,7 +62,6 @@ import com.nendo.argosy.R
 import com.nendo.argosy.domain.model.MusicSelection
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.QuickSettingItem
-import com.nendo.argosy.ui.components.QuickSettingToggle
 import com.nendo.argosy.ui.components.animateScrollToItemCentered
 import com.nendo.argosy.ui.components.quickFocusBackground
 import com.nendo.argosy.ui.primitives.FocusIndicators
@@ -76,7 +74,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Locale
 
-private const val HEADER_ITEM_COUNT = 1
 private const val LOAD_MORE_LOOKAHEAD = 4
 
 @Composable
@@ -105,68 +102,172 @@ fun QuickSettingsMusicPage(viewModel: MusicPlayerViewModel, onOpenRommSignIn: ()
 
 @Composable
 private fun MusicPlayerMain(state: MusicPlayerUiState, viewModel: MusicPlayerViewModel) {
-    val listState = rememberLazyListState()
-    LaunchedEffect(state.focusedRow) {
-        listState.animateScrollToItemCentered(state.focusedRow.ordinal + HEADER_ITEM_COUNT)
-    }
-    val playback = state.playback
     val launcherLabel = stringResource(R.string.ui_quick_settings_music_source_launcher)
-    val playlistValue = when {
-        playback.sourceId == MusicSelection.LAUNCHER_ID -> launcherLabel
-        MusicSelection.isServerPlaylistId(playback.sourceId) -> playback.sourceLabel.orEmpty()
-        else -> ""
+    Column(modifier = Modifier.fillMaxSize()) {
+        NowPlayingHeader(state = state, launcherLabel = launcherLabel)
+        TransportRow(
+            state = state,
+            onButton = { button ->
+                viewModel.focusTransport(button)
+                viewModel.activateTransport(button)
+            }
+        )
+        SourceRow(
+            state = state,
+            onSelect = { kind ->
+                viewModel.focusSource(kind)
+                viewModel.openBrowse(kind)
+            }
+        )
+        TrackList(
+            state = state,
+            onPlay = { position -> viewModel.playTrack(position) },
+            modifier = Modifier.weight(1f)
+        )
     }
-    val soundtrackValue =
-        if (MusicSelection.isSoundtrackId(playback.sourceId)) playback.sourceLabel.orEmpty() else ""
+}
 
-    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-        item(key = "now_playing") {
-            NowPlayingHeader(state = state, launcherLabel = launcherLabel)
+@Composable
+private fun SourceRow(state: MusicPlayerUiState, onSelect: (MusicBrowseKind) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs),
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        SourceButton(
+            icon = Icons.AutoMirrored.Filled.QueueMusic,
+            label = stringResource(R.string.ui_quick_settings_music_button_playlists),
+            isFocused = state.focusedRow == MusicPlayerRow.SOURCES && state.sourceButton == MusicBrowseKind.PLAYLISTS,
+            onClick = { onSelect(MusicBrowseKind.PLAYLISTS) },
+            modifier = Modifier.weight(1f)
+        )
+        SourceButton(
+            icon = Icons.Default.Album,
+            label = stringResource(R.string.ui_quick_settings_music_button_soundtracks),
+            isFocused = state.focusedRow == MusicPlayerRow.SOURCES &&
+                state.sourceButton == MusicBrowseKind.SOUNDTRACKS,
+            onClick = { onSelect(MusicBrowseKind.SOUNDTRACKS) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SourceButton(
+    icon: ImageVector,
+    label: String,
+    isFocused: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(Dimens.radiusMd)
+    val tint = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .clip(shape)
+            .background(quickFocusBackground(isFocused))
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingXs, vertical = Dimens.spacingSm),
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(imageVector = icon, contentDescription = null, tint = tint, modifier = Modifier.size(Dimens.iconSm))
+        Spacer(modifier = Modifier.width(Dimens.spacingXs))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = tint,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun TrackList(
+    state: MusicPlayerUiState,
+    onPlay: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val tracks = state.playback.tracks
+    val listState = rememberLazyListState()
+    val tracksFocused = state.focusedRow == MusicPlayerRow.TRACKS
+    val anchor = if (tracksFocused) state.trackFocus else state.playback.index
+    LaunchedEffect(anchor, tracks.size) {
+        if (anchor in tracks.indices) listState.animateScrollToItemCentered(anchor)
+    }
+    if (tracks.isEmpty()) {
+        Box(modifier = modifier.fillMaxWidth()) {
+            BrowseMessage(stringResource(R.string.ui_quick_settings_music_queue_empty))
         }
-        item(key = MusicPlayerRow.TRANSPORT.name) {
-            TransportRow(
-                state = state,
-                onButton = { button ->
-                    viewModel.focusTransport(button)
-                    viewModel.activateTransport(button)
-                }
+        return
+    }
+    val showGame = remember(tracks) { tracks.mapTo(HashSet()) { it.gameTitle }.size > 1 }
+    LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
+        itemsIndexed(tracks, key = { position, track -> "$position:${track.id}" }) { position, track ->
+            TrackRow(
+                title = track.title,
+                gameTitle = track.gameTitle.takeIf { showGame },
+                isCurrent = position == state.playback.index,
+                isFocused = tracksFocused && position == state.trackFocus,
+                onClick = { onPlay(position) }
             )
         }
-        item(key = MusicPlayerRow.PLAYLISTS.name) {
-            QuickSettingItem(
-                icon = Icons.AutoMirrored.Filled.QueueMusic,
-                label = stringResource(R.string.ui_quick_settings_music_playlists),
-                value = playlistValue,
-                isFocused = state.focusedRow == MusicPlayerRow.PLAYLISTS,
-                onClick = {
-                    viewModel.focusRow(MusicPlayerRow.PLAYLISTS)
-                    viewModel.openBrowse(MusicBrowseKind.PLAYLISTS)
-                }
-            )
+    }
+}
+
+@Composable
+private fun TrackRow(
+    title: String,
+    gameTitle: String?,
+    isCurrent: Boolean,
+    isFocused: Boolean,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(topStart = Dimens.radiusMd, bottomStart = Dimens.radiusMd)
+    val titleColor = when {
+        isFocused || isCurrent -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = Dimens.spacingMd)
+            .clip(shape)
+            .background(quickFocusBackground(isFocused))
+            .clickableNoFocus(onClick = onClick)
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
+    ) {
+        Box(modifier = Modifier.size(Dimens.iconMd), contentAlignment = Alignment.Center) {
+            if (isCurrent) {
+                Icon(
+                    imageVector = Icons.Default.GraphicEq,
+                    contentDescription = stringResource(R.string.ui_quick_settings_music_now_playing),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(Dimens.iconSm)
+                )
+            }
         }
-        item(key = MusicPlayerRow.SOUNDTRACKS.name) {
-            QuickSettingItem(
-                icon = Icons.Default.Album,
-                label = stringResource(R.string.ui_quick_settings_music_soundtracks),
-                value = soundtrackValue,
-                isFocused = state.focusedRow == MusicPlayerRow.SOUNDTRACKS,
-                onClick = {
-                    viewModel.focusRow(MusicPlayerRow.SOUNDTRACKS)
-                    viewModel.openBrowse(MusicBrowseKind.SOUNDTRACKS)
-                }
+        Spacer(modifier = Modifier.width(Dimens.spacingSm))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = titleColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-        }
-        item(key = MusicPlayerRow.LAUNCHER_TOGGLE.name) {
-            QuickSettingToggle(
-                icon = if (state.launcherEnabled) Icons.Default.MusicNote else Icons.Default.MusicOff,
-                label = stringResource(R.string.ui_quick_settings_bgm),
-                isEnabled = state.launcherEnabled,
-                isFocused = state.focusedRow == MusicPlayerRow.LAUNCHER_TOGGLE,
-                onClick = {
-                    viewModel.focusRow(MusicPlayerRow.LAUNCHER_TOGGLE)
-                    viewModel.toggleLauncherMusic()
-                }
-            )
+            if (gameTitle != null) {
+                Text(
+                    text = gameTitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
@@ -181,7 +282,7 @@ private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String) {
     val sourceLabel = if (playback.sourceId == MusicSelection.LAUNCHER_ID) {
         launcherLabel
     } else {
-        playback.sourceLabel.orEmpty()
+        playback.sourceLabel.orEmpty().takeUnless { it == gameTitle }.orEmpty()
     }
     val position = if (overrideTitle == null && playback.count > 0) {
         stringResource(R.string.ui_quick_settings_music_track_position, playback.index + 1, playback.count)
@@ -218,14 +319,16 @@ private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String) {
                     )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-                    Text(
-                        text = sourceLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
+                    if (sourceLabel.isNotEmpty()) {
+                        Text(
+                            text = sourceLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                    }
                     if (position != null) {
                         Text(
                             text = position,

@@ -53,6 +53,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -70,6 +71,9 @@ import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+
+private const val LABEL_WEIGHT = 3f
+private const val VALUE_WEIGHT = 2f
 
 @Composable
 internal fun quickFocusBackground(isFocused: Boolean): Color =
@@ -561,13 +565,22 @@ internal fun QuickSettingItem(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
             color = contentColor,
-            modifier = Modifier.weight(1f)
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(LABEL_WEIGHT)
         )
-        Text(
-            text = if (isDisabled && disabledReason != null) disabledReason else value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = valueColor
-        )
+        val shownValue = if (isDisabled && disabledReason != null) disabledReason else value
+        if (shownValue.isNotEmpty()) {
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
+            Text(
+                text = shownValue,
+                style = MaterialTheme.typography.bodyMedium,
+                color = valueColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(VALUE_WEIGHT, fill = false)
+            )
+        }
     }
 }
 

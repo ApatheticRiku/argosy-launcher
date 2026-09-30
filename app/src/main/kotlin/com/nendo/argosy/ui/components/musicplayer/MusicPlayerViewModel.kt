@@ -4,7 +4,6 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.preferences.ControlsPreferencesRepository
-import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.domain.model.MusicPlaylistEntry
 import com.nendo.argosy.domain.model.MusicSelection
 import com.nendo.argosy.domain.model.MusicServerStatus
@@ -12,7 +11,6 @@ import com.nendo.argosy.domain.usecase.music.GetMusicPlaylistsUseCase
 import com.nendo.argosy.domain.usecase.music.ResolveMusicQueueUseCase
 import com.nendo.argosy.domain.usecase.music.SearchSoundtrackGamesUseCase
 import com.nendo.argosy.ui.audio.AmbientAudioManager
-import com.nendo.argosy.ui.input.InputDispatcher
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -48,7 +46,6 @@ class MusicPlayerViewModel @Inject constructor(
     val uiState: StateFlow<MusicPlayerUiState> = _uiState.asStateFlow()
 
     private val searchInput = MutableStateFlow("")
-    private var wrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP
     private var playlistCatalog: List<MusicPlaylistEntry> = emptyList()
     private var loadJob: Job? = null
     private var selectJob: Job? = null
@@ -56,12 +53,22 @@ class MusicPlayerViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             ambientAudioManager.playback.collect { playback ->
-                _uiState.update { it.copy(playback = playback) }
+                _uiState.update { state ->
+                    val lastTrack = (playback.tracks.size - 1).coerceAtLeast(0)
+                    state.copy(
+                        playback = playback,
+                        trackFocus = state.trackFocus.coerceIn(0, lastTrack),
+                        focusedRow = if (playback.tracks.isEmpty() && state.focusedRow == MusicPlayerRow.TRACKS) {
+                            MusicPlayerRow.SOURCES
+                        } else {
+                            state.focusedRow
+                        }
+                    )
+                }
             }
         }
         viewModelScope.launch {
             controlsPreferences.preferences.collect { prefs ->
-                wrapMode = prefs.menuWrapMode
                 _uiState.update { it.copy(launcherEnabled = prefs.ambientAudioEnabled) }
             }
         }
@@ -89,36 +96,75 @@ class MusicPlayerViewModel @Inject constructor(
     }
 
     fun moveRow(delta: Int): Boolean {
-        val rows = MusicPlayerRow.entries
-        val current = _uiState.value.focusedRow.ordinal
-        val next = InputDispatcher.computeWrappedIndex(current, delta, rows.lastIndex, wrapMode)
-        if (next == current) return false
-        _uiState.update { it.copy(focusedRow = rows[next]) }
+        val state = _uiState.value
+        val trackCount = state.playback.tracks.size
+        val next: MusicPlayerUiState = when (state.focusedRow) {
+            MusicPlayerRow.TRANSPORT -> if (delta > 0) state.copy(focusedRow = MusicPlayerRow.SOURCES) else state
+            MusicPlayerRow.SOURCES -> when {
+                delta < 0 -> state.copy(focusedRow = MusicPlayerRow.TRANSPORT)
+                trackCount > 0 -> state.copy(
+                    focusedRow = MusicPlayerRow.TRACKS,
+                    trackFocus = state.playback.index.coerceIn(0, trackCount - 1)
+                )
+                else -> state
+            }
+            MusicPlayerRow.TRACKS -> {
+                val target = state.trackFocus + delta
+                when {
+                    target < 0 -> state.copy(focusedRow = MusicPlayerRow.SOURCES)
+                    target >= trackCount -> state
+                    else -> state.copy(trackFocus = target)
+                }
+            }
+        }
+        if (next == state) return false
+        _uiState.value = next
         return true
     }
 
-    fun moveTransport(delta: Int) {
-        val buttons = MusicTransportButton.entries
-        _uiState.update {
-            it.copy(transportButton = buttons[(it.transportButton.ordinal + delta).mod(buttons.size)])
+    fun moveHorizontal(delta: Int): Boolean {
+        val state = _uiState.value
+        return when (state.focusedRow) {
+            MusicPlayerRow.TRANSPORT -> {
+                val buttons = MusicTransportButton.entries
+                _uiState.update {
+                    it.copy(transportButton = buttons[(it.transportButton.ordinal + delta).mod(buttons.size)])
+                }
+                true
+            }
+            MusicPlayerRow.SOURCES -> {
+                val kinds = MusicBrowseKind.entries
+                _uiState.update {
+                    it.copy(sourceButton = kinds[(it.sourceButton.ordinal + delta).mod(kinds.size)])
+                }
+                true
+            }
+            MusicPlayerRow.TRACKS -> false
         }
-    }
-
-    fun focusRow(row: MusicPlayerRow) {
-        _uiState.update { it.copy(focusedRow = row) }
     }
 
     fun focusTransport(button: MusicTransportButton) {
         _uiState.update { it.copy(focusedRow = MusicPlayerRow.TRANSPORT, transportButton = button) }
     }
 
+    fun focusSource(kind: MusicBrowseKind) {
+        _uiState.update { it.copy(focusedRow = MusicPlayerRow.SOURCES, sourceButton = kind) }
+    }
+
     fun confirmRow() {
         val state = _uiState.value
         when (state.focusedRow) {
             MusicPlayerRow.TRANSPORT -> activateTransport(state.transportButton)
-            MusicPlayerRow.PLAYLISTS -> openBrowse(MusicBrowseKind.PLAYLISTS)
-            MusicPlayerRow.SOUNDTRACKS -> openBrowse(MusicBrowseKind.SOUNDTRACKS)
-            MusicPlayerRow.LAUNCHER_TOGGLE -> toggleLauncherMusic()
+            MusicPlayerRow.SOURCES -> openBrowse(state.sourceButton)
+            MusicPlayerRow.TRACKS -> playTrack(state.trackFocus)
+        }
+    }
+
+    fun playTrack(position: Int) {
+        _uiState.update { it.copy(focusedRow = MusicPlayerRow.TRACKS, trackFocus = position) }
+        viewModelScope.launch {
+            ensureEnabled()
+            ambientAudioManager.playAt(position)
         }
     }
 
@@ -156,14 +202,6 @@ class MusicPlayerViewModel @Inject constructor(
         val next = !_uiState.value.playback.shuffle
         ambientAudioManager.setShuffle(next)
         viewModelScope.launch { controlsPreferences.setAmbientAudioShuffle(next) }
-    }
-
-    fun toggleLauncherMusic(): Boolean = setLauncherMusic(!_uiState.value.launcherEnabled)
-
-    fun setLauncherMusic(enabled: Boolean): Boolean {
-        if (enabled == _uiState.value.launcherEnabled) return enabled
-        viewModelScope.launch { controlsPreferences.setAmbientAudioEnabled(enabled) }
-        return enabled
     }
 
     private suspend fun ensureEnabled() {

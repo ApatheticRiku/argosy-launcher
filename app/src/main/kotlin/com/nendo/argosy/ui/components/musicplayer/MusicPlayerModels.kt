@@ -5,9 +5,8 @@ import com.nendo.argosy.ui.audio.AmbientPlaybackState
 
 enum class MusicPlayerRow {
     TRANSPORT,
-    PLAYLISTS,
-    SOUNDTRACKS,
-    LAUNCHER_TOGGLE
+    SOURCES,
+    TRACKS
 }
 
 enum class MusicTransportButton {
@@ -81,6 +80,8 @@ data class MusicPlayerUiState(
     val launcherEnabled: Boolean = false,
     val focusedRow: MusicPlayerRow = MusicPlayerRow.TRANSPORT,
     val transportButton: MusicTransportButton = MusicTransportButton.PLAY_PAUSE,
+    val sourceButton: MusicBrowseKind = MusicBrowseKind.PLAYLISTS,
+    val trackFocus: Int = 0,
     val browse: MusicBrowseUi? = null
 ) {
     val isAudible: Boolean get() = playback.isPlaying && !playback.userPaused

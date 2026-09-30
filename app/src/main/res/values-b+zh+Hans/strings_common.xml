@@ -554,7 +554,6 @@
     <string name="ui_quick_settings_theme">主题</string>
     <string name="ui_quick_settings_haptics">震动反馈</string>
     <string name="ui_quick_settings_ui_sounds">界面音效</string>
-    <string name="ui_quick_settings_bgm">BGM</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">音量</string>
     <string name="ui_quick_settings_brightness">亮度</string>
@@ -577,6 +576,8 @@
     <string name="ui_quick_settings_music_shuffle">随机播放</string>
     <string name="ui_quick_settings_music_playlists">播放列表</string>
     <string name="ui_quick_settings_music_soundtracks">游戏原声</string>
+    <string name="ui_quick_settings_music_button_playlists">播放列表</string>
+    <string name="ui_quick_settings_music_button_soundtracks">原声</string>
     <string name="ui_quick_settings_music_search_playlists">搜索播放列表</string>
     <string name="ui_quick_settings_music_search_soundtracks">搜索原声</string>
     <string name="ui_quick_settings_music_load_failed">无法加载此列表</string>
@@ -590,6 +591,7 @@
     <string name="ui_quick_settings_music_notice_no_tracks">此选择中没有可播放的内容</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">重新登录 RomM 以查看服务器播放列表</string>
     <string name="ui_quick_settings_music_hint_sign_in">重新登录</string>
+    <string name="ui_quick_settings_music_queue_empty">选择一个播放列表或原声音乐开始播放</string>
     <string name="ui_quick_settings_music_playlist_owner">创建者：%1$s</string>
     <string name="ui_quick_settings_music_now_playing">正在播放</string>
     <string name="ui_quick_settings_music_back">返回</string>

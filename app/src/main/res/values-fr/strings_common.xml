@@ -601,7 +601,6 @@
     <string name="ui_quick_settings_theme">Thème</string>
     <string name="ui_quick_settings_haptics">Vibrations</string>
     <string name="ui_quick_settings_ui_sounds">Sons de l\'interface</string>
-    <string name="ui_quick_settings_bgm">BGM</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Volume</string>
     <string name="ui_quick_settings_brightness">Luminosité</string>
@@ -624,6 +623,8 @@
     <string name="ui_quick_settings_music_shuffle">Lecture aléatoire</string>
     <string name="ui_quick_settings_music_playlists">Playlists</string>
     <string name="ui_quick_settings_music_soundtracks">Bandes-son de jeux</string>
+    <string name="ui_quick_settings_music_button_playlists">Playlists</string>
+    <string name="ui_quick_settings_music_button_soundtracks">Bandes-son</string>
     <string name="ui_quick_settings_music_search_playlists">Rechercher des playlists</string>
     <string name="ui_quick_settings_music_search_soundtracks">Rechercher des bandes-son</string>
     <string name="ui_quick_settings_music_load_failed">Impossible de charger cette liste</string>
@@ -637,6 +638,7 @@
     <string name="ui_quick_settings_music_notice_no_tracks">Rien dans cette sélection ne peut être lu</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Reconnectez-vous à RomM pour voir vos playlists du serveur</string>
     <string name="ui_quick_settings_music_hint_sign_in">Se reconnecter</string>
+    <string name="ui_quick_settings_music_queue_empty">Choisissez une playlist ou une bande-son</string>
     <string name="ui_quick_settings_music_playlist_owner">par %1$s</string>
     <string name="ui_quick_settings_music_now_playing">En cours de lecture</string>
     <string name="ui_quick_settings_music_back">Retour</string>

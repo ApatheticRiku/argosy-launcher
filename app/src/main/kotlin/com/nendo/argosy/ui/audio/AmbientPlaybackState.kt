@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.audio
 
+import com.nendo.argosy.domain.model.MusicQueueTrack
 import com.nendo.argosy.domain.model.MusicSelection
 
 data class AmbientPlaybackState(
@@ -9,6 +10,7 @@ data class AmbientPlaybackState(
     val overrideTitle: String? = null,
     val index: Int = 0,
     val count: Int = 0,
+    val tracks: List<MusicQueueTrack> = emptyList(),
     val isPlaying: Boolean = false,
     val userPaused: Boolean = false,
     val shuffle: Boolean = false,

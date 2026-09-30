@@ -590,7 +590,6 @@
     <string name="ui_quick_settings_theme">Tema</string>
     <string name="ui_quick_settings_haptics">Vibración</string>
     <string name="ui_quick_settings_ui_sounds">Sonidos de la interfaz</string>
-    <string name="ui_quick_settings_bgm">BGM</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Volumen</string>
     <string name="ui_quick_settings_brightness">Brillo</string>
@@ -613,6 +612,8 @@
     <string name="ui_quick_settings_music_shuffle">Aleatorio</string>
     <string name="ui_quick_settings_music_playlists">Listas de reproducción</string>
     <string name="ui_quick_settings_music_soundtracks">Bandas sonoras de juegos</string>
+    <string name="ui_quick_settings_music_button_playlists">Listas</string>
+    <string name="ui_quick_settings_music_button_soundtracks">Bandas sonoras</string>
     <string name="ui_quick_settings_music_search_playlists">Buscar listas</string>
     <string name="ui_quick_settings_music_search_soundtracks">Buscar bandas sonoras</string>
     <string name="ui_quick_settings_music_load_failed">No se pudo cargar esta lista</string>
@@ -626,6 +627,7 @@
     <string name="ui_quick_settings_music_notice_no_tracks">No hay nada reproducible en esta selección</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Vuelve a iniciar sesión en RomM para ver tus listas del servidor</string>
     <string name="ui_quick_settings_music_hint_sign_in">Iniciar sesión</string>
+    <string name="ui_quick_settings_music_queue_empty">Elige una lista o una banda sonora para empezar</string>
     <string name="ui_quick_settings_music_playlist_owner">de %1$s</string>
     <string name="ui_quick_settings_music_now_playing">Reproduciendo</string>
     <string name="ui_quick_settings_music_back">Atrás</string>

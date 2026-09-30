@@ -71,6 +71,12 @@ class PlaybackQueue(private val random: Random = Random.Default) {
         return true
     }
 
+    fun jumpTo(position: Int): Boolean {
+        if (position !in order.indices) return false
+        index = position
+        return true
+    }
+
     fun stepBack() {
         if (order.isEmpty()) return
         index = (index - 1).mod(order.size)

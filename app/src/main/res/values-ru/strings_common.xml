@@ -593,7 +593,6 @@
     <string name="ui_quick_settings_theme">Тема</string>
     <string name="ui_quick_settings_haptics">Вибрация</string>
     <string name="ui_quick_settings_ui_sounds">Звуки интерфейса</string>
-    <string name="ui_quick_settings_bgm">BGM</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Громкость</string>
     <string name="ui_quick_settings_brightness">Яркость</string>
@@ -616,6 +615,8 @@
     <string name="ui_quick_settings_music_shuffle">Перемешать</string>
     <string name="ui_quick_settings_music_playlists">Плейлисты</string>
     <string name="ui_quick_settings_music_soundtracks">Саундтреки игр</string>
+    <string name="ui_quick_settings_music_button_playlists">Плейлисты</string>
+    <string name="ui_quick_settings_music_button_soundtracks">Саундтреки</string>
     <string name="ui_quick_settings_music_search_playlists">Поиск плейлистов</string>
     <string name="ui_quick_settings_music_search_soundtracks">Поиск саундтреков</string>
     <string name="ui_quick_settings_music_load_failed">Не удалось загрузить список</string>
@@ -629,6 +630,7 @@
     <string name="ui_quick_settings_music_notice_no_tracks">В этой подборке нечего воспроизвести</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Войдите в RomM заново, чтобы увидеть плейлисты с сервера</string>
     <string name="ui_quick_settings_music_hint_sign_in">Войти заново</string>
+    <string name="ui_quick_settings_music_queue_empty">Выберите плейлист или саундтрек</string>
     <string name="ui_quick_settings_music_playlist_owner">автор: %1$s</string>
     <string name="ui_quick_settings_music_now_playing">Сейчас играет</string>
     <string name="ui_quick_settings_music_back">Назад</string>

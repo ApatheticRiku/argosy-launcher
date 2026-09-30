@@ -283,6 +283,14 @@ class AmbientAudioManager @Inject constructor(
         }
     }
 
+    fun playAt(position: Int) {
+        if (!queue.jumpTo(position)) return
+        consecutiveFailures = 0
+        gate.userPaused = false
+        dropOverride()
+        restartAtCurrentIndex(resume = true)
+    }
+
     fun positionSnapshot(): PlaybackPosition? {
         val current = slot ?: return null
         if (!current.prepared) return null
@@ -754,6 +762,7 @@ class AmbientAudioManager @Inject constructor(
             overrideTitle = if (overrideActive) overrideTitle else null,
             index = queue.index,
             count = queue.size,
+            tracks = queue.order,
             isPlaying = playing,
             userPaused = gate.userPaused,
             shuffle = queue.shuffle,
