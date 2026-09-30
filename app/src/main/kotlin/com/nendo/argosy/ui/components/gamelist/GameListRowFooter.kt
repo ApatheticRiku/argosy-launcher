@@ -65,11 +65,23 @@ internal fun GameListRowTabs(
     cornerRadius: Dp,
     focusInset: Dp
 ) {
+    val genreLabel = details.genre?.let { genre -> genreShortLabelRes(genre)?.let { stringResource(it) } ?: genre }
+    ListRowTabs(
+        labels = listOfNotNull(platformDisplayName, details.releaseYear?.toString(), genreLabel),
+        cornerRadius = cornerRadius,
+        focusInset = focusInset
+    )
+}
+
+@Composable
+internal fun ListRowTabs(
+    labels: List<String>,
+    cornerRadius: Dp,
+    focusInset: Dp
+) {
     val primary = MaterialTheme.colorScheme.primary
     val base = MaterialTheme.colorScheme.surfaceVariant
     val onSurface = MaterialTheme.colorScheme.onSurface
-    val genreLabel = details.genre?.let { genre -> genreShortLabelRes(genre)?.let { stringResource(it) } ?: genre }
-    val labels = listOfNotNull(platformDisplayName, details.releaseYear?.toString(), genreLabel)
     val fills = listOf(
         primary,
         primary.copy(alpha = ComponentDefaults.GameListRow.footerSecondTabAlpha).compositeOver(base),

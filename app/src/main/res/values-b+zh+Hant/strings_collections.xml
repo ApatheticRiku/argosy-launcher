@@ -208,4 +208,6 @@
     <string name="touchlayout_editor_orientation_portrait">直向</string>
     <string name="touchlayout_editor_orientation_landscape">橫向</string>
     <string name="touchlayout_editor_close">關閉</string>
+    <string name="collections_cell_installed">已安裝 %1$d</string>
+    <string name="collections_cell_achievements">%1$d/%2$d</string>
 </resources>

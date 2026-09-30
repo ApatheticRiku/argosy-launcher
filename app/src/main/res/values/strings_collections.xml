@@ -371,4 +371,11 @@
     <string name="touchlayout_editor_orientation_landscape">Landscape</string>
     <!-- Button. Verb: close the touch layout editor. -->
     <string name="touchlayout_editor_close">Close</string>
+
+    <!-- Footer stat on a collection card: how many of its games are installed on this
+         device. Keep it short; it shares one line with other stats. -->
+    <string name="collections_cell_installed">%1$d installed</string>
+    <!-- Footer stat on a collection card: achievements earned out of the total across its
+         games, shown beside a trophy icon. Example: 120/450. -->
+    <string name="collections_cell_achievements">%1$d/%2$d</string>
 </resources>

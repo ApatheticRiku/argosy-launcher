@@ -58,6 +58,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.domain.usecase.collection.CollectionWithCount
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FooterHints
+import com.nendo.argosy.ui.components.collection.CollectionCell
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
@@ -156,10 +157,19 @@ fun CollectionsScreen(
                 }
             } else {
                 itemsIndexed(uiState.collections, key = { _, c -> c.id }) { index, collection ->
-                    CollectionRow(
-                        collection = collection,
+                    CollectionCell(
+                        name = collection.name,
+                        gameCountLabel = pluralStringResource(
+                            R.plurals.collections_game_count,
+                            collection.summary.gameCount,
+                            collection.summary.gameCount
+                        ),
+                        summary = collection.summary,
+                        coverPaths = collection.coverPaths,
+                        placeholderIcon = Icons.Default.Folder,
                         isFocused = !hasDialogOpen && uiState.focusedSection == CollectionSection.MY_COLLECTIONS && uiState.focusedIndex == index,
-                        isPinned = collection.id in uiState.pinnedCollectionIds,
+                        pinnedDescription = stringResource(R.string.collections_pinned_description)
+                            .takeIf { collection.id in uiState.pinnedCollectionIds },
                         onClick = { onCollectionClick(collection.id) },
                         onLongClick = { viewModel.handleCollectionLongPress(index) }
                     )
@@ -303,169 +313,6 @@ fun CollectionsScreen(
             onOptionSelect = { viewModel.selectOption() },
             onDismiss = { viewModel.hideOptionsModal() }
         )
-    }
-}
-
-@Composable
-private fun CollectionRow(
-    collection: CollectionWithCount,
-    isFocused: Boolean,
-    isPinned: Boolean,
-    onClick: () -> Unit,
-    onLongClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(Dimens.radiusControl)
-    val borderModifier = if (isFocused) {
-        Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
-    } else Modifier
-
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(borderModifier)
-            .clickableNoFocus(onClick = onClick, onLongClick = onLongClick),
-        shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                    .compositeOver(MaterialTheme.colorScheme.surface)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.spacingMd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CoverMosaic(
-                coverPaths = collection.coverPaths,
-                modifier = Modifier.size(Dimens.iconXl + Dimens.spacingMd)
-            )
-
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = collection.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (isPinned) {
-                        Spacer(modifier = Modifier.width(Dimens.spacingSm))
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = stringResource(R.string.collections_pinned_description),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(Dimens.spacingMd)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.collections_game_count,
-                        collection.gameCount,
-                        collection.gameCount
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CoverMosaic(
-    coverPaths: List<String>,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(Dimens.radiusMd)
-
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        when {
-            coverPaths.isEmpty() -> {
-                Icon(
-                    Icons.Default.Folder,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(Dimens.iconLg)
-                )
-            }
-            coverPaths.size == 1 -> {
-                AsyncImage(
-                    model = rememberFileImageModel(coverPaths[0]),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            else -> {
-                val displayed = coverPaths.take(4)
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(modifier = Modifier.weight(1f)) {
-                        displayed.getOrNull(0)?.let { path ->
-                            AsyncImage(
-                                model = rememberFileImageModel(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxSize()
-                            )
-                        }
-                        displayed.getOrNull(1)?.let { path ->
-                            AsyncImage(
-                                model = rememberFileImageModel(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxSize()
-                            )
-                        }
-                    }
-                    if (displayed.size > 2) {
-                        Row(modifier = Modifier.weight(1f)) {
-                            displayed.getOrNull(2)?.let { path ->
-                                AsyncImage(
-                                    model = rememberFileImageModel(path),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                )
-                            }
-                            displayed.getOrNull(3)?.let { path ->
-                                AsyncImage(
-                                    model = rememberFileImageModel(path),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                )
-                            } ?: Box(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

@@ -56,6 +56,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.R
+import com.nendo.argosy.ui.components.collection.CollectionCell
 import com.nendo.argosy.domain.usecase.collection.CategoryWithCount
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.AlphabetSidebar
@@ -338,152 +339,22 @@ private fun CategoryRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(Dimens.radiusControl)
-    val borderModifier = if (isFocused) {
-        Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
-    } else Modifier
-
-    Card(
+    CollectionCell(
+        name = category.name,
+        gameCountLabel = pluralStringResource(
+            R.plurals.collections_browser_row_game_count,
+            category.summary.gameCount,
+            category.summary.gameCount
+        ),
+        summary = category.summary,
+        coverPaths = category.coverPaths,
+        placeholderIcon = Icons.Default.Category,
+        isFocused = isFocused,
+        pinnedDescription = stringResource(R.string.collections_browser_category_pinned_description)
+            .takeIf { isPinned },
+        onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .then(borderModifier)
-            .clickableNoFocus(onClick = onClick),
-        shape = shape,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                    .compositeOver(MaterialTheme.colorScheme.surface)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Dimens.spacingMd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CategoryCoverMosaic(
-                coverPaths = category.coverPaths,
-                modifier = Modifier.size(Dimens.iconXl + Dimens.spacingMd)
-            )
-
-            Spacer(modifier = Modifier.width(Dimens.spacingMd))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = category.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f, fill = false)
-                    )
-                    if (isPinned) {
-                        Spacer(modifier = Modifier.width(Dimens.spacingSm))
-                        Icon(
-                            Icons.Default.PushPin,
-                            contentDescription = stringResource(R.string.collections_browser_category_pinned_description),
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(Dimens.spacingMd)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                Text(
-                    text = pluralStringResource(R.plurals.collections_browser_row_game_count, category.gameCount, category.gameCount),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryCoverMosaic(
-    coverPaths: List<String>,
-    modifier: Modifier = Modifier
-) {
-    val shape = RoundedCornerShape(Dimens.radiusMd)
-
-    Box(
-        modifier = modifier
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface)
-    ) {
-        when {
-            coverPaths.isEmpty() -> {
-                Icon(
-                    Icons.Default.Category,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(Dimens.iconLg)
-                )
-            }
-            coverPaths.size == 1 -> {
-                AsyncImage(
-                    model = rememberFileImageModel(coverPaths[0]),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            else -> {
-                val displayed = coverPaths.take(4)
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Row(modifier = Modifier.weight(1f)) {
-                        displayed.getOrNull(0)?.let { path ->
-                            AsyncImage(
-                                model = rememberFileImageModel(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxSize()
-                            )
-                        }
-                        displayed.getOrNull(1)?.let { path ->
-                            AsyncImage(
-                                model = rememberFileImageModel(path),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxSize()
-                            )
-                        }
-                    }
-                    if (displayed.size > 2) {
-                        Row(modifier = Modifier.weight(1f)) {
-                            displayed.getOrNull(2)?.let { path ->
-                                AsyncImage(
-                                    model = rememberFileImageModel(path),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                )
-                            }
-                            displayed.getOrNull(3)?.let { path ->
-                                AsyncImage(
-                                    model = rememberFileImageModel(path),
-                                    contentDescription = null,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .fillMaxSize()
-                                )
-                            } ?: Box(modifier = Modifier.weight(1f))
-                        }
-                    }
-                }
-            }
-        }
-    }
+    )
 }
 
 @Composable

@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.local.dao.CollectionDao
+import com.nendo.argosy.data.local.dao.CollectionStats
 import com.nendo.argosy.data.local.entity.CollectionEntity
 import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.util.SafeCoroutineScope
@@ -16,13 +17,13 @@ import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val OVERVIEW_COVER_LIMIT = 4
+private const val OVERVIEW_COVER_LIMIT = 8
 private const val OVERVIEW_SETTLE_MS = 300L
 private const val OVERVIEW_KEEP_ALIVE_MS = 60_000L
 
 data class CollectionOverview(
     val collections: List<CollectionEntity>,
-    val gameCountById: Map<Long, Int>,
+    val statsById: Map<Long, CollectionStats>,
     val coverPathsById: Map<Long, List<String>>
 )
 
@@ -39,14 +40,13 @@ class CollectionOverviewSource @Inject constructor(
     @OptIn(FlowPreview::class)
     val overview: Flow<CollectionOverview> = combine(
         collectionDao.observeByTypes(CollectionType.entries),
-        collectionDao.observeLocalGameCounts(),
-        collectionDao.observeLocalCoverPaths()
-    ) { collections, counts, covers ->
+        collectionDao.observeLocalCollectionStats(),
+        collectionDao.observeLocalCoverPaths(OVERVIEW_COVER_LIMIT)
+    ) { collections, stats, covers ->
         CollectionOverview(
             collections = collections,
-            gameCountById = counts.associate { it.collectionId to it.gameCount },
+            statsById = stats.associateBy { it.collectionId },
             coverPathsById = covers.groupBy({ it.collectionId }, { it.coverPath })
-                .mapValues { (_, paths) -> paths.take(OVERVIEW_COVER_LIMIT) }
         )
     }
         .debounce(OVERVIEW_SETTLE_MS)

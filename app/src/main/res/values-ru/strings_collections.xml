@@ -235,4 +235,6 @@
     <string name="touchlayout_editor_orientation_portrait">Портретная</string>
     <string name="touchlayout_editor_orientation_landscape">Альбомная</string>
     <string name="touchlayout_editor_close">Закрыть</string>
+    <string name="collections_cell_installed">Установлено: %1$d</string>
+    <string name="collections_cell_achievements">%1$d/%2$d</string>
 </resources>

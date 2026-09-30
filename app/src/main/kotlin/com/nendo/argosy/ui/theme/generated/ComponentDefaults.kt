@@ -114,6 +114,11 @@ object ComponentDefaults {
         const val estimateFillAlphaLight = 0.45f
     }
 
+    object CollectionCell {
+        const val rowHeight = 132
+        const val mosaicCoverGap = 2
+    }
+
     object VolumeMeter {
         const val height = 12
         const val radius = 2

@@ -85,9 +85,6 @@ interface CollectionDao {
     @Query("DELETE FROM collection_games WHERE collectionId = :collectionId AND gameId IN (:gameIds)")
     suspend fun removeGamesFromCollection(collectionId: Long, gameIds: List<Long>)
 
-    /**
-     * Makes [collectionId] hold exactly [gameIds], writing only the difference.
-     */
     @Transaction
     suspend fun setCollectionGames(collectionId: Long, gameIds: Set<Long>) {
         val current = getGameIdsInCollection(collectionId).toSet()
@@ -96,6 +93,18 @@ interface CollectionDao {
             addGamesToCollection(added.map { CollectionGameEntity(collectionId = collectionId, gameId = it) })
         }
         (current - gameIds).chunked(SQL_PARAM_CHUNK).forEach { removeGamesFromCollection(collectionId, it) }
+    }
+
+    @Transaction
+    suspend fun replaceCollectionsOfType(type: CollectionType, gamesByName: Map<String, Set<Long>>) {
+        val existing = getAllByType(type)
+        val existingByName = existing.associateBy { it.name }
+        for ((name, gameIds) in gamesByName) {
+            val collectionId = existingByName[name]?.id
+                ?: insertCollection(CollectionEntity(name = name, type = type, isUserCreated = false))
+            setCollectionGames(collectionId, gameIds)
+        }
+        existing.filter { it.name !in gamesByName }.forEach { deleteCollection(it) }
     }
 
     @Query("SELECT collectionId FROM collection_games WHERE gameId = :gameId")
@@ -143,25 +152,37 @@ interface CollectionDao {
     fun observeLocalCollectionCoverPaths(collectionId: Long): Flow<List<String>>
 
     @Query("""
-        SELECT cg.collectionId AS collectionId, COUNT(*) AS gameCount
+        SELECT cg.collectionId AS collectionId,
+            COUNT(*) AS gameCount,
+            SUM($INSTALLED_SQL) AS installedCount,
+            SUM(g.earnedAchievementCount) AS earnedAchievements,
+            SUM(g.achievementCount) AS totalAchievements,
+            SUM(g.playTimeMinutes) AS playTimeMinutes
         FROM collection_games cg
         INNER JOIN games g ON cg.gameId = g.id
         INNER JOIN platforms p ON g.platformId = p.id
         WHERE p.syncEnabled = 1
         GROUP BY cg.collectionId
     """)
-    fun observeLocalGameCounts(): Flow<List<CollectionGameCount>>
+    fun observeLocalCollectionStats(): Flow<List<CollectionStats>>
 
-    @Transaction
     @Query("""
-        SELECT cg.collectionId AS collectionId, COALESCE(g.coverOverridePath, g.coverPath) AS coverPath
-        FROM games g
-        INNER JOIN collection_games cg ON g.id = cg.gameId
-        INNER JOIN platforms p ON g.platformId = p.id
-        WHERE COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL AND p.syncEnabled = 1
-        ORDER BY cg.collectionId ASC, cg.addedAt DESC
+        SELECT c.id AS collectionId, COALESCE(g.coverOverridePath, g.coverPath) AS coverPath
+        FROM collections c
+        INNER JOIN collection_games cg ON cg.rowid IN (
+            SELECT cg2.rowid FROM collection_games cg2
+            INNER JOIN games g2 ON g2.id = cg2.gameId
+            INNER JOIN platforms p2 ON p2.id = g2.platformId
+            WHERE cg2.collectionId = c.id
+                AND COALESCE(g2.coverOverridePath, g2.coverPath) IS NOT NULL
+                AND p2.syncEnabled = 1
+            ORDER BY cg2.addedAt DESC
+            LIMIT :perCollection
+        )
+        INNER JOIN games g ON g.id = cg.gameId
+        ORDER BY c.id ASC, cg.addedAt DESC
     """)
-    fun observeLocalCoverPaths(): Flow<List<CollectionCoverPath>>
+    fun observeLocalCoverPaths(perCollection: Int): Flow<List<CollectionCoverPath>>
 
     @Query("SELECT * FROM collections WHERE type = :type ORDER BY name ASC")
     fun observeByType(type: CollectionType): Flow<List<CollectionEntity>>
@@ -227,6 +248,13 @@ interface CollectionDao {
     suspend fun getNamesWithGamesByType(type: CollectionType): List<String>
 }
 
-data class CollectionGameCount(val collectionId: Long, val gameCount: Int)
+data class CollectionStats(
+    val collectionId: Long,
+    val gameCount: Int,
+    val installedCount: Int,
+    val earnedAchievements: Int,
+    val totalAchievements: Int,
+    val playTimeMinutes: Int
+)
 
 data class CollectionCoverPath(val collectionId: Long, val coverPath: String)

@@ -226,4 +226,6 @@
     <string name="touchlayout_editor_orientation_portrait">Portrait</string>
     <string name="touchlayout_editor_orientation_landscape">Paysage</string>
     <string name="touchlayout_editor_close">Fermer</string>
+    <string name="collections_cell_installed">%1$d installés</string>
+    <string name="collections_cell_achievements">%1$d/%2$d</string>
 </resources>

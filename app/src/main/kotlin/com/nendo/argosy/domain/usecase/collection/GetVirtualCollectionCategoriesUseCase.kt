@@ -2,6 +2,8 @@ package com.nendo.argosy.domain.usecase.collection
 
 import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.repository.CollectionOverviewSource
+import com.nendo.argosy.domain.model.CollectionSummary
+import com.nendo.argosy.domain.model.toSummary
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -9,7 +11,7 @@ import javax.inject.Inject
 
 data class CategoryWithCount(
     val name: String,
-    val gameCount: Int,
+    val summary: CollectionSummary,
     val coverPaths: List<String> = emptyList()
 )
 
@@ -33,11 +35,11 @@ class GetVirtualCollectionCategoriesUseCase @Inject constructor(
             overview.collections
                 .filter { it.type == type }
                 .mapNotNull { collection ->
-                    val count = overview.gameCountById[collection.id] ?: 0
-                    if (count == 0) return@mapNotNull null
+                    val summary = overview.statsById[collection.id].toSummary()
+                    if (summary.gameCount == 0) return@mapNotNull null
                     CategoryWithCount(
                         name = collection.name,
-                        gameCount = count,
+                        summary = summary,
                         coverPaths = overview.coverPathsById[collection.id].orEmpty()
                     )
                 }

@@ -20,7 +20,7 @@ import java.time.Instant
 
 const val SHOWCASE_COVER_LIMIT = 250
 
-private const val INSTALLED_SQL =
+internal const val INSTALLED_SQL =
     "(localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != '${GameEntity.LAUNCHER_UNSPECIFIED}'))"
 
 private const val SOURCE_COVER_DERIVED_RESET =
