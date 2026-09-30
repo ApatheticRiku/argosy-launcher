@@ -1012,7 +1012,7 @@ fun HomeScreen(
                                     stringResource(R.string.home_footer_grid_edit_cancel)
                             )
                             else -> buildList {
-                                if (!grid.isScrolling) add(InputButton.LB_RB to gridPageLabel)
+                                if (!grid.isScrolling) add(InputButton.LT_RT to gridPageLabel)
                                 grid.confirmLabelRes?.let {
                                     add(InputButton.A to stringResource(it))
                                 }
@@ -1059,7 +1059,7 @@ fun HomeScreen(
                     val mediaDetailsLabel = stringResource(R.string.home_footer_media_details)
                     FooterHints(
                         hints = buildList {
-                            if (isAutoGrid) add(InputButton.LB_RB to mediaSectionLabel)
+                            if (isAutoGrid) add(InputButton.LT_RT to mediaSectionLabel)
                             if (focusedMedia == null) {
                                 add(InputButton.A to mediaRefreshLabel)
                             } else {
@@ -1092,7 +1092,7 @@ fun HomeScreen(
                         FooterHints(
                             hints = listOfNotNull(
                                 if (isAutoGrid) {
-                                    InputButton.LB_RB to
+                                    InputButton.LT_RT to
                                         stringResource(R.string.home_footer_game_section)
                                 } else {
                                     null
@@ -1132,7 +1132,7 @@ fun HomeScreen(
                             (if (isAutoGrid) InputButton.DPAD else InputButton.DPAD_HORIZONTAL)
                                 to stringResource(R.string.home_footer_viewall_item),
                             if (isAutoGrid) {
-                                InputButton.LB_RB to
+                                InputButton.LT_RT to
                                     stringResource(R.string.home_footer_viewall_section)
                             } else {
                                 InputButton.DPAD_VERTICAL to

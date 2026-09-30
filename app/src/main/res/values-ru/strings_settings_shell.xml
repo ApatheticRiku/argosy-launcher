@@ -322,6 +322,7 @@
     <string name="settings_shell_footer_refresh">Обновить</string>
     <string name="settings_shell_footer_sort">Сортировка</string>
     <string name="settings_shell_footer_category">Категория</string>
+    <string name="settings_shell_footer_main_group">Раздел</string>
     <string name="settings_shell_footer_delete">Удалить</string>
     <string name="settings_shell_footer_adjust_platformdetail">Настроить</string>
     <string name="settings_shell_footer_update_emulator">Обновить эмулятор</string>

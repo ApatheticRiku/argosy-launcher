@@ -36,7 +36,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 /**
- * The row of section names with bumper arrows either side, shared by the single-screen home and the
+ * The row of section names with trigger arrows either side, shared by the single-screen home and the
  * dual-screen companion so the two cannot drift apart visually.
  *
  * Scroll position is local to the component: it takes only the labels and which one is current, and
@@ -68,7 +68,7 @@ fun SectionBreadcrumb(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = InputIcons.BumperLeft,
+                    painter = InputIcons.TriggerLeft,
                     contentDescription = stringResource(R.string.ui_section_breadcrumb_previous),
                     tint = navIconTint,
                     modifier = Modifier.size(Dimens.iconSm)
@@ -195,7 +195,7 @@ fun SectionBreadcrumb(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    painter = InputIcons.BumperRight,
+                    painter = InputIcons.TriggerRight,
                     contentDescription = stringResource(R.string.ui_section_breadcrumb_next),
                     tint = navIconTint,
                     modifier = Modifier.size(Dimens.iconSm)

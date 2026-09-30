@@ -320,6 +320,7 @@
     <string name="settings_shell_footer_refresh">Actualizar</string>
     <string name="settings_shell_footer_sort">Ordenar</string>
     <string name="settings_shell_footer_category">Categoría</string>
+    <string name="settings_shell_footer_main_group">Sección</string>
     <string name="settings_shell_footer_delete">Eliminar</string>
     <string name="settings_shell_footer_adjust_platformdetail">Ajustar</string>
     <string name="settings_shell_footer_update_emulator">Actualizar emulador</string>

@@ -1004,14 +1004,20 @@ class SocialViewModel @Inject constructor(
             return InputResult.UNHANDLED
         }
 
-        override fun onPrevSection(): InputResult {
-            if (anyModalShowing()) return InputResult.UNHANDLED
+        override fun onPrevTrigger(): InputResult {
+            if (anyModalShowing()) return InputResult.HANDLED
             return if (switchTab(-1)) InputResult.HANDLED else InputResult.UNHANDLED
         }
 
-        override fun onNextSection(): InputResult {
-            if (anyModalShowing()) return InputResult.UNHANDLED
+        override fun onNextTrigger(): InputResult {
+            if (anyModalShowing()) return InputResult.HANDLED
             return if (switchTab(1)) InputResult.HANDLED else InputResult.UNHANDLED
         }
+
+        override fun onPrevSection(): InputResult =
+            if (anyModalShowing()) InputResult.HANDLED else InputResult.UNHANDLED
+
+        override fun onNextSection(): InputResult =
+            if (anyModalShowing()) InputResult.HANDLED else InputResult.UNHANDLED
     }
 }

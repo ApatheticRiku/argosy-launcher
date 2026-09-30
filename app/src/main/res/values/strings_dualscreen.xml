@@ -272,7 +272,7 @@
 
     <!-- ===== Footer hints on the screen that only describes what the other one has focused ===== -->
 
-    <!-- Footer hint while the showcase describes a focused game. Noun: the shoulder buttons move
+    <!-- Footer hint while the showcase describes a focused game. Noun: the triggers move
          between the home screen's rows. -->
     <string name="dual_detail_hint_game_section">Section</string>
     <!-- Footer hint while the showcase describes a focused game. Verb: opens the game's page on
@@ -281,8 +281,8 @@
     <!-- Footer hint while the showcase describes a focused game. Verb: leaves that screen. -->
     <string name="dual_detail_hint_game_back">Back</string>
 
-    <!-- Footer hint while the showcase describes a title in the media grid. Noun: the shoulder
-         buttons move between the media server's libraries. -->
+    <!-- Footer hint while the showcase describes a title in the media grid. Noun: the triggers
+         move between the media server's libraries. -->
     <string name="dual_detail_hint_media_grid_library">Library</string>
     <!-- Footer hint while the showcase describes a title in the media grid. Verb: starts playing
          again from where the title was left. -->
@@ -309,7 +309,7 @@
     <string name="dual_detail_hint_media_info_back">Back</string>
 
     <!-- Footer hint while the showcase describes whatever else the other screen has focused.
-         Noun: the shoulder buttons move between that screen's sections. -->
+         Noun: the triggers move between that screen's sections. -->
     <string name="dual_detail_hint_default_section">Section</string>
     <!-- Footer hint in that state. Verb: marks the focused thing as a favourite. -->
     <string name="dual_detail_hint_default_favorite">Favorite</string>

@@ -751,51 +751,49 @@ class HomeInputHandler(
         return InputResult.HANDLED
     }
 
-    override fun onPrevTrigger(): InputResult {
-        if (appOverlayOpen()) return InputResult.handled(SoundType.BOUNDARY)
-        val state = actions.uiState.value
-        if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
-        if (!state.showTilePicker) return InputResult.UNHANDLED
-        actions.jumpTilePickerLetter(false)
-        return InputResult.handled(SoundType.SECTION_CHANGE)
-    }
+    override fun onPrevTrigger(): InputResult = shiftRowOrPage(-1)
 
-    override fun onNextTrigger(): InputResult {
-        if (appOverlayOpen()) return InputResult.handled(SoundType.BOUNDARY)
-        val state = actions.uiState.value
-        if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
-        if (!state.showTilePicker) return InputResult.UNHANDLED
-        actions.jumpTilePickerLetter(true)
-        return InputResult.handled(SoundType.SECTION_CHANGE)
-    }
+    override fun onNextTrigger(): InputResult = shiftRowOrPage(1)
 
-    override fun onPrevSection(): InputResult {
+    override fun onPrevSection(): InputResult = bumperInModal(-1)
+
+    override fun onNextSection(): InputResult = bumperInModal(1)
+
+    private fun shiftRowOrPage(delta: Int): InputResult {
         if (appOverlayOpen()) return InputResult.handled(SoundType.BOUNDARY)
         val state = actions.uiState.value
         if (state.showAddToCollectionModal || state.showGameMenu) return InputResult.HANDLED
         if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
         if (state.showTilePicker) {
-            actions.cycleTilePickerCategory(-1)
+            actions.jumpTilePickerLetter(delta > 0)
             return InputResult.handled(SoundType.SECTION_CHANGE)
         }
-        if (isCustomGrid(state)) return customPageTurn(-1)
-        actions.previousRow()
+        if (gridOverlayOpen(state)) return InputResult.HANDLED
+        if (isCustomGrid(state)) return customPageTurn(delta)
+        if (delta < 0) actions.previousRow() else actions.nextRow()
         return InputResult.handled(SoundType.SECTION_CHANGE)
     }
 
-    override fun onNextSection(): InputResult {
+    private fun bumperInModal(delta: Int): InputResult {
         if (appOverlayOpen()) return InputResult.handled(SoundType.BOUNDARY)
         val state = actions.uiState.value
         if (state.showAddToCollectionModal || state.showGameMenu) return InputResult.HANDLED
         if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
         if (state.showTilePicker) {
-            actions.cycleTilePickerCategory(1)
+            actions.cycleTilePickerCategory(delta)
             return InputResult.handled(SoundType.SECTION_CHANGE)
         }
-        if (isCustomGrid(state)) return customPageTurn(1)
-        actions.nextRow()
-        return InputResult.handled(SoundType.SECTION_CHANGE)
+        if (gridOverlayOpen(state)) return InputResult.HANDLED
+        if (state.customGrid.isEditing || state.customGrid.engagedTileId != null) return InputResult.HANDLED
+        return InputResult.UNHANDLED
     }
+
+    private fun gridOverlayOpen(state: HomeUiState): Boolean =
+        focusPicker != null ||
+            state.customGrid.pageChooser != null ||
+            state.customGrid.showMenu ||
+            state.customGrid.pendingAdd != null ||
+            state.customGrid.mediaTileNotice != null
 
     override fun onContextMenu(): InputResult {
         if (appOverlayOpen()) return InputResult.HANDLED

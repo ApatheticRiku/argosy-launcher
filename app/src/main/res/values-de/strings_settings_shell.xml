@@ -318,6 +318,7 @@
     <string name="settings_shell_footer_refresh">Aktualisieren</string>
     <string name="settings_shell_footer_sort">Sortieren</string>
     <string name="settings_shell_footer_category">Kategorie</string>
+    <string name="settings_shell_footer_main_group">Abschnitt</string>
     <string name="settings_shell_footer_delete">Löschen</string>
     <string name="settings_shell_footer_adjust_platformdetail">Anpassen</string>
     <string name="settings_shell_footer_update_emulator">Emulator-Update</string>

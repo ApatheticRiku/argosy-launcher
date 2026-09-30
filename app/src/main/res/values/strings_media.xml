@@ -14,7 +14,7 @@
          language. -->
     <string name="media_library_heading">MEDIA</string>
 
-    <!-- Footer hint on the media grid. Noun: the shoulder buttons move between the media
+    <!-- Footer hint on the media grid. Noun: the triggers move between the media
          server's libraries (Movies, Shows). Not Argosy's own game library. -->
     <string name="media_library_footer_library">Library</string>
     <!-- Footer hint on a grid tile that was stopped part way through. Verb: starts playing again

@@ -465,12 +465,12 @@ class MediaLibraryViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
-        override fun onPrevSection(): InputResult {
+        override fun onPrevTrigger(): InputResult {
             cycleLibrary(-1)
             return InputResult.HANDLED
         }
 
-        override fun onNextSection(): InputResult {
+        override fun onNextTrigger(): InputResult {
             cycleLibrary(1)
             return InputResult.HANDLED
         }

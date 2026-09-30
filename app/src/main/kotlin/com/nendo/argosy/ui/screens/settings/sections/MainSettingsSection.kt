@@ -197,6 +197,8 @@ internal fun mainSettingsMaxFocusIndex(controls: ControlsState): Int =
 internal fun mainSettingsItemAtFocusIndex(index: Int, controls: ControlsState): MainSettingsItem? =
     mainSettingsLayout.itemAtFocusIndex(index, controls)
 
+internal fun mainSettingsSections(controls: ControlsState) = mainSettingsLayout.buildSections(controls)
+
 
 @Composable
 fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {

@@ -311,6 +311,7 @@
     <string name="settings_shell_footer_refresh">रीफ़्रेश करें</string>
     <string name="settings_shell_footer_sort">सॉर्ट करें</string>
     <string name="settings_shell_footer_category">श्रेणी</string>
+    <string name="settings_shell_footer_main_group">सेक्शन</string>
     <string name="settings_shell_footer_delete">हटाएँ</string>
     <string name="settings_shell_footer_adjust_platformdetail">समायोजित करें</string>
     <string name="settings_shell_footer_update_emulator">एमुलेटर अपडेट करें</string>

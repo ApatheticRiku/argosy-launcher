@@ -158,7 +158,7 @@ fun MediaLibraryScreen(
                         InputButton.B -> inputHandler.onBack()
                         InputButton.X -> inputHandler.onContextMenu()
                         InputButton.Y -> inputHandler.onSecondaryAction()
-                        InputButton.LB_RB -> inputHandler.onNextSection()
+                        InputButton.LT_RT -> inputHandler.onNextTrigger()
                         else -> Unit
                     }
                 }
@@ -208,7 +208,7 @@ private fun buildLibraryHints(uiState: MediaLibraryUiState): List<Pair<InputButt
     val openLabel = stringResource(R.string.media_library_footer_open)
     val backLabel = stringResource(R.string.media_library_footer_back)
     return buildList {
-        if (uiState.libraries.size > 1) add(InputButton.LB_RB to libraryLabel)
+        if (uiState.libraries.size > 1) add(InputButton.LT_RT to libraryLabel)
         val focused = uiState.focusedItem
         if (focused?.isPlayable == true) {
             add(InputButton.Y to if (focused.hasResumePosition) resumeLabel else playLabel)

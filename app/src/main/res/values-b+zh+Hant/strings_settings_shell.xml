@@ -316,6 +316,7 @@
     <string name="settings_shell_footer_refresh">重新整理</string>
     <string name="settings_shell_footer_sort">排序</string>
     <string name="settings_shell_footer_category">類別</string>
+    <string name="settings_shell_footer_main_group">區段</string>
     <string name="settings_shell_footer_delete">刪除</string>
     <string name="settings_shell_footer_adjust_platformdetail">調整</string>
     <string name="settings_shell_footer_update_emulator">更新模擬器</string>

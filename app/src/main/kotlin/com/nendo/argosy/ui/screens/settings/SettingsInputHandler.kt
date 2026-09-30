@@ -160,12 +160,19 @@ class SettingsInputHandler(
     }
 
     override fun onPrevSection(): InputResult = dispatch(InputMethod.PREV_SECTION) {
-        InputResult.HANDLED
+        bumperFallback()
     }
 
     override fun onNextSection(): InputResult = dispatch(InputMethod.NEXT_SECTION) {
-        InputResult.HANDLED
+        bumperFallback()
     }
+
+    private fun bumperFallback(): InputResult =
+        if (viewModel.uiState.value.currentSection == SettingsSection.MAIN) {
+            InputResult.UNHANDLED
+        } else {
+            InputResult.HANDLED
+        }
 
     override fun onPrevTrigger(): InputResult = dispatch(InputMethod.PREV_TRIGGER) {
         InputResult.UNHANDLED

@@ -171,7 +171,7 @@ fun companionDetailHints(
     viewMode: String = ""
 ): List<Pair<com.nendo.argosy.ui.components.InputButton, String>> = when {
     detail.isGameTitle -> listOf(
-        com.nendo.argosy.ui.components.InputButton.LB_RB to
+        com.nendo.argosy.ui.components.InputButton.LT_RT to
             stringResource(R.string.dual_detail_hint_game_section),
         com.nendo.argosy.ui.components.InputButton.A to
             stringResource(R.string.dual_detail_hint_game_open),
@@ -179,7 +179,7 @@ fun companionDetailHints(
             stringResource(R.string.dual_detail_hint_game_back)
     )
     viewMode == "MEDIA_GRID" -> listOf(
-        com.nendo.argosy.ui.components.InputButton.LB_RB to
+        com.nendo.argosy.ui.components.InputButton.LT_RT to
             stringResource(R.string.dual_detail_hint_media_grid_library),
         com.nendo.argosy.ui.components.InputButton.Y to
             stringResource(R.string.dual_detail_hint_media_grid_resume),
@@ -201,7 +201,7 @@ fun companionDetailHints(
             stringResource(R.string.dual_detail_hint_media_info_back)
     )
     else -> listOf(
-        com.nendo.argosy.ui.components.InputButton.LB_RB to
+        com.nendo.argosy.ui.components.InputButton.LT_RT to
             stringResource(R.string.dual_detail_hint_default_section),
         com.nendo.argosy.ui.components.InputButton.Y to
             stringResource(R.string.dual_detail_hint_default_favorite),

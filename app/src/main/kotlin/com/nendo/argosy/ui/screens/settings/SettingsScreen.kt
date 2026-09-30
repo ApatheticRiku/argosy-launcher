@@ -1750,6 +1750,7 @@ private fun SettingsFooter(
     val playTimeOpenHint = stringResource(R.string.settings_shell_footer_play_time_open)
     val playTimeSortHint = stringResource(R.string.settings_shell_footer_play_time_sort)
     val categoryHint = stringResource(R.string.settings_shell_footer_category)
+    val mainGroupHint = stringResource(R.string.settings_shell_footer_main_group)
     val deleteHint = stringResource(R.string.settings_shell_footer_delete)
     val adjustPlatformDetailHint = stringResource(R.string.settings_shell_footer_adjust_platformdetail)
     val updateEmulatorHint = stringResource(R.string.settings_shell_footer_update_emulator)
@@ -1770,6 +1771,9 @@ private fun SettingsFooter(
             uiState.currentSection != SettingsSection.SHADER_STACK &&
             uiState.currentSection != SettingsSection.PLAY_TIME) {
             add(InputButton.DPAD to navigateHint)
+        }
+        if (uiState.currentSection == SettingsSection.MAIN) {
+            add(InputButton.LT_RT to mainGroupHint)
         }
         if (uiState.currentSection == SettingsSection.SHADER_STACK &&
             shaderStack.entries.isNotEmpty() &&

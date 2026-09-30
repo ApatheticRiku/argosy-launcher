@@ -32,6 +32,7 @@ import com.nendo.argosy.ui.screens.settings.sections.JellyfinItem
 import com.nendo.argosy.ui.screens.settings.sections.JellyfinLayoutState
 import com.nendo.argosy.ui.screens.settings.sections.jellyfinItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.jellyfinSections
+import com.nendo.argosy.ui.screens.settings.sections.mainSettingsSections
 import com.nendo.argosy.ui.screens.settings.sections.audioSections
 import com.nendo.argosy.ui.screens.settings.sections.navigationItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.navigationSections
@@ -78,6 +79,18 @@ internal class LightSectionsInput(
     override fun onPrevSection(): InputResult = handleSectionJump(-1)
 
     override fun onNextSection(): InputResult = handleSectionJump(1)
+
+    override fun onPrevTrigger(): InputResult = handleMainGroupJump(-1)
+
+    override fun onNextTrigger(): InputResult = handleMainGroupJump(1)
+
+    private fun handleMainGroupJump(direction: Int): InputResult {
+        val state = viewModel.uiState.value
+        if (state.currentSection != SettingsSection.MAIN) return InputResult.UNHANDLED
+        val sections = mainSettingsSections(state.controls)
+        if (direction < 0) viewModel.jumpToPrevSection(sections) else viewModel.jumpToNextSection(sections)
+        return InputResult.HANDLED
+    }
 
     private fun handleLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
@@ -360,6 +373,7 @@ internal class LightSectionsInput(
     private fun handleSectionJump(direction: Int): InputResult {
         val state = viewModel.uiState.value
         val sections = when (state.currentSection) {
+            SettingsSection.MAIN -> return InputResult.UNHANDLED
             SettingsSection.CONTROLLER_GRIP -> controllerGripSections(state.display)
             SettingsSection.HOME_SCREEN -> homeScreenSections(state.display)
             SettingsSection.PRESENTATION -> presentationSections(state.display.presentationStyle)

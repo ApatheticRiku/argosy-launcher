@@ -413,6 +413,8 @@
     <!-- Play-time game list: changes the ordering. Verb. -->
     <string name="settings_shell_footer_play_time_sort">Sort</string>
     <string name="settings_shell_footer_category">Category</string>
+    <!-- Trigger hint on the top-level settings list: jumps between the header groups. Noun. -->
+    <string name="settings_shell_footer_main_group">Section</string>
     <string name="settings_shell_footer_delete">Delete</string>
     <!-- D-pad hint on the platform detail screen: adjusts the focused row's value. Separate
          site from the shader stack "Adjust" hint above. -->

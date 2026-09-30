@@ -81,7 +81,7 @@
          the tile back where it started. -->
     <string name="home_footer_grid_edit_cancel">Cancel</string>
 
-    <!-- Footer hint on the curated grid. Noun: the shoulder buttons turn to the previous or next
+    <!-- Footer hint on the curated grid. Noun: the triggers turn to the previous or next
          page of tiles. -->
     <string name="home_footer_grid_page">Page</string>
     <!-- Footer hint on a curated grid tile that stands for a collection being played through in
@@ -97,7 +97,7 @@
          screens. Verb phrase. -->
     <string name="home_footer_grid_hold_swap_screens">Hold to Swap Screens</string>
 
-    <!-- Footer hint on a row of films and episodes, grid layout. Noun: the shoulder buttons move
+    <!-- Footer hint on a row of films and episodes, grid layout. Noun: the triggers move
          between the home screen's rows. -->
     <string name="home_footer_media_section">Section</string>
     <!-- Footer hint on an empty row of films and episodes. Verb: fetches the row again from the
@@ -115,7 +115,7 @@
     <!-- Footer hint on a film or episode. Noun, plural: opens the page describing the title. -->
     <string name="home_footer_media_details">Details</string>
 
-    <!-- Footer hint on a row of games, grid layout. Noun: the shoulder buttons move between the
+    <!-- Footer hint on a row of games, grid layout. Noun: the triggers move between the
          home screen's rows. -->
     <string name="home_footer_game_section">Section</string>
     <!-- Footer hint on an Android game whose package is downloaded but not yet installed. Verb:
@@ -139,7 +139,7 @@
          between the games in the row. -->
     <string name="home_footer_viewall_item">Game</string>
     <!-- Footer hint while the last card of a row is under the cursor, grid layout. Noun: the
-         shoulder buttons move between the home screen's rows. -->
+         triggers move between the home screen's rows. -->
     <string name="home_footer_viewall_section">Section</string>
     <!-- Footer hint while the last card of a row is under the cursor, carousel layout. Noun: up
          and down move between the home screen's rows. -->
