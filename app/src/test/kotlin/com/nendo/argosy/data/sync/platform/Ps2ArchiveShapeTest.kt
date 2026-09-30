@@ -139,6 +139,38 @@ class Ps2ArchiveShapeTest {
     }
 
     @Test
+    fun `a restore replaces an empty superblock with a formatted one`() = runTest {
+        File(card, "_pcsx2_superblock").writeBytes(ByteArray(0))
+
+        val result = handler.extractDownload(gameFolderRootedArchive(), saveContext())
+
+        assertTrue(result.error ?: "", result.success)
+        assertTrue(Ps2FolderCardSuperblock.isFormatted(File(card, "_pcsx2_superblock").readBytes()))
+    }
+
+    @Test
+    fun `a restore into a new card writes a formatted superblock`() = runTest {
+        val fresh = File(tempDir, "memcards/Shared.ps2").apply { mkdirs() }
+
+        val placed = handler.placeArchive(gameFolderRootedArchive(), fresh, saveId)
+
+        assertTrue(placed)
+        assertTrue(Ps2FolderCardSuperblock.isFormatted(File(fresh, "_pcsx2_superblock").readBytes()))
+        assertEquals("server-save", File(fresh, "$gameFolder/ace.bin").readText())
+    }
+
+    @Test
+    fun `a restore leaves a formatted superblock untouched`() = runTest {
+        val emulatorWritten = Ps2FolderCardSuperblock.formatted8Mb().also { it[0x30] = 0x00; it[0x31] = 0x40 }
+        File(card, "_pcsx2_superblock").writeBytes(emulatorWritten)
+
+        val result = handler.extractDownload(cardRootedArchive(), saveContext())
+
+        assertTrue(result.error ?: "", result.success)
+        assertTrue(emulatorWritten.contentEquals(File(card, "_pcsx2_superblock").readBytes()))
+    }
+
+    @Test
     fun `an archive for a different game is still refused`() = runTest {
         val staging = File(tempDir, "other/BASLUS-21693XX").apply { mkdirs() }
         File(staging, "other.bin").writeText("not ours")

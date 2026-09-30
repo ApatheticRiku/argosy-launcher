@@ -853,12 +853,22 @@ private class Ps2FolderHandler(
         }
         val card = dir ?: return
         val superblock = File(card, SUPERBLOCK_FILE)
-        if (!superblock.exists()) {
-            val created = runCatching { superblock.createNewFile() }.getOrDefault(false)
-            if (created) {
-                Logger.debug(TAG, "ensureContainerPrepared: wrote $SUPERBLOCK_FILE | card=${card.path}")
+        val existing = if (superblock.exists()) {
+            runCatching { superblock.readBytes() }.getOrElse {
+                Logger.warn(TAG, "ensureContainerPrepared: cannot read $SUPERBLOCK_FILE, leaving it | card=${card.path}")
+                return
             }
+        } else {
+            null
         }
+        if (Ps2FolderCardSuperblock.isFormatted(existing)) return
+
+        val written = runCatching { superblock.writeBytes(Ps2FolderCardSuperblock.formatted8Mb()) }.isSuccess
+        Logger.debug(
+            TAG,
+            "ensureContainerPrepared: wrote a formatted $SUPERBLOCK_FILE | card=${card.path}, " +
+                "replacedBytes=${existing?.size}, written=$written"
+        )
     }
 
     /**

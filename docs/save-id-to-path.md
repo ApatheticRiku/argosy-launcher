@@ -130,6 +130,16 @@ not one folder.
 A card is a directory ending `.ps2` or holding a `_pcsx2_superblock`.
 Comparison is on a normalized form with `-` and `_` stripped, uppercased.
 
+PCSX2 (`FolderMemoryCard::LoadMemoryCardData`) reads the full 0x2000-byte
+superblock and indexes the card only when byte 0x16 is `0x6F`; anything shorter,
+including an empty file, is an unformatted card whose folders the game never
+sees. Every restore door (`extractDownload` and `placeArchive`) therefore ends
+with the card holding a formatted superblock: an existing formatted one is left
+byte-for-byte, and a missing, short or unformatted one is replaced with the
+standard 8 MB layout from `pcsx2/Reference/PS2-MemoryCardFileSystem.htm`
+(`Ps2FolderCardSuperblock`). A superblock that exists but cannot be read is left
+alone. The superblock never travels in an archive.
+
 The region prefix comes from the third character of the four-letter serial
 code, and this rule exists in two places that must agree:
 

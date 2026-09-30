@@ -123,7 +123,9 @@ open class FolderSaveHandler(
      * layout whose archive spans more than one directory lands the same way everywhere.
      */
     fun placeArchive(archive: File, targetFolder: File, saveId: String?): Boolean =
-        unpackArchive(archive, targetFolder, saveId)
+        unpackArchive(archive, targetFolder, saveId).also { placed ->
+            if (placed) ensureContainerPrepared(targetFolder)
+        }
 
     /**
      * The folders an archive of the save at [savePath] is built from, each under the root name
