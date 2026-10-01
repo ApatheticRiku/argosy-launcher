@@ -571,8 +571,6 @@
 
     <string name="settings_about_systemize_title">防止高负载模拟器崩溃</string>
     <string name="settings_about_systemize_subtitle">当高负载模拟器占用大部分内存时，Argosy可能会被强制关闭。此功能会使Argosy成为系统应用，从而不再被系统杀死。需要root。</string>
-    <string name="settings_about_android_data_title">打开模拟器存档文件夹</string>
-    <string name="settings_about_android_data_subtitle">让Argosy读取模拟器保存在Android/data中的存档。需要root，并将SELinux设为宽容模式（permissive）。安装新模拟器后请再次运行。</string>
     <string name="settings_about_restart_title">重启Argosy</string>
     <string name="settings_about_restart_subtitle">关闭并重新打开启动器</string>
 

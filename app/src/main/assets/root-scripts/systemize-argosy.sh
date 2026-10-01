@@ -14,9 +14,6 @@
 # Lands in /system/app, not priv-app, so it cannot trip privapp-permissions and
 # bootloop the device.
 #
-# This does not touch Android/data. Emulator save folders are a separate feature;
-# run argosy-android-data.sh for those.
-#
 # Every run appends to the first writable of /data/local/tmp/argosy-systemize.log,
 # /sdcard/argosy-systemize.log, /data/ or /cache/. If the script appears to do
 # nothing, read that file: the device's script runner often discards stdout, and
@@ -191,4 +188,3 @@ fi
 log "--- run ended ---"
 log "after rebooting, confirm with: dumpsys package $PKG | grep -E 'codePath|pkgFlags'"
 log "it worked if codePath is under /system and pkgFlags contains SYSTEM"
-log "for emulator save folders, run argosy-android-data.sh separately"

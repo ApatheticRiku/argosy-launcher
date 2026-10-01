@@ -1181,7 +1181,6 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
         AboutItem.SystemizeHelper -> vm.applyRootScript(com.nendo.argosy.data.model.RootScript.SYSTEMIZE)
-        AboutItem.AndroidDataHelper -> vm.applyRootScript(com.nendo.argosy.data.model.RootScript.ANDROID_DATA)
         AboutItem.RestartApp -> vm.restartApp()
         else -> {}
     }

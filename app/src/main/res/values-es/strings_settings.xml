@@ -605,8 +605,6 @@
 
     <string name="settings_about_systemize_title">Evitar cierres con emuladores exigentes</string>
     <string name="settings_about_systemize_subtitle">Argosy puede cerrarse a la fuerza cuando un emulador exigente usa la mayor parte de la RAM. Esto convierte a Argosy en una aplicación del sistema para que ya no se cierre. Necesita root.</string>
-    <string name="settings_about_android_data_title">Abrir carpetas de guardado de emuladores</string>
-    <string name="settings_about_android_data_subtitle">Permite a Argosy leer las partidas guardadas que los emuladores mantienen en Android/data. Necesita root y SELinux en modo permisivo. Vuelve a ejecutarlo después de instalar un emulador nuevo.</string>
     <string name="settings_about_restart_title">Reiniciar Argosy</string>
     <string name="settings_about_restart_subtitle">Cerrar y volver a abrir el lanzador</string>
 

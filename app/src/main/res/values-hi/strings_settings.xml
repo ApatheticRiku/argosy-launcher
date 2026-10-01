@@ -583,8 +583,6 @@
 
     <string name="settings_about_systemize_title">भारी एमुलेटर पर क्रैश रोकें</string>
     <string name="settings_about_systemize_subtitle">जब कोई भारी एमुलेटर ज़्यादातर RAM का उपयोग करता है तो Argosy फ़ोर्स-क्लोज़ हो सकता है। यह Argosy को सिस्टम ऐप बना देता है ताकि इसे अब बंद न किया जाए। रूट चाहिए।</string>
-    <string name="settings_about_android_data_title">एमुलेटर सेव फ़ोल्डर खोलें</string>
-    <string name="settings_about_android_data_subtitle">Argosy को वे सेव पढ़ने देता है जो एमुलेटर Android/data में रखते हैं। रूट और permissive पर सेट SELinux चाहिए। नया एमुलेटर इंस्टॉल करने के बाद इसे फिर से चलाएँ।</string>
     <string name="settings_about_restart_title">Argosy रीस्टार्ट करें</string>
     <string name="settings_about_restart_subtitle">लॉन्चर बंद करके फिर से खोलें</string>
 

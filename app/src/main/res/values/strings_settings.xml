@@ -1139,12 +1139,6 @@
     <!-- Second line of that row. "Rooted" describes a device whose owner has full system access.
          "RAM" is the device's working memory. -->
     <string name="settings_about_systemize_subtitle">Argosy can be force-closed when a demanding emulator uses most of the RAM. This makes Argosy a system app so it is no longer killed. Needs root.</string>
-    <!-- Row that gives Argosy access to the save folders emulators keep under Android/data. Verb
-         phrase naming what it is for. -->
-    <string name="settings_about_android_data_title">Open Emulator Save Folders</string>
-    <!-- Second line of that row. "Android/data" is a literal folder path, never translated.
-         "SELinux" is the name of an Android security system, never translated. -->
-    <string name="settings_about_android_data_subtitle">Lets Argosy read the saves emulators keep in Android/data. Needs root and SELinux set to permissive. Run it again after installing a new emulator.</string>
     <!-- Row that closes and reopens the app. Verb. -->
     <string name="settings_about_restart_title">Restart Argosy</string>
     <!-- Second line of that row. -->

@@ -112,8 +112,8 @@ class SaveCacheManager @Inject constructor(
         unit?.memberPaths?.forEach(fal::prepareSaveAccess)
 
         if (!skipDuplicateCheck && !fal.isDirectory(savePath) && unit == null && precomputedContentHash == null) {
-            val fileMtime = Instant.ofEpochMilli(saveFile.lastModified())
-            val unchanged = saveCacheDao.findUnchangedSinceMtime(gameId, ownerUserId, saveFile.length(), fileMtime)
+            val fileMtime = Instant.ofEpochMilli(fal.lastModified(savePath))
+            val unchanged = saveCacheDao.findUnchangedSinceMtime(gameId, ownerUserId, fal.length(savePath), fileMtime)
             val cachedHash = unchanged?.contentHash
             if (unchanged != null && !cachedHash.isNullOrBlank()) {
                 Log.d(TAG, "Cache untouched since ${unchanged.cachedAt} for game $gameId (hash=$cachedHash), skipping rehash")
@@ -1213,7 +1213,7 @@ class SaveCacheManager @Inject constructor(
         val newest = if (fal.isDirectory(savePath)) {
             newestUnitWriteTime(gameId, savePath)
         } else {
-            fal.getTransformedFile(savePath).lastModified()
+            fal.lastModified(savePath)
         }
         if (newest <= 0L) return
         saveSyncDao.upsert(row.copy(localUpdatedAt = Instant.ofEpochMilli(newest)))

@@ -211,13 +211,11 @@ class AndroidDataAccessor @Inject constructor(
         }
     }
 
-    fun lastModified(path: String): Long {
-        return File(transformPath(path)).lastModified()
-    }
+    fun lastModified(path: String): Long =
+        File(path).takeIf { it.exists() }?.lastModified() ?: File(transformPath(path)).lastModified()
 
-    fun length(path: String): Long {
-        return File(transformPath(path)).length()
-    }
+    fun length(path: String): Long =
+        File(path).takeIf { it.exists() }?.length() ?: File(transformPath(path)).length()
 
     fun isDirectory(path: String): Boolean {
         return File(transformPath(path)).isDirectory

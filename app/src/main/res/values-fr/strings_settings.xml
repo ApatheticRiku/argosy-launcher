@@ -595,8 +595,6 @@
 
     <string name="settings_about_systemize_title">Empêcher les plantages sur émulateurs lourds</string>
     <string name="settings_about_systemize_subtitle">Argosy peut être fermé de force quand un émulateur exigeant utilise la majorité de la RAM. Ceci fait d\'Argosy une application système pour qu\'elle ne soit plus fermée. Nécessite le root.</string>
-    <string name="settings_about_android_data_title">Ouvrir les dossiers de sauvegarde des émulateurs</string>
-    <string name="settings_about_android_data_subtitle">Permet à Argosy de lire les sauvegardes que les émulateurs conservent dans Android/data. Nécessite le root et SELinux en mode permissif. Relancez-le après l\'installation d\'un nouvel émulateur.</string>
     <string name="settings_about_restart_title">Redémarrer Argosy</string>
     <string name="settings_about_restart_subtitle">Fermer et rouvrir le lanceur</string>
 

@@ -1,8 +1,7 @@
 package com.nendo.argosy.data.model
 
 enum class RootScript(val assetPath: String, val fileName: String, val needsReboot: Boolean) {
-    SYSTEMIZE("root-scripts/systemize-argosy.sh", "argosy-systemize.sh", needsReboot = true),
-    ANDROID_DATA("root-scripts/argosy-android-data.sh", "argosy-android-data.sh", needsReboot = false)
+    SYSTEMIZE("root-scripts/systemize-argosy.sh", "argosy-systemize.sh", needsReboot = true)
 }
 
 data class VendorSteps(val deviceLabel: String, val steps: List<String>)

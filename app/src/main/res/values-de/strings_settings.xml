@@ -593,8 +593,6 @@
 
     <string name="settings_about_systemize_title">Abstürze bei anspruchsvollen Emulatoren verhindern</string>
     <string name="settings_about_systemize_subtitle">Argosy kann erzwungen beendet werden, wenn ein anspruchsvoller Emulator den Großteil des RAM belegt. Dies macht Argosy zu einer System-App, damit sie nicht mehr beendet wird. Erfordert Root.</string>
-    <string name="settings_about_android_data_title">Emulator-Spielstandordner öffnen</string>
-    <string name="settings_about_android_data_subtitle">Ermöglicht Argosy, die Spielstände zu lesen, die Emulatoren in Android/data ablegen. Erfordert Root und SELinux im permissiven Modus. Nach der Installation eines neuen Emulators erneut ausführen.</string>
     <string name="settings_about_restart_title">Argosy neu starten</string>
     <string name="settings_about_restart_subtitle">Launcher schließen und neu öffnen</string>
 

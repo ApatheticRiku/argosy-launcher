@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.outlined.Article
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.Upload
 import androidx.compose.material3.Icon
@@ -82,7 +81,6 @@ internal sealed class AboutItem(
     data object ImportSettings : AboutItem("importSettings", "backup")
     data object SystemSpacer : AboutItem("systemSpacer", "system")
     data object SystemizeHelper : AboutItem("systemizeHelper", "system")
-    data object AndroidDataHelper : AboutItem("androidDataHelper", "system")
     data object RestartApp : AboutItem("restartApp", "system")
     data object SectionSpacer : AboutItem("spacer", "debug")
     data object FileLogging : AboutItem("fileLogging", "debug")
@@ -107,7 +105,7 @@ internal sealed class AboutItem(
             get() = listOf(
                 VersionHeader, VersionInfo, CheckUpdates, ChangelogPreview, BetaUpdates,
                 BackupSpacer, BackupHeader, ExportSettings, ImportSettings,
-                SystemSpacer, SystemHeader, SystemizeHelper, AndroidDataHelper, RestartApp,
+                SystemSpacer, SystemHeader, SystemizeHelper, RestartApp,
                 SectionSpacer, DebugHeader, FileLogging, LogLevel, SaveDebugLogging
             )
     }
@@ -295,14 +293,6 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     subtitle = stringResource(R.string.settings_about_systemize_subtitle),
                     isFocused = isFocused(item),
                     onClick = { viewModel.applyRootScript(com.nendo.argosy.data.model.RootScript.SYSTEMIZE) }
-                )
-
-                AboutItem.AndroidDataHelper -> ActionPreference(
-                    icon = Icons.Outlined.FolderOpen,
-                    title = stringResource(R.string.settings_about_android_data_title),
-                    subtitle = stringResource(R.string.settings_about_android_data_subtitle),
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.applyRootScript(com.nendo.argosy.data.model.RootScript.ANDROID_DATA) }
                 )
 
                 AboutItem.RestartApp -> ActionPreference(
