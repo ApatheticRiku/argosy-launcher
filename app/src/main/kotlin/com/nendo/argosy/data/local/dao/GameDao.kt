@@ -24,7 +24,7 @@ internal const val INSTALLED_SQL =
     "(localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != '${GameEntity.LAUNCHER_UNSPECIFIED}'))"
 
 internal const val ENABLED_PLATFORM_SQL =
-    "EXISTS (SELECT 1 FROM platforms p WHERE p.id = games.platformId AND p.isVisible = 1 AND p.syncEnabled = 1)"
+    "EXISTS (SELECT 1 FROM platforms WHERE platforms.id = games.platformId AND $PLATFORM_ENABLED_SQL)"
 
 private const val SOURCE_COVER_DERIVED_RESET =
     "gradientColors = CASE WHEN coverOverridePath IS NULL THEN NULL ELSE gradientColors END, " +
