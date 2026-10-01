@@ -1533,8 +1533,6 @@
     <string name="ui_startup_status_syncing_collections">Syncing collections...</string>
     <!-- Splash status while installed emulators are being looked over. -->
     <string name="ui_startup_status_checking_emulators">Checking emulators...</string>
-    <!-- Splash status while broken links between library entries and game files are repaired. -->
-    <string name="ui_startup_status_verifying_library">Verifying library...</string>
     <!-- Splash status while the home screen is being built. -->
     <string name="ui_startup_status_preparing_home">Preparing home...</string>
     <!-- Splash status while the launcher waits for storage it cannot yet read. -->

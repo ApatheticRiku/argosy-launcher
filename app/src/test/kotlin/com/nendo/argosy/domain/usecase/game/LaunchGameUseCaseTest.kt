@@ -5,6 +5,8 @@ import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchOrigin
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
+import com.nendo.argosy.data.repository.LibraryPointerRepair
+import io.mockk.coVerifyOrder
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -18,13 +20,15 @@ class LaunchGameUseCaseTest {
 
     private lateinit var gameLauncher: GameLauncher
     private lateinit var playSessionTracker: PlaySessionTracker
+    private lateinit var libraryPointerRepair: LibraryPointerRepair
     private lateinit var useCase: LaunchGameUseCase
 
     @Before
     fun setup() {
         gameLauncher = mockk(relaxed = true)
         playSessionTracker = mockk(relaxed = true)
-        useCase = LaunchGameUseCase(gameLauncher, playSessionTracker)
+        libraryPointerRepair = mockk(relaxed = true)
+        useCase = LaunchGameUseCase(gameLauncher, playSessionTracker, libraryPointerRepair)
     }
 
     @Test
@@ -47,6 +51,18 @@ class LaunchGameUseCaseTest {
                 coreName = null,
                 isNewGame = true
             )
+        }
+    }
+
+    @Test
+    fun `invoke waits for the library pointer repair before resolving the launch`() = runTest {
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoEmulator("nes")
+
+        useCase(123L)
+
+        coVerifyOrder {
+            libraryPointerRepair.await()
+            gameLauncher.launch(123L, null, any(), any(), any(), any(), any(), any())
         }
     }
 

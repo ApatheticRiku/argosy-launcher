@@ -1,0 +1,111 @@
+package com.nendo.argosy.ui.startup
+
+import androidx.annotation.StringRes
+import com.nendo.argosy.R
+import com.nendo.argosy.core.notification.NotificationDuration
+import com.nendo.argosy.core.notification.NotificationManager
+import com.nendo.argosy.core.notification.NotificationText
+import com.nendo.argosy.core.notification.NotificationType
+import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.repository.GameRepository
+import com.nendo.argosy.data.repository.LibraryPointerRepair
+import com.nendo.argosy.domain.usecase.libretro.LibretroMigrationUseCase
+import com.nendo.argosy.domain.usecase.libretro.MigrationResult
+import com.nendo.argosy.util.SafeCoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import javax.inject.Inject
+import javax.inject.Singleton
+
+private const val WEEKLY_INTEGRITY_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
+
+/**
+ * The startup maintenance every launcher surface waits on before its first home render. One pass
+ * runs per process: the first [awaitPass] caller starts it and every other surface joins the same
+ * pass. [status] names the step in progress for the splash. The library pointer repair starts once
+ * the pass ends and runs behind the home, not inside the pass.
+ */
+@Singleton
+class StartupMaintenanceCoordinator @Inject constructor(
+    private val preferencesRepository: UserPreferencesRepository,
+    private val gameRepository: GameRepository,
+    private val romMRepository: RomMRepository,
+    private val libretroMigrationUseCase: LibretroMigrationUseCase,
+    private val notificationManager: NotificationManager,
+    private val libraryPointerRepair: LibraryPointerRepair
+) {
+    private data class Step(@StringRes val label: Int, val run: suspend () -> Unit)
+
+    private val scope = SafeCoroutineScope(Dispatchers.IO, "StartupMaintenance")
+
+    private val _status = MutableStateFlow<Int?>(null)
+    val status: StateFlow<Int?> = _status.asStateFlow()
+
+    private val pass: Deferred<Unit> = scope.async(start = CoroutineStart.LAZY) {
+        for (step in buildSteps()) {
+            _status.value = step.label
+            step.run()
+        }
+        libraryPointerRepair.start()
+    }
+
+    suspend fun awaitPass() {
+        pass.await()
+    }
+
+    private suspend fun buildSteps(): List<Step> = buildList {
+        if (isWeeklyIntegrityCheckDue()) {
+            add(
+                Step(R.string.ui_startup_status_scanning_roms) {
+                    val validated = gameRepository.validateLocalFiles()
+                    val discovered = gameRepository.discoverLocalFiles()
+                    if (validated != null && discovered != null) {
+                        preferencesRepository.setLastIntegrityCheckTime(System.currentTimeMillis())
+                    }
+                }
+            )
+        }
+        if (romMRepository.isConnected()) {
+            add(
+                Step(R.string.ui_startup_status_syncing_collections) {
+                    romMRepository.syncCollections()
+                }
+            )
+        }
+        add(
+            Step(R.string.ui_startup_status_checking_emulators) {
+                runBuiltinEmulatorMigration()
+                libretroMigrationUseCase.cleanupRemovedCores()
+            }
+        )
+    }
+
+    private suspend fun isWeeklyIntegrityCheckDue(): Boolean {
+        val prefs = preferencesRepository.userPreferences.first()
+        if (!prefs.weeklyIntegrityCheckEnabled) return false
+        val lastCheck = prefs.lastIntegrityCheckTime ?: return true
+        return System.currentTimeMillis() - lastCheck >= WEEKLY_INTEGRITY_INTERVAL_MS
+    }
+
+    private suspend fun runBuiltinEmulatorMigration() {
+        val result = libretroMigrationUseCase.runMigrationIfNeeded()
+        if (result !is MigrationResult.Success || result.coresDownloaded.isEmpty()) return
+        notificationManager.show(
+            title = NotificationText.Res(R.string.ui_builtin_cores_ready_title),
+            subtitle = NotificationText.Plural(
+                R.plurals.ui_builtin_cores_ready_subtitle,
+                result.coresDownloaded.size,
+                listOf(result.coresDownloaded.size)
+            ),
+            type = NotificationType.INFO,
+            duration = NotificationDuration.MEDIUM
+        )
+    }
+}

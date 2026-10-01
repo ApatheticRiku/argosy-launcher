@@ -110,9 +110,9 @@ interface GameFileDao {
         WHERE gf.localPath IS NULL
           AND (
             g.localPath IS NOT NULL
-            OR EXISTS (
-                SELECT 1 FROM game_files sibling
-                WHERE sibling.gameId = gf.gameId AND sibling.localPath IS NOT NULL
+            OR gf.gameId IN (
+                SELECT sibling.gameId FROM game_files sibling
+                WHERE sibling.localPath IS NOT NULL
             )
           )
     """)

@@ -6,6 +6,7 @@ import com.nendo.argosy.data.emulator.LaunchOrigin
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.repository.LibraryPointerRepair
 import javax.inject.Inject
 
 /**
@@ -13,11 +14,12 @@ import javax.inject.Inject
  *
  * An in-process launch opens its session from LibretroActivity, which alone knows the confirmed
  * hardcore mode, the loaded core and the netplay role. A resume keeps the session that is already
- * running. Neither opens a session here.
+ * running. Neither opens a session here. Every launch first waits for [LibraryPointerRepair].
  */
 class LaunchGameUseCase @Inject constructor(
     private val gameLauncher: GameLauncher,
-    private val playSessionTracker: PlaySessionTracker
+    private val playSessionTracker: PlaySessionTracker,
+    private val libraryPointerRepair: LibraryPointerRepair
 ) {
     suspend operator fun invoke(
         gameId: Long,
@@ -30,6 +32,7 @@ class LaunchGameUseCase @Inject constructor(
         prefetchedGame: GameEntity? = null,
         origin: LaunchOrigin = LaunchOrigin.INTERNAL
     ): LaunchResult {
+        libraryPointerRepair.await()
         val result = gameLauncher.launch(gameId, discId, forResume, selectedDiscPath, variantFileId, skipVariantPrompt, allowVariantPrompt, prefetchedGame)
         if (result is LaunchResult.Success && !result.inProcess && !forResume) {
             val coreName = extractCoreName(result.intent)

@@ -410,7 +410,22 @@ class GameRepository @Inject constructor(
         invalidated + invalidatedFiles
     }
 
-    suspend fun repairFolderRomPointers(): Int = withContext(Dispatchers.IO) {
+    /**
+     * Rewrites stale rom, variant and single-disc m3u pointers under the validation lock, so a
+     * pass and a [validateLocalFiles] sweep never interleave. Returns false without touching
+     * anything when storage is not ready yet.
+     */
+    suspend fun repairLibraryPointers(): Boolean {
+        if (!isStorageReady()) return false
+        validationMutex.withLock {
+            repairFolderRomPointers()
+            repairVariantFilePointers()
+            repairUnnecessaryM3uPointers()
+        }
+        return true
+    }
+
+    private suspend fun repairFolderRomPointers(): Int = withContext(Dispatchers.IO) {
         if (!isStorageReady()) {
             Log.w(TAG, "repairFolderRomPointers: storage not ready, skipping")
             return@withContext 0
@@ -430,7 +445,7 @@ class GameRepository @Inject constructor(
         repaired
     }
 
-    suspend fun repairUnnecessaryM3uPointers(): Int = withContext(Dispatchers.IO) {
+    private suspend fun repairUnnecessaryM3uPointers(): Int = withContext(Dispatchers.IO) {
         if (!isStorageReady()) {
             Log.w(TAG, "repairUnnecessaryM3uPointers: storage not ready, skipping")
             return@withContext 0
@@ -480,7 +495,7 @@ class GameRepository @Inject constructor(
         return base.absolutePath
     }
 
-    suspend fun repairVariantFilePointers(): Int = withContext(Dispatchers.IO) {
+    private suspend fun repairVariantFilePointers(): Int = withContext(Dispatchers.IO) {
         if (!isStorageReady()) {
             Log.w(TAG, "repairVariantFilePointers: storage not ready, skipping")
             return@withContext 0

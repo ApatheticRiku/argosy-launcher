@@ -61,7 +61,6 @@ import com.nendo.argosy.ui.components.quickSettingsVisiblePages
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.util.PServerExecutor
 import com.nendo.argosy.data.repository.GameRepository
-import com.nendo.argosy.domain.usecase.libretro.LibretroMigrationUseCase
 import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.GamepadInputHandler
@@ -86,6 +85,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -95,7 +95,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val WEEKLY_INTEGRITY_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
 private const val RECONNECT_SETTLE_MS = 5_000L
 
 data class ArgosyUiState(
@@ -217,7 +216,7 @@ class ArgosyViewModel @Inject constructor(
     private val modalResetSignal: ModalResetSignal,
     private val playSessionTracker: PlaySessionTracker,
     private val saveSyncRepository: SaveSyncRepository,
-    private val libretroMigrationUseCase: LibretroMigrationUseCase,
+    private val startupMaintenance: com.nendo.argosy.ui.startup.StartupMaintenanceCoordinator,
     private val emulatorUpdateManager: EmulatorUpdateManager,
     private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
     private val syncConflictNotifier: com.nendo.argosy.data.sync.SyncConflictNotifier,
@@ -385,13 +384,6 @@ class ArgosyViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Pairs each startup phase with the splash label that names it, so a label cannot describe
-     * work it does not cover. Steps that would no-op are left out of the list rather than
-     * flashing a label for work that never runs.
-     */
-    private data class StartupStep(@StringRes val label: Int, val run: suspend () -> Unit)
-
     private fun scheduleStartupTasks() {
         viewModelScope.launch {
             _startupStatus.value = R.string.ui_startup_status_initializing
@@ -405,80 +397,17 @@ class ArgosyViewModel @Inject constructor(
                 return@launch
             }
 
-            for (step in buildStartupSteps()) {
-                _startupStatus.value = step.label
-                step.run()
+            val statusMirror = launch {
+                startupMaintenance.status.filterNotNull().collect { _startupStatus.value = it }
             }
+            startupMaintenance.awaitPass()
+            statusMirror.cancel()
+
+            _startupStatus.value = R.string.ui_startup_status_preparing_home
+            homeLibraryDelegate.ensureInitialLoad(viewModelScope)
 
             emulatorUpdateManager.checkIfNeeded()
             _startupComplete.value = true
-        }
-    }
-
-    private suspend fun buildStartupSteps(): List<StartupStep> = buildList {
-        if (isWeeklyIntegrityCheckDue()) {
-            add(
-                StartupStep(R.string.ui_startup_status_scanning_roms) {
-                    val validated = gameRepository.validateLocalFiles()
-                    val discovered = gameRepository.discoverLocalFiles()
-                    if (validated != null && discovered != null) {
-                        preferencesRepository.setLastIntegrityCheckTime(System.currentTimeMillis())
-                    }
-                }
-            )
-        }
-        if (romMRepository.isConnected()) {
-            add(
-                StartupStep(R.string.ui_startup_status_syncing_collections) {
-                    romMRepository.syncCollections()
-                }
-            )
-        }
-        add(
-            StartupStep(R.string.ui_startup_status_checking_emulators) {
-                runBuiltinEmulatorMigration()
-                libretroMigrationUseCase.cleanupRemovedCores()
-            }
-        )
-        add(
-            StartupStep(R.string.ui_startup_status_verifying_library) {
-                gameRepository.repairFolderRomPointers()
-                gameRepository.repairVariantFilePointers()
-                gameRepository.repairUnnecessaryM3uPointers()
-            }
-        )
-        add(
-            StartupStep(R.string.ui_startup_status_preparing_home) {
-                homeLibraryDelegate.ensureInitialLoad(viewModelScope)
-            }
-        )
-    }
-
-    private suspend fun isWeeklyIntegrityCheckDue(): Boolean {
-        val prefs = preferencesRepository.userPreferences.first()
-        if (!prefs.weeklyIntegrityCheckEnabled) return false
-        val lastCheck = prefs.lastIntegrityCheckTime ?: return true
-        return System.currentTimeMillis() - lastCheck >= WEEKLY_INTEGRITY_INTERVAL_MS
-    }
-
-    private suspend fun runBuiltinEmulatorMigration() {
-        val result = libretroMigrationUseCase.runMigrationIfNeeded()
-        when (result) {
-            is com.nendo.argosy.domain.usecase.libretro.MigrationResult.Success -> {
-                if (result.coresDownloaded.isNotEmpty()) {
-                    notificationManager.show(
-                        title = com.nendo.argosy.core.notification.NotificationText.Res(R.string.ui_builtin_cores_ready_title),
-                        subtitle = com.nendo.argosy.core.notification.NotificationText.Plural(
-                            R.plurals.ui_builtin_cores_ready_subtitle,
-                            result.coresDownloaded.size,
-                            listOf(result.coresDownloaded.size)
-                        ),
-                        type = com.nendo.argosy.core.notification.NotificationType.INFO,
-                        duration = com.nendo.argosy.core.notification.NotificationDuration.MEDIUM
-                    )
-                }
-            }
-            else -> { /* No notification needed */ }
         }
     }
 
