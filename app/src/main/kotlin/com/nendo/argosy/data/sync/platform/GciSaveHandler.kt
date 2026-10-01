@@ -31,7 +31,7 @@ class GciSaveHandler @Inject constructor(
         withContext(Dispatchers.IO) {
             val romPath = context.romPath ?: return@withContext null
 
-            val gciPaths = discoverAllSavePaths(context.config, romPath)
+            val gciPaths = discoverAllSavePaths(context.config, romPath, context.basePathOverride)
             if (gciPaths.isEmpty()) {
                 Logger.debug(TAG, "prepareForUpload: No GCI files found | romPath=$romPath")
                 return@withContext null

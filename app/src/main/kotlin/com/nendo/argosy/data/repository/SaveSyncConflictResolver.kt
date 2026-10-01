@@ -2,7 +2,6 @@ package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
-import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
@@ -25,7 +24,6 @@ class SaveSyncConflictResolver @Inject constructor(
     private val saveSyncDao: SaveSyncDao,
     private val saveCacheDao: SaveCacheDao,
     private val emulatorConfigDao: EmulatorConfigDao,
-    private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
     private val emulatorResolver: EmulatorResolver,
     private val gameDao: GameDao,
     private val saveArchiver: SaveArchiver,
@@ -35,8 +33,7 @@ class SaveSyncConflictResolver @Inject constructor(
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
     private val apiClient: dagger.Lazy<SaveSyncApiClient>,
     private val fal: com.nendo.argosy.data.storage.FileAccessLayer,
-    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
-    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context
+    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 ) {
     suspend fun checkForConflict(
         gameId: Long,
@@ -399,7 +396,7 @@ class SaveSyncConflictResolver @Inject constructor(
         val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
         val coreName = apiClient.get().resolveCoreForGame(game, currentEmulatorId)
 
-        val discovered = savePathResolver.discoverSavePath(
+        return savePathResolver.discoverSavePath(
             emulatorId = currentEmulatorId,
             gameTitle = game.title,
             platformSlug = game.platformSlug,
@@ -408,23 +405,15 @@ class SaveSyncConflictResolver @Inject constructor(
             coreName = coreName,
             emulatorPackage = emulatorPackage,
             gameId = gameId
+        ) ?: savePathResolver.constructSavePath(
+            emulatorId = currentEmulatorId,
+            gameTitle = game.title,
+            platformSlug = game.platformSlug,
+            romPath = game.localPath,
+            coreName = coreName,
+            cachedSaveId = game.saveId ?: game.titleId,
+            gameId = gameId
         )
-        if (discovered != null) return discovered
-
-        val userOverride = emulatorSaveConfigDao.getByEmulator(currentEmulatorId)
-            ?.takeIf { it.isUserOverride || it.isAutoDetected }
-            ?.savePathPattern
-            ?.takeIf { it.isNotBlank() }
-        if (userOverride != null) return userOverride
-
-        val config = com.nendo.argosy.data.emulator.SavePathRegistry.getConfigForPlatform(currentEmulatorId, game.platformSlug)
-            ?: com.nendo.argosy.data.emulator.SavePathRegistry.getConfig(currentEmulatorId)
-            ?: return null
-        val candidates = com.nendo.argosy.data.emulator.SavePathRegistry.resolvePathWithPackage(
-            config, emulatorPackage, appContext.filesDir.absolutePath, fal.externalStorageRoots()
-        )
-        return candidates.firstOrNull { fal.exists(it) && fal.isDirectory(it) }
-            ?: candidates.firstOrNull()
     }
 
     companion object {

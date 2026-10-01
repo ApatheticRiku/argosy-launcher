@@ -4,7 +4,6 @@ import android.content.Context
 import com.nendo.argosy.R
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
-import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.repository.ForceSyncResult
 import com.nendo.argosy.data.repository.GameRepository
@@ -31,7 +30,7 @@ class SaveManagementDelegate @Inject constructor(
     private val gameRepository: GameRepository,
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
     private val saveSyncDao: SaveSyncDao,
-    private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
+    private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
     private val emulatorResolver: EmulatorResolver,
     private val saveCacheManager: SaveCacheManager,
     private val saveSyncRepository: SaveSyncRepository,
@@ -185,13 +184,13 @@ class SaveManagementDelegate @Inject constructor(
                 com.nendo.argosy.data.emulator.RetroArchPathResolver.DisplayPath.Unknown -> null
             }
         }
-        emulatorSaveConfigDao.getByEmulator(emulatorId)
-            ?.takeIf { it.isUserOverride || it.isAutoDetected }
-            ?.savePathPattern
-            ?.takeIf { it.isNotBlank() }
-            ?.let { return it }
-        val config = SavePathRegistry.getConfig(emulatorId) ?: return null
-        return SavePathRegistry.resolvePathWithPackage(config, emulatorPackage, context.filesDir.absolutePath).firstOrNull()
+        return savePathAuthority.resolve(
+            com.nendo.argosy.data.emulator.savepath.SavePathRequest(
+                platformSlug = platformSlug,
+                emulatorId = emulatorId,
+                emulatorPackage = emulatorPackage
+            )
+        ).basePath
     }
 
     fun confirmSaveCacheSelection(

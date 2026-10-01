@@ -2,7 +2,6 @@ package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
-import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
@@ -34,7 +33,6 @@ class SaveSyncConflictResolverTest {
     private lateinit var saveSyncDao: SaveSyncDao
     private lateinit var saveCacheDao: SaveCacheDao
     private lateinit var emulatorConfigDao: EmulatorConfigDao
-    private lateinit var emulatorSaveConfigDao: EmulatorSaveConfigDao
     private lateinit var emulatorResolver: EmulatorResolver
     private lateinit var gameDao: GameDao
     private lateinit var saveArchiver: SaveArchiver
@@ -44,7 +42,6 @@ class SaveSyncConflictResolverTest {
     private lateinit var apiClient: dagger.Lazy<SaveSyncApiClient>
     private lateinit var fal: com.nendo.argosy.data.storage.FileAccessLayer
     private lateinit var saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
-    private lateinit var appContext: android.content.Context
     private lateinit var resolver: SaveSyncConflictResolver
 
     private lateinit var mockCacheManager: SaveCacheManager
@@ -68,7 +65,6 @@ class SaveSyncConflictResolverTest {
         saveSyncDao = mockk(relaxed = true)
         saveCacheDao = mockk(relaxed = true)
         emulatorConfigDao = mockk(relaxed = true)
-        emulatorSaveConfigDao = mockk(relaxed = true)
         emulatorResolver = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
         saveArchiver = mockk(relaxed = true)
@@ -76,7 +72,6 @@ class SaveSyncConflictResolverTest {
         userPreferencesRepository = mockk(relaxed = true)
         fal = mockk(relaxed = true)
         saveHandlerRegistry = mockk(relaxed = true)
-        appContext = mockk(relaxed = true)
         every { fal.exists(any()) } returns true
         every { saveHandlerRegistry.isValidCachedSavePath(any(), any()) } returns true
 
@@ -96,7 +91,6 @@ class SaveSyncConflictResolverTest {
             saveSyncDao = saveSyncDao,
             saveCacheDao = saveCacheDao,
             emulatorConfigDao = emulatorConfigDao,
-            emulatorSaveConfigDao = emulatorSaveConfigDao,
             emulatorResolver = emulatorResolver,
             gameDao = gameDao,
             saveArchiver = saveArchiver,
@@ -106,9 +100,32 @@ class SaveSyncConflictResolverTest {
             saveCacheManager = saveCacheManager,
             apiClient = apiClient,
             fal = fal,
-            saveHandlerRegistry = saveHandlerRegistry,
-            appContext = appContext
+            saveHandlerRegistry = saveHandlerRegistry
         )
+    }
+
+    @Test
+    fun `cross-emulator restore with no save on disk targets the constructed save file`() = runTest {
+        val cache = com.nendo.argosy.data.local.entity.SaveCacheEntity(
+            id = 7L,
+            gameId = 1L,
+            emulatorId = "builtin",
+            cachedAt = Instant.parse("2026-09-30T10:00:00Z"),
+            saveSize = 1024,
+            cachePath = "1/x/test.srm",
+            contentHash = "cached_hash"
+        )
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
+        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
+        val constructed = "/storage/emulated/0/RetroArch/saves/mGBA/test.srm"
+        coEvery { savePathResolver.constructSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns constructed
+        coEvery { mockCacheManager.calculateLocalSaveHash(any(), any(), any()) } returns null
+        coEvery { mockCacheManager.restoreSave(any(), any()) } returns true
+
+        resolver.crossEmulatorMigrateIfNeeded(1L, "retroarch")
+
+        io.mockk.coVerify(exactly = 1) { mockCacheManager.restoreSave(7L, constructed) }
+        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(7L, match { "{" in it }) }
     }
 
     @Test
@@ -357,7 +374,7 @@ class SaveSyncConflictResolverTest {
         coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns null
         coEvery { mockApiClient.resolveCoreForGame(testGame) } returns null
         coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
-        coEvery { emulatorSaveConfigDao.getByEmulator(any()) } returns null
+        coEvery { savePathResolver.constructSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
 
         resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "completely-unknown-emulator-id")
 
