@@ -20,6 +20,9 @@
             </intent-filter>
         </receiver>
         <receiver
+            android:name=".debugtools.RootFileHarnessReceiver"
+            android:exported="true" />
+        <receiver
             android:name=".hardware.AudioTestReceiver"
             android:exported="true">
             <intent-filter>
