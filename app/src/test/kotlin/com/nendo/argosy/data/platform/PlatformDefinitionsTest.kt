@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.platform
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PlatformDefinitionsTest {
@@ -33,5 +34,35 @@ class PlatformDefinitionsTest {
         assertEquals("pico8", PlatformDefinitions.getCanonicalSlug("pico-8"))
         assertEquals("pico8", PlatformDefinitions.getCanonicalSlug("pico8"))
         assertEquals("pico", PlatformDefinitions.getCanonicalSlug("pico"))
+    }
+
+    @Test
+    fun `suffixed slug resolves to the longest known parent containing separators`() {
+        assertEquals("neogeocd", PlatformDefinitions.getCanonicalSlug("neo-geo-cd-hacks"))
+        assertEquals("wsc", PlatformDefinitions.getCanonicalSlug("wonderswan-color-hacks"))
+        assertEquals("NGCD Hacks" to "NGCD Hacks", PlatformDefinitions.deriveDisplayName("neo-geo-cd-hacks"))
+        assertEquals("WSC Hacks" to "WSC Hacks", PlatformDefinitions.deriveDisplayName("wonderswan-color-hacks"))
+    }
+
+    @Test
+    fun `suffixed slug with a single-token parent keeps resolving to that parent`() {
+        assertEquals("snes", PlatformDefinitions.getCanonicalSlug("snes-hacks"))
+        assertEquals("3ds", PlatformDefinitions.getCanonicalSlug("3ds-staging"))
+        assertEquals("SNES Hacks" to "SNES Hacks", PlatformDefinitions.deriveDisplayName("snes-hacks"))
+        assertEquals("3DS Staging" to "3DS Staging", PlatformDefinitions.deriveDisplayName("3ds-staging"))
+    }
+
+    @Test
+    fun `unsuffixed known slug is its own platform`() {
+        assertEquals("wsc", PlatformDefinitions.getCanonicalSlug("wonderswan-color"))
+        assertEquals("neogeocd", PlatformDefinitions.getCanonicalSlug("neo-geo-cd"))
+        assertNull(PlatformDefinitions.deriveDisplayName("wonderswan-color"))
+        assertNull(PlatformDefinitions.deriveDisplayName("snes"))
+    }
+
+    @Test
+    fun `suffixed slug with an unknown parent is left unresolved`() {
+        assertEquals("notaplatform-hacks", PlatformDefinitions.getCanonicalSlug("notaplatform-hacks"))
+        assertNull(PlatformDefinitions.deriveDisplayName("notaplatform-hacks"))
     }
 }

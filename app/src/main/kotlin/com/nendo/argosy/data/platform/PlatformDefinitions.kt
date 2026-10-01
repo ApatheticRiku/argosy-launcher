@@ -657,13 +657,21 @@ object PlatformDefinitions {
         val lower = slug.lowercase()
         slugAliases[lower]?.let { return it }
         if (platformMap.containsKey(lower)) return lower
-        val sep = lower.indexOfFirst { it == '-' || it == '_' || it == ' ' }
-        if (sep > 0) {
+        return splitSuffixedSlug(lower)?.first ?: lower
+    }
+
+    private val slugSeparators = charArrayOf('-', '_', ' ')
+
+    private fun isKnownSlug(slug: String): Boolean = slug in slugAliases || slug in platformMap
+
+    private fun splitSuffixedSlug(lower: String): Pair<String, String>? {
+        var sep = lower.lastIndexOfAny(slugSeparators)
+        while (sep > 0) {
             val prefix = lower.substring(0, sep)
-            slugAliases[prefix]?.let { return it }
-            if (platformMap.containsKey(prefix)) return prefix
+            if (isKnownSlug(prefix)) return (slugAliases[prefix] ?: prefix) to lower.substring(sep + 1)
+            sep = lower.lastIndexOfAny(slugSeparators, startIndex = sep - 1)
         }
-        return lower
+        return null
     }
 
     private val pico8NamePattern = Regex("pico[-_ ]?8", RegexOption.IGNORE_CASE)
@@ -700,12 +708,9 @@ object PlatformDefinitions {
         if (slug.isNullOrBlank()) return null
         val lower = slug.lowercase()
         if (lower in slugAliases || lower in platformMap) return null
-        val sep = lower.indexOfFirst { it == '-' || it == '_' || it == ' ' }
-        if (sep <= 0 || sep >= lower.length - 1) return null
-        val prefix = lower.substring(0, sep)
-        val canonical = slugAliases[prefix] ?: prefix
+        val (canonical, rawSuffix) = splitSuffixedSlug(lower) ?: return null
         val parentDef = platformMap[canonical] ?: return null
-        val suffix = lower.substring(sep + 1)
+        val suffix = rawSuffix
             .split('-', '_')
             .filter { it.isNotEmpty() }
             .joinToString(" ") { it.replaceFirstChar { c -> c.titlecase() } }
