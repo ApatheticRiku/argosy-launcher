@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">Cuadrícula</string>
     <string name="ingame_states_footer_back">Atrás</string>
 
-    <string name="ingame_quickload_empty_title">Sin guardados rápidos</string>
-    <string name="ingame_quickload_empty_message">Usa el guardado rápido para crear un historial</string>
-    <string name="ingame_quickload_title">Carga rápida</string>
-    <string name="ingame_quickload_footer_load">Cargar</string>
-    <string name="ingame_quickload_footer_back">Atrás</string>
-    <string name="ingame_quickload_preview_description">Vista previa del guardado rápido</string>
     <string name="ingame_quickload_preview_no_screenshot">Sin captura de pantalla</string>
     <string name="ingame_quickload_row_latest">Más reciente</string>
     <string name="ingame_quickload_row_entry">Guardado rápido</string>

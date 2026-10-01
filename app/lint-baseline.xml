@@ -563,17 +563,6 @@
     </issue>
 
     <issue
-        id="ComposableNaming"
-        message="Composable functions with a return type should start with a lowercase letter"
-        errorLine1="fun QuickLoadTimeline("
-        errorLine2="    ~~~~~~~~~~~~~~~~~">
-        <location
-            file="src/main/kotlin/com/nendo/argosy/libretro/ui/QuickLoadTimeline.kt"
-            line="56"
-            column="5"/>
-    </issue>
-
-    <issue
         id="ModifierFactoryExtensionFunction"
         message="Modifier factory functions should be extensions on Modifier"
         errorLine1="internal fun preferenceModifier("

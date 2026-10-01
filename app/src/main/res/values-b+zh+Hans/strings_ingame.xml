@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">网格视图</string>
     <string name="ingame_states_footer_back">返回</string>
 
-    <string name="ingame_quickload_empty_title">没有快速存档</string>
-    <string name="ingame_quickload_empty_message">使用快速保存来创建历史记录</string>
-    <string name="ingame_quickload_title">快速读取</string>
-    <string name="ingame_quickload_footer_load">读取</string>
-    <string name="ingame_quickload_footer_back">返回</string>
-    <string name="ingame_quickload_preview_description">快速存档预览</string>
     <string name="ingame_quickload_preview_no_screenshot">无截图</string>
     <string name="ingame_quickload_row_latest">最新</string>
     <string name="ingame_quickload_row_entry">快速存档</string>

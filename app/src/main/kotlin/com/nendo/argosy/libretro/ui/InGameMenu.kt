@@ -1,5 +1,11 @@
 package com.nendo.argosy.libretro.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -40,9 +46,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
+import com.nendo.argosy.libretro.SaveStateManager
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.theme.generated.DimensionTokens
 import com.nendo.argosy.ui.theme.gripReserveBottomInset
@@ -54,7 +62,6 @@ sealed class InGameMenuAction {
     data object Resume : InGameMenuAction()
     data object QuickSave : InGameMenuAction()
     data object QuickLoad : InGameMenuAction()
-    data object QuickLoadHistory : InGameMenuAction()
     data object ManageStates : InGameMenuAction()
     data object Settings : InGameMenuAction()
     data object Cheats : InGameMenuAction()
@@ -74,6 +81,8 @@ sealed class InGameMenuAction {
 }
 
 enum class NetplayMenuRole { Host, Guest }
+
+enum class QuickHistoryFocus { NONE, BUTTON, STRIP }
 
 /**
  * Connection quality tier. The constants were title-cased so `.name` could be printed
@@ -130,8 +139,11 @@ fun InGameMenu(
     speedrunAvailable: Boolean = false,
     speedrunArmed: Boolean = false,
     hasQuickSave: Boolean = false,
-    quickHistoryFocused: Boolean = false,
-    onQuickHistoryFocusChange: (Boolean) -> Unit = {},
+    quickHistoryFocus: QuickHistoryFocus = QuickHistoryFocus.NONE,
+    quickHistoryIndex: Int = 0,
+    quickHistoryEntries: List<SaveStateManager.SlotInfo> = emptyList(),
+    onQuickHistoryFocusChange: (QuickHistoryFocus, Int) -> Unit = { _, _ -> },
+    onQuickHistoryLoad: (Int) -> Unit = {},
     twoColumnMenu: Boolean = false,
     manualAvailable: Boolean = false,
     walkthroughAvailable: Boolean = false,
@@ -238,15 +250,32 @@ fun InGameMenu(
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
     val currentOnAction = rememberUpdatedState(onAction)
     val currentHasQuickSave = rememberUpdatedState(hasQuickSave)
-    val currentQuickHistoryFocused = rememberUpdatedState(quickHistoryFocused)
+    val currentQuickHistoryFocus = rememberUpdatedState(quickHistoryFocus)
+    val currentQuickHistoryIndex = rememberUpdatedState(quickHistoryIndex)
+    val currentQuickHistoryEntries = rememberUpdatedState(quickHistoryEntries)
     val currentOnQuickHistoryFocusChange = rememberUpdatedState(onQuickHistoryFocusChange)
+    val currentOnQuickHistoryLoad = rememberUpdatedState(onQuickHistoryLoad)
 
     val columns = if (twoColumnMenu && LocalConfiguration.current.screenWidthDp >= DimensionTokens.Layout.menuBreakpointWide) 2 else 1
 
     val inputHandler = remember(menuItems, columns) {
         object : InputHandler {
+            private val historyFocus: QuickHistoryFocus get() = currentQuickHistoryFocus.value
+
+            private fun focusHistory(focus: QuickHistoryFocus, index: Int = 0) {
+                currentOnQuickHistoryFocusChange.value(focus, index)
+            }
+
+            private fun collapseHistory() {
+                if (historyFocus != QuickHistoryFocus.NONE) focusHistory(QuickHistoryFocus.NONE)
+            }
+
+            private fun enterStrip() {
+                if (currentQuickHistoryEntries.value.isNotEmpty()) focusHistory(QuickHistoryFocus.STRIP)
+            }
+
             override fun onUp(): InputResult {
-                if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
+                collapseHistory()
                 val idx = currentFocusedIndex.value
                 val newIndex = if (columns == 1) {
                     if (idx <= 0) menuItems.lastIndex else idx - 1
@@ -258,7 +287,7 @@ fun InGameMenu(
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
-                if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
+                collapseHistory()
                 val idx = currentFocusedIndex.value
                 val newIndex = if (columns == 1) {
                     if (idx >= menuItems.lastIndex) 0 else idx + 1
@@ -274,9 +303,21 @@ fun InGameMenu(
                 return InputResult.HANDLED
             }
             override fun onLeft(): InputResult {
-                if (currentQuickHistoryFocused.value) {
-                    currentOnQuickHistoryFocusChange.value(false)
-                    return InputResult.HANDLED
+                when (historyFocus) {
+                    QuickHistoryFocus.STRIP -> {
+                        val index = currentQuickHistoryIndex.value
+                        if (index > 0) {
+                            focusHistory(QuickHistoryFocus.STRIP, index - 1)
+                        } else {
+                            focusHistory(QuickHistoryFocus.BUTTON)
+                        }
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.BUTTON -> {
+                        focusHistory(QuickHistoryFocus.NONE)
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.NONE -> Unit
                 }
                 if (columns > 1) {
                     val idx = currentFocusedIndex.value
@@ -284,7 +325,7 @@ fun InGameMenu(
                         val newIndex = idx - 1
                         val newAction = menuItems.getOrNull(newIndex)?.second
                         if (newAction == InGameMenuAction.QuickLoad && currentHasQuickSave.value) {
-                            currentOnQuickHistoryFocusChange.value(true)
+                            focusHistory(QuickHistoryFocus.BUTTON)
                         }
                         currentOnFocusChange.value(newIndex)
                     }
@@ -292,32 +333,56 @@ fun InGameMenu(
                 return InputResult.HANDLED
             }
             override fun onRight(): InputResult {
+                when (historyFocus) {
+                    QuickHistoryFocus.STRIP -> {
+                        val index = currentQuickHistoryIndex.value
+                        val next = (index + 1).coerceAtMost(currentQuickHistoryEntries.value.lastIndex)
+                        if (next > index) focusHistory(QuickHistoryFocus.STRIP, next)
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.BUTTON -> {
+                        enterStrip()
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.NONE -> Unit
+                }
                 val idx = currentFocusedIndex.value
                 val action = menuItems.getOrNull(idx)?.second
-                if (action == InGameMenuAction.QuickLoad && currentHasQuickSave.value && !currentQuickHistoryFocused.value) {
-                    currentOnQuickHistoryFocusChange.value(true)
+                if (action == InGameMenuAction.QuickLoad && currentHasQuickSave.value) {
+                    focusHistory(QuickHistoryFocus.BUTTON)
                 } else if (columns > 1) {
                     if (idx % columns != columns - 1 && idx + 1 <= menuItems.lastIndex) {
-                        if (currentQuickHistoryFocused.value) currentOnQuickHistoryFocusChange.value(false)
                         currentOnFocusChange.value(idx + 1)
                     }
                 }
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
+                when (historyFocus) {
+                    QuickHistoryFocus.STRIP -> {
+                        currentQuickHistoryEntries.value.getOrNull(currentQuickHistoryIndex.value)
+                            ?.let { currentOnQuickHistoryLoad.value(it.slotNumber) }
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.BUTTON -> {
+                        enterStrip()
+                        return InputResult.HANDLED
+                    }
+                    QuickHistoryFocus.NONE -> Unit
+                }
                 val action = menuItems.getOrNull(currentFocusedIndex.value)?.second
                 if (action == InGameMenuAction.QuickLoad && !currentHasQuickSave.value) {
                     return InputResult.HANDLED
                 }
-                if (action == InGameMenuAction.QuickLoad && currentQuickHistoryFocused.value) {
-                    currentOnAction.value(InGameMenuAction.QuickLoadHistory)
-                } else {
-                    action?.let { currentOnAction.value(it) }
-                }
+                action?.let { currentOnAction.value(it) }
                 return InputResult.HANDLED
             }
             override fun onBack(): InputResult {
-                currentOnAction.value(InGameMenuAction.Resume)
+                when (historyFocus) {
+                    QuickHistoryFocus.STRIP -> focusHistory(QuickHistoryFocus.BUTTON)
+                    QuickHistoryFocus.BUTTON -> focusHistory(QuickHistoryFocus.NONE)
+                    QuickHistoryFocus.NONE -> currentOnAction.value(InGameMenuAction.Resume)
+                }
                 return InputResult.HANDLED
             }
         }
@@ -349,7 +414,12 @@ fun InGameMenu(
                 columns = columns,
                 focusedIndex = focusedIndex,
                 hasQuickSave = hasQuickSave,
-                quickHistoryFocused = quickHistoryFocused,
+                quickHistoryFocus = quickHistoryFocus,
+                quickHistoryIndex = quickHistoryIndex,
+                quickHistoryEntries = quickHistoryEntries,
+                onFocusChange = onFocusChange,
+                onQuickHistoryFocusChange = onQuickHistoryFocusChange,
+                onQuickHistoryLoad = onQuickHistoryLoad,
                 onAction = onAction
             )
         },
@@ -366,7 +436,12 @@ private fun InGameMenuList(
     columns: Int,
     focusedIndex: Int,
     hasQuickSave: Boolean,
-    quickHistoryFocused: Boolean,
+    quickHistoryFocus: QuickHistoryFocus,
+    quickHistoryIndex: Int,
+    quickHistoryEntries: List<SaveStateManager.SlotInfo>,
+    onFocusChange: (Int) -> Unit,
+    onQuickHistoryFocusChange: (QuickHistoryFocus, Int) -> Unit,
+    onQuickHistoryLoad: (Int) -> Unit,
     onAction: (InGameMenuAction) -> Unit
 ) {
     val menuGridState = rememberLazyGridState()
@@ -444,12 +519,24 @@ private fun InGameMenuList(
                 val label = stringResource(labelRes)
                 when {
                     action == InGameMenuAction.QuickLoad && hasQuickSave -> {
-                        QuickLoadRow(
+                        val rowFocused = index == focusedIndex
+                        val historyFocus = if (rowFocused) quickHistoryFocus else QuickHistoryFocus.NONE
+                        QuickLoadCell(
                             text = label,
-                            isFocused = index == focusedIndex && !quickHistoryFocused,
-                            historyFocused = index == focusedIndex && quickHistoryFocused,
+                            historyFocus = historyFocus,
+                            stripFocusIndex = quickHistoryIndex.takeIf { historyFocus == QuickHistoryFocus.STRIP },
+                            isFocused = rowFocused && historyFocus == QuickHistoryFocus.NONE,
+                            entries = quickHistoryEntries,
                             onClick = { onAction(action) },
-                            onHistoryClick = { onAction(InGameMenuAction.QuickLoadHistory) }
+                            onHistoryClick = {
+                                if (historyFocus == QuickHistoryFocus.NONE) {
+                                    onFocusChange(index)
+                                    onQuickHistoryFocusChange(QuickHistoryFocus.BUTTON, 0)
+                                } else {
+                                    onQuickHistoryFocusChange(QuickHistoryFocus.NONE, 0)
+                                }
+                            },
+                            onEntryClick = onQuickHistoryLoad
                         )
                     }
                     action == InGameMenuAction.QuickLoad -> {
@@ -631,17 +718,53 @@ private fun NetplayQualityRow(info: NetplayQualityInfo) {
 }
 
 @Composable
+private fun QuickLoadCell(
+    text: String,
+    historyFocus: QuickHistoryFocus,
+    stripFocusIndex: Int?,
+    isFocused: Boolean,
+    entries: List<SaveStateManager.SlotInfo>,
+    onClick: () -> Unit,
+    onHistoryClick: () -> Unit,
+    onEntryClick: (Int) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        QuickLoadRow(
+            text = text,
+            isFocused = isFocused,
+            historyFocus = historyFocus,
+            onClick = onClick,
+            onHistoryClick = onHistoryClick
+        )
+        AnimatedVisibility(
+            visible = historyFocus != QuickHistoryFocus.NONE,
+            enter = expandVertically(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeIn(tween(Motion.durationContent)),
+            exit = shrinkVertically(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeOut(tween(Motion.durationContent))
+        ) {
+            QuickLoadHistoryStrip(
+                entries = entries,
+                focusedIndex = stripFocusIndex,
+                onLoad = onEntryClick,
+                modifier = Modifier.padding(top = Dimens.spacingSm)
+            )
+        }
+    }
+}
+
+@Composable
 private fun QuickLoadRow(
     text: String,
     isFocused: Boolean,
-    historyFocused: Boolean,
+    historyFocus: QuickHistoryFocus,
     onClick: () -> Unit,
     onHistoryClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         Box(modifier = Modifier.weight(1f)) {
             MenuButton(
@@ -650,15 +773,15 @@ private fun QuickLoadRow(
                 onClick = onClick
             )
         }
-        val iconBackground = if (historyFocused) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant
+        val iconBackground = when (historyFocus) {
+            QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.primary
+            QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.primaryContainer
+            QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.surfaceVariant
         }
-        val iconTint = if (historyFocused) {
-            MaterialTheme.colorScheme.onPrimary
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant
+        val iconTint = when (historyFocus) {
+            QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.onPrimary
+            QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.onPrimaryContainer
+            QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         Box(
             modifier = Modifier

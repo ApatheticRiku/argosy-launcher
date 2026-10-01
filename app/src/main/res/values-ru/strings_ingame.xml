@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">Сетка</string>
     <string name="ingame_states_footer_back">Назад</string>
 
-    <string name="ingame_quickload_empty_title">Нет быстрых сохранений</string>
-    <string name="ingame_quickload_empty_message">Используйте быстрое сохранение, чтобы накопить историю</string>
-    <string name="ingame_quickload_title">Быстрая загрузка</string>
-    <string name="ingame_quickload_footer_load">Загрузить</string>
-    <string name="ingame_quickload_footer_back">Назад</string>
-    <string name="ingame_quickload_preview_description">Превью быстрого сохранения</string>
     <string name="ingame_quickload_preview_no_screenshot">Нет скриншота</string>
     <string name="ingame_quickload_row_latest">Последнее</string>
     <string name="ingame_quickload_row_entry">Быстрое сохранение</string>

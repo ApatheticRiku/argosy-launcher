@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">ग्रिड</string>
     <string name="ingame_states_footer_back">वापस</string>
 
-    <string name="ingame_quickload_empty_title">कोई क्विक सेव नहीं</string>
-    <string name="ingame_quickload_empty_message">इतिहास बनाने के लिए क्विक सेव इस्तेमाल करें</string>
-    <string name="ingame_quickload_title">क्विक लोड</string>
-    <string name="ingame_quickload_footer_load">लोड करें</string>
-    <string name="ingame_quickload_footer_back">वापस</string>
-    <string name="ingame_quickload_preview_description">क्विक सेव प्रीव्यू</string>
     <string name="ingame_quickload_preview_no_screenshot">कोई स्क्रीनशॉट नहीं</string>
     <string name="ingame_quickload_row_latest">नवीनतम</string>
     <string name="ingame_quickload_row_entry">क्विक सेव</string>

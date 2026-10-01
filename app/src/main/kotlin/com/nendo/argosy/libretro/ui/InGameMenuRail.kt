@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.LockOpen
@@ -64,7 +63,6 @@ val InGameMenuAction.icon: ImageVector
         InGameMenuAction.Resume -> Icons.Filled.PlayArrow
         InGameMenuAction.QuickSave -> Icons.Filled.Save
         InGameMenuAction.QuickLoad -> Icons.Filled.Restore
-        InGameMenuAction.QuickLoadHistory -> Icons.Filled.History
         InGameMenuAction.ManageStates -> Icons.Filled.Layers
         InGameMenuAction.Settings -> Icons.Filled.Settings
         InGameMenuAction.Cheats -> Icons.Filled.Code

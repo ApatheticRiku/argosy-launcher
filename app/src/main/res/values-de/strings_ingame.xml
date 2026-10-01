@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">Raster</string>
     <string name="ingame_states_footer_back">Zurück</string>
 
-    <string name="ingame_quickload_empty_title">Keine Schnellspeicherungen</string>
-    <string name="ingame_quickload_empty_message">Nutzen Sie Schnellspeichern, um einen Verlauf aufzubauen</string>
-    <string name="ingame_quickload_title">Schnellladen</string>
-    <string name="ingame_quickload_footer_load">Laden</string>
-    <string name="ingame_quickload_footer_back">Zurück</string>
-    <string name="ingame_quickload_preview_description">Schnellspeicher-Vorschau</string>
     <string name="ingame_quickload_preview_no_screenshot">Kein Screenshot</string>
     <string name="ingame_quickload_row_latest">Neueste</string>
     <string name="ingame_quickload_row_entry">Schnellspeicherung</string>

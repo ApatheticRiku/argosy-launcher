@@ -156,25 +156,13 @@
     <!-- Footer hint in the slot manager. Verb: closes it and returns to the in-game menu. -->
     <string name="ingame_states_footer_back">Back</string>
 
-    <!-- Heading shown in place of the quick save history when none have been written. -->
-    <string name="ingame_quickload_empty_title">No quick saves</string>
-    <!-- Body under that heading. "Quick Save" names the row in the in-game menu. -->
-    <string name="ingame_quickload_empty_message">Use Quick Save to build a history</string>
-    <!-- Heading of the list of recent quick save states. Verb phrase: reads one back into the
-         running game. -->
-    <string name="ingame_quickload_title">Quick Load</string>
-    <!-- Footer hint in that list. Verb: reads the highlighted state back in. -->
-    <string name="ingame_quickload_footer_load">Load</string>
-    <!-- Footer hint in that list. Verb: closes it and returns to the in-game menu. -->
-    <string name="ingame_quickload_footer_back">Back</string>
-    <!-- Spoken description of the large screenshot in that list. Noun phrase: a picture of
-         the moment the quick save state holds. -->
-    <string name="ingame_quickload_preview_description">Quick save preview</string>
-    <!-- Drawn in that list's preview panel when the state has no picture. -->
+    <!-- Drawn on a small thumbnail in the quick save history strip under the Quick Load row
+         when the state has no picture. Keep it short. -->
     <string name="ingame_quickload_preview_no_screenshot">No Screenshot</string>
-    <!-- Name of the newest entry in that list. Adjective, superlative: the most recent one. -->
+    <!-- Spoken name of the newest thumbnail in that strip. Adjective, superlative: the most
+         recent one. -->
     <string name="ingame_quickload_row_latest">Latest</string>
-    <!-- Name of any older entry in that list. Noun phrase: one quick save state. -->
+    <!-- Spoken name of any older thumbnail in that strip. Noun phrase: one quick save state. -->
     <string name="ingame_quickload_row_entry">Quick save</string>
 
     <!-- Heading of the prompt offered at launch when a save state from the last session is
@@ -818,7 +806,7 @@
          player arms the timer. Noun phrase, not a verb. -->
     <string name="ingame_libretro_speedrun_picker_title">Speedrun Category</string>
 
-    <!-- Toast from the quick-load history (timeline) list when a slot failed to load because
+    <!-- Toast from the quick save history strip when a slot failed to load because
          the core cannot serialize this content. -->
     <string name="ingame_libretro_quicktimeline_load_unsupported_core">Save states unavailable for this core</string>
     <!-- "State" here is a save state (a save-state file), not a completion status. -->

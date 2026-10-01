@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">Grille</string>
     <string name="ingame_states_footer_back">Retour</string>
 
-    <string name="ingame_quickload_empty_title">Aucune sauvegarde rapide</string>
-    <string name="ingame_quickload_empty_message">Utilisez la sauvegarde rapide pour créer un historique</string>
-    <string name="ingame_quickload_title">Chargement rapide</string>
-    <string name="ingame_quickload_footer_load">Charger</string>
-    <string name="ingame_quickload_footer_back">Retour</string>
-    <string name="ingame_quickload_preview_description">Aperçu de la sauvegarde rapide</string>
     <string name="ingame_quickload_preview_no_screenshot">Aucune capture d\'écran</string>
     <string name="ingame_quickload_row_latest">Plus récente</string>
     <string name="ingame_quickload_row_entry">Sauvegarde rapide</string>

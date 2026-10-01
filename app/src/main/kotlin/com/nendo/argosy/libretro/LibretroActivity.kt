@@ -104,7 +104,7 @@ import com.nendo.argosy.libretro.ui.NetplayQualityWarningPrompt
 import com.nendo.argosy.libretro.ui.NetplayBorderHud
 import com.nendo.argosy.libretro.ui.NetplayReconnectingOverlay
 import com.nendo.argosy.libretro.ui.InGameStateManager
-import com.nendo.argosy.libretro.ui.QuickLoadTimeline
+import com.nendo.argosy.libretro.ui.QuickHistoryFocus
 import com.nendo.argosy.libretro.ui.StateManagerViewMode
 import com.nendo.argosy.libretro.ui.ControllerPortOption
 import com.nendo.argosy.libretro.ui.InGameControlsAction
@@ -316,10 +316,10 @@ class LibretroActivity : ComponentActivity() {
     private var stateManagerSlots by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
     private var stateManagerShowLoadConfirm by mutableStateOf(false)
     private var stateManagerLoadTarget by mutableStateOf(Int.MIN_VALUE)
-    private var menuQuickHistoryFocused by mutableStateOf(false)
-    private var quickTimelineVisible by mutableStateOf(false)
-    private var quickTimelineEntries by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
-    private var quickTimelineFocusIndex by mutableStateOf(0)
+    private var menuQuickHistoryFocus by mutableStateOf(QuickHistoryFocus.NONE)
+    private var menuQuickHistoryIndex by mutableStateOf(0)
+    private var menuQuickHistoryEntries by mutableStateOf<List<SaveStateManager.SlotInfo>>(emptyList())
+    private var quickHistoryLoadJob: Job? = null
     private var menuDiscCount = 0
     private var discPaths: List<File> = emptyList()
     private var currentDiscIndex = 0
@@ -389,7 +389,7 @@ class LibretroActivity : ComponentActivity() {
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || quickTimelineVisible || discMenuVisible ||
+        get() = menuVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || discMenuVisible ||
             speedrunPickerVisible || readerKind != null || isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1528,8 +1528,11 @@ class LibretroActivity : ComponentActivity() {
                             currentOrientationState != android.content.res.Configuration.ORIENTATION_PORTRAIT,
                         speedrunArmed = speedrunState.armed,
                         hasQuickSave = saveStateManager.hasQuickSave,
-                        quickHistoryFocused = menuQuickHistoryFocused,
-                        onQuickHistoryFocusChange = { menuQuickHistoryFocused = it },
+                        quickHistoryFocus = menuQuickHistoryFocus,
+                        quickHistoryIndex = menuQuickHistoryIndex,
+                        quickHistoryEntries = menuQuickHistoryEntries,
+                        onQuickHistoryFocusChange = ::setQuickHistoryFocus,
+                        onQuickHistoryLoad = ::loadQuickHistorySlot,
                         twoColumnMenu = touchSettingsState.ingameMenuTwoColumn,
                         manualAvailable = com.nendo.argosy.libretro.ui.InGameDocumentKind.MANUAL in documents,
                         walkthroughAvailable = com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH in documents,
@@ -1693,31 +1696,6 @@ class LibretroActivity : ComponentActivity() {
                         onFocusChange = { autoRestorePromptFocusIndex = it },
                         onRestore = { handleAutoRestoreResponse(true) },
                         onSkip = { handleAutoRestoreResponse(false) }
-                    )
-                }
-                if (quickTimelineVisible) {
-                    activeMenuHandler = QuickLoadTimeline(
-                        entries = quickTimelineEntries,
-                        focusedIndex = quickTimelineFocusIndex,
-                        onFocusChange = { quickTimelineFocusIndex = it },
-                        onLoad = { slot ->
-                            inGameMessage = if (!canSerialize) {
-                                getString(R.string.ingame_libretro_quicktimeline_load_unsupported_core)
-                            } else if (saveStateManager.performSlotLoad(retroView, slot)) {
-                                getString(R.string.ingame_libretro_quicktimeline_load_success)
-                            } else {
-                                getString(R.string.ingame_libretro_quicktimeline_load_failure)
-                            }
-                            quickTimelineVisible = false
-                            if (!netplay.inSession) {
-                                retroView.suppressAutoResume = false
-                                retroView.resumeEmulation()
-                            }
-                        },
-                        onDismiss = {
-                            quickTimelineVisible = false
-                            menuVisible = true
-                        }
                     )
                 }
                 if (!isAnyMenuOpen) {
@@ -2218,6 +2196,7 @@ class LibretroActivity : ComponentActivity() {
     private fun openMenuSection(section: com.nendo.argosy.libretro.ui.InGameMenuSection) {
         if (menuSection == section) return
         leaveMenuSection()
+        collapseQuickHistory()
         when (section) {
             com.nendo.argosy.libretro.ui.InGameMenuSection.STATES -> {
                 stateManagerSlots = saveStateManager.getSlotInfoList()
@@ -2501,6 +2480,36 @@ class LibretroActivity : ComponentActivity() {
         }
     }
 
+    private fun setQuickHistoryFocus(focus: QuickHistoryFocus, index: Int) {
+        val opening = menuQuickHistoryFocus == QuickHistoryFocus.NONE && focus != QuickHistoryFocus.NONE
+        menuQuickHistoryFocus = focus
+        menuQuickHistoryIndex = index
+        if (opening) refreshQuickHistoryEntries()
+    }
+
+    private fun refreshQuickHistoryEntries() {
+        quickHistoryLoadJob?.cancel()
+        quickHistoryLoadJob = lifecycleScope.launch {
+            menuQuickHistoryEntries = withContext(Dispatchers.IO) { saveStateManager.getQuickRingInfoList() }
+        }
+    }
+
+    private fun collapseQuickHistory() {
+        menuQuickHistoryFocus = QuickHistoryFocus.NONE
+        menuQuickHistoryIndex = 0
+    }
+
+    private fun loadQuickHistorySlot(slotNumber: Int) {
+        inGameMessage = if (!canSerialize) {
+            getString(R.string.ingame_libretro_quicktimeline_load_unsupported_core)
+        } else if (saveStateManager.performSlotLoad(retroView, slotNumber)) {
+            getString(R.string.ingame_libretro_quicktimeline_load_success)
+        } else {
+            getString(R.string.ingame_libretro_quicktimeline_load_failure)
+        }
+        hideMenu()
+    }
+
     private fun handleMenuAction(action: InGameMenuAction) {
         when (action) {
             InGameMenuAction.SwapDisc -> {
@@ -2533,13 +2542,6 @@ class LibretroActivity : ComponentActivity() {
                     getString(R.string.ingame_libretro_menu_quickload_failure)
                 }
                 hideMenu()
-            }
-            InGameMenuAction.QuickLoadHistory -> {
-                menuVisible = false
-                menuQuickHistoryFocused = false
-                quickTimelineEntries = saveStateManager.getQuickRingInfoList()
-                quickTimelineFocusIndex = 0
-                quickTimelineVisible = true
             }
             InGameMenuAction.ManageStates -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.STATES)
             InGameMenuAction.Settings -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS)
@@ -3078,7 +3080,7 @@ class LibretroActivity : ComponentActivity() {
         menuDiscCount = if (netplay.inSession) 0 else discPaths.size
         val discSwapShown = menuDiscCount > 1
         menuFocusIndex = if (discSwapShown) 1 else 0
-        menuQuickHistoryFocused = false
+        collapseQuickHistory()
         leaveMenuSection()
         menuRailFocused = false
         menuVisible = true
@@ -3086,7 +3088,9 @@ class LibretroActivity : ComponentActivity() {
 
     private fun hideMenu() {
         menuVisible = false
-        menuQuickHistoryFocused = false
+        collapseQuickHistory()
+        quickHistoryLoadJob?.cancel()
+        menuQuickHistoryEntries = emptyList()
         leaveMenuSection()
         menuRailFocused = false
         pendingSaveScreenshot?.recycle()

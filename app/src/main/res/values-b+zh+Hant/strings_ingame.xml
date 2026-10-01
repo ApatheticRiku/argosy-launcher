@@ -66,12 +66,6 @@
     <string name="ingame_states_footer_mode_grid">網格</string>
     <string name="ingame_states_footer_back">返回</string>
 
-    <string name="ingame_quickload_empty_title">沒有快速存檔</string>
-    <string name="ingame_quickload_empty_message">使用「快速存檔」以建立紀錄</string>
-    <string name="ingame_quickload_title">快速讀取</string>
-    <string name="ingame_quickload_footer_load">讀取</string>
-    <string name="ingame_quickload_footer_back">返回</string>
-    <string name="ingame_quickload_preview_description">快速存檔預覽</string>
     <string name="ingame_quickload_preview_no_screenshot">無截圖</string>
     <string name="ingame_quickload_row_latest">最新</string>
     <string name="ingame_quickload_row_entry">快速存檔</string>
