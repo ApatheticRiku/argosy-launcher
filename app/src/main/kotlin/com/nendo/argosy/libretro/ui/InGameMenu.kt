@@ -256,6 +256,10 @@ fun InGameMenu(
             }
 
             override fun onUp(): InputResult {
+                if (historyFocus == QuickHistoryFocus.STRIP) {
+                    focusHistory(QuickHistoryFocus.BUTTON)
+                    return InputResult.HANDLED
+                }
                 collapseHistory()
                 val idx = currentFocusedIndex.value
                 val newIndex = if (columns == 1) {
@@ -268,6 +272,10 @@ fun InGameMenu(
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
+                if (historyFocus == QuickHistoryFocus.BUTTON && currentQuickHistoryEntries.value.isNotEmpty()) {
+                    enterStrip()
+                    return InputResult.HANDLED
+                }
                 collapseHistory()
                 val idx = currentFocusedIndex.value
                 val newIndex = if (columns == 1) {
