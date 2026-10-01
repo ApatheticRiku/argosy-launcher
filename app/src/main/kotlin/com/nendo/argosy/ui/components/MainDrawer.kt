@@ -335,16 +335,17 @@ private fun NavigationContent(
                     else -> null
                 }
 
-                DrawerMenuItem(
-                    item = item,
+                NavDrawerRow(
                     icon = getIconForRoute(item.route),
+                    label = stringResource(item.labelRes),
                     isFocused = index == focusedIndex,
                     isSelected = currentRoute?.substringBefore("?") == item.route,
-                    badge = badge,
                     onClick = {
                         android.util.Log.d("MainDrawer", "Menu item clicked: ${item.route}")
                         onNavigate(item.route)
-                    }
+                    },
+                    modifier = Modifier.padding(end = Dimens.spacingMd),
+                    trailing = { badge?.let { DrawerBadge(it) } }
                 )
             }
         }
@@ -726,81 +727,23 @@ private fun DrawerDeviceStatus(isRommConnected: Boolean) {
     }
 }
 
-private const val DRAWER_FOCUS_WASH_ALPHA = 0.15f
-
 @Composable
-private fun DrawerMenuItem(
-    item: DrawerItem,
-    icon: ImageVector,
-    isFocused: Boolean,
-    isSelected: Boolean,
-    badge: Int? = null,
-    onClick: () -> Unit
-) {
-    val backgroundColor = when {
-        isFocused -> LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-        isSelected -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        else -> Color.Transparent
-    }
-
-    val contentColor = when {
-        isFocused -> MaterialTheme.colorScheme.primary
-        isSelected -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-
-    val indicatorWidth = if (isFocused) Dimens.spacingXs else 0.dp
-
-    val shape = RoundedCornerShape(topEnd = Dimens.radiusMd, bottomEnd = Dimens.radiusMd)
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
+private fun DrawerBadge(count: Int) {
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(end = Dimens.spacingMd)
-            .clip(shape)
-            .background(backgroundColor)
-            .clickableNoFocus(onClick = onClick)
+            .defaultMinSize(minWidth = Dimens.iconMd, minHeight = Dimens.iconMd)
+            .background(MaterialTheme.colorScheme.primary, CircleShape)
+            .padding(horizontal = Dimens.spacingXs),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .width(indicatorWidth)
-                .height(Dimens.spacingXxl)
-                .background(MaterialTheme.colorScheme.primary)
-        )
-        Spacer(modifier = Modifier.width(if (isFocused) (Dimens.spacingLg - Dimens.spacingXs) else Dimens.spacingLg))
-        val label = stringResource(item.labelRes)
-        Icon(
-            imageVector = icon,
-            contentDescription = label,
-            tint = contentColor
-        )
-        Spacer(modifier = Modifier.width(Dimens.spacingMd))
         Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = contentColor,
-            modifier = Modifier.weight(1f)
+            text = count.toString(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 1
         )
-        if (badge != null) {
-            Box(
-                modifier = Modifier
-                    .defaultMinSize(minWidth = Dimens.iconMd, minHeight = Dimens.iconMd)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape)
-                    .padding(horizontal = Dimens.spacingXs),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = badge.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    maxLines = 1
-                )
-            }
-            Spacer(modifier = Modifier.width(Dimens.spacingSm))
-        }
     }
+    Spacer(modifier = Modifier.width(Dimens.spacingSm))
 }
 
 internal fun getIconForRoute(route: String): ImageVector = when (route) {

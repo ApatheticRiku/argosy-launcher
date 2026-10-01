@@ -72,7 +72,7 @@ internal fun netplaySectionActions(
  * Netplay panel hosted in the in-game menu shell: a session status header followed by the
  * actions that apply to the current session. Up and down wrap through the actions, confirm
  * runs the focused one, back returns to the menu list, and left returns UNHANDLED for the
- * shell to move focus to its rail.
+ * shell to close the section.
  */
 @Composable
 fun InGameNetplaySection(

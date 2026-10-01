@@ -2,9 +2,11 @@ package com.nendo.argosy.libretro.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -44,9 +46,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
 import com.nendo.argosy.libretro.SaveStateManager
+import com.nendo.argosy.ui.components.NavDrawerRow
+import com.nendo.argosy.ui.components.animateScrollToItemCentered
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.theme.Dimens
@@ -146,8 +151,6 @@ fun InGameMenu(
     walkthroughPanelShown: Boolean = false,
     swapScreensAvailable: Boolean = false,
     openSection: InGameMenuSection? = null,
-    railFocused: Boolean = false,
-    onRailFocusChange: (Boolean) -> Unit = {},
     onCloseSection: () -> Unit = {},
     sectionContent: @Composable (InGameMenuSection) -> InputHandler
 ): InputHandler {
@@ -386,22 +389,20 @@ fun InGameMenu(
     return InGameMenuPanel(
         menuItems = menuItems,
         openSection = openSection,
-        focusedIndex = focusedIndex,
-        railFocused = railFocused,
         condensedWidth = condensedWidth,
         listHandler = inputHandler,
-        isEnabled = { action -> action != InGameMenuAction.QuickLoad || hasQuickSave },
         onFocusChange = onFocusChange,
-        onRailFocusChange = onRailFocusChange,
         onAction = onAction,
         onCloseSection = onCloseSection,
-        list = {
+        list = { collapsed ->
             InGameMenuList(
                 gameName = gameName,
                 coreName = coreName,
                 hardcoreConfirmed = hardcoreConfirmed,
                 menuItems = menuItems,
                 columns = columns,
+                collapsed = collapsed,
+                openAction = openSection?.action,
                 focusedIndex = focusedIndex,
                 hasQuickSave = hasQuickSave,
                 quickHistoryFocus = quickHistoryFocus,
@@ -410,7 +411,8 @@ fun InGameMenu(
                 onFocusChange = onFocusChange,
                 onQuickHistoryFocusChange = onQuickHistoryFocusChange,
                 onQuickHistoryLoad = onQuickHistoryLoad,
-                onAction = onAction
+                onAction = onAction,
+                onCloseSection = onCloseSection
             )
         },
         sectionContent = sectionContent
@@ -424,6 +426,8 @@ private fun InGameMenuList(
     hardcoreConfirmed: Boolean,
     menuItems: List<Pair<Int, InGameMenuAction>>,
     columns: Int,
+    collapsed: Boolean,
+    openAction: InGameMenuAction?,
     focusedIndex: Int,
     hasQuickSave: Boolean,
     quickHistoryFocus: QuickHistoryFocus,
@@ -432,74 +436,45 @@ private fun InGameMenuList(
     onFocusChange: (Int) -> Unit,
     onQuickHistoryFocusChange: (QuickHistoryFocus, Int) -> Unit,
     onQuickHistoryLoad: (Int) -> Unit,
-    onAction: (InGameMenuAction) -> Unit
+    onAction: (InGameMenuAction) -> Unit,
+    onCloseSection: () -> Unit
 ) {
     val menuGridState = rememberLazyGridState()
+    val gridColumns = if (collapsed) 1 else columns
 
-    LaunchedEffect(focusedIndex, menuItems.size) {
+    LaunchedEffect(focusedIndex, menuItems.size, gridColumns) {
         if (menuItems.isEmpty()) return@LaunchedEffect
-        val target = focusedIndex.coerceIn(0, menuItems.lastIndex)
-        val visibleItems = menuGridState.layoutInfo.visibleItemsInfo
-        val viewportHeight = menuGridState.layoutInfo.viewportEndOffset
-        val avgItemHeight = if (visibleItems.isNotEmpty()) {
-            visibleItems.sumOf { it.size.height } / visibleItems.size
-        } else 80
-        val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
-        menuGridState.animateScrollToItem(target, -targetOffset)
+        menuGridState.animateScrollToItemCentered(focusedIndex.coerceIn(0, menuItems.lastIndex))
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(Dimens.spacingLg),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(vertical = Dimens.spacingLg),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd, Alignment.CenterVertically)
     ) {
-        if (hardcoreConfirmed) {
-            Text(
-                text = stringResource(R.string.ingame_menu_hardcore_badge),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = ColorTokens.Domain.AchievementTier.hardcore,
-                modifier = Modifier
-                    .background(
-                        ColorTokens.Domain.AchievementTier.hardcore.copy(alpha = HARDCORE_BADGE_FILL_ALPHA),
-                        RoundedCornerShape(Dimens.radiusSm)
-                    )
-                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
-            )
-        }
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+        AnimatedVisibility(
+            visible = !collapsed,
+            enter = expandVertically(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeIn(tween(Motion.durationContent)),
+            exit = shrinkVertically(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeOut(tween(Motion.durationContent))
         ) {
-            Text(
-                text = gameName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2
+            InGameMenuHeader(
+                gameName = gameName,
+                coreName = coreName,
+                hardcoreConfirmed = hardcoreConfirmed
             )
-            if (!coreName.isNullOrBlank()) {
-                Text(
-                    text = coreName,
-                    style = MaterialTheme.typography.labelSmall,
-                    textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    maxLines = 1
-                )
-            }
         }
 
         LazyVerticalGrid(
-            columns = GridCells.Fixed(columns),
+            columns = GridCells.Fixed(gridColumns),
             state = menuGridState,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = false)
                 .verticalEdgeFade(menuGridState, fadeHeight = Dimens.spacingLg),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             itemsIndexed(
@@ -508,45 +483,89 @@ private fun InGameMenuList(
             ) { index, item ->
                 val (labelRes, action) = item
                 val label = stringResource(labelRes)
-                when {
-                    action == InGameMenuAction.QuickLoad && hasQuickSave -> {
-                        val rowFocused = index == focusedIndex
-                        val historyFocus = if (rowFocused) quickHistoryFocus else QuickHistoryFocus.NONE
-                        QuickLoadCell(
-                            text = label,
-                            historyFocus = historyFocus,
-                            stripFocusIndex = quickHistoryIndex.takeIf { historyFocus == QuickHistoryFocus.STRIP },
-                            isFocused = rowFocused && historyFocus == QuickHistoryFocus.NONE,
-                            entries = quickHistoryEntries,
-                            onClick = { onAction(action) },
-                            onHistoryClick = {
-                                if (historyFocus == QuickHistoryFocus.NONE) {
-                                    onFocusChange(index)
-                                    onQuickHistoryFocusChange(QuickHistoryFocus.BUTTON, 0)
-                                } else {
-                                    onQuickHistoryFocusChange(QuickHistoryFocus.NONE, 0)
-                                }
-                            },
-                            onEntryClick = onQuickHistoryLoad
-                        )
-                    }
-                    action == InGameMenuAction.QuickLoad -> {
-                        MenuButton(
-                            text = label,
-                            isFocused = index == focusedIndex,
-                            enabled = false,
-                            onClick = {}
-                        )
-                    }
-                    else -> {
-                        MenuButton(
-                            text = label,
-                            isFocused = index == focusedIndex,
-                            onClick = { onAction(action) }
-                        )
-                    }
+                val rowFocused = !collapsed && index == focusedIndex
+                val onRowClick = {
+                    if (collapsed && action == openAction) onCloseSection() else onAction(action)
+                }
+                if (action == InGameMenuAction.QuickLoad && hasQuickSave) {
+                    val historyFocus = if (rowFocused) quickHistoryFocus else QuickHistoryFocus.NONE
+                    QuickLoadCell(
+                        text = label,
+                        historyFocus = historyFocus,
+                        stripFocusIndex = quickHistoryIndex.takeIf { historyFocus == QuickHistoryFocus.STRIP },
+                        isFocused = rowFocused && historyFocus == QuickHistoryFocus.NONE,
+                        collapsed = collapsed,
+                        entries = quickHistoryEntries,
+                        onClick = onRowClick,
+                        onHistoryClick = {
+                            if (historyFocus == QuickHistoryFocus.NONE) {
+                                onFocusChange(index)
+                                onQuickHistoryFocusChange(QuickHistoryFocus.BUTTON, 0)
+                            } else {
+                                onQuickHistoryFocusChange(QuickHistoryFocus.NONE, 0)
+                            }
+                        },
+                        onEntryClick = onQuickHistoryLoad
+                    )
+                } else {
+                    NavDrawerRow(
+                        icon = action.icon,
+                        label = label,
+                        isFocused = rowFocused,
+                        isSelected = action == openAction,
+                        onClick = onRowClick,
+                        modifier = Modifier.padding(end = Dimens.spacingMd),
+                        enabled = action != InGameMenuAction.QuickLoad,
+                        labelVisible = !collapsed
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun InGameMenuHeader(
+    gameName: String,
+    coreName: String?,
+    hardcoreConfirmed: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = Dimens.spacingLg),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        if (hardcoreConfirmed) {
+            Text(
+                text = stringResource(R.string.ingame_menu_hardcore_badge),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = ColorTokens.Domain.AchievementTier.hardcore,
+                modifier = Modifier
+                    .padding(bottom = Dimens.spacingXs)
+                    .background(
+                        ColorTokens.Domain.AchievementTier.hardcore.copy(alpha = HARDCORE_BADGE_FILL_ALPHA),
+                        RoundedCornerShape(Dimens.radiusSm)
+                    )
+                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
+            )
+        }
+        Text(
+            text = gameName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (!coreName.isNullOrBlank()) {
+            Text(
+                text = coreName,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = CORE_NAME_ALPHA),
+                maxLines = 1
+            )
         }
     }
 }
@@ -668,6 +687,7 @@ private fun QuickLoadCell(
     historyFocus: QuickHistoryFocus,
     stripFocusIndex: Int?,
     isFocused: Boolean,
+    collapsed: Boolean,
     entries: List<SaveStateManager.SlotInfo>,
     onClick: () -> Unit,
     onHistoryClick: () -> Unit,
@@ -677,6 +697,7 @@ private fun QuickLoadCell(
         QuickLoadRow(
             text = text,
             isFocused = isFocused,
+            collapsed = collapsed,
             historyFocus = historyFocus,
             onClick = onClick,
             onHistoryClick = onHistoryClick
@@ -692,7 +713,11 @@ private fun QuickLoadCell(
                 entries = entries,
                 focusedIndex = stripFocusIndex,
                 onLoad = onEntryClick,
-                modifier = Modifier.padding(top = Dimens.spacingSm)
+                modifier = Modifier.padding(
+                    start = Dimens.spacingLg,
+                    end = Dimens.spacingMd,
+                    top = Dimens.spacingSm
+                )
             )
         }
     }
@@ -702,46 +727,67 @@ private fun QuickLoadCell(
 private fun QuickLoadRow(
     text: String,
     isFocused: Boolean,
+    collapsed: Boolean,
     historyFocus: QuickHistoryFocus,
     onClick: () -> Unit,
     onHistoryClick: () -> Unit
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = Dimens.spacingMd),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
-        Box(modifier = Modifier.weight(1f)) {
-            MenuButton(
-                text = text,
-                isFocused = isFocused,
-                onClick = onClick
-            )
-        }
-        val iconBackground = when (historyFocus) {
-            QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.primary
-            QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.primaryContainer
-            QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.surfaceVariant
-        }
-        val iconTint = when (historyFocus) {
-            QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.onPrimary
-            QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.onPrimaryContainer
-            QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-        }
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(iconBackground)
-                .clickableNoFocus(onClick = onHistoryClick)
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
+        NavDrawerRow(
+            icon = InGameMenuAction.QuickLoad.icon,
+            label = text,
+            isFocused = isFocused,
+            isSelected = false,
+            onClick = onClick,
+            modifier = Modifier.weight(1f),
+            labelVisible = !collapsed
+        )
+        AnimatedVisibility(
+            visible = !collapsed,
+            enter = expandHorizontally(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeIn(tween(Motion.durationContent)),
+            exit = shrinkHorizontally(tween(Motion.durationSlide, easing = Motion.argosyEase)) +
+                fadeOut(tween(Motion.durationContent))
         ) {
-            Icon(
-                imageVector = Icons.Filled.History,
-                contentDescription = stringResource(R.string.ingame_menu_quick_save_history_action),
-                tint = iconTint
-            )
+            QuickHistoryButton(historyFocus = historyFocus, onClick = onHistoryClick)
         }
+    }
+}
+
+@Composable
+private fun QuickHistoryButton(
+    historyFocus: QuickHistoryFocus,
+    onClick: () -> Unit
+) {
+    val iconBackground = when (historyFocus) {
+        QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.primary
+        QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.primaryContainer
+        QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val iconTint = when (historyFocus) {
+        QuickHistoryFocus.BUTTON -> MaterialTheme.colorScheme.onPrimary
+        QuickHistoryFocus.STRIP -> MaterialTheme.colorScheme.onPrimaryContainer
+        QuickHistoryFocus.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(Dimens.radiusMd))
+            .background(iconBackground)
+            .clickableNoFocus(onClick = onClick)
+            .padding(Dimens.spacingSm),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.History,
+            contentDescription = stringResource(R.string.ingame_menu_quick_save_history_action),
+            tint = iconTint
+        )
     }
 }
 
@@ -749,21 +795,18 @@ private fun QuickLoadRow(
 private fun MenuButton(
     text: String,
     isFocused: Boolean,
-    onClick: () -> Unit,
-    enabled: Boolean = true
+    onClick: () -> Unit
 ) {
-    val backgroundColor = when {
-        !enabled && isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = DISABLED_FOCUS_FILL_ALPHA)
-        !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        isFocused -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    val backgroundColor = if (isFocused) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant
     }
 
-    val textColor = when {
-        !enabled && isFocused -> MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_FOCUS_TEXT_ALPHA)
-        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-        isFocused -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = if (isFocused) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Box(
@@ -771,7 +814,7 @@ private fun MenuButton(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(backgroundColor)
-            .clickableNoFocus(enabled = enabled, onClick = onClick)
+            .clickableNoFocus(onClick = onClick)
             .padding(vertical = 12.dp, horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -785,5 +828,4 @@ private fun MenuButton(
 }
 
 private const val HARDCORE_BADGE_FILL_ALPHA = 0.15f
-private const val DISABLED_FOCUS_FILL_ALPHA = 0.35f
-private const val DISABLED_FOCUS_TEXT_ALPHA = 0.7f
+private const val CORE_NAME_ALPHA = 0.4f

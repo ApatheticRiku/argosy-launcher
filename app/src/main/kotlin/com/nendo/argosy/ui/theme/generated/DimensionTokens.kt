@@ -80,7 +80,7 @@ object DimensionTokens {
         const val inGameMenuMaxHeightPct = 90
         const val inGameMenuBroadWidthPct = 85
         const val inGameMenuBroadWidthPctWide = 65
-        const val inGameMenuRailWidth = 56
+        const val inGameMenuRailWidth = 72
         const val inGameQuickHistoryThumbWidth = 96
         const val inGameQuickHistoryThumbHeight = 72
         const val mediaPosterWidth = 160

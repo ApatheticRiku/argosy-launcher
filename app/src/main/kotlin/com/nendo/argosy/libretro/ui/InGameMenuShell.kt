@@ -1,13 +1,8 @@
 package com.nendo.argosy.libretro.ui
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -47,25 +42,16 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 internal fun InGameMenuPanel(
     menuItems: List<Pair<Int, InGameMenuAction>>,
     openSection: InGameMenuSection?,
-    focusedIndex: Int,
-    railFocused: Boolean,
     condensedWidth: Dp,
     listHandler: InputHandler,
-    isEnabled: (InGameMenuAction) -> Boolean,
     onFocusChange: (Int) -> Unit,
-    onRailFocusChange: (Boolean) -> Unit,
     onAction: (InGameMenuAction) -> Unit,
     onCloseSection: () -> Unit,
-    list: @Composable () -> Unit,
+    list: @Composable (collapsed: Boolean) -> Unit,
     sectionContent: @Composable (InGameMenuSection) -> InputHandler
 ): InputHandler {
-    val currentMenuItems = rememberUpdatedState(menuItems)
     val currentOpenSection = rememberUpdatedState(openSection)
-    val currentFocusedIndex = rememberUpdatedState(focusedIndex)
-    val currentIsEnabled = rememberUpdatedState(isEnabled)
-    val currentRailFocused = rememberUpdatedState(railFocused)
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
-    val currentOnRailFocusChange = rememberUpdatedState(onRailFocusChange)
     val currentOnAction = rememberUpdatedState(onAction)
     val currentOnCloseSection = rememberUpdatedState(onCloseSection)
 
@@ -75,18 +61,28 @@ internal fun InGameMenuPanel(
         if (index >= 0) currentOnFocusChange.value(index)
     }
 
+    val uiScale = LocalUiScale.current
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-    val broadWidthPct = if (LocalUiScale.current.aspectRatioClass.isWide) {
+    val broadWidthPct = if (uiScale.aspectRatioClass.isWide) {
         DimensionTokens.Layout.inGameMenuBroadWidthPctWide
     } else {
         DimensionTokens.Layout.inGameMenuBroadWidthPct
     }
+    val collapsed = openSection != null
     val panelWidth by animateDpAsState(
-        targetValue = if (openSection != null) screenWidth * (broadWidthPct / 100f) else condensedWidth,
+        targetValue = if (collapsed) screenWidth * (broadWidthPct / 100f) else condensedWidth,
         animationSpec = tween(Motion.durationSlide, easing = Motion.argosyEase),
         label = "inGameMenuPanelWidth"
     )
-    val railWidth = DimensionTokens.Layout.inGameMenuRailWidth.dp
+    val listWidth by animateDpAsState(
+        targetValue = if (collapsed) {
+            DimensionTokens.Layout.inGameMenuRailWidth.dp * uiScale.scale
+        } else {
+            condensedWidth
+        },
+        animationSpec = tween(Motion.durationSlide, easing = Motion.argosyEase),
+        label = "inGameMenuListWidth"
+    )
 
     val isDarkTheme = isSystemInDarkTheme()
     val overlayColor = if (isDarkTheme) {
@@ -121,37 +117,12 @@ internal fun InGameMenuPanel(
                 .clickableNoFocus {}
                 .focusProperties { canFocus = false }
         ) {
-            val railModifier = if (openSection != null) {
-                Modifier.width(railWidth).fillMaxHeight()
-            } else {
-                Modifier.weight(1f).fillMaxHeight()
-            }
-            AnimatedContent(
-                targetState = openSection != null,
-                modifier = railModifier,
-                transitionSpec = {
-                    fadeIn(tween(Motion.durationContent)) togetherWith
-                        fadeOut(tween(Motion.durationContent)) using
-                        SizeTransform(clip = true) { _, _ -> tween(Motion.durationSlide, easing = Motion.argosyEase) }
-                },
-                label = "inGameMenuListRail"
-            ) { collapsed ->
-                if (collapsed) {
-                    InGameMenuRail(
-                        menuItems = menuItems,
-                        openAction = openSection?.action,
-                        focusedIndex = focusedIndex,
-                        railFocused = railFocused,
-                        isEnabled = isEnabled,
-                        onSelect = { action ->
-                            val index = menuItems.indexOfFirst { it.second == action }
-                            if (action.broadSection != null && index >= 0) onFocusChange(index)
-                            onAction(action)
-                        }
-                    )
-                } else {
-                    list()
-                }
+            Box(
+                modifier = Modifier
+                    .width(listWidth)
+                    .fillMaxHeight()
+            ) {
+                list(collapsed)
             }
             if (openSection != null) {
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -175,80 +146,32 @@ internal fun InGameMenuPanel(
 
     val shellHandler = remember {
         object : InputHandler {
-            private val onRail: Boolean get() = currentRailFocused.value
-
             private fun forward(block: (InputHandler) -> InputResult): InputResult =
                 currentSectionHandler.value?.let(block) ?: InputResult.HANDLED
 
-            private fun railOr(block: (InputHandler) -> InputResult): InputResult =
-                if (onRail) InputResult.HANDLED else forward(block)
-
-            private fun stepRail(delta: Int): InputResult {
-                val items = currentMenuItems.value
-                val reachable = items.indices.filter { currentIsEnabled.value(items[it].second) }
-                if (reachable.isEmpty()) return InputResult.HANDLED
-                val current = currentFocusedIndex.value
-                val position = reachable.indexOf(current)
-                val target = if (position < 0) {
-                    reachable.first()
-                } else {
-                    reachable[(position + delta).mod(reachable.size)]
-                }
-                if (target == current) return InputResult.HANDLED
-                currentOnFocusChange.value(target)
-                val action = items[target].second
-                if (action.broadSection != null) currentOnAction.value(action)
+            private fun forwardOrClose(block: (InputHandler) -> InputResult): InputResult {
+                if (!forward(block).handled) currentOnCloseSection.value()
                 return InputResult.HANDLED
             }
 
-            private fun leaveRail(): InputResult {
-                val openAction = currentOpenSection.value?.action
-                val openIndex = currentMenuItems.value.indexOfFirst { it.second == openAction }
-                if (openIndex >= 0) currentOnFocusChange.value(openIndex)
-                currentOnRailFocusChange.value(false)
-                return InputResult.HANDLED
-            }
-
-            private fun confirmRail(): InputResult {
-                val action = currentMenuItems.value.getOrNull(currentFocusedIndex.value)?.second
-                    ?: return leaveRail()
-                if (action.broadSection != null) return leaveRail()
-                currentOnAction.value(action)
-                return InputResult.HANDLED
-            }
-
-            override fun onUp(): InputResult = if (onRail) stepRail(-1) else forward { it.onUp() }
-
-            override fun onDown(): InputResult = if (onRail) stepRail(1) else forward { it.onDown() }
-
-            override fun onLeft(): InputResult {
-                if (onRail) return InputResult.HANDLED
-                if (!forward { it.onLeft() }.handled) currentOnRailFocusChange.value(true)
-                return InputResult.HANDLED
-            }
-
-            override fun onRight(): InputResult = if (onRail) leaveRail() else forward { it.onRight() }
-
-            override fun onConfirm(): InputResult = if (onRail) confirmRail() else forward { it.onConfirm() }
-
-            override fun onBack(): InputResult {
-                if (!onRail) return forward { it.onBack() }
-                currentOnCloseSection.value()
-                return InputResult.HANDLED
-            }
-
-            override fun onMenu(): InputResult = railOr { it.onMenu() }
-            override fun onSecondaryAction(): InputResult = railOr { it.onSecondaryAction() }
-            override fun onContextMenu(): InputResult = railOr { it.onContextMenu() }
-            override fun onPrevSection(): InputResult = railOr { it.onPrevSection() }
-            override fun onNextSection(): InputResult = railOr { it.onNextSection() }
-            override fun onPrevTrigger(): InputResult = railOr { it.onPrevTrigger() }
-            override fun onNextTrigger(): InputResult = railOr { it.onNextTrigger() }
-            override fun onSelect(): InputResult = railOr { it.onSelect() }
-            override fun onLeftStickClick(): InputResult = railOr { it.onLeftStickClick() }
-            override fun onRightStickClick(): InputResult = railOr { it.onRightStickClick() }
-            override fun onLongConfirm(): InputResult = railOr { it.onLongConfirm() }
-            override fun onLongSelect(): InputResult = railOr { it.onLongSelect() }
+            override fun onUp(): InputResult = forward { it.onUp() }
+            override fun onDown(): InputResult = forward { it.onDown() }
+            override fun onLeft(): InputResult = forwardOrClose { it.onLeft() }
+            override fun onRight(): InputResult = forward { it.onRight() }
+            override fun onConfirm(): InputResult = forward { it.onConfirm() }
+            override fun onBack(): InputResult = forwardOrClose { it.onBack() }
+            override fun onMenu(): InputResult = forward { it.onMenu() }
+            override fun onSecondaryAction(): InputResult = forward { it.onSecondaryAction() }
+            override fun onContextMenu(): InputResult = forward { it.onContextMenu() }
+            override fun onPrevSection(): InputResult = forward { it.onPrevSection() }
+            override fun onNextSection(): InputResult = forward { it.onNextSection() }
+            override fun onPrevTrigger(): InputResult = forward { it.onPrevTrigger() }
+            override fun onNextTrigger(): InputResult = forward { it.onNextTrigger() }
+            override fun onSelect(): InputResult = forward { it.onSelect() }
+            override fun onLeftStickClick(): InputResult = forward { it.onLeftStickClick() }
+            override fun onRightStickClick(): InputResult = forward { it.onRightStickClick() }
+            override fun onLongConfirm(): InputResult = forward { it.onLongConfirm() }
+            override fun onLongSelect(): InputResult = forward { it.onLongSelect() }
         }
     }
 

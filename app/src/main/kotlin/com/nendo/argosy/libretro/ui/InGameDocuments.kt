@@ -70,7 +70,7 @@ class InGameDocuments(
 
 /**
  * [DocumentReaderController.inputHandler] for the menu panel: Left on the first page is left
- * unhandled so the panel can move focus to its rail.
+ * unhandled so the panel can close the section.
  */
 fun DocumentReaderController.menuPanelInputHandler(onDismiss: () -> Unit): InputHandler {
     val base = inputHandler(onDismiss)

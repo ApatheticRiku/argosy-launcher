@@ -259,7 +259,6 @@ class LibretroActivity : ComponentActivity() {
     private var activeSaveChannel: String? = null
     private var menuVisible by mutableStateOf(false)
     private var menuSection by mutableStateOf<com.nendo.argosy.libretro.ui.InGameMenuSection?>(null)
-    private var menuRailFocused by mutableStateOf(false)
     private var isClosing by mutableStateOf(false)
     private var achievementsFocusIndex by mutableStateOf(0)
     private var netplayFocusIndex by mutableStateOf(0)
@@ -1531,8 +1530,6 @@ class LibretroActivity : ComponentActivity() {
                         walkthroughPanelShown = sidePanelContent == com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH,
                         swapScreensAvailable = liveSwapAvailable,
                         openSection = menuSection,
-                        railFocused = menuRailFocused,
-                        onRailFocusChange = { menuRailFocused = it },
                         onCloseSection = ::closeMenuSection,
                         sectionContent = { section -> menuSectionContent(section) }
                     )
@@ -2224,7 +2221,7 @@ class LibretroActivity : ComponentActivity() {
 
     private fun openMenuSection(section: com.nendo.argosy.libretro.ui.InGameMenuSection) {
         if (menuSection == section) return
-        leaveMenuSection()
+        closeMenuSection()
         collapseQuickHistory()
         when (section) {
             com.nendo.argosy.libretro.ui.InGameMenuSection.STATES -> {
@@ -2242,11 +2239,6 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun closeMenuSection() {
-        leaveMenuSection()
-        menuRailFocused = false
-    }
-
-    private fun leaveMenuSection() {
         when (menuSection) {
             com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS -> {
                 cheatManager.memoryScanner.markGameRan()
@@ -3096,8 +3088,7 @@ class LibretroActivity : ComponentActivity() {
         val discSwapShown = menuDiscCount > 1
         menuFocusIndex = if (discSwapShown) 1 else 0
         collapseQuickHistory()
-        leaveMenuSection()
-        menuRailFocused = false
+        closeMenuSection()
         menuVisible = true
     }
 
@@ -3106,8 +3097,7 @@ class LibretroActivity : ComponentActivity() {
         collapseQuickHistory()
         quickHistoryLoadJob?.cancel()
         menuQuickHistoryEntries = emptyList()
-        leaveMenuSection()
-        menuRailFocused = false
+        closeMenuSection()
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
         deferredMenuPause?.cancel()
@@ -3120,8 +3110,7 @@ class LibretroActivity : ComponentActivity() {
 
     fun enterTouchEditMode() {
         menuVisible = false
-        leaveMenuSection()
-        menuRailFocused = false
+        closeMenuSection()
         retroView.pauseEmulation()
         retroView.suppressAutoResume = true
         touchEditMode = true
