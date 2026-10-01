@@ -558,9 +558,6 @@
     <!-- Quick settings panel (ui/components/QuickSettingsPanel.kt) -->
 
     <string name="ui_quick_settings_title">क्विक सेटिंग्स</string>
-    <string name="ui_quick_settings_footer_close">बंद करें</string>
-    <string name="ui_quick_settings_hint_navigate">नेविगेट</string>
-    <string name="ui_quick_settings_hint_close">बंद करें</string>
     <string name="ui_quick_settings_performance">परफॉर्मेंस</string>
     <string name="ui_quick_settings_performance_disabled">अनुमति आवश्यक</string>
     <string name="ui_quick_settings_fan">फैन</string>
@@ -580,7 +577,6 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">वॉल्यूम</string>
     <string name="ui_quick_settings_brightness">ब्राइटनेस</string>
-    <string name="ui_quick_settings_hint_page">पेज</string>
     <string name="ui_quick_settings_page_screens">स्क्रीन</string>
     <string name="ui_quick_settings_page_performance">परफ़ॉर्मेंस</string>
     <string name="ui_quick_settings_page_friends">दोस्त</string>
@@ -588,7 +584,6 @@
     <string name="ui_quick_settings_group_display">डिस्प्ले</string>
     <string name="ui_quick_settings_group_audio">ऑडियो</string>
     <string name="ui_quick_settings_group_other">अन्य</string>
-    <string name="ui_quick_settings_hint_back">वापस</string>
     <string name="ui_quick_settings_music_nothing_playing">कुछ नहीं चल रहा</string>
     <string name="ui_quick_settings_music_source_launcher">लॉन्चर संगीत</string>
     <string name="ui_quick_settings_music_track_position">%2$d में से %1$d</string>

@@ -41,7 +41,9 @@ class MusicPlayerInputHandler(
     }
 
     override fun onBack(): InputResult {
-        if (!browseOpen) return InputResult.UNHANDLED
+        if (!browseOpen) {
+            return if (viewModel.leaveTrackList()) InputResult.HANDLED else InputResult.UNHANDLED
+        }
         viewModel.closeBrowse()
         return InputResult.handled(SoundType.CLOSE_MODAL)
     }

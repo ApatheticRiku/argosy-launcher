@@ -574,9 +574,6 @@
     <string name="ui_home_layout_lanes_rows">Строки</string>
 
     <string name="ui_quick_settings_title">Быстрые настройки</string>
-    <string name="ui_quick_settings_footer_close">Закрыть</string>
-    <string name="ui_quick_settings_hint_navigate">Навигация</string>
-    <string name="ui_quick_settings_hint_close">Закрыть</string>
     <string name="ui_quick_settings_performance">Производительность</string>
     <string name="ui_quick_settings_performance_disabled">Требуется разрешение</string>
     <string name="ui_quick_settings_fan">Вентилятор</string>
@@ -596,7 +593,6 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Громкость</string>
     <string name="ui_quick_settings_brightness">Яркость</string>
-    <string name="ui_quick_settings_hint_page">Страницы</string>
     <string name="ui_quick_settings_page_screens">Экраны</string>
     <string name="ui_quick_settings_page_performance">Производительность</string>
     <string name="ui_quick_settings_page_friends">Друзья</string>
@@ -604,7 +600,6 @@
     <string name="ui_quick_settings_group_display">Экран</string>
     <string name="ui_quick_settings_group_audio">Звук</string>
     <string name="ui_quick_settings_group_other">Прочее</string>
-    <string name="ui_quick_settings_hint_back">Назад</string>
     <string name="ui_quick_settings_music_nothing_playing">Ничего не играет</string>
     <string name="ui_quick_settings_music_source_launcher">Музыка лаунчера</string>
     <string name="ui_quick_settings_music_track_position">%1$d из %2$d</string>

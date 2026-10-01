@@ -74,6 +74,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.verticalEdgeFade
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.util.Locale
@@ -221,7 +222,12 @@ private fun TrackList(
         return
     }
     val showGame = remember(tracks) { tracks.mapTo(HashSet()) { it.gameTitle }.size > 1 }
-    LazyColumn(state = listState, modifier = modifier.fillMaxWidth()) {
+    LazyColumn(
+        state = listState,
+        modifier = modifier
+            .fillMaxWidth()
+            .verticalEdgeFade(listState, fadeHeight = Dimens.spacingLg)
+    ) {
         itemsIndexed(tracks, key = { position, track -> "$position:${track.id}" }) { position, track ->
             TrackRow(
                 number = position + 1,

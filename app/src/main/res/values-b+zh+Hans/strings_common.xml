@@ -535,9 +535,6 @@
     <string name="ui_home_layout_lanes_rows">行数</string>
 
     <string name="ui_quick_settings_title">快捷设置</string>
-    <string name="ui_quick_settings_footer_close">关闭</string>
-    <string name="ui_quick_settings_hint_navigate">导航</string>
-    <string name="ui_quick_settings_hint_close">关闭</string>
     <string name="ui_quick_settings_performance">性能</string>
     <string name="ui_quick_settings_performance_disabled">需要权限</string>
     <string name="ui_quick_settings_fan">风扇</string>
@@ -557,7 +554,6 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">音量</string>
     <string name="ui_quick_settings_brightness">亮度</string>
-    <string name="ui_quick_settings_hint_page">翻页</string>
     <string name="ui_quick_settings_page_screens">屏幕</string>
     <string name="ui_quick_settings_page_performance">性能</string>
     <string name="ui_quick_settings_page_friends">好友</string>
@@ -565,7 +561,6 @@
     <string name="ui_quick_settings_group_display">显示</string>
     <string name="ui_quick_settings_group_audio">音频</string>
     <string name="ui_quick_settings_group_other">其他</string>
-    <string name="ui_quick_settings_hint_back">返回</string>
     <string name="ui_quick_settings_music_nothing_playing">未在播放</string>
     <string name="ui_quick_settings_music_source_launcher">启动器音乐</string>
     <string name="ui_quick_settings_music_track_position">第 %1$d 首，共 %2$d 首</string>

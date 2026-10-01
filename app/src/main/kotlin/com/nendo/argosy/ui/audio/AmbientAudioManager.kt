@@ -221,6 +221,7 @@ class AmbientAudioManager @Inject constructor(
         activeSourceId = sourceId
         activeSourceLabel = sourceLabel
         gate.userPaused = false
+        gate.suspended = false
         consecutiveFailures = 0
         dropOverride()
         releasePlayer()
@@ -240,6 +241,7 @@ class AmbientAudioManager @Inject constructor(
 
     fun play() {
         gate.userPaused = false
+        gate.suspended = false
         Log.d(TAG, "user play")
         fadeIn()
         publish()
@@ -254,6 +256,7 @@ class AmbientAudioManager @Inject constructor(
 
     fun skipNext() {
         if (queue.isEmpty) return
+        gate.suspended = false
         consecutiveFailures = 0
         dropOverride()
         advanceQueue(resume = true)
@@ -261,6 +264,7 @@ class AmbientAudioManager @Inject constructor(
 
     fun skipPrevious() {
         if (queue.isEmpty) return
+        gate.suspended = false
         consecutiveFailures = 0
         if (overrideActive) {
             dropOverride()
@@ -287,6 +291,7 @@ class AmbientAudioManager @Inject constructor(
         if (!queue.jumpTo(position)) return
         consecutiveFailures = 0
         gate.userPaused = false
+        gate.suspended = false
         dropOverride()
         restartAtCurrentIndex(resume = true)
     }

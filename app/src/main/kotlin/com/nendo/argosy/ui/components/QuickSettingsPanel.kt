@@ -260,9 +260,7 @@ fun QuickSettingsPanel(
     onSwapDisplays: () -> Unit = {},
     musicPage: @Composable () -> Unit = {},
     onDismiss: () -> Unit,
-    footerHints: List<Pair<InputButton, String>> = listOf(
-        InputButton.B to stringResource(R.string.ui_quick_settings_footer_close)
-    ),
+    footerHints: List<Pair<InputButton, String>> = emptyList(),
     onHintClick: ((InputButton) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {

@@ -134,7 +134,6 @@ fun ArgosyApp(
     val quickSettingsFocusIndex by viewModel.quickSettingsFocusIndex.collectAsState()
     val quickSettingsPage by viewModel.quickSettingsPage.collectAsState()
     val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
-    val quickSettingsFooterHints by viewModel.quickSettingsFooterHints.collectAsState()
     val musicPlayerUiState by musicPlayerViewModel.uiState.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
@@ -1281,19 +1280,14 @@ fun ArgosyApp(
             )
 
             // Quick Settings Panel (right-side drawer)
-            val musicBrowseOpen = musicPageVisible && musicPlayerUiState.browse != null
-            val musicNeedsSignIn = musicBrowseOpen &&
+            val musicNeedsSignIn = musicPageVisible &&
                 musicPlayerUiState.browse?.notice ==
                 com.nendo.argosy.ui.components.musicplayer.MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
             val signInHint = stringResource(R.string.ui_quick_settings_music_hint_sign_in)
             QuickSettingsPanel(
                 onHintClick = { button ->
-                    when (button) {
-                        com.nendo.argosy.ui.components.InputButton.B ->
-                            if (musicBrowseOpen) musicPlayerViewModel.closeBrowse() else closeQuickSettings()
-                        com.nendo.argosy.ui.components.InputButton.Y ->
-                            if (musicNeedsSignIn) openRommSignIn()
-                        else -> Unit
+                    if (button == com.nendo.argosy.ui.components.InputButton.Y && musicNeedsSignIn) {
+                        openRommSignIn()
                     }
                 },
                 isVisible = isQuickSettingsOpen,
@@ -1333,13 +1327,7 @@ fun ArgosyApp(
                     QuickSettingsMusicPage(viewModel = musicPlayerViewModel, onOpenRommSignIn = openRommSignIn)
                 },
                 onDismiss = closeQuickSettings,
-                footerHints = quickSettingsFooterHints.map { (button, labelRes) ->
-                    val isBackFromBrowse =
-                        musicBrowseOpen && button == com.nendo.argosy.ui.components.InputButton.B
-                    button to stringResource(
-                        if (isBackFromBrowse) R.string.ui_quick_settings_hint_back else labelRes
-                    )
-                } + listOfNotNull(
+                footerHints = listOfNotNull(
                     (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn }
                 )
             )

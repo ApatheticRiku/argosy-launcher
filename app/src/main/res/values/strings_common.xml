@@ -1134,12 +1134,6 @@
     <!-- Title of the main page of the panel that slides in from the side, holding display, audio
          and haptic rows. Noun phrase. -->
     <string name="ui_quick_settings_title">Quick Settings</string>
-    <!-- Footer hint on that panel. Verb: closes it. -->
-    <string name="ui_quick_settings_footer_close">Close</string>
-    <!-- Footer hint on that panel. Verb: up and down move between rows. -->
-    <string name="ui_quick_settings_hint_navigate">Navigate</string>
-    <!-- Footer hint on that panel. Verb: closes it. -->
-    <string name="ui_quick_settings_hint_close">Close</string>
     <!-- Row of that panel: how hard the device is allowed to work. Noun. -->
     <string name="ui_quick_settings_performance">Performance</string>
     <!-- Shown in place of that row's value when Argosy cannot reach the device's settings. -->
@@ -1185,9 +1179,6 @@
     <string name="ui_quick_settings_volume">Volume</string>
     <!-- Label beside the screen brightness slider. Noun. -->
     <string name="ui_quick_settings_brightness">Brightness</string>
-    <!-- Footer hint on that panel. Noun, plural: the shoulder buttons move between its pages.
-         Keep it short. -->
-    <string name="ui_quick_settings_hint_page">Pages</string>
     <!-- Title of the page of that panel for a device with two screens. Noun, plural. -->
     <string name="ui_quick_settings_page_screens">Screens</string>
     <!-- Title of the page of that panel holding the performance and fan rows. Noun. -->
@@ -1203,9 +1194,6 @@
     <!-- Sub-heading on that panel over the remaining rows, such as haptics. Adjective used as a
          noun: everything else. -->
     <string name="ui_quick_settings_group_other">Other</string>
-    <!-- Footer hint on that panel while a list opened from the music page is showing. Verb:
-         returns to the music page. -->
-    <string name="ui_quick_settings_hint_back">Back</string>
     <!-- Music page of that panel: shown in place of a song title when nothing is queued. -->
     <string name="ui_quick_settings_music_nothing_playing">Nothing playing</string>
     <!-- Music page: name of the playlist the reader builds in Argosy's own music settings. Noun

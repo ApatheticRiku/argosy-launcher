@@ -307,6 +307,7 @@ class SecondaryHomeActivity :
             val dimmed = isMediaDimmed()
             if (::dsm.isInitialized) {
                 dsm.notifyUserActivity("companionTouchDown")
+                dsm.ambientAudioManager.resumeFromSuspend()
             }
             if (dimmed) {
                 mediaDimSwallowsTouch = true
@@ -375,6 +376,9 @@ class SecondaryHomeActivity :
             return true
         }
         if (::dsm.isInitialized && !dsm.claimInput(event)) return true
+        if (::dsm.isInitialized && event.action == android.view.KeyEvent.ACTION_DOWN) {
+            dsm.ambientAudioManager.resumeFromSuspend()
+        }
         if (event.keyCode == android.view.KeyEvent.KEYCODE_HOME ||
             event.keyCode == android.view.KeyEvent.KEYCODE_BUTTON_MODE
         ) {

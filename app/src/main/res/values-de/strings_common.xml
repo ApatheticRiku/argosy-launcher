@@ -558,9 +558,6 @@
     <!-- Quick settings panel (ui/components/QuickSettingsPanel.kt) -->
 
     <string name="ui_quick_settings_title">Schnelleinstellungen</string>
-    <string name="ui_quick_settings_footer_close">Schließen</string>
-    <string name="ui_quick_settings_hint_navigate">Navigieren</string>
-    <string name="ui_quick_settings_hint_close">Schließen</string>
     <string name="ui_quick_settings_performance">Leistung</string>
     <string name="ui_quick_settings_performance_disabled">Berechtigung erforderlich</string>
     <string name="ui_quick_settings_fan">Lüfter</string>
@@ -580,7 +577,6 @@
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Lautstärke</string>
     <string name="ui_quick_settings_brightness">Helligkeit</string>
-    <string name="ui_quick_settings_hint_page">Seiten</string>
     <string name="ui_quick_settings_page_screens">Bildschirme</string>
     <string name="ui_quick_settings_page_performance">Leistung</string>
     <string name="ui_quick_settings_page_friends">Freunde</string>
@@ -588,7 +584,6 @@
     <string name="ui_quick_settings_group_display">Anzeige</string>
     <string name="ui_quick_settings_group_audio">Audio</string>
     <string name="ui_quick_settings_group_other">Sonstiges</string>
-    <string name="ui_quick_settings_hint_back">Zurück</string>
     <string name="ui_quick_settings_music_nothing_playing">Keine Wiedergabe</string>
     <string name="ui_quick_settings_music_source_launcher">Launcher-Musik</string>
     <string name="ui_quick_settings_music_track_position">%1$d von %2$d</string>

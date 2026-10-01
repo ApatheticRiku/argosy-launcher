@@ -1001,29 +1001,6 @@ class ArgosyViewModel @Inject constructor(
         initialValue = QuickSettingsUiState()
     )
 
-    /**
-     * Held as resource ids rather than resolved text: this view model outlives the activity
-     * recreation a locale change causes, so a resolved string would stay in the old language.
-     */
-    val quickSettingsFooterHints: StateFlow<List<Pair<InputButton, Int>>> =
-        preferencesRepository.userPreferences
-            .map {
-                listOf(
-                    InputButton.LB_RB to R.string.ui_quick_settings_hint_page,
-                    InputButton.DPAD_VERTICAL to R.string.ui_quick_settings_hint_navigate,
-                    InputButton.B to R.string.ui_quick_settings_hint_close
-                )
-            }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000),
-                initialValue = listOf(
-                    InputButton.LB_RB to R.string.ui_quick_settings_hint_page,
-                    InputButton.DPAD_VERTICAL to R.string.ui_quick_settings_hint_navigate,
-                    InputButton.B to R.string.ui_quick_settings_hint_close
-                )
-            )
-
     val screenDimmerPreferences: StateFlow<ScreenDimmerPreferences> = preferencesRepository.userPreferences
         .map { it.toScreenDimmerPreferences() }
         .stateIn(
