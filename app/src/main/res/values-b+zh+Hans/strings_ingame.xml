@@ -27,6 +27,7 @@
     <string name="ingame_menu_close_netplay_server">关闭联机服务器</string>
     <string name="ingame_menu_leave_netplay_session">离开联机会话</string>
     <string name="ingame_menu_open_netplay_server">开启联机服务器</string>
+    <string name="ingame_menu_netplay">联机</string>
     <string name="ingame_menu_settings">设置</string>
     <string name="ingame_menu_stop_speedrun_timer">停止速通计时</string>
     <string name="ingame_menu_speedrun_timer">速通计时器</string>
@@ -419,6 +420,12 @@
     <string name="ingame_netplay_quality_row_peer_host">主机：%1$s</string>
     <string name="ingame_netplay_quality_row_ping_known">%1$dms  %2$s</string>
     <string name="ingame_netplay_quality_row_ping_unknown">--  %1$s</string>
+    <string name="ingame_netplay_section_title">联机</string>
+    <string name="ingame_netplay_section_status_idle">没有进行中的会话</string>
+    <string name="ingame_netplay_section_role_host">正在主持会话</string>
+    <string name="ingame_netplay_section_role_guest">已作为访客加入</string>
+    <string name="ingame_netplay_section_peer_waiting_guest">等待好友加入</string>
+    <string name="ingame_netplay_section_peer_waiting_host">正在连接主机</string>
 
     <string name="ingame_settings_controller_type_default_fallback">默认</string>
 

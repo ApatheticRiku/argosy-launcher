@@ -27,6 +27,7 @@
     <string name="ingame_menu_close_netplay_server">Netplay-Server schließen</string>
     <string name="ingame_menu_leave_netplay_session">Netplay-Sitzung verlassen</string>
     <string name="ingame_menu_open_netplay_server">Netplay-Server öffnen</string>
+    <string name="ingame_menu_netplay">Netplay</string>
     <string name="ingame_menu_settings">Einstellungen</string>
     <string name="ingame_menu_stop_speedrun_timer">Speedrun-Timer stoppen</string>
     <string name="ingame_menu_speedrun_timer">Speedrun-Timer</string>
@@ -426,6 +427,12 @@
     <string name="ingame_netplay_quality_row_peer_host">Host: %1$s</string>
     <string name="ingame_netplay_quality_row_ping_known">%1$dms  %2$s</string>
     <string name="ingame_netplay_quality_row_ping_unknown">--  %1$s</string>
+    <string name="ingame_netplay_section_title">Netplay</string>
+    <string name="ingame_netplay_section_status_idle">Keine Sitzung aktiv</string>
+    <string name="ingame_netplay_section_role_host">Du hostest eine Sitzung</string>
+    <string name="ingame_netplay_section_role_guest">Als Gast beigetreten</string>
+    <string name="ingame_netplay_section_peer_waiting_guest">Warte auf einen Freund</string>
+    <string name="ingame_netplay_section_peer_waiting_host">Verbindung zum Host wird hergestellt</string>
 
     <string name="ingame_settings_controller_type_default_fallback">Standard</string>
 

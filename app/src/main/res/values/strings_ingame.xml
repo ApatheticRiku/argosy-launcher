@@ -53,6 +53,8 @@
     <!-- Row in that menu, when no shared session is running. Verb phrase: starts one that
          friends can join. -->
     <string name="ingame_menu_open_netplay_server">Open Netplay Server</string>
+    <!-- Row in that menu. Noun: opens the panel for playing this game online with friends. -->
+    <string name="ingame_menu_netplay">Netplay</string>
     <!-- Row in that menu. Noun, plural: opens the in-game settings panel. -->
     <string name="ingame_menu_settings">Settings</string>
     <!-- Row in that menu while a run is being timed. Verb phrase: stops the timer. -->
@@ -890,8 +892,8 @@
     <string name="ingame_libretro_quickaction_screenshot_success">Screenshot saved</string>
     <string name="ingame_libretro_quickaction_screenshot_failure">Screenshot failed</string>
 
-    <!-- Netplay quality row in the in-game menu (libretro/ui/InGameMenu.kt). Names the OTHER
-         player's role, opposite the local player's; %1$s is their display name. -->
+    <!-- Peer card in the netplay panel of the in-game menu (libretro/ui/InGameNetplaySection.kt).
+         Names the OTHER player's role, opposite the local player's; %1$s is their display name. -->
     <string name="ingame_netplay_quality_row_peer_guest">Guest: %1$s</string>
     <string name="ingame_netplay_quality_row_peer_host">Host: %1$s</string>
     <!-- Same row's ping/quality line when a round-trip time is known. %1$d is the ping in
@@ -899,6 +901,21 @@
     <string name="ingame_netplay_quality_row_ping_known">%1$dms  %2$s</string>
     <!-- Same row when no ping has been measured yet. %1$s is the quality tier word. -->
     <string name="ingame_netplay_quality_row_ping_unknown">--  %1$s</string>
+
+    <!-- Heading of the netplay panel in the in-game menu (libretro/ui/InGameNetplaySection.kt).
+         Noun: playing this game online with friends. -->
+    <string name="ingame_netplay_section_title">Netplay</string>
+    <!-- Status line under that heading when no shared session is running. -->
+    <string name="ingame_netplay_section_status_idle">No session running</string>
+    <!-- Status line under that heading while the local player runs the shared session. -->
+    <string name="ingame_netplay_section_role_host">Hosting a session</string>
+    <!-- Status line under that heading while the local player has joined someone else's
+         session. -->
+    <string name="ingame_netplay_section_role_guest">Joined as a guest</string>
+    <!-- Peer card in that panel while the host waits for another player to connect. -->
+    <string name="ingame_netplay_section_peer_waiting_guest">Waiting for a friend to join</string>
+    <!-- Peer card in that panel while a guest is still connecting to the host. -->
+    <string name="ingame_netplay_section_peer_waiting_host">Connecting to the host</string>
 
     <!-- Controller-type picker fallback shown when the current selection has no description
          from the core (libretro/ui/InGameSettingsScreen.kt). -->

@@ -262,6 +262,7 @@ class LibretroActivity : ComponentActivity() {
     private var menuRailFocused by mutableStateOf(false)
     private var isClosing by mutableStateOf(false)
     private var achievementsFocusIndex by mutableStateOf(0)
+    private var netplayFocusIndex by mutableStateOf(0)
     private var inGameAchievements by mutableStateOf<List<AchievementUi>>(emptyList())
     private var shaderChainEditorVisible by mutableStateOf(false)
     private var frameEditorVisible by mutableStateOf(false)
@@ -1493,14 +1494,6 @@ class LibretroActivity : ComponentActivity() {
                     }
                 }
                 if (menuVisible) {
-                    val quality = if (netplay.inSession && netplay.role != null) {
-                        NetplayQualityInfo(
-                            peerDisplayName = netplay.peerDisplayName,
-                            role = netplay.role!!,
-                            pingMs = netplay.lastRttMs,
-                            label = NetplayQualityInfo.labelForRttMs(netplay.lastRttMs)
-                        )
-                    } else null
                     activeMenuHandler = InGameMenu(
                         gameName = gameName,
                         coreName = resolvedCoreId?.let { id ->
@@ -1520,9 +1513,6 @@ class LibretroActivity : ComponentActivity() {
                         availableDiscs = menuDiscCount,
                         netplaySupported = netplay.isCoreSupported(),
                         isInNetplaySession = netplay.inSession,
-                        netplayRole = netplay.role,
-                        netplaySessionIsReserved = netplay.sessionIsReserved,
-                        netplayQuality = quality,
                         touchControlsVisible = touchSettingsState.showTouchControlsWhenNoGamepad && !isGamepadConnectedState,
                         speedrunAvailable = isGamepadConnectedState &&
                             currentOrientationState != android.content.res.Configuration.ORIENTATION_PORTRAIT,
@@ -2132,7 +2122,46 @@ class LibretroActivity : ComponentActivity() {
             )
             com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS -> buildSettingsScreen()
             com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH -> buildWalkthroughSection()
+            com.nendo.argosy.libretro.ui.InGameMenuSection.NETPLAY -> buildNetplaySection()
         }
+
+    @androidx.compose.runtime.Composable
+    private fun buildNetplaySection(): InputHandler {
+        val role = netplay.role
+        val quality = if (netplay.inSession && role != null) {
+            NetplayQualityInfo(
+                peerDisplayName = netplay.peerDisplayName,
+                role = role,
+                pingMs = netplay.lastRttMs,
+                label = NetplayQualityInfo.labelForRttMs(netplay.lastRttMs)
+            )
+        } else null
+        return com.nendo.argosy.libretro.ui.InGameNetplaySection(
+            isInSession = netplay.inSession,
+            role = role,
+            sessionIsReserved = netplay.sessionIsReserved,
+            peerConnected = netplay.peerConnected,
+            quality = quality,
+            focusedIndex = netplayFocusIndex,
+            onFocusChange = { netplayFocusIndex = it },
+            onAction = ::handleNetplaySectionAction,
+            onDismiss = ::closeMenuSection
+        )
+    }
+
+    private fun handleNetplaySectionAction(action: com.nendo.argosy.libretro.ui.NetplaySectionAction) {
+        hideMenu()
+        when (action) {
+            com.nendo.argosy.libretro.ui.NetplaySectionAction.OpenServer -> {
+                netplay.modePickerFocus = 0
+                netplay.modePickerVisible = true
+            }
+            com.nendo.argosy.libretro.ui.NetplaySectionAction.InviteFriend -> netplay.handleInviteFriend()
+            com.nendo.argosy.libretro.ui.NetplaySectionAction.OpenToAllFriends -> netplay.handleClearReservation()
+            com.nendo.argosy.libretro.ui.NetplaySectionAction.CloseServer,
+            com.nendo.argosy.libretro.ui.NetplaySectionAction.LeaveSession -> netplay.handleCloseSession()
+        }
+    }
 
     @androidx.compose.runtime.Composable
     private fun buildWalkthroughSection(): InputHandler {
@@ -2203,6 +2232,7 @@ class LibretroActivity : ComponentActivity() {
                 stateManagerFocusIndex = 0
             }
             com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS -> achievementsFocusIndex = 0
+            com.nendo.argosy.libretro.ui.InGameMenuSection.NETPLAY -> netplayFocusIndex = 0
             com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH ->
                 inGameDocuments.open(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH)
             com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS,
@@ -2234,6 +2264,7 @@ class LibretroActivity : ComponentActivity() {
             }
             com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS,
             com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS,
+            com.nendo.argosy.libretro.ui.InGameMenuSection.NETPLAY,
             null -> Unit
         }
         menuSection = null
@@ -2604,23 +2635,7 @@ class LibretroActivity : ComponentActivity() {
                     }
                 }
             }
-            InGameMenuAction.OpenToFriends -> {
-                hideMenu()
-                netplay.modePickerFocus = 0
-                netplay.modePickerVisible = true
-            }
-            InGameMenuAction.InviteFriend -> {
-                hideMenu()
-                netplay.handleInviteFriend()
-            }
-            InGameMenuAction.ClearReservation -> {
-                hideMenu()
-                netplay.handleClearReservation()
-            }
-            InGameMenuAction.CloseNetplaySession -> {
-                hideMenu()
-                netplay.handleCloseSession()
-            }
+            InGameMenuAction.Netplay -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.NETPLAY)
         }
     }
 

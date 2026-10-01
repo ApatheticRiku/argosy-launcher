@@ -27,6 +27,7 @@
     <string name="ingame_menu_close_netplay_server">नेटप्ले सर्वर बंद करें</string>
     <string name="ingame_menu_leave_netplay_session">नेटप्ले सेशन छोड़ें</string>
     <string name="ingame_menu_open_netplay_server">नेटप्ले सर्वर खोलें</string>
+    <string name="ingame_menu_netplay">नेटप्ले</string>
     <string name="ingame_menu_settings">सेटिंग्स</string>
     <string name="ingame_menu_stop_speedrun_timer">स्पीडरन टाइमर रोकें</string>
     <string name="ingame_menu_speedrun_timer">स्पीडरन टाइमर</string>
@@ -426,6 +427,12 @@
     <string name="ingame_netplay_quality_row_peer_host">होस्ट: %1$s</string>
     <string name="ingame_netplay_quality_row_ping_known">%1$dms  %2$s</string>
     <string name="ingame_netplay_quality_row_ping_unknown">--  %1$s</string>
+    <string name="ingame_netplay_section_title">नेटप्ले</string>
+    <string name="ingame_netplay_section_status_idle">कोई सत्र नहीं चल रहा</string>
+    <string name="ingame_netplay_section_role_host">आप सत्र होस्ट कर रहे हैं</string>
+    <string name="ingame_netplay_section_role_guest">अतिथि के रूप में जुड़े</string>
+    <string name="ingame_netplay_section_peer_waiting_guest">किसी मित्र के जुड़ने की प्रतीक्षा</string>
+    <string name="ingame_netplay_section_peer_waiting_host">होस्ट से कनेक्ट हो रहा है</string>
 
     <string name="ingame_settings_controller_type_default_fallback">डिफ़ॉल्ट</string>
 

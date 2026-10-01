@@ -71,10 +71,7 @@ sealed class InGameMenuAction {
     data object ToggleWalkthroughPanel : InGameMenuAction()
     data object Reset : InGameMenuAction()
     data object Quit : InGameMenuAction()
-    data object OpenToFriends : InGameMenuAction()
-    data object InviteFriend : InGameMenuAction()
-    data object ClearReservation : InGameMenuAction()
-    data object CloseNetplaySession : InGameMenuAction()
+    data object Netplay : InGameMenuAction()
     data object CustomizeTouchControls : InGameMenuAction()
     data object ToggleSpeedrun : InGameMenuAction()
     data object SwapScreens : InGameMenuAction()
@@ -132,9 +129,6 @@ fun InGameMenu(
     availableDiscs: Int = 0,
     netplaySupported: Boolean = false,
     isInNetplaySession: Boolean = false,
-    netplayRole: NetplayMenuRole? = null,
-    netplaySessionIsReserved: Boolean = false,
-    netplayQuality: NetplayQualityInfo? = null,
     touchControlsVisible: Boolean = false,
     speedrunAvailable: Boolean = false,
     speedrunArmed: Boolean = false,
@@ -169,8 +163,6 @@ fun InGameMenu(
         availableDiscs,
         netplaySupported,
         isInNetplaySession,
-        netplayRole,
-        netplaySessionIsReserved,
         touchControlsVisible,
         speedrunAvailable,
         speedrunArmed,
@@ -205,19 +197,7 @@ fun InGameMenu(
                 }
             }
             if (netplaySupported) {
-                if (isInNetplaySession) {
-                    if (netplayRole == NetplayMenuRole.Host) {
-                        add(R.string.ingame_menu_invite_friend to InGameMenuAction.InviteFriend)
-                        if (netplaySessionIsReserved) {
-                            add(R.string.ingame_menu_open_to_all_friends to InGameMenuAction.ClearReservation)
-                        }
-                        add(R.string.ingame_menu_close_netplay_server to InGameMenuAction.CloseNetplaySession)
-                    } else {
-                        add(R.string.ingame_menu_leave_netplay_session to InGameMenuAction.CloseNetplaySession)
-                    }
-                } else {
-                    add(R.string.ingame_menu_open_netplay_server to InGameMenuAction.OpenToFriends)
-                }
+                add(R.string.ingame_menu_netplay to InGameMenuAction.Netplay)
             }
             add(R.string.ingame_menu_settings to InGameMenuAction.Settings)
             if (swapScreensAvailable) {
@@ -669,52 +649,6 @@ fun DiscMenu(
     }
 
     return inputHandler
-}
-
-@Composable
-private fun NetplayQualityRow(info: NetplayQualityInfo) {
-    val qualityColor = when (info.label) {
-        NetplayQualityLabel.Excellent -> Color(0xFF22C55E)
-        NetplayQualityLabel.Good -> Color(0xFF84CC16)
-        NetplayQualityLabel.Fair -> Color(0xFFFBBF24)
-        NetplayQualityLabel.Poor -> Color(0xFFF97316)
-        NetplayQualityLabel.Bad -> Color(0xFFEF4444)
-    }
-    val qualityLabel = stringResource(info.label.labelRes)
-    val peerRoleText = if (info.role == NetplayMenuRole.Host) {
-        stringResource(R.string.ingame_netplay_quality_row_peer_guest, info.peerDisplayName)
-    } else {
-        stringResource(R.string.ingame_netplay_quality_row_peer_host, info.peerDisplayName)
-    }
-    val pingText = info.pingMs?.let {
-        stringResource(R.string.ingame_netplay_quality_row_ping_known, it, qualityLabel)
-    } ?: stringResource(R.string.ingame_netplay_quality_row_ping_unknown, qualityLabel)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = peerRoleText,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = pingText,
-                style = MaterialTheme.typography.labelSmall,
-                color = qualityColor,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
 }
 
 @Composable

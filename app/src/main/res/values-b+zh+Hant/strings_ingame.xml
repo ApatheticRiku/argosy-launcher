@@ -27,6 +27,7 @@
     <string name="ingame_menu_close_netplay_server">關閉連線對戰伺服器</string>
     <string name="ingame_menu_leave_netplay_session">離開連線對戰</string>
     <string name="ingame_menu_open_netplay_server">開啟連線對戰伺服器</string>
+    <string name="ingame_menu_netplay">連線對戰</string>
     <string name="ingame_menu_settings">設定</string>
     <string name="ingame_menu_stop_speedrun_timer">停止速通計時器</string>
     <string name="ingame_menu_speedrun_timer">速通計時器</string>
@@ -418,6 +419,12 @@
     <string name="ingame_netplay_quality_row_peer_host">主機：%1$s</string>
     <string name="ingame_netplay_quality_row_ping_known">%1$dms %2$s</string>
     <string name="ingame_netplay_quality_row_ping_unknown">-- %1$s</string>
+    <string name="ingame_netplay_section_title">連線對戰</string>
+    <string name="ingame_netplay_section_status_idle">沒有進行中的工作階段</string>
+    <string name="ingame_netplay_section_role_host">正在主持工作階段</string>
+    <string name="ingame_netplay_section_role_guest">已以訪客身分加入</string>
+    <string name="ingame_netplay_section_peer_waiting_guest">等待好友加入</string>
+    <string name="ingame_netplay_section_peer_waiting_host">正在連線至主機</string>
 
     <string name="ingame_settings_controller_type_default_fallback">預設</string>
 

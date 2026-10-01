@@ -17,10 +17,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RestartAlt
@@ -51,7 +48,8 @@ enum class InGameMenuSection(val action: InGameMenuAction) {
     ACHIEVEMENTS(InGameMenuAction.Achievements),
     CHEATS(InGameMenuAction.Cheats),
     SETTINGS(InGameMenuAction.Settings),
-    WALKTHROUGH(InGameMenuAction.ViewWalkthrough)
+    WALKTHROUGH(InGameMenuAction.ViewWalkthrough),
+    NETPLAY(InGameMenuAction.Netplay)
 }
 
 val InGameMenuAction.broadSection: InGameMenuSection?
@@ -72,10 +70,7 @@ val InGameMenuAction.icon: ImageVector
         InGameMenuAction.ToggleWalkthroughPanel -> Icons.Filled.ViewSidebar
         InGameMenuAction.Reset -> Icons.Filled.RestartAlt
         InGameMenuAction.Quit -> Icons.Filled.PowerSettingsNew
-        InGameMenuAction.OpenToFriends -> Icons.Filled.Groups
-        InGameMenuAction.InviteFriend -> Icons.Filled.PersonAdd
-        InGameMenuAction.ClearReservation -> Icons.Filled.LockOpen
-        InGameMenuAction.CloseNetplaySession -> Icons.Filled.LinkOff
+        InGameMenuAction.Netplay -> Icons.Filled.Groups
         InGameMenuAction.CustomizeTouchControls -> Icons.Filled.TouchApp
         InGameMenuAction.ToggleSpeedrun -> Icons.Filled.Timer
         InGameMenuAction.SwapScreens -> Icons.Filled.SwapHoriz
