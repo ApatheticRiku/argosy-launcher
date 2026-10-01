@@ -34,6 +34,7 @@ class GLRetroViewData(context: Context) {
     var preferLowLatencyAudio: Boolean = true
     var forceSoftwareTiming: Boolean = false
     var skipDuplicateFrames: Boolean = false
+    var timingFollowsGeometry: Boolean = false
     var enableMicrophone: Boolean = false
     var immersiveMode: ImmersiveMode? = null
 }

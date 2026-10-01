@@ -953,6 +953,7 @@ class LibretroActivity : ComponentActivity() {
                 rtcState = restoredRtc
                 shader = effectiveShader
                 skipDuplicateFrames = if (coreName == "dolphin") false else settings.skipDuplicateFrames
+                timingFollowsGeometry = coreName == "dolphin"
                 preferLowLatencyAudio = settings.lowLatencyAudio
                 forceSoftwareTiming = settings.forceSoftwareTiming
                 rumbleEventsEnabled = settings.rumbleEnabled

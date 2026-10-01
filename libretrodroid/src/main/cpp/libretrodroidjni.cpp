@@ -486,6 +486,7 @@ JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_create(
     jboolean forceSoftwareTiming,
     jboolean enableMicrophone,
     jboolean skipDuplicateFrames,
+    jboolean timingFollowsGeometry,
     jobject immersiveMode,
     jstring language
 ) {
@@ -535,6 +536,7 @@ JNIEXPORT void JNICALL Java_com_swordfish_libretrodroid_LibretroDroid_create(
             forceSoftwareTiming,
             enableMicrophone,
             skipDuplicateFrames,
+            timingFollowsGeometry,
             parsedConfig,
             deviceLanguage.stdString()
         );

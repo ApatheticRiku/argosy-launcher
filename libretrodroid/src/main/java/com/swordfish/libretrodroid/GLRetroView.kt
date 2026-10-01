@@ -251,6 +251,7 @@ class GLRetroView(
             data.forceSoftwareTiming,
             data.enableMicrophone,
             data.skipDuplicateFrames,
+            data.timingFollowsGeometry,
             data.immersiveMode,
             getDeviceLanguage()
         )

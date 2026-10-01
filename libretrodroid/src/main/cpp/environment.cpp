@@ -347,15 +347,7 @@ bool Environment::handle_callback_environment(unsigned cmd, void *data) {
                 LOGI("Max geometry updated: %ux%u", gameMaxGeometryWidth, gameMaxGeometryHeight);
             }
 
-            if (avInfo->timing.fps > 0 && avInfo->timing.sample_rate > 0) {
-                if (avInfo->timing.fps != gameTimingFps
-                    || avInfo->timing.sample_rate != gameTimingSampleRate) {
-                    gameTimingFps = avInfo->timing.fps;
-                    gameTimingSampleRate = avInfo->timing.sample_rate;
-                    gameTimingUpdated = true;
-                    LOGI("Timing updated: fps=%f sample_rate=%f", gameTimingFps, gameTimingSampleRate);
-                }
-            }
+            updateGameTiming(avInfo->timing.fps, avInfo->timing.sample_rate);
             return true;
         }
 
@@ -525,6 +517,15 @@ unsigned int Environment::getGameMaxGeometryWidth() const {
 
 unsigned int Environment::getGameMaxGeometryHeight() const {
     return gameMaxGeometryHeight;
+}
+
+void Environment::updateGameTiming(double fps, double sampleRate) {
+    if (fps <= 0 || sampleRate <= 0) return;
+    if (fps == gameTimingFps && sampleRate == gameTimingSampleRate) return;
+    gameTimingFps = fps;
+    gameTimingSampleRate = sampleRate;
+    gameTimingUpdated = true;
+    LOGI("Timing updated: fps=%f sample_rate=%f", gameTimingFps, gameTimingSampleRate);
 }
 
 double Environment::getGameTimingFps() const {

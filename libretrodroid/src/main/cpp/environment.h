@@ -108,6 +108,7 @@ public:
     bool isGameGeometryUpdated() const;
     void clearGameGeometryUpdated();
 
+    void updateGameTiming(double fps, double sampleRate);
     double getGameTimingFps() const;
     double getGameTimingSampleRate() const;
     bool isGameTimingUpdated() const;

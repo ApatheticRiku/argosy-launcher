@@ -458,6 +458,7 @@ void LibretroDroid::create(
     bool forceSoftwareTiming,
     bool enableMicrophone,
     bool duplicateFrames,
+    bool timingFollowsGeometry,
     std::optional<ImmersiveMode::Config> immersiveModeConfig,
     const std::string& language
 ) {
@@ -472,6 +473,7 @@ void LibretroDroid::create(
     openglESVersion = GLESVersion;
     screenRefreshRate = refreshRate;
     skipDuplicateFrames = duplicateFrames;
+    this->timingFollowsGeometry = timingFollowsGeometry;
     immersiveModeEnabled = GLESVersion >= 3 && immersiveModeConfig.has_value();
     this->immersiveModeConfig = immersiveModeConfig.value_or(ImmersiveMode::Config{});
     audioEnabled = true;
@@ -800,6 +802,7 @@ void LibretroDroid::step() {
 
         video->updateRendererSize(geoW, geoH);
         refreshAspectRatio();
+        refreshTimingFromCoreIfFollowingGeometry();
 
         dirtyVideo = true;
     }
@@ -879,6 +882,7 @@ void LibretroDroid::stepForNetplay() {
 
         video->updateRendererSize(geoW, geoH);
         refreshAspectRatio();
+        refreshTimingFromCoreIfFollowingGeometry();
 
         dirtyVideo = true;
     }
@@ -1173,12 +1177,21 @@ void LibretroDroid::clearRequiresVideoRefresh() {
     dirtyVideo = false;
 }
 
+void LibretroDroid::refreshTimingFromCoreIfFollowingGeometry() {
+    if (!timingFollowsGeometry) return;
+    struct retro_system_av_info system_av_info {};
+    core->retro_get_system_av_info(&system_av_info);
+    Environment::getInstance().updateGameTiming(system_av_info.timing.fps, system_av_info.timing.sample_rate);
+}
+
 void LibretroDroid::afterGameLoad() {
     struct retro_system_av_info system_av_info {};
     core->retro_get_system_av_info(&system_av_info);
 
     contentFps = system_av_info.timing.fps;
     fpsSync = std::make_unique<FPSSync>(system_av_info.timing.fps, screenRefreshRate, forceSoftwareTiming);
+    Environment::getInstance().updateGameTiming(system_av_info.timing.fps, system_av_info.timing.sample_rate);
+    Environment::getInstance().clearGameTimingUpdated();
 
     if (bfiEnabled) {
         fpsSync->setExternalTimingControl(true);

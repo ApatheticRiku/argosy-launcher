@@ -91,6 +91,7 @@ public class LibretroDroid {
         boolean forceSoftwareTiming,
         boolean enableMicrophone,
         boolean skipDuplicateFrames,
+        boolean timingFollowsGeometry,
         ImmersiveMode immersiveMode,
         String language
     );
