@@ -41,10 +41,11 @@ class FileAccessLayerImpl @Inject constructor(
     }
 
     override fun isDirectory(path: String): Boolean {
-        if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
-            return androidDataAccessor.isDirectory(path)
-        }
-        return File(path).isDirectory
+        if (!isRestrictedPath(path)) return File(path).isDirectory
+        if (androidDataAccessor.isAltAccessSupported() && androidDataAccessor.isDirectory(path)) return true
+        if (File(path).isDirectory) return true
+        val (volumeId, relativePath) = extractVolumeAndPath(path) ?: return false
+        return managedStorageAccessor.isDirectoryAtPath(volumeId, relativePath)
     }
 
     override fun isFile(path: String): Boolean {

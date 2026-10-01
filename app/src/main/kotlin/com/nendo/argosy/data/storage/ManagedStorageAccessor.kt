@@ -168,6 +168,28 @@ class ManagedStorageAccessor @Inject constructor(
         }
     }
 
+    fun isDirectoryAtPath(volumeId: String, relativePath: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return File(getVolumeRoot(volumeId), relativePath).isDirectory
+        }
+
+        val documentId = "$volumeId:$relativePath"
+        val documentUri = DocumentsContract.buildDocumentUri(EXTERNAL_STORAGE_AUTHORITY, documentId)
+        val queryUri = applyManagedParameter(documentUri, relativePath)
+
+        return try {
+            contentResolver.query(
+                queryUri,
+                arrayOf(DocumentsContract.Document.COLUMN_MIME_TYPE),
+                null, null, null
+            )?.use { cursor ->
+                cursor.moveToFirst() && cursor.getString(0) == DocumentsContract.Document.MIME_TYPE_DIR
+            } ?: false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /**
      * Opens an input stream for reading a file in Android/data.
      */
