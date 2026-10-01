@@ -335,6 +335,11 @@ object EmulatorRegistry {
     /** Id older builds sent for the built-in emulator; server rows written by them still carry it. */
     const val LEGACY_BUILTIN_ID = "builtin"
 
+    private fun pizzaBoyLaunch(packageName: String) = LaunchConfig.Custom(
+        activityClass = "$packageName.MainActivity",
+        intentExtras = mapOf("rom_uri" to ExtraValue.FileUriString)
+    )
+
     private val builtinEmulator = EmulatorDef(
         id = BUILTIN_ID,
         packageName = BUILTIN_PACKAGE,
@@ -685,6 +690,8 @@ object EmulatorRegistry {
             packageName = "it.dbtecno.pizzaboygba",
             displayName = "Pizza Boy GBA",
             supportedPlatforms = setOf("gba"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = pizzaBoyLaunch("it.dbtecno.pizzaboygba"),
             downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboygba"
         ),
         EmulatorDef(
@@ -692,6 +699,8 @@ object EmulatorRegistry {
             packageName = "it.dbtecno.pizzaboy",
             displayName = "Pizza Boy GB",
             supportedPlatforms = setOf("gb", "gbc"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = pizzaBoyLaunch("it.dbtecno.pizzaboy"),
             downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboy"
         ),
         EmulatorDef(
@@ -699,6 +708,8 @@ object EmulatorRegistry {
             packageName = "it.dbtecno.pizzaboygbapro",
             displayName = "Pizza Boy GBA Pro",
             supportedPlatforms = setOf("gba"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = pizzaBoyLaunch("it.dbtecno.pizzaboygbapro"),
             downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboygbapro"
         ),
         EmulatorDef(
@@ -706,6 +717,8 @@ object EmulatorRegistry {
             packageName = "it.dbtecno.pizzaboypro",
             displayName = "Pizza Boy GB Pro",
             supportedPlatforms = setOf("gb", "gbc"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = pizzaBoyLaunch("it.dbtecno.pizzaboypro"),
             downloadUrl = "https://play.google.com/store/apps/details?id=it.dbtecno.pizzaboypro"
         ),
         EmulatorDef(

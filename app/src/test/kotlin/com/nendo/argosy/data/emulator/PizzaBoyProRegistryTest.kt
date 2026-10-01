@@ -21,6 +21,21 @@ class PizzaBoyProRegistryTest {
     }
 
     @Test
+    fun `every Pizza Boy build launches its MainActivity with the rom in rom_uri`() {
+        val packages = listOf(
+            "it.dbtecno.pizzaboygba", "it.dbtecno.pizzaboy",
+            "it.dbtecno.pizzaboygbapro", "it.dbtecno.pizzaboypro"
+        )
+        for (pkg in packages) {
+            val emulator = EmulatorRegistry.getByPackage(pkg)
+            assertEquals(android.content.Intent.ACTION_MAIN, emulator?.launchAction)
+            val config = emulator?.launchConfig as LaunchConfig.Custom
+            assertEquals("$pkg.MainActivity", config.activityClass)
+            assertEquals(ExtraValue.FileUriString, config.intentExtras["rom_uri"])
+        }
+    }
+
+    @Test
     fun `the Pro packages resolve save and state configs in their own data folders`() {
         val gbaSaves = SavePathRegistry.getConfigByPackage("it.dbtecno.pizzaboygbapro")
         val gbSaves = SavePathRegistry.getConfigByPackage("it.dbtecno.pizzaboypro")
