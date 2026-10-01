@@ -219,6 +219,8 @@ class ImageCacheManager @Inject constructor(
     }
 
     private val logoQueue = Channel<PlatformLogoCacheRequest>(256)
+    private val missingArt = MissingArtRegistry(File(context.filesDir, "missing_art.tsv"))
+
     private val coverQueue = Channel<ImageCacheRequest>(256)
 
     private val cacheExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
@@ -363,6 +365,7 @@ class ImageCacheManager @Inject constructor(
                 Log.w(TAG, "Deleted invalid cached background: ${cachedFile.name}")
             }
 
+            if (missingArt.isKnownMissing(url)) continue
             val bitmap = downloadAndResize(url, 1280)
             if (bitmap == null) {
                 logCandidateRejected("background", idLabel, index, request.urls.size, url, "no decodable image")
@@ -444,9 +447,16 @@ class ImageCacheManager @Inject constructor(
             connection.connectTimeout = 10_000
             connection.readTimeout = 30_000
 
+            val status = (connection as? java.net.HttpURLConnection)?.responseCode
+            if (status == java.net.HttpURLConnection.HTTP_NOT_FOUND || status == java.net.HttpURLConnection.HTTP_GONE) {
+                missingArt.markMissing(url)
+                Logger.warn(TAG, "Image not on the server ($status), skipping it for a while: $url")
+                return null
+            }
             val contentType = connection.contentType?.lowercase()
             if (contentType != null && DOCUMENT_CONTENT_TYPES.any { contentType.contains(it) }) {
-                Logger.warn(TAG, "Served a document, not an image ($contentType): $url")
+                missingArt.markMissing(url)
+                Logger.warn(TAG, "Served a document, not an image ($contentType), skipping it for a while: $url")
                 return null
             }
 
@@ -1281,6 +1291,7 @@ class ImageCacheManager @Inject constructor(
                 Log.w(TAG, "Deleted invalid cached cover: ${existingFile.name}")
             }
 
+            if (missingArt.isKnownMissing(url)) continue
             val bitmap = downloadAndResize(url, 400)
             if (bitmap == null) {
                 logCandidateRejected("cover", idLabel, index, request.urls.size, url, "no decodable image")
@@ -1441,6 +1452,7 @@ class ImageCacheManager @Inject constructor(
                 existingFile.delete()
             }
 
+            if (missingArt.isKnownMissing(url)) continue
             val bitmap = downloadAndResize(url, maxWidth)
             if (bitmap == null) {
                 logCandidateRejected(kind, idLabel, index, request.urls.size, url, "no decodable image")
