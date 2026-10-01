@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.LocalUiScale
@@ -43,6 +44,7 @@ fun Modal(
     onFooterHintClick: ((InputButton) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val scale = LocalUiScale.current.scale
@@ -122,6 +124,7 @@ fun CenteredModal(
     onHintClick: ((InputButton) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val scale = LocalUiScale.current.scale
@@ -172,6 +175,7 @@ fun NestedModal(
     onHintClick: ((InputButton) -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.35f)
     val scale = LocalUiScale.current.scale

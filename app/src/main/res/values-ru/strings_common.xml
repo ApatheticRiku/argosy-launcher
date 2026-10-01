@@ -719,6 +719,14 @@
     <string name="ui_quick_menu_row_downloaded">Загружено</string>
     <string name="ui_quick_menu_random_platform_unknown">Неизвестно</string>
     <string name="ui_quick_menu_random_downloaded">Загружено</string>
+    <string name="ui_quick_menu_random_action_reroll">Перевыбрать</string>
+    <string name="ui_quick_menu_random_action_play">Играть</string>
+    <string name="ui_quick_menu_random_action_download">Скачать</string>
+    <string name="ui_quick_menu_random_action_install">Установить</string>
+    <string name="ui_quick_menu_random_action_details">Детали</string>
+    <string name="ui_quick_menu_random_action_favorite">В избранное</string>
+    <string name="ui_quick_menu_random_action_unfavorite">Убрать из избранного</string>
+    <string name="ui_quick_menu_random_loading">Выбираем игру...</string>
 
     <string name="ui_file_browser_title_folder">Выбор папки</string>
     <string name="ui_file_browser_title_file">Выбор файла</string>

@@ -677,6 +677,14 @@
     <string name="ui_quick_menu_row_downloaded">已下载</string>
     <string name="ui_quick_menu_random_platform_unknown">未知</string>
     <string name="ui_quick_menu_random_downloaded">已下载</string>
+    <string name="ui_quick_menu_random_action_reroll">重新随机</string>
+    <string name="ui_quick_menu_random_action_play">开始</string>
+    <string name="ui_quick_menu_random_action_download">下载</string>
+    <string name="ui_quick_menu_random_action_install">安装</string>
+    <string name="ui_quick_menu_random_action_details">详情</string>
+    <string name="ui_quick_menu_random_action_favorite">收藏</string>
+    <string name="ui_quick_menu_random_action_unfavorite">取消收藏</string>
+    <string name="ui_quick_menu_random_loading">正在挑选游戏...</string>
 
     <string name="ui_file_browser_title_folder">选择文件夹</string>
     <string name="ui_file_browser_title_file">选择文件</string>

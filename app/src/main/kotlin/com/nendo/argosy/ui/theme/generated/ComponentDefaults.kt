@@ -346,4 +346,14 @@ object ComponentDefaults {
         const val searchDebounceMs = 350
     }
 
+    object QuickMenuRandom {
+        const val coverHeightRatio = 0.66f
+        const val coverWidthMaxRatio = 0.4f
+        const val coverAspectRatio = 0.75f
+        const val backdropBlurDp = 32
+        const val backdropScrimStartAlpha = 0.55f
+        const val backdropScrimEndAlpha = 0.85f
+        const val descriptionMaxLines = 3
+    }
+
 }

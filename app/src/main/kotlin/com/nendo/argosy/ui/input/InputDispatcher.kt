@@ -11,6 +11,7 @@ class InputDispatcher(
     private val soundManager: SoundFeedbackManager? = null
 ) {
     private val modalStack = mutableListOf<InputHandler>()
+    private val shownModals = mutableSetOf<Any>()
     private var interceptHandler: InputHandler? = null
     private var criticalHandler: InputHandler? = null
     private var drawerHandler: InputHandler? = null
@@ -64,7 +65,16 @@ class InputDispatcher(
 
     fun hasActiveModal(): Boolean = modalStack.isNotEmpty()
 
-    fun hasCapturingOverlay(): Boolean = criticalHandler != null || modalStack.isNotEmpty()
+    fun hasCapturingOverlay(): Boolean =
+        criticalHandler != null || modalStack.isNotEmpty() || shownModals.isNotEmpty()
+
+    fun markModalShown(token: Any) {
+        shownModals.add(token)
+    }
+
+    fun markModalHidden(token: Any) {
+        shownModals.remove(token)
+    }
 
     fun removeModal(handler: InputHandler) {
         modalStack.remove(handler)

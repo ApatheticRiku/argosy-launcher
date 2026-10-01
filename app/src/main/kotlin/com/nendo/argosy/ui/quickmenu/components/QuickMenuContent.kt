@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,9 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,20 +35,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
-import coil.compose.AsyncImage
 import com.nendo.argosy.R
-import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.animateScrollToItemCentered
-import com.nendo.argosy.ui.quickmenu.GameCardUi
 import com.nendo.argosy.ui.quickmenu.GameRowUi
 import com.nendo.argosy.ui.quickmenu.QuickMenuOrb
 import com.nendo.argosy.ui.quickmenu.QuickMenuUiState
@@ -66,6 +57,9 @@ fun QuickMenuContent(
     onSearchQueryChange: (String) -> Unit,
     onGameSelect: (Long) -> Unit,
     onRecentSearchSelect: (String) -> Unit,
+    onRandomPlay: (Long) -> Unit,
+    onRandomFavorite: () -> Unit,
+    onRandomReroll: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val contentAlpha = if (isFocused) 1f else 0.7f
@@ -90,10 +84,14 @@ fun QuickMenuContent(
                 onGameSelect = onGameSelect,
                 onRecentSearchSelect = onRecentSearchSelect
             )
-            QuickMenuOrb.RANDOM -> RandomContent(
+            QuickMenuOrb.RANDOM -> QuickMenuRandomContent(
                 game = uiState.randomGame,
+                isResolved = uiState.isRandomResolved,
                 isFocused = isFocused,
-                onClick = { uiState.randomGame?.id?.let { onGameSelect(it) } }
+                onPlay = onRandomPlay,
+                onDetails = onGameSelect,
+                onFavorite = onRandomFavorite,
+                onReroll = onRandomReroll
             )
             QuickMenuOrb.MOST_PLAYED -> ListContent(
                 games = uiState.mostPlayedGames,
@@ -213,135 +211,6 @@ private fun SearchContent(
                 isFocused = isListFocused,
                 onGameSelect = onGameSelect
             )
-        }
-    }
-}
-
-@Composable
-private fun RandomContent(
-    game: GameCardUi?,
-    isFocused: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (game == null) {
-        EmptyState(message = stringResource(R.string.ui_quick_menu_empty_random))
-        return
-    }
-
-    val shape = RoundedCornerShape(Dimens.radiusPanel)
-    val borderModifier = if (isFocused) {
-        Modifier.border(Dimens.borderMedium, MaterialTheme.colorScheme.primary, shape)
-    } else Modifier
-
-    Row(
-        modifier = modifier
-            .fillMaxSize()
-            .then(borderModifier)
-            .background(
-                if (isFocused) LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-                    .compositeOver(MaterialTheme.colorScheme.surface)
-                else MaterialTheme.colorScheme.surface,
-                shape
-            )
-            .clip(shape)
-            .clickableNoFocus(onClick = onClick)
-            .padding(Dimens.spacingLg),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)
-    ) {
-        AsyncImage(
-            model = rememberFileImageModel(game.coverPath),
-            contentDescription = game.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxHeight()
-                .aspectRatio(0.75f)
-                .clip(RoundedCornerShape(Dimens.radiusLg))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        )
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = game.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
-
-            Text(
-                text = game.platformName
-                    ?: stringResource(R.string.ui_quick_menu_random_platform_unknown),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
-
-            Text(
-                text = buildString {
-                    game.year?.let { append(it) }
-                    game.developer?.let {
-                        if (isNotEmpty()) append(" | ")
-                        append(it)
-                    }
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            game.genre?.let { genre ->
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
-                Text(
-                    text = genre,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(Dimens.spacingMd))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                game.rating?.let { rating ->
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
-                    ) {
-                        Icon(
-                            Icons.Default.Public,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(Dimens.iconSm + Dimens.borderMedium)
-                        )
-                        Text(
-                            text = "${rating.toInt()}%",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                if (game.isDownloaded) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = stringResource(
-                            R.string.ui_quick_menu_random_downloaded
-                        ),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(Dimens.iconMd)
-                    )
-                }
-            }
         }
     }
 }

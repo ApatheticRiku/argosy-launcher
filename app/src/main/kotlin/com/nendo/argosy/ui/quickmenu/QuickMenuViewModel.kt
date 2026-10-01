@@ -4,12 +4,16 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.dao.SearchCandidate
+import com.nendo.argosy.data.repository.DownloadFileStatusRepository
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.domain.usecase.quickmenu.GetTopUnplayedUseCase
 import com.nendo.argosy.ui.common.displayTitleId
+import com.nendo.argosy.ui.common.needsAndroidInstall
+import com.nendo.argosy.ui.common.resolveDownloaded
+import com.nendo.argosy.ui.screens.common.GameActionsDelegate
 import com.nendo.argosy.ui.screens.common.LibrarySyncBus
 import com.nendo.argosy.util.FuzzySearch
 import com.nendo.argosy.util.formatPlayTime
@@ -50,11 +54,15 @@ data class GameCardUi(
     val title: String,
     val platformName: String?,
     val coverPath: String?,
+    val backdropPath: String?,
     val year: Int?,
     val developer: String?,
     val rating: Float?,
     val genre: String?,
-    val isDownloaded: Boolean
+    val description: String?,
+    val isDownloaded: Boolean,
+    val needsInstall: Boolean,
+    val isFavorite: Boolean
 )
 
 data class QuickMenuUiState(
@@ -67,6 +75,7 @@ data class QuickMenuUiState(
     val recentSearches: List<String> = emptyList(),
     val searchInputFocused: Boolean = true,
     val randomGame: GameCardUi? = null,
+    val isRandomResolved: Boolean = false,
     val mostPlayedGames: List<GameRowUi> = emptyList(),
     val topUnplayedGames: List<GameRowUi> = emptyList(),
     val recentGames: List<GameRowUi> = emptyList(),
@@ -83,13 +92,16 @@ class QuickMenuViewModel @Inject constructor(
     private val platformRepository: PlatformRepository,
     private val getTopUnplayedUseCase: GetTopUnplayedUseCase,
     private val librarySyncBus: LibrarySyncBus,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    private val gameActions: GameActionsDelegate,
+    private val downloadStatus: DownloadFileStatusRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(QuickMenuUiState())
     val uiState: StateFlow<QuickMenuUiState> = _uiState.asStateFlow()
 
     private var searchJob: Job? = null
+    private var randomJob: Job? = null
     private val platformCache = mutableMapOf<Long, String>()
     private var searchCandidates: List<SearchCandidate>? = null
 
@@ -244,8 +256,21 @@ class QuickMenuViewModel @Inject constructor(
     }
 
     fun rerollRandom() {
+        randomJob?.cancel()
+        randomJob = viewModelScope.launch {
+            loadRandomGame(excludeId = _uiState.value.randomGame?.id)
+        }
+    }
+
+    fun toggleRandomFavorite() {
+        val gameId = _uiState.value.randomGame?.id ?: return
         viewModelScope.launch {
-            loadRandomGame()
+            val isFavorite = gameActions.toggleFavorite(gameId) ?: return@launch
+            _uiState.update { state ->
+                val card = state.randomGame
+                if (card != null && card.id == gameId) state.copy(randomGame = card.copy(isFavorite = isFavorite)) else state
+            }
+            loadFavorites()
         }
     }
 
@@ -272,7 +297,8 @@ class QuickMenuViewModel @Inject constructor(
             launch { loadTopUnplayed() }
             launch { loadRecent() }
             launch { loadFavorites() }
-            launch { loadRandomGame() }
+            randomJob?.cancel()
+            randomJob = launch { loadRandomGame(excludeId = null) }
             launch { loadRecentSearches() }
 
             _uiState.update { it.copy(isLoading = false) }
@@ -308,10 +334,15 @@ class QuickMenuViewModel @Inject constructor(
         _uiState.update { it.copy(favoriteGames = rows) }
     }
 
-    private suspend fun loadRandomGame() {
-        val game = gameRepository.getRandomGame()
+    private suspend fun loadRandomGame(excludeId: Long?) {
+        val first = gameRepository.getRandomGame()
+        val game = if (excludeId != null && first?.id == excludeId) {
+            gameRepository.getRandomGame() ?: first
+        } else {
+            first
+        }
         val card = game?.toGameCardUi()
-        _uiState.update { it.copy(randomGame = card) }
+        _uiState.update { it.copy(randomGame = card, isRandomResolved = true) }
     }
 
     private fun performSearch(query: String) {
@@ -364,16 +395,21 @@ class QuickMenuViewModel @Inject constructor(
 
     private suspend fun GameEntity.toGameCardUi(): GameCardUi {
         val platformName = getPlatformName(platformId)
+        val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
         return GameCardUi(
             id = id,
             title = title,
             platformName = platformName,
             coverPath = displayCoverPath,
+            backdropPath = displayBackgroundPath ?: firstScreenshot ?: displayCoverPath,
             year = releaseYear,
             developer = developer,
             rating = rating,
             genre = genre,
-            isDownloaded = localPath != null
+            description = description?.trim()?.takeIf { it.isNotEmpty() },
+            isDownloaded = resolveDownloaded(downloadStatus),
+            needsInstall = needsAndroidInstall,
+            isFavorite = isFavorite
         )
     }
 

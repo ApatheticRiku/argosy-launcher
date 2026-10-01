@@ -707,6 +707,14 @@
     <string name="ui_quick_menu_row_downloaded">डाउनलोड हो चुका</string>
     <string name="ui_quick_menu_random_platform_unknown">अज्ञात</string>
     <string name="ui_quick_menu_random_downloaded">डाउनलोड हो चुका</string>
+    <string name="ui_quick_menu_random_action_reroll">फिर से चुनें</string>
+    <string name="ui_quick_menu_random_action_play">प्ले</string>
+    <string name="ui_quick_menu_random_action_download">डाउनलोड</string>
+    <string name="ui_quick_menu_random_action_install">इंस्टॉल</string>
+    <string name="ui_quick_menu_random_action_details">विवरण</string>
+    <string name="ui_quick_menu_random_action_favorite">पसंदीदा</string>
+    <string name="ui_quick_menu_random_action_unfavorite">पसंदीदा हटाएं</string>
+    <string name="ui_quick_menu_random_loading">गेम चुना जा रहा है...</string>
 
     <!-- File browser (ui/filebrowser) -->
 

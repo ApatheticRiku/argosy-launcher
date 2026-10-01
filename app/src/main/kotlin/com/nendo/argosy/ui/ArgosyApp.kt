@@ -489,7 +489,17 @@ fun ArgosyApp(
         }
     }
 
-    val quickMenuInputHandler = remember(quickMenuViewModel, navController, closeQuickMenu) {
+    val playFromQuickMenu: (Long) -> Unit = remember(navController, closeQuickMenu) {
+        { gameId ->
+            closeQuickMenu()
+            viewModel.initiateGameLaunch(gameId)
+            navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                launchSingleTop = true
+            }
+        }
+    }
+
+    val quickMenuInputHandler = remember(quickMenuViewModel, navController, closeQuickMenu, playFromQuickMenu) {
         QuickMenuInputHandler(
             viewModel = quickMenuViewModel,
             onGameSelect = { gameId ->
@@ -498,6 +508,7 @@ fun ArgosyApp(
                     launchSingleTop = true
                 }
             },
+            onGamePlay = playFromQuickMenu,
             onDismiss = { closeQuickMenu() }
         )
     }
@@ -1026,6 +1037,7 @@ fun ArgosyApp(
 
     CompositionLocalProvider(
         LocalInputDispatcher provides inputDispatcher,
+        com.nendo.argosy.ui.input.LocalModalPresence provides inputDispatcher,
         LocalGamepadInputHandler provides viewModel.gamepadInputHandler,
         LocalABIconsSwapped provides uiState.abIconsSwapped,
         LocalXYIconsSwapped provides uiState.xyIconsSwapped,
@@ -1277,6 +1289,7 @@ fun ArgosyApp(
                         launchSingleTop = true
                     }
                 },
+                onGamePlay = playFromQuickMenu,
                 closeQuickMenu = closeQuickMenu
             )
 

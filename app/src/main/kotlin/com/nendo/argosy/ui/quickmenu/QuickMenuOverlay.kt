@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.quickmenu.components.QuickMenuContent
 import com.nendo.argosy.ui.quickmenu.components.QuickMenuOrbRow
 import com.nendo.argosy.ui.theme.Dimens
@@ -36,6 +37,7 @@ import com.nendo.argosy.ui.util.doubleTapNoFocus
 fun QuickMenuOverlay(
     viewModel: QuickMenuViewModel,
     onGameSelect: (Long) -> Unit,
+    onGamePlay: (Long) -> Unit,
     closeQuickMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -59,6 +61,10 @@ fun QuickMenuOverlay(
         animationSpec = tween(200),
         label = "contentAlpha"
     )
+
+    if (uiState.isVisible) {
+        FooterHints(hints = emptyList())
+    }
 
     AnimatedVisibility(
         visible = uiState.isVisible,
@@ -128,6 +134,9 @@ fun QuickMenuOverlay(
                     onRecentSearchSelect = { query ->
                         viewModel.selectRecentSearch(query)
                     },
+                    onRandomPlay = onGamePlay,
+                    onRandomFavorite = viewModel::toggleRandomFavorite,
+                    onRandomReroll = viewModel::rerollRandom,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)

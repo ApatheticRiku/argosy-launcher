@@ -1455,6 +1455,22 @@
     <!-- Icon description on the tick shown on the random game card when the game is on the
          device. Adjective describing the game. -->
     <string name="ui_quick_menu_random_downloaded">Downloaded</string>
+    <!-- Action on the random game card that swaps the shown game for another random pick. Verb. -->
+    <string name="ui_quick_menu_random_action_reroll">Re-roll</string>
+    <!-- Action on the random game card that starts the game. Verb, as in play a game. -->
+    <string name="ui_quick_menu_random_action_play">Play</string>
+    <!-- Action on the random game card when the game is not on the device yet. Verb. -->
+    <string name="ui_quick_menu_random_action_download">Download</string>
+    <!-- Action on the random game card when the Android app still has to be installed. Verb. -->
+    <string name="ui_quick_menu_random_action_install">Install</string>
+    <!-- Action on the random game card that opens the game's detail page. Noun, plural. -->
+    <string name="ui_quick_menu_random_action_details">Details</string>
+    <!-- Action on the random game card that marks the game as a favourite. Verb. -->
+    <string name="ui_quick_menu_random_action_favorite">Favorite</string>
+    <!-- Action on the random game card that removes the game from favourites. Verb. -->
+    <string name="ui_quick_menu_random_action_unfavorite">Unfavorite</string>
+    <!-- Shown on the random game card while a game is being picked. -->
+    <string name="ui_quick_menu_random_loading">Picking a game...</string>
 
     <!-- File browser (ui/filebrowser) -->
 

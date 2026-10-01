@@ -693,6 +693,14 @@
     <string name="ui_quick_menu_row_downloaded">已下載</string>
     <string name="ui_quick_menu_random_platform_unknown">未知</string>
     <string name="ui_quick_menu_random_downloaded">已下載</string>
+    <string name="ui_quick_menu_random_action_reroll">重新隨機</string>
+    <string name="ui_quick_menu_random_action_play">遊玩</string>
+    <string name="ui_quick_menu_random_action_download">下載</string>
+    <string name="ui_quick_menu_random_action_install">安裝</string>
+    <string name="ui_quick_menu_random_action_details">詳情</string>
+    <string name="ui_quick_menu_random_action_favorite">最愛</string>
+    <string name="ui_quick_menu_random_action_unfavorite">取消最愛</string>
+    <string name="ui_quick_menu_random_loading">正在挑選遊戲...</string>
 
     <!-- File browser (ui/filebrowser) -->
 

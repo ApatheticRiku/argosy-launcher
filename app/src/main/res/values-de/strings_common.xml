@@ -707,6 +707,14 @@
     <string name="ui_quick_menu_row_downloaded">Heruntergeladen</string>
     <string name="ui_quick_menu_random_platform_unknown">Unbekannt</string>
     <string name="ui_quick_menu_random_downloaded">Heruntergeladen</string>
+    <string name="ui_quick_menu_random_action_reroll">Neu würfeln</string>
+    <string name="ui_quick_menu_random_action_play">Spielen</string>
+    <string name="ui_quick_menu_random_action_download">Herunterladen</string>
+    <string name="ui_quick_menu_random_action_install">Installieren</string>
+    <string name="ui_quick_menu_random_action_details">Details</string>
+    <string name="ui_quick_menu_random_action_favorite">Favorit</string>
+    <string name="ui_quick_menu_random_action_unfavorite">Favorit entfernen</string>
+    <string name="ui_quick_menu_random_loading">Spiel wird ausgewählt...</string>
 
     <!-- File browser (ui/filebrowser) -->
 

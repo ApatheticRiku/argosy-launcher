@@ -732,6 +732,14 @@
     <string name="ui_quick_menu_row_downloaded">Téléchargé</string>
     <string name="ui_quick_menu_random_platform_unknown">Inconnue</string>
     <string name="ui_quick_menu_random_downloaded">Téléchargé</string>
+    <string name="ui_quick_menu_random_action_reroll">Relancer</string>
+    <string name="ui_quick_menu_random_action_play">Jouer</string>
+    <string name="ui_quick_menu_random_action_download">Télécharger</string>
+    <string name="ui_quick_menu_random_action_install">Installer</string>
+    <string name="ui_quick_menu_random_action_details">Détails</string>
+    <string name="ui_quick_menu_random_action_favorite">Ajouter aux favoris</string>
+    <string name="ui_quick_menu_random_action_unfavorite">Retirer des favoris</string>
+    <string name="ui_quick_menu_random_loading">Choix d\'un jeu...</string>
 
     <!-- File browser (ui/filebrowser) -->
 
