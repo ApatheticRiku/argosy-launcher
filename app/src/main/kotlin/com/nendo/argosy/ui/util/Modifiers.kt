@@ -9,6 +9,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.graphics.graphicsLayer
@@ -75,14 +76,20 @@ fun Modifier.clickableNoFocus(
     onClick = onClick
 )
 
-fun Modifier.touchOnly(onClick: () -> Unit): Modifier = pointerInput(Unit) {
-    detectTapGestures(onTap = { onClick() })
+fun Modifier.touchOnly(onClick: () -> Unit): Modifier = composed {
+    val currentOnClick by rememberUpdatedState(onClick)
+    pointerInput(Unit) {
+        detectTapGestures(onTap = { currentOnClick() })
+    }
 }
 
-fun Modifier.touchOnly(onClick: () -> Unit, onLongPress: () -> Unit): Modifier =
+fun Modifier.touchOnly(onClick: () -> Unit, onLongPress: () -> Unit): Modifier = composed {
+    val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongPress by rememberUpdatedState(onLongPress)
     pointerInput(Unit) {
-        detectTapGestures(onTap = { onClick() }, onLongPress = { onLongPress() })
+        detectTapGestures(onTap = { currentOnClick() }, onLongPress = { currentOnLongPress() })
     }
+}
 
 fun Modifier.pressScale(
     interactionSource: MutableInteractionSource,

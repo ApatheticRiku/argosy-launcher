@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -345,20 +346,22 @@ private fun RecentStates(content: DashboardContent) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
             recent.forEach { quickState ->
-                StateTile(
-                    quickState = quickState,
-                    armed = armed.isArmed(quickState.slotNumber),
-                    latest = quickState == recent.first(),
-                    modifier = Modifier.weight(1f),
-                    onTap = {
-                        if (armed.isArmed(quickState.slotNumber)) {
-                            armed = ArmedState()
-                            content.actions.onLoadState(quickState.slotNumber)
-                        } else {
-                            armed = ArmedState(quickState.slotNumber, now() + CONFIRM_WINDOW_MS)
+                key(quickState.slotNumber) {
+                    StateTile(
+                        quickState = quickState,
+                        armed = armed.isArmed(quickState.slotNumber),
+                        latest = quickState == recent.first(),
+                        modifier = Modifier.weight(1f),
+                        onTap = {
+                            if (armed.isArmed(quickState.slotNumber)) {
+                                armed = ArmedState()
+                                content.actions.onLoadState(quickState.slotNumber)
+                            } else {
+                                armed = ArmedState(quickState.slotNumber, now() + CONFIRM_WINDOW_MS)
+                            }
                         }
-                    }
-                )
+                    )
+                }
             }
             repeat(RECENT_STATE_COUNT - recent.size) { Box(modifier = Modifier.weight(1f)) }
         }
