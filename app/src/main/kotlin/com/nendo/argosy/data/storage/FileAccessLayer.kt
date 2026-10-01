@@ -94,8 +94,10 @@ interface FileAccessLayer {
     fun getTransformedFile(path: String): File
 
     /**
-     * Makes an emulator's save at [path] readable and writable by Argosy before a backup or
-     * restore, where the device allows it. A no-op everywhere the save is already reachable.
+     * Makes the folders holding [paths] readable and writable by Argosy before a save operation
+     * reads or writes them, where the device allows it: a folder save's folder, a file save's
+     * containing folder. A no-op everywhere the saves are already reachable. Every save operation
+     * calls this once, up front, with each path it will touch.
      */
-    fun prepareSaveAccess(path: String)
+    fun prepareSaveAccess(vararg paths: String?)
 }

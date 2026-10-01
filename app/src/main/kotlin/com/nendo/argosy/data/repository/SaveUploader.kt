@@ -179,6 +179,7 @@ class SaveUploader @Inject constructor(
         )
 
         val unitPaths = handler.sourcePathsFor(localPath, saveContext) + localPath
+        fal.prepareSaveAccess(*unitPaths.toTypedArray())
         val localModified = if (isDirectory) {
             Instant.ofEpochMilli(unitPaths.maxOf { savePathResolver.findNewestFileTime(it) })
         } else {

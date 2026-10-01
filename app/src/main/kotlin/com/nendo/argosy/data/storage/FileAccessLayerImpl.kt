@@ -203,7 +203,6 @@ class FileAccessLayerImpl @Inject constructor(
     override fun readBytes(path: String): ByteArray? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val result = androidDataAccessor.readBytes(path)
-                ?: if (grantViaRoot(path)) androidDataAccessor.readBytes(path) else null
             if (result != null) return result
         }
 
@@ -221,7 +220,6 @@ class FileAccessLayerImpl @Inject constructor(
     override fun writeBytes(path: String, data: ByteArray): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             if (androidDataAccessor.writeBytes(path, data)) return true
-            if (grantViaRoot(path) && androidDataAccessor.writeBytes(path, data)) return true
         }
 
         if (isRestrictedPath(path)) {
@@ -268,7 +266,6 @@ class FileAccessLayerImpl @Inject constructor(
     override fun getInputStream(path: String): InputStream? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val stream = androidDataAccessor.getInputStream(path)
-                ?: if (grantViaRoot(path)) androidDataAccessor.getInputStream(path) else null
             if (stream != null) return stream
         }
 
@@ -285,7 +282,6 @@ class FileAccessLayerImpl @Inject constructor(
     override fun getOutputStream(path: String): OutputStream? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val stream = androidDataAccessor.getOutputStream(path)
-                ?: if (grantViaRoot(path)) androidDataAccessor.getOutputStream(path) else null
             if (stream != null) return stream
         }
 
@@ -308,9 +304,7 @@ class FileAccessLayerImpl @Inject constructor(
 
     override fun copyFile(source: String, dest: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && (isRestrictedPath(source) || isRestrictedPath(dest))) {
-            if (androidDataAccessor.copyFile(source, dest)) return true
-            val granted = grantViaRoot(source) or grantViaRoot(dest)
-            return granted && androidDataAccessor.copyFile(source, dest)
+            return androidDataAccessor.copyFile(source, dest)
         }
         return try {
             val destFile = File(dest)
@@ -325,9 +319,7 @@ class FileAccessLayerImpl @Inject constructor(
 
     override fun copyDirectory(source: String, dest: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && (isRestrictedPath(source) || isRestrictedPath(dest))) {
-            if (androidDataAccessor.copyDirectory(source, dest)) return true
-            val granted = grantViaRoot(source) or grantViaRoot(dest)
-            return granted && androidDataAccessor.copyDirectory(source, dest)
+            return androidDataAccessor.copyDirectory(source, dest)
         }
         return try {
             val destFile = File(dest)
@@ -338,9 +330,6 @@ class FileAccessLayerImpl @Inject constructor(
             false
         }
     }
-
-    private fun grantViaRoot(path: String): Boolean =
-        isRestrictedPath(path) && rootFileAccessor.isAvailable && rootFileAccessor.grantGroupAccess(path)
 
     override fun walk(path: String): Sequence<FileInfo> {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
@@ -363,8 +352,10 @@ class FileAccessLayerImpl @Inject constructor(
         return androidDataAccessor.getFile(path)
     }
 
-    override fun prepareSaveAccess(path: String) {
-        grantViaRoot(path)
+    override fun prepareSaveAccess(vararg paths: String?) {
+        if (!rootFileAccessor.isAvailable) return
+        val restricted = paths.filterNotNull().filter(::isRestrictedPath)
+        if (restricted.isNotEmpty()) rootFileAccessor.grantGroupAccess(restricted)
     }
 
     private fun extractVolumeAndPath(path: String): Pair<String, String>? {

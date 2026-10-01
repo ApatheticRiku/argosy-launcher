@@ -301,6 +301,8 @@ class SaveDownloader @Inject constructor(
             }
         }
 
+        fal.prepareSaveAccess(preDownloadTargetPath, strandedCardToMigrate)
+
         if (strandedCardToMigrate != null && preDownloadTargetPath != null && !fal.exists(preDownloadTargetPath)) {
             val carried = runCatching {
                 fal.copyFile(strandedCardToMigrate, preDownloadTargetPath)
@@ -670,7 +672,6 @@ class SaveDownloader @Inject constructor(
                         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Bundle placed | primary=$targetPath")
                     } else {
                         targetPath = unitPrimaryTarget(targetPath, game, resolvedEmulatorId, preferredCore) ?: targetPath
-                        fal.prepareSaveAccess(targetPath)
                         val bytesWithoutTrailer = saveArchiver.readBytesWithoutTrailer(tempSaveFile!!)
                         val written = if (bytesWithoutTrailer != null) {
                             saveArchiver.writeBytesToPath(targetPath, bytesWithoutTrailer)

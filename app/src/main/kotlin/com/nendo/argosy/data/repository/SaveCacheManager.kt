@@ -109,7 +109,6 @@ class SaveCacheManager @Inject constructor(
         val saveFile = fal.getTransformedFile(savePath)
         var tempFile: File? = null
         val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, coreName)
-        unit?.memberPaths?.forEach(fal::prepareSaveAccess)
 
         if (!skipDuplicateCheck && !fal.isDirectory(savePath) && unit == null && precomputedContentHash == null) {
             val fileMtime = Instant.ofEpochMilli(fal.lastModified(savePath))
@@ -430,7 +429,6 @@ class SaveCacheManager @Inject constructor(
             Log.e(TAG, "[RESTORE] cache=${entity.id} unit bundle has entries the layout cannot place | zip=${cacheFile.name}")
             return false
         }
-        destinations.values.forEach(fal::prepareSaveAccess)
         val ok = saveArchiver.unzipEntriesTo(cacheFile, destinations)
         Log.d(TAG, "[RESTORE] cache=${entity.id} unit=${cacheFile.name} placed=${destinations.values} ok=$ok")
         return ok
@@ -462,7 +460,6 @@ class SaveCacheManager @Inject constructor(
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         var tempFile: File? = null
         val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, null)
-        unit?.memberPaths?.forEach(fal::prepareSaveAccess)
 
         try {
             val (contentHash, tempOrSource) = if (unit != null) {
@@ -1149,6 +1146,7 @@ class SaveCacheManager @Inject constructor(
         withContext(Dispatchers.IO) {
             if (!fal.exists(savePath)) return@withContext null
             if (!fal.isDirectory(savePath)) return@withContext calculateLocalSaveHash(savePath)
+            fal.prepareSaveAccess(savePath)
             val game = gameDao.getById(gameId)
             val roots = resolveArchiveRoots(fal.getTransformedFile(savePath), savePath, game)
             if (roots.isEmpty()) return@withContext null
@@ -1172,6 +1170,7 @@ class SaveCacheManager @Inject constructor(
         emulatorId: String? = null
     ): String? = withContext(Dispatchers.IO) {
         if (!fal.exists(savePath)) return@withContext null
+        fal.prepareSaveAccess(savePath)
         try {
             val saveFile = fal.getTransformedFile(savePath)
             if (fal.isDirectory(savePath)) {
