@@ -11,7 +11,6 @@ import com.nendo.argosy.data.local.entity.HotkeyEntity
 import com.nendo.argosy.data.repository.ControllerInfo
 import com.nendo.argosy.data.repository.InputSource
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +19,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -35,7 +32,6 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -81,7 +77,6 @@ import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.data.preferences.GripReserveMode
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_DEFAULT_PERCENT
-import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.touchOnly
 
 
@@ -329,9 +324,6 @@ fun InGameSettingsScreen(
     var showHotkeysModal by remember { mutableStateOf(false) }
     var showGripSettingsModal by remember { mutableStateOf(false) }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
-
     val currentOnDismiss = rememberUpdatedState(onDismiss)
     val currentControlsState = rememberUpdatedState(controlsState)
     val currentOnControlsAction = rememberUpdatedState(onControlsAction)
@@ -512,25 +504,24 @@ fun InGameSettingsScreen(
                 if (currentTab == InGameSettingsTab.CORE_OPTIONS) {
                     if (currentPerGameSupported.value && focusedIndex == 0) {
                         currentOnTogglePerGame.value(false)
-                    } else {
-                        coreOptionKeyAt(focusedIndex)?.let { currentOnCoreOptionCycle.value(it, -1) }
+                        return InputResult.HANDLED
                     }
+                    val key = coreOptionKeyAt(focusedIndex) ?: return InputResult.UNHANDLED
+                    currentOnCoreOptionCycle.value(key, -1)
                     return InputResult.HANDLED
                 }
                 if (currentTab == InGameSettingsTab.CONTROLS) {
-                    cycleControlsItem(-1)
-                    return InputResult.HANDLED
+                    return if (cycleControlsItem(-1)) InputResult.HANDLED else InputResult.UNHANDLED
                 }
                 val hudItem = getHudItemAtIndex(focusedIndex)
                 if (hudItem != null) {
                     handleHudAdjust(hudItem, -1)
                     return InputResult.HANDLED
                 }
-                val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.HANDLED
-                if (accessor.isActionItem(setting)) return InputResult.HANDLED
-                if (setting.type is LibretroSettingDef.SettingType.Cycle) {
-                    accessor.cycle(setting, -1)
-                }
+                val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.UNHANDLED
+                if (accessor.isActionItem(setting)) return InputResult.UNHANDLED
+                if (setting.type !is LibretroSettingDef.SettingType.Cycle) return InputResult.UNHANDLED
+                accessor.cycle(setting, -1)
                 return InputResult.HANDLED
             }
 
@@ -627,113 +618,101 @@ fun InGameSettingsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayColor)
-            .padding(bottom = gripReserveBottomInset())
             .focusProperties { canFocus = false },
         contentAlignment = Alignment.Center
     ) {
-        Surface(
+        Column(
             modifier = Modifier
-                .widthIn(max = 500.dp)
-                .heightIn(max = 550.dp)
-                .padding(Dimens.spacingLg)
-                .focusProperties { canFocus = false },
-            shape = RoundedCornerShape(Dimens.radiusLg),
-            color = MaterialTheme.colorScheme.surface
+                .fillMaxSize()
+                .focusProperties { canFocus = false }
         ) {
-            Column(
+            SettingsTabHeader(
+                currentTab = currentTab,
+                isTabEnabled = { isTabEnabled(it) },
+                onTabSelect = { tab ->
+                    currentTab = tab
+                    focusedIndex = 0
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            HorizontalDivider()
+
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .focusProperties { canFocus = false }
             ) {
-                SettingsTabHeader(
-                    currentTab = currentTab,
-                    isTabEnabled = { isTabEnabled(it) },
-                    onTabSelect = { tab ->
-                        currentTab = tab
-                        focusedIndex = 0
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                HorizontalDivider()
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .focusProperties { canFocus = false }
-                ) {
-                    when (currentTab) {
-                        InGameSettingsTab.VIDEO -> {
-                            LibretroSettingsSection(
-                                accessor = accessor,
-                                focusedIndex = focusedIndex,
-                                platformSlug = platformSlug,
-                                canEnableBFI = canEnableBFI,
-                                showSavingSection = false,
-                                listState = videoListState,
-                                enablePicker = false,
-                                trailingContent = { InGameHudHeader() },
-                                trailingFocusCount = InGameHudItem.entries.size,
-                                trailingItems = {
-                                    items(InGameHudItem.entries, key = { it.key }) { item ->
-                                        InGameHudRow(
-                                            item = item,
-                                            state = controlsState,
-                                            isFocused = focusedIndex == videoLibretroCount + item.ordinal,
-                                            onAction = onControlsAction
-                                        )
-                                    }
+                when (currentTab) {
+                    InGameSettingsTab.VIDEO -> {
+                        LibretroSettingsSection(
+                            accessor = accessor,
+                            focusedIndex = focusedIndex,
+                            platformSlug = platformSlug,
+                            canEnableBFI = canEnableBFI,
+                            showSavingSection = false,
+                            listState = videoListState,
+                            enablePicker = false,
+                            trailingContent = { InGameHudHeader() },
+                            trailingFocusCount = InGameHudItem.entries.size,
+                            trailingItems = {
+                                items(InGameHudItem.entries, key = { it.key }) { item ->
+                                    InGameHudRow(
+                                        item = item,
+                                        state = controlsState,
+                                        isFocused = focusedIndex == videoLibretroCount + item.ordinal,
+                                        onAction = onControlsAction
+                                    )
                                 }
-                            )
-                        }
+                            }
+                        )
+                    }
 
-                        InGameSettingsTab.CONTROLS -> {
-                            InGameControlsSection(
-                                state = controlsState,
-                                focusedIndex = focusedIndex,
-                                visibility = controlsVisibility,
-                                onAction = { action ->
-                                    when (action) {
-                                        InGameControlsAction.ShowControllerOrder -> showControllerOrderModal = true
-                                        InGameControlsAction.ShowGripSettings -> showGripSettingsModal = true
-                                        InGameControlsAction.ShowInputMapping -> showInputMappingModal = true
-                                        InGameControlsAction.ShowHotkeys -> showHotkeysModal = true
-                                        else -> onControlsAction(action)
-                                    }
-                                },
-                                listState = controlsListState
-                            )
-                        }
+                    InGameSettingsTab.CONTROLS -> {
+                        InGameControlsSection(
+                            state = controlsState,
+                            focusedIndex = focusedIndex,
+                            visibility = controlsVisibility,
+                            onAction = { action ->
+                                when (action) {
+                                    InGameControlsAction.ShowControllerOrder -> showControllerOrderModal = true
+                                    InGameControlsAction.ShowGripSettings -> showGripSettingsModal = true
+                                    InGameControlsAction.ShowInputMapping -> showInputMappingModal = true
+                                    InGameControlsAction.ShowHotkeys -> showHotkeysModal = true
+                                    else -> onControlsAction(action)
+                                }
+                            },
+                            listState = controlsListState
+                        )
+                    }
 
-                        InGameSettingsTab.CORE_OPTIONS -> {
-                            InGameCoreOptionsSection(
-                                options = coreOptions,
-                                focusedIndex = focusedIndex,
-                                onCycle = { onCoreOptionCycle(it, 1) },
-                                onReset = onCoreOptionReset,
-                                listState = coreOptionsListState,
-                                perGameToggleVisible = perGameSettingsSupported,
-                                perGameEnabled = perGameSettingsEnabled,
-                                onTogglePerGame = onTogglePerGameSettings
-                            )
-                        }
+                    InGameSettingsTab.CORE_OPTIONS -> {
+                        InGameCoreOptionsSection(
+                            options = coreOptions,
+                            focusedIndex = focusedIndex,
+                            onCycle = { onCoreOptionCycle(it, 1) },
+                            onReset = onCoreOptionReset,
+                            listState = coreOptionsListState,
+                            perGameToggleVisible = perGameSettingsSupported,
+                            perGameEnabled = perGameSettingsEnabled,
+                            onTogglePerGame = onTogglePerGameSettings
+                        )
                     }
                 }
-
-                FooterBar(
-                    hints = buildSettingsFooterHints(currentTab),
-                    onHintClick = { button ->
-                        when (button) {
-                            InputButton.B -> currentOnDismiss.value()
-                            InputButton.LB_RB -> {
-                                switchTab(1)
-                            }
-                            else -> {}
-                        }
-                    }
-                )
             }
+
+            FooterBar(
+                hints = buildSettingsFooterHints(currentTab),
+                onHintClick = { button ->
+                    when (button) {
+                        InputButton.B -> currentOnDismiss.value()
+                        InputButton.LB_RB -> {
+                            switchTab(1)
+                        }
+                        else -> {}
+                    }
+                }
+            )
         }
 
         if (showControllerOrderModal) {

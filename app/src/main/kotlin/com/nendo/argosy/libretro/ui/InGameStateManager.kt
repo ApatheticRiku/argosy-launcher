@@ -2,7 +2,6 @@ package com.nendo.argosy.libretro.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -54,7 +55,6 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.NestedModal
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
-import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.clickableNoFocus
 
 enum class StateManagerViewMode { SPLIT, CAROUSEL }
@@ -95,6 +95,7 @@ fun InGameStateManager(
     val currentShowLoadConfirm = rememberUpdatedState(showLoadConfirmation)
     val currentOnLoadConfirm = rememberUpdatedState(onLoadConfirm)
     val currentOnLoadCancel = rememberUpdatedState(onLoadCancel)
+    val effectiveModeState = remember { mutableStateOf(viewMode) }
 
     val inputHandler = remember {
         object : InputHandler {
@@ -103,7 +104,7 @@ fun InGameStateManager(
                 val mode = currentViewMode.value
                 if (mode == StateManagerViewMode.SPLIT) {
                     val idx = currentFocusedIndex.value
-                    val newIndex = (idx - 3).coerceAtLeast(0)
+                    val newIndex = (idx - SPLIT_GRID_COLUMNS).coerceAtLeast(0)
                     if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 } else {
                     // Carousel: no vertical nav
@@ -117,7 +118,7 @@ fun InGameStateManager(
                 if (mode == StateManagerViewMode.SPLIT) {
                     val idx = currentFocusedIndex.value
                     val lastIndex = currentSlots.value.lastIndex
-                    val newIndex = (idx + 3).coerceAtMost(lastIndex)
+                    val newIndex = (idx + SPLIT_GRID_COLUMNS).coerceAtMost(lastIndex)
                     if (newIndex != idx) currentOnFocusChange.value(newIndex)
                 }
                 return InputResult.HANDLED
@@ -126,8 +127,13 @@ fun InGameStateManager(
             override fun onLeft(): InputResult {
                 if (currentShowDelete.value || currentShowLoadConfirm.value) return InputResult.HANDLED
                 val idx = currentFocusedIndex.value
-                val newIndex = (idx - 1).coerceAtLeast(0)
-                if (newIndex != idx) currentOnFocusChange.value(newIndex)
+                val atLeftEdge = if (effectiveModeState.value == StateManagerViewMode.SPLIT) {
+                    idx % SPLIT_GRID_COLUMNS == 0
+                } else {
+                    idx <= 0
+                }
+                if (atLeftEdge) return InputResult.UNHANDLED
+                currentOnFocusChange.value(idx - 1)
                 return InputResult.HANDLED
             }
 
@@ -193,17 +199,12 @@ fun InGameStateManager(
         }
     }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
-
     val focusedSlot = slots.getOrNull(focusedIndex)
     val isOccupied = focusedSlot?.file != null
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayColor)
-            .padding(bottom = gripReserveBottomInset())
             .focusProperties { canFocus = false }
     ) {
         val isSquarish = maxWidth < 500.dp || (maxWidth / maxHeight < 1.4f)
@@ -212,6 +213,7 @@ fun InGameStateManager(
         } else {
             viewMode
         }
+        SideEffect { effectiveModeState.value = effectiveMode }
 
         Column(modifier = Modifier.fillMaxSize()) {
             // Title bar
@@ -436,7 +438,7 @@ private fun SplitLayout(
 
         LazyVerticalGrid(
             state = gridState,
-            columns = GridCells.Fixed(3),
+            columns = GridCells.Fixed(SPLIT_GRID_COLUMNS),
             modifier = Modifier
                 .weight(0.6f)
                 .fillMaxHeight()
@@ -699,3 +701,5 @@ private fun buildFooterHints(
         add(FooterHintItem(InputButton.B, backLabel))
     }
 }
+
+private const val SPLIT_GRID_COLUMNS = 3

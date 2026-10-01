@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.theme.generated.DimensionTokens
 import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.clickableNoFocus
@@ -135,7 +137,12 @@ fun InGameMenu(
     walkthroughAvailable: Boolean = false,
     walkthroughPanelAvailable: Boolean = false,
     walkthroughPanelShown: Boolean = false,
-    swapScreensAvailable: Boolean = false
+    swapScreensAvailable: Boolean = false,
+    openSection: InGameMenuSection? = null,
+    railFocused: Boolean = false,
+    onRailFocusChange: (Boolean) -> Unit = {},
+    onCloseSection: () -> Unit = {},
+    sectionContent: @Composable (InGameMenuSection) -> InputHandler
 ): InputHandler {
     val menuItems: List<Pair<Int, InGameMenuAction>> = remember(
         swapScreensAvailable,
@@ -227,9 +234,6 @@ fun InGameMenu(
         if (clamped != focusedIndex) onFocusChange(clamped)
     }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
-
     val currentFocusedIndex = rememberUpdatedState(focusedIndex)
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
     val currentOnAction = rememberUpdatedState(onAction)
@@ -319,133 +323,154 @@ fun InGameMenu(
         }
     }
 
-    val menuConfiguration = LocalConfiguration.current
-    val menuBottomReserved = gripReserveBottomInset()
+    val condensedWidth = if (columns > 1) {
+        DimensionTokens.Layout.inGameMenuWidthWide.dp
+    } else {
+        DimensionTokens.Layout.inGameMenuWidth.dp
+    }
 
-    Box(
+    return InGameMenuPanel(
+        menuItems = menuItems,
+        openSection = openSection,
+        railFocused = railFocused,
+        condensedWidth = condensedWidth,
+        listHandler = inputHandler,
+        isEnabled = { action -> action != InGameMenuAction.QuickLoad || hasQuickSave },
+        onFocusChange = onFocusChange,
+        onRailFocusChange = onRailFocusChange,
+        onAction = onAction,
+        onCloseSection = onCloseSection,
+        list = {
+            InGameMenuList(
+                gameName = gameName,
+                coreName = coreName,
+                hardcoreConfirmed = hardcoreConfirmed,
+                menuItems = menuItems,
+                columns = columns,
+                focusedIndex = focusedIndex,
+                hasQuickSave = hasQuickSave,
+                quickHistoryFocused = quickHistoryFocused,
+                onAction = onAction
+            )
+        },
+        sectionContent = sectionContent
+    )
+}
+
+@Composable
+private fun InGameMenuList(
+    gameName: String,
+    coreName: String?,
+    hardcoreConfirmed: Boolean,
+    menuItems: List<Pair<Int, InGameMenuAction>>,
+    columns: Int,
+    focusedIndex: Int,
+    hasQuickSave: Boolean,
+    quickHistoryFocused: Boolean,
+    onAction: (InGameMenuAction) -> Unit
+) {
+    val menuGridState = rememberLazyGridState()
+
+    LaunchedEffect(focusedIndex, menuItems.size) {
+        if (menuItems.isEmpty()) return@LaunchedEffect
+        val target = focusedIndex.coerceIn(0, menuItems.lastIndex)
+        val visibleItems = menuGridState.layoutInfo.visibleItemsInfo
+        val viewportHeight = menuGridState.layoutInfo.viewportEndOffset
+        val avgItemHeight = if (visibleItems.isNotEmpty()) {
+            visibleItems.sumOf { it.size.height } / visibleItems.size
+        } else 80
+        val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
+        menuGridState.animateScrollToItem(target, -targetOffset)
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayColor)
-            .padding(bottom = menuBottomReserved)
-            .clickableNoFocus { currentOnAction.value(InGameMenuAction.Resume) },
-        contentAlignment = Alignment.Center
+            .padding(Dimens.spacingLg),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd, Alignment.CenterVertically)
     ) {
-        val availableHeightDp = menuConfiguration.screenHeightDp - menuBottomReserved.value
-        val maxHeightDp =
-            (availableHeightDp * DimensionTokens.Layout.inGameMenuMaxHeightPct / 100f).dp
-        val menuGridState = rememberLazyGridState()
-
-        LaunchedEffect(focusedIndex, menuItems.size) {
-            if (menuItems.isEmpty()) return@LaunchedEffect
-            val target = focusedIndex.coerceIn(0, menuItems.lastIndex)
-            val visibleItems = menuGridState.layoutInfo.visibleItemsInfo
-            val viewportHeight = menuGridState.layoutInfo.viewportEndOffset
-            val avgItemHeight = if (visibleItems.isNotEmpty()) {
-                visibleItems.sumOf { it.size.height } / visibleItems.size
-            } else 80
-            val targetOffset = (viewportHeight / 2) - (avgItemHeight / 2)
-            menuGridState.animateScrollToItem(target, -targetOffset)
+        if (hardcoreConfirmed) {
+            Text(
+                text = stringResource(R.string.ingame_menu_hardcore_badge),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = ColorTokens.Domain.AchievementTier.hardcore,
+                modifier = Modifier
+                    .background(
+                        ColorTokens.Domain.AchievementTier.hardcore.copy(alpha = HARDCORE_BADGE_FILL_ALPHA),
+                        RoundedCornerShape(Dimens.radiusSm)
+                    )
+                    .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs)
+            )
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+        ) {
+            Text(
+                text = gameName,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2
+            )
+            if (!coreName.isNullOrBlank()) {
+                Text(
+                    text = coreName,
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    maxLines = 1
+                )
+            }
         }
 
-        Surface(
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(columns),
+            state = menuGridState,
             modifier = Modifier
-                .widthIn(max = if (columns > 1) DimensionTokens.Layout.inGameMenuWidthWide.dp else DimensionTokens.Layout.inGameMenuWidth.dp)
-                .heightIn(max = maxHeightDp)
-                .padding(12.dp)
-                .clickableNoFocus {}
-                .focusProperties { canFocus = false },
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 8.dp
+                .fillMaxWidth()
+                .weight(1f, fill = false),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                if (hardcoreConfirmed) {
-                    Text(
-                        text = stringResource(R.string.ingame_menu_hardcore_badge),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFFD700),
-                        modifier = Modifier
-                            .background(
-                                Color(0xFFFFD700).copy(alpha = 0.15f),
-                                RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Text(
-                        text = gameName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        maxLines = 2
-                    )
-                    if (!coreName.isNullOrBlank()) {
-                        Text(
-                            text = coreName,
-                            style = MaterialTheme.typography.labelSmall,
-                            textAlign = TextAlign.Center,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                            maxLines = 1
+            itemsIndexed(
+                items = menuItems,
+                key = { _: Int, item: Pair<Int, InGameMenuAction> -> item.second.toString() }
+            ) { index, item ->
+                val (labelRes, action) = item
+                val label = stringResource(labelRes)
+                when {
+                    action == InGameMenuAction.QuickLoad && hasQuickSave -> {
+                        QuickLoadRow(
+                            text = label,
+                            isFocused = index == focusedIndex && !quickHistoryFocused,
+                            historyFocused = index == focusedIndex && quickHistoryFocused,
+                            onClick = { onAction(action) },
+                            onHistoryClick = { onAction(InGameMenuAction.QuickLoadHistory) }
                         )
                     }
-                }
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(columns),
-                    state = menuGridState,
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    itemsIndexed(
-                        items = menuItems,
-                        key = { _: Int, item: Pair<Int, InGameMenuAction> -> item.second.toString() }
-                    ) { index, item ->
-                        val (labelRes, action) = item
-                        val label = stringResource(labelRes)
-                        when {
-                            action == InGameMenuAction.QuickLoad && hasQuickSave -> {
-                                QuickLoadRow(
-                                    text = label,
-                                    isFocused = index == focusedIndex && !quickHistoryFocused,
-                                    historyFocused = index == focusedIndex && quickHistoryFocused,
-                                    onClick = { onAction(action) },
-                                    onHistoryClick = { onAction(InGameMenuAction.QuickLoadHistory) }
-                                )
-                            }
-                            action == InGameMenuAction.QuickLoad -> {
-                                MenuButton(
-                                    text = label,
-                                    isFocused = index == focusedIndex,
-                                    enabled = false,
-                                    onClick = {}
-                                )
-                            }
-                            else -> {
-                                MenuButton(
-                                    text = label,
-                                    isFocused = index == focusedIndex,
-                                    onClick = { onAction(action) }
-                                )
-                            }
-                        }
+                    action == InGameMenuAction.QuickLoad -> {
+                        MenuButton(
+                            text = label,
+                            isFocused = index == focusedIndex,
+                            enabled = false,
+                            onClick = {}
+                        )
+                    }
+                    else -> {
+                        MenuButton(
+                            text = label,
+                            isFocused = index == focusedIndex,
+                            onClick = { onAction(action) }
+                        )
                     }
                 }
             }
         }
     }
-
-    return inputHandler
 }
 
 @Composable
@@ -689,3 +714,5 @@ private fun MenuButton(
         )
     }
 }
+
+private const val HARDCORE_BADGE_FILL_ALPHA = 0.15f

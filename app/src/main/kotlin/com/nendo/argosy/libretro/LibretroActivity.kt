@@ -92,6 +92,7 @@ import com.nendo.argosy.data.emulator.M3uManager
 import com.nendo.argosy.libretro.ui.DiscMenu
 import com.nendo.argosy.libretro.ui.InGameMenu
 import com.nendo.argosy.libretro.ui.InGameMenuAction
+import com.nendo.argosy.libretro.ui.menuPanelInputHandler
 import com.nendo.argosy.libretro.ui.NetplayConnectionProgressOverlay
 import com.nendo.argosy.libretro.ui.NetplayFriendPickerDialog
 import com.nendo.argosy.libretro.ui.NetplayHostDisconnectPrompt
@@ -257,12 +258,11 @@ class LibretroActivity : ComponentActivity() {
     private var coreName: String? = null
     private var activeSaveChannel: String? = null
     private var menuVisible by mutableStateOf(false)
+    private var menuSection by mutableStateOf<com.nendo.argosy.libretro.ui.InGameMenuSection?>(null)
+    private var menuRailFocused by mutableStateOf(false)
     private var isClosing by mutableStateOf(false)
-    private var cheatsMenuVisible by mutableStateOf(false)
-    private var achievementsVisible by mutableStateOf(false)
     private var achievementsFocusIndex by mutableStateOf(0)
     private var inGameAchievements by mutableStateOf<List<AchievementUi>>(emptyList())
-    private var settingsVisible by mutableStateOf(false)
     private var shaderChainEditorVisible by mutableStateOf(false)
     private var frameEditorVisible by mutableStateOf(false)
     private var frameAdjustMode by mutableStateOf(false)
@@ -309,7 +309,6 @@ class LibretroActivity : ComponentActivity() {
     private var autoRestorePromptVisible by mutableStateOf(false)
     private var autoRestorePromptFocusIndex by mutableStateOf(0)
 
-    private var stateManagerVisible by mutableStateOf(false)
     private var stateManagerFocusIndex by mutableStateOf(0)
     private var stateManagerViewMode by mutableStateOf(StateManagerViewMode.SPLIT)
     private var stateManagerShowDelete by mutableStateOf(false)
@@ -390,7 +389,7 @@ class LibretroActivity : ComponentActivity() {
     private var orientationEventListener: android.view.OrientationEventListener? = null
 
     private val isAnyMenuOpen: Boolean
-        get() = menuVisible || cheatsMenuVisible || achievementsVisible || settingsVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || stateManagerVisible || quickTimelineVisible || discMenuVisible ||
+        get() = menuVisible || shaderChainEditorVisible || frameEditorVisible || autoRestorePromptVisible || quickTimelineVisible || discMenuVisible ||
             speedrunPickerVisible || readerKind != null || isClosing || netplay.isAnyDialogVisible
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -1475,8 +1474,11 @@ class LibretroActivity : ComponentActivity() {
                         )
                     }
                 }
+                val walkthroughInMenu = menuVisible &&
+                    menuSection == com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH
                 if (shownPanel == com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH &&
-                    readerKind != com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH
+                    readerKind != com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH &&
+                    !walkthroughInMenu
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         com.nendo.argosy.libretro.ui.InGameDocumentReader(
@@ -1534,7 +1536,12 @@ class LibretroActivity : ComponentActivity() {
                         walkthroughPanelAvailable = !speedrunState.armed &&
                             sidePanelFits(com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH),
                         walkthroughPanelShown = sidePanelContent == com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH,
-                        swapScreensAvailable = liveSwapAvailable
+                        swapScreensAvailable = liveSwapAvailable,
+                        openSection = menuSection,
+                        railFocused = menuRailFocused,
+                        onRailFocusChange = { menuRailFocused = it },
+                        onCloseSection = ::closeMenuSection,
+                        sectionContent = { section -> menuSectionContent(section) }
                     )
                 }
                 readerKind?.let { kind ->
@@ -1653,45 +1660,6 @@ class LibretroActivity : ComponentActivity() {
                 if (netplay.reconnecting) {
                     NetplayReconnectingOverlay(lastRttMs = netplay.lastRttMs)
                 }
-                if (cheatsMenuVisible) {
-                    activeMenuHandler = CheatsScreen(
-                        cheats = cheatManager.cheats.map { CheatDisplayItem(it.id, it.description, it.code, it.enabled, it.isUserCreated, it.lastUsedAt) },
-                        variants = cheatManager.variants.map { CheatVariantInfo(it.variantRegion, it.variantVersion, it.cheatCount) },
-                        selectedVariant = cheatManager.selectedVariant,
-                        scanner = cheatManager.memoryScanner,
-                        initialTab = lastCheatsTab,
-                        onToggleCheat = cheatManager::handleToggleCheat,
-                        onCreateCheat = cheatManager::handleCreateCheat,
-                        onUpdateCheat = cheatManager::handleUpdateCheat,
-                        onDeleteCheat = cheatManager::handleDeleteCheat,
-                        onSelectVariant = { region, version ->
-                            cheatManager.selectVariant(region, version, hardcoreMode)
-                        },
-                        onGetRam = { retroView.getSystemRam() },
-                        onTabChange = { lastCheatsTab = it },
-                        onDismiss = {
-                            cheatsMenuVisible = false
-                            menuVisible = true
-                            cheatManager.memoryScanner.markGameRan()
-                            cheatManager.flushCheatReset()
-                        }
-                    )
-                }
-                if (achievementsVisible) {
-                    activeMenuHandler = InGameAchievements(
-                        gameName = gameName,
-                        achievements = inGameAchievements,
-                        focusedIndex = achievementsFocusIndex,
-                        onFocusChange = { achievementsFocusIndex = it },
-                        onDismiss = {
-                            achievementsVisible = false
-                            menuVisible = true
-                        }
-                    )
-                }
-                if (settingsVisible) {
-                    activeMenuHandler = buildSettingsScreen()
-                }
                 if (shaderChainEditorVisible) {
                     val manager = inGameShaderChainManager
                     if (manager != null) {
@@ -1725,51 +1693,6 @@ class LibretroActivity : ComponentActivity() {
                         onFocusChange = { autoRestorePromptFocusIndex = it },
                         onRestore = { handleAutoRestoreResponse(true) },
                         onSkip = { handleAutoRestoreResponse(false) }
-                    )
-                }
-                if (stateManagerVisible) {
-                    activeMenuHandler = InGameStateManager(
-                        slots = stateManagerSlots,
-                        channelName = activeSaveChannel,
-                        focusedIndex = stateManagerFocusIndex,
-                        viewMode = stateManagerViewMode,
-                        showDeleteConfirmation = stateManagerShowDelete,
-                        onFocusChange = { stateManagerFocusIndex = it },
-                        onViewModeToggle = {
-                            stateManagerViewMode = when (stateManagerViewMode) {
-                                StateManagerViewMode.SPLIT -> StateManagerViewMode.CAROUSEL
-                                StateManagerViewMode.CAROUSEL -> StateManagerViewMode.SPLIT
-                            }
-                        },
-                        onSave = ::handleStateManagerSave,
-                        onDeleteRequest = { slot ->
-                            stateManagerDeleteTarget = slot
-                            stateManagerShowDelete = true
-                        },
-                        onDeleteConfirm = {
-                            if (stateManagerDeleteTarget >= SaveStateManager.AUTO_SLOT) {
-                                saveStateManager.deleteSlot(stateManagerDeleteTarget)
-                                stateManagerSlots = saveStateManager.getSlotInfoList()
-                            }
-                            stateManagerShowDelete = false
-                            stateManagerDeleteTarget = -1
-                        },
-                        onDeleteCancel = {
-                            stateManagerShowDelete = false
-                            stateManagerDeleteTarget = -1
-                        },
-                        onDismiss = ::dismissStateManager,
-                        loadAllowed = !netplay.inSession,
-                        showLoadConfirmation = stateManagerShowLoadConfirm,
-                        onLoadRequest = { slot ->
-                            stateManagerLoadTarget = slot
-                            stateManagerShowLoadConfirm = true
-                        },
-                        onLoadConfirm = {
-                            stateManagerShowLoadConfirm = false
-                            handleStateManagerLoad(stateManagerLoadTarget)
-                        },
-                        onLoadCancel = { stateManagerShowLoadConfirm = false }
                     )
                 }
                 if (quickTimelineVisible) {
@@ -2202,6 +2125,142 @@ class LibretroActivity : ComponentActivity() {
     }
 
     @androidx.compose.runtime.Composable
+    private fun menuSectionContent(section: com.nendo.argosy.libretro.ui.InGameMenuSection): InputHandler =
+        when (section) {
+            com.nendo.argosy.libretro.ui.InGameMenuSection.STATES -> buildStateManagerScreen()
+            com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS -> InGameAchievements(
+                gameName = gameName,
+                achievements = inGameAchievements,
+                focusedIndex = achievementsFocusIndex,
+                onFocusChange = { achievementsFocusIndex = it },
+                onDismiss = ::closeMenuSection
+            )
+            com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS -> CheatsScreen(
+                cheats = cheatManager.cheats.map { CheatDisplayItem(it.id, it.description, it.code, it.enabled, it.isUserCreated, it.lastUsedAt) },
+                variants = cheatManager.variants.map { CheatVariantInfo(it.variantRegion, it.variantVersion, it.cheatCount) },
+                selectedVariant = cheatManager.selectedVariant,
+                scanner = cheatManager.memoryScanner,
+                initialTab = lastCheatsTab,
+                onToggleCheat = cheatManager::handleToggleCheat,
+                onCreateCheat = cheatManager::handleCreateCheat,
+                onUpdateCheat = cheatManager::handleUpdateCheat,
+                onDeleteCheat = cheatManager::handleDeleteCheat,
+                onSelectVariant = { region, version ->
+                    cheatManager.selectVariant(region, version, hardcoreMode)
+                },
+                onGetRam = { retroView.getSystemRam() },
+                onTabChange = { lastCheatsTab = it },
+                onDismiss = ::closeMenuSection
+            )
+            com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS -> buildSettingsScreen()
+            com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH -> buildWalkthroughSection()
+        }
+
+    @androidx.compose.runtime.Composable
+    private fun buildWalkthroughSection(): InputHandler {
+        val reader = inGameDocuments.reader(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH)
+        com.nendo.argosy.libretro.ui.InGameDocumentReader(
+            reader = reader,
+            showsControllerHints = isGamepadConnectedState,
+            onDismiss = ::closeMenuSection,
+            modifier = Modifier.fillMaxSize()
+        )
+        return androidx.compose.runtime.remember(reader) {
+            reader.menuPanelInputHandler(onDismiss = ::closeMenuSection)
+        }
+    }
+
+    @androidx.compose.runtime.Composable
+    private fun buildStateManagerScreen(): InputHandler = InGameStateManager(
+        slots = stateManagerSlots,
+        channelName = activeSaveChannel,
+        focusedIndex = stateManagerFocusIndex,
+        viewMode = stateManagerViewMode,
+        showDeleteConfirmation = stateManagerShowDelete,
+        onFocusChange = { stateManagerFocusIndex = it },
+        onViewModeToggle = {
+            stateManagerViewMode = when (stateManagerViewMode) {
+                StateManagerViewMode.SPLIT -> StateManagerViewMode.CAROUSEL
+                StateManagerViewMode.CAROUSEL -> StateManagerViewMode.SPLIT
+            }
+        },
+        onSave = ::handleStateManagerSave,
+        onDeleteRequest = { slot ->
+            stateManagerDeleteTarget = slot
+            stateManagerShowDelete = true
+        },
+        onDeleteConfirm = {
+            if (stateManagerDeleteTarget >= SaveStateManager.AUTO_SLOT) {
+                saveStateManager.deleteSlot(stateManagerDeleteTarget)
+                stateManagerSlots = saveStateManager.getSlotInfoList()
+            }
+            stateManagerShowDelete = false
+            stateManagerDeleteTarget = -1
+        },
+        onDeleteCancel = {
+            stateManagerShowDelete = false
+            stateManagerDeleteTarget = -1
+        },
+        onDismiss = ::closeMenuSection,
+        loadAllowed = !netplay.inSession,
+        showLoadConfirmation = stateManagerShowLoadConfirm,
+        onLoadRequest = { slot ->
+            stateManagerLoadTarget = slot
+            stateManagerShowLoadConfirm = true
+        },
+        onLoadConfirm = {
+            stateManagerShowLoadConfirm = false
+            handleStateManagerLoad(stateManagerLoadTarget)
+        },
+        onLoadCancel = { stateManagerShowLoadConfirm = false }
+    )
+
+    private fun openMenuSection(section: com.nendo.argosy.libretro.ui.InGameMenuSection) {
+        if (menuSection == section) return
+        leaveMenuSection()
+        when (section) {
+            com.nendo.argosy.libretro.ui.InGameMenuSection.STATES -> {
+                stateManagerSlots = saveStateManager.getSlotInfoList()
+                stateManagerFocusIndex = 0
+            }
+            com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS -> achievementsFocusIndex = 0
+            com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH ->
+                inGameDocuments.open(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH)
+            com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS,
+            com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS -> Unit
+        }
+        menuSection = section
+    }
+
+    private fun closeMenuSection() {
+        leaveMenuSection()
+        menuRailFocused = false
+    }
+
+    private fun leaveMenuSection() {
+        when (menuSection) {
+            com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS -> {
+                cheatManager.memoryScanner.markGameRan()
+                cheatManager.flushCheatReset()
+            }
+            com.nendo.argosy.libretro.ui.InGameMenuSection.STATES -> {
+                stateManagerShowDelete = false
+                stateManagerShowLoadConfirm = false
+                stateManagerDeleteTarget = -1
+            }
+            com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH -> {
+                if (sidePanelContent != com.nendo.argosy.libretro.ui.SidePanelContent.WALKTHROUGH) {
+                    inGameDocuments.reader(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH).dismiss()
+                }
+            }
+            com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS,
+            com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS,
+            null -> Unit
+        }
+        menuSection = null
+    }
+
+    @androidx.compose.runtime.Composable
     private fun buildSettingsScreen(): InputHandler {
         return InGameSettingsScreen(
             accessor = InGameLibretroSettingsAccessor(
@@ -2212,10 +2271,10 @@ class LibretroActivity : ComponentActivity() {
                 onReset = videoSettings::resetVideoSetting,
                 onActionCallback = { setting ->
                     if (setting.key == "filter" && videoSettings.currentShader == "Custom") {
-                        settingsVisible = false
+                        menuVisible = false
                         openInGameShaderChainEditor()
                     } else if (setting.key == "frame") {
-                        settingsVisible = false
+                        menuVisible = false
                         openInGameFrameEditor()
                     }
                 }
@@ -2265,10 +2324,7 @@ class LibretroActivity : ComponentActivity() {
             perGameSettingsEnabled = perGameSettingsEnabled,
             onTogglePerGameSettings = ::applyPerGameSettingsToggle,
             modalCallbacks = buildModalCallbacks(),
-            onDismiss = {
-                settingsVisible = false
-                menuVisible = true
-            }
+            onDismiss = ::closeMenuSection
         )
     }
 
@@ -2485,29 +2541,12 @@ class LibretroActivity : ComponentActivity() {
                 quickTimelineFocusIndex = 0
                 quickTimelineVisible = true
             }
-            InGameMenuAction.ManageStates -> {
-                menuVisible = false
-                stateManagerSlots = saveStateManager.getSlotInfoList()
-                stateManagerFocusIndex = 0
-                stateManagerShowDelete = false
-                stateManagerDeleteTarget = -1
-                stateManagerVisible = true
-            }
-            InGameMenuAction.Settings -> {
-                menuVisible = false
-                settingsVisible = true
-            }
-            InGameMenuAction.Cheats -> {
-                menuVisible = false
-                cheatsMenuVisible = true
-            }
-            InGameMenuAction.Achievements -> {
-                menuVisible = false
-                achievementsFocusIndex = 0
-                achievementsVisible = true
-            }
+            InGameMenuAction.ManageStates -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.STATES)
+            InGameMenuAction.Settings -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.SETTINGS)
+            InGameMenuAction.Cheats -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.CHEATS)
+            InGameMenuAction.Achievements -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.ACHIEVEMENTS)
             InGameMenuAction.ViewManual -> openReader(com.nendo.argosy.libretro.ui.InGameDocumentKind.MANUAL)
-            InGameMenuAction.ViewWalkthrough -> openReader(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH)
+            InGameMenuAction.ViewWalkthrough -> openMenuSection(com.nendo.argosy.libretro.ui.InGameMenuSection.WALKTHROUGH)
             InGameMenuAction.ToggleWalkthroughPanel -> {
                 toggleWalkthroughPanel()
                 hideMenu()
@@ -2719,22 +2758,9 @@ class LibretroActivity : ComponentActivity() {
             } else {
                 getString(R.string.ingame_libretro_state_loaded_from_slot, slotNumber)
             }
-            dismissStateManager()
+            hideMenu()
         } else {
             inGameMessage = getString(R.string.ingame_libretro_state_load_failure)
-        }
-    }
-
-    private fun dismissStateManager() {
-        stateManagerVisible = false
-        stateManagerShowDelete = false
-        stateManagerShowLoadConfirm = false
-        stateManagerDeleteTarget = -1
-        pendingSaveScreenshot?.recycle()
-        pendingSaveScreenshot = null
-        if (!netplay.inSession) {
-            retroView.suppressAutoResume = false
-            retroView.resumeEmulation()
         }
     }
 
@@ -2831,8 +2857,8 @@ class LibretroActivity : ComponentActivity() {
         capturedGameFrame?.recycle()
         capturedGameFrame = null
         shaderChainEditorVisible = false
-        settingsVisible = true
-        Log.d(TAG, "closeInGameShaderChainEditor: done, settingsVisible=true")
+        menuVisible = true
+        Log.d(TAG, "closeInGameShaderChainEditor: done, menu reopened on $menuSection")
     }
 
     private fun openInGameFrameEditor() {
@@ -2892,7 +2918,7 @@ class LibretroActivity : ComponentActivity() {
         inGameFrameManager = null
         frameEditorVisible = false
         frameAdjustMode = false
-        settingsVisible = true
+        menuVisible = true
     }
 
     private fun handleControlsAction(action: InGameControlsAction) {
@@ -3053,12 +3079,16 @@ class LibretroActivity : ComponentActivity() {
         val discSwapShown = menuDiscCount > 1
         menuFocusIndex = if (discSwapShown) 1 else 0
         menuQuickHistoryFocused = false
+        leaveMenuSection()
+        menuRailFocused = false
         menuVisible = true
     }
 
     private fun hideMenu() {
         menuVisible = false
         menuQuickHistoryFocused = false
+        leaveMenuSection()
+        menuRailFocused = false
         pendingSaveScreenshot?.recycle()
         pendingSaveScreenshot = null
         deferredMenuPause?.cancel()
@@ -3071,7 +3101,8 @@ class LibretroActivity : ComponentActivity() {
 
     fun enterTouchEditMode() {
         menuVisible = false
-        settingsVisible = false
+        leaveMenuSection()
+        menuRailFocused = false
         retroView.pauseEmulation()
         retroView.suppressAutoResume = true
         touchEditMode = true

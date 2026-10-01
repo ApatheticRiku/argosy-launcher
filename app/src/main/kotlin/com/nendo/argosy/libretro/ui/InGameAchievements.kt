@@ -1,7 +1,5 @@
 package com.nendo.argosy.libretro.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,7 +21,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -34,11 +31,9 @@ import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.gamedetail.components.AchievementList
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.generated.ColorTokens
-import com.nendo.argosy.ui.theme.gripReserveBottomInset
-import com.nendo.argosy.ui.util.clickableNoFocus
 
 /**
- * Full-screen list of the running game's RetroAchievements, opened from the in-game menu. Up
+ * List of the running game's RetroAchievements, opened inside the in-game menu panel. Up
  * and down walk the unlocked-first order the shared list draws, wrapping at both ends; back
  * returns to the menu. Touch on a row moves focus to it.
  */
@@ -78,24 +73,14 @@ fun InGameAchievements(
         }
     }
 
-    val isDarkTheme = isSystemInDarkTheme()
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val unlockedCount = remember(achievements) { achievements.count { it.isUnlocked } }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(overlayColor)
-            .padding(bottom = gripReserveBottomInset())
-            .clickableNoFocus(onClick = onDismiss)
             .focusProperties { canFocus = false }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
-                .clickableNoFocus {}
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

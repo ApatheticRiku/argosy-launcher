@@ -78,6 +78,9 @@ object DimensionTokens {
         const val inGameMenuWidth = 300
         const val inGameMenuWidthWide = 560
         const val inGameMenuMaxHeightPct = 90
+        const val inGameMenuBroadWidthPct = 85
+        const val inGameMenuBroadWidthPctWide = 65
+        const val inGameMenuRailWidth = 56
         const val mediaPosterWidth = 160
         const val mediaPosterHeight = 240
         const val mediaBackdropWidth = 240

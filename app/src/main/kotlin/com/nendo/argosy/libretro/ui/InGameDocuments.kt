@@ -14,6 +14,8 @@ import com.nendo.argosy.ui.screens.gamedetail.GameDocument
 import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderController
 import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderOverlay
 import com.nendo.argosy.ui.screens.gamedetail.components.gameDocuments
+import com.nendo.argosy.ui.input.InputHandler
+import com.nendo.argosy.ui.input.InputResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +72,18 @@ class InGameDocuments(
     }
 
     fun dismissAll() = readers.values.forEach { it.dismiss() }
+}
+
+/**
+ * [DocumentReaderController.inputHandler] for the menu panel: Left on the first page is left
+ * unhandled so the panel can move focus to its rail.
+ */
+fun DocumentReaderController.menuPanelInputHandler(onDismiss: () -> Unit): InputHandler {
+    val base = inputHandler(onDismiss)
+    return object : InputHandler by base {
+        override fun onLeft(): InputResult =
+            if ((state.value?.pageIndex ?: 0) > 0) base.onLeft() else InputResult.UNHANDLED
+    }
 }
 
 @Composable

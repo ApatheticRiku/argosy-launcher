@@ -52,7 +52,6 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.theme.Dimens
-import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.touchOnly
 import kotlinx.coroutines.Dispatchers
@@ -123,8 +122,6 @@ fun CheatsScreen(
     val currentHasMultipleVariants by rememberUpdatedState(hasMultipleVariants)
     val currentVariants by rememberUpdatedState(variants)
     val currentSelectedVariant by rememberUpdatedState(selectedVariant)
-    val isDarkTheme = isSystemInDarkTheme()
-    val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
     val filteredCheats = if (searchQuery.isBlank()) cheats else {
         cheats.filter { it.description.contains(searchQuery, ignoreCase = true) }
@@ -453,14 +450,13 @@ fun CheatsScreen(
             }
             override fun onLeft(): InputResult {
                 dialogInputHandler.value?.let { return it.onLeft() }
-                if (isLoading) return InputResult.HANDLED
+                if (isLoading || showVariantModal) return InputResult.HANDLED
                 val showActions = !hasSnapshot || (canCompare && scanResults.isEmpty())
                 val inResultsView = currentTab == CheatsTab.DISCOVER &&
                     hasSnapshot && scanResults.isNotEmpty() && !showActions
-                if (inResultsView && contentFocusIndex == 0) {
-                    val current = valueSearchText.toIntOrNull() ?: 0
-                    valueSearchText = (current - 1).coerceAtLeast(0).toString()
-                }
+                if (!inResultsView || contentFocusIndex != 0) return InputResult.UNHANDLED
+                val current = valueSearchText.toIntOrNull() ?: 0
+                valueSearchText = (current - 1).coerceAtLeast(0).toString()
                 return InputResult.HANDLED
             }
             override fun onRight(): InputResult {
@@ -571,128 +567,109 @@ fun CheatsScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(overlayColor)
-            .padding(bottom = gripReserveBottomInset())
-            .focusProperties { canFocus = false },
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            modifier = Modifier
-                .widthIn(max = 500.dp)
-                .heightIn(max = 550.dp)
-                .padding(Dimens.spacingLg)
-                .focusProperties { canFocus = false },
-            shape = RoundedCornerShape(Dimens.radiusLg),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Column(modifier = Modifier.fillMaxSize().focusProperties { canFocus = false }) {
-                TabHeader(
-                    currentTab = currentTab,
-                    onTabSelect = ::setTab,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                HorizontalDivider()
-                Box(modifier = Modifier.weight(1f).fillMaxWidth().focusProperties { canFocus = false }) {
-                    TabContent(
-                        tab = currentTab,
-                        listItems = cheatListItems,
-                        filteredCheats = filteredCheats,
-                        allCheats = cheats,
-                        variants = variants,
-                        selectedVariant = selectedVariant,
-                        needsVariantSelection = needsVariantSelection,
-                        searchQuery = searchQuery,
-                        onSearchClick = { showSearchDialog = true },
-                        onSelectVariant = onSelectVariant,
-                        valueSearchText = valueSearchText,
-                        onValueSearchChange = { valueSearchText = it },
-                        hasSnapshot = hasSnapshot,
-                        canCompare = canCompare,
-                        candidateCount = candidateCount,
-                        scanResults = scanResults,
-                        knownAddresses = knownAddresses,
-                        contentFocusIndex = contentFocusIndex,
-                        onToggleCheat = onToggleCheat,
-                        onDiscoverAction = ::handleDiscoverAction,
-                        isLoading = isLoading,
-                        ramError = ramError,
-                        narrowError = narrowError,
-                        showingResults = showingResults,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    if (isLoading) {
-                        LoadingOverlay()
-                    }
-                }
-                FooterBar(
-                    hints = buildFooterHints(),
-                    onHintClick = { button ->
-                        if (isLoading) return@FooterBar
-                        when (button) {
-                            InputButton.B -> {
-                                if (currentTab == CheatsTab.DISCOVER && showingResults) {
-                                    showingResults = false
-                                    contentFocusIndex = if (scanResults.isNotEmpty()) 2 else 0
-                                } else {
-                                    onDismiss()
-                                }
-                            }
-                            InputButton.X -> {
-                                when (currentTab) {
-                                    CheatsTab.CHEATS -> {
-                                        if (contentFocusIndex == 0) {
-                                            if (searchQuery.isNotEmpty()) {
-                                                searchQuery = ""
-                                            }
-                                        } else {
-                                            displayCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
-                                                editingCheat = cheat
-                                            }
-                                        }
-                                    }
-                                    CheatsTab.DISCOVER -> {
-                                        scanner.reset()
-                                        refreshScannerState()
-                                        showingResults = false
-                                        valueSearchText = ""
-                                        ramError = null
-                                        contentFocusIndex = getDiscoverFocusableIndices().firstOrNull() ?: 0
-                                    }
-                                }
-                            }
-                            InputButton.A -> {
-                                when (currentTab) {
-                                    CheatsTab.CHEATS -> {
-                                        if (needsVariantSelection) {
-                                            variants.getOrNull(contentFocusIndex)?.let { v ->
-                                                onSelectVariant(v.region, v.version)
-                                            }
-                                        } else if (contentFocusIndex > 0) {
-                                            displayCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
-                                                onToggleCheat(cheat.id, !cheat.enabled)
-                                            }
-                                        }
-                                    }
-                                    CheatsTab.DISCOVER -> handleDiscoverAction(contentFocusIndex)
-                                }
-                            }
-                            InputButton.Y -> {
-                                if (currentTab == CheatsTab.CHEATS && hasMultipleVariants && !needsVariantSelection) {
-                                    variantFocusIndex = variants.indexOfFirst {
-                                        it.region == selectedVariant?.first && it.version == selectedVariant?.second
-                                    }.coerceAtLeast(0)
-                                    showVariantModal = true
-                                }
-                            }
-                            else -> {}
-                        }
-                    }
-                )
+    Column(modifier = Modifier.fillMaxSize().focusProperties { canFocus = false }) {
+        TabHeader(
+            currentTab = currentTab,
+            onTabSelect = ::setTab,
+            modifier = Modifier.fillMaxWidth()
+        )
+        HorizontalDivider()
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().focusProperties { canFocus = false }) {
+            TabContent(
+                tab = currentTab,
+                listItems = cheatListItems,
+                filteredCheats = filteredCheats,
+                allCheats = cheats,
+                variants = variants,
+                selectedVariant = selectedVariant,
+                needsVariantSelection = needsVariantSelection,
+                searchQuery = searchQuery,
+                onSearchClick = { showSearchDialog = true },
+                onSelectVariant = onSelectVariant,
+                valueSearchText = valueSearchText,
+                onValueSearchChange = { valueSearchText = it },
+                hasSnapshot = hasSnapshot,
+                canCompare = canCompare,
+                candidateCount = candidateCount,
+                scanResults = scanResults,
+                knownAddresses = knownAddresses,
+                contentFocusIndex = contentFocusIndex,
+                onToggleCheat = onToggleCheat,
+                onDiscoverAction = ::handleDiscoverAction,
+                isLoading = isLoading,
+                ramError = ramError,
+                narrowError = narrowError,
+                showingResults = showingResults,
+                modifier = Modifier.fillMaxSize()
+            )
+            if (isLoading) {
+                LoadingOverlay()
             }
         }
+        FooterBar(
+            hints = buildFooterHints(),
+            onHintClick = { button ->
+                if (isLoading) return@FooterBar
+                when (button) {
+                    InputButton.B -> {
+                        if (currentTab == CheatsTab.DISCOVER && showingResults) {
+                            showingResults = false
+                            contentFocusIndex = if (scanResults.isNotEmpty()) 2 else 0
+                        } else {
+                            onDismiss()
+                        }
+                    }
+                    InputButton.X -> {
+                        when (currentTab) {
+                            CheatsTab.CHEATS -> {
+                                if (contentFocusIndex == 0) {
+                                    if (searchQuery.isNotEmpty()) {
+                                        searchQuery = ""
+                                    }
+                                } else {
+                                    displayCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
+                                        editingCheat = cheat
+                                    }
+                                }
+                            }
+                            CheatsTab.DISCOVER -> {
+                                scanner.reset()
+                                refreshScannerState()
+                                showingResults = false
+                                valueSearchText = ""
+                                ramError = null
+                                contentFocusIndex = getDiscoverFocusableIndices().firstOrNull() ?: 0
+                            }
+                        }
+                    }
+                    InputButton.A -> {
+                        when (currentTab) {
+                            CheatsTab.CHEATS -> {
+                                if (needsVariantSelection) {
+                                    variants.getOrNull(contentFocusIndex)?.let { v ->
+                                        onSelectVariant(v.region, v.version)
+                                    }
+                                } else if (contentFocusIndex > 0) {
+                                    displayCheats.getOrNull(contentFocusIndex - 1)?.let { cheat ->
+                                        onToggleCheat(cheat.id, !cheat.enabled)
+                                    }
+                                }
+                            }
+                            CheatsTab.DISCOVER -> handleDiscoverAction(contentFocusIndex)
+                        }
+                    }
+                    InputButton.Y -> {
+                        if (currentTab == CheatsTab.CHEATS && hasMultipleVariants && !needsVariantSelection) {
+                            variantFocusIndex = variants.indexOfFirst {
+                                it.region == selectedVariant?.first && it.version == selectedVariant?.second
+                            }.coerceAtLeast(0)
+                            showVariantModal = true
+                        }
+                    }
+                    else -> {}
+                }
+            }
+        )
     }
 
     dialogInputHandler.value = when {
