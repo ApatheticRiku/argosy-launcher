@@ -456,7 +456,7 @@ private fun InGameMenuList(
         modifier = Modifier
             .fillMaxSize()
             .padding(vertical = Dimens.spacingLg),
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd, Alignment.CenterVertically)
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd, Alignment.Top)
     ) {
         AnimatedVisibility(
             visible = !collapsed,
