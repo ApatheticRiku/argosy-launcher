@@ -917,6 +917,7 @@ class RomMLibrarySyncService @Inject constructor(
         }
 
         val visibility = scope.visibility as? RomMVisibility.Known ?: return 0
+        unbindDeletedAndroidApps(serverRomIds, visibility, scope.ownerUserId)
         val missing = gameDao.getServerBackedIdsForOwner(ROMM_SOURCES, scope.ownerUserId)
             .filter { it.rommId !in serverRomIds && !visibility.hides(it.rommId, it.platformId) }
         if (missing.isEmpty()) return 0
@@ -955,6 +956,23 @@ class RomMLibrarySyncService @Inject constructor(
             )
         }
         return deleted
+    }
+
+    private suspend fun unbindDeletedAndroidApps(
+        serverRomIds: Collection<Long>,
+        visibility: RomMVisibility.Known,
+        ownerUserId: Long?
+    ) {
+        if (!visibility.isAdmin && visibility.hiddenPlatformIds.isNotEmpty()) return
+        val gone = gameDao.getServerBackedIdsForOwner(listOf(GameSource.ANDROID_APP), ownerUserId)
+            .filter { it.rommId !in serverRomIds && !visibility.hides(it.rommId, it.platformId) }
+        for (ref in gone) {
+            val game = gameDao.getById(ref.id) ?: continue
+            preserveOrphanedGame(game, ownerUserId)
+        }
+        if (gone.isNotEmpty()) {
+            Logger.info(TAG, "reconcileDeletedRoms: ${gone.size} installed Android apps unbound from RomM")
+        }
     }
 
     private fun storagePlatformId(platform: RomMPlatform): Long {
@@ -1117,9 +1135,12 @@ class RomMLibrarySyncService @Inject constructor(
 
         val backgroundUrls = apiClient.buildBackgroundUrls(rom)
         val cachedBackground = when {
-            !contentChanged && existing?.backgroundPath?.startsWith("/") == true &&
-                (backgroundUrls.isEmpty() || imageCacheManager.isCachedFromAny(existing.backgroundPath, backgroundUrls)) ->
+            !contentChanged && existing?.backgroundPath?.startsWith("/") == true -> {
+                if (backgroundUrls.isNotEmpty() && !imageCacheManager.isCachedFromAny(existing.backgroundPath, backgroundUrls)) {
+                    imageCacheManager.queueBackgroundRevalidation(existing.backgroundPath, backgroundUrls, rom.id, rom.name)
+                }
                 existing.backgroundPath
+            }
             backgroundUrls.isNotEmpty() -> {
                 imageCacheManager.queueBackgroundCache(backgroundUrls, rom.id, rom.name)
                 backgroundUrls.first()
@@ -1129,9 +1150,12 @@ class RomMLibrarySyncService @Inject constructor(
 
         val coverUrls = apiClient.buildCoverUrls(rom)
         val cachedCover = when {
-            !contentChanged && existing?.coverPath?.startsWith("/") == true &&
-                (coverUrls.isEmpty() || imageCacheManager.isCachedFromAny(existing.coverPath, coverUrls)) ->
+            !contentChanged && existing?.coverPath?.startsWith("/") == true -> {
+                if (coverUrls.isNotEmpty() && !imageCacheManager.isCachedFromAny(existing.coverPath, coverUrls)) {
+                    imageCacheManager.queueCoverRevalidation(existing.coverPath, coverUrls, rom.id, rom.name)
+                }
                 existing.coverPath
+            }
             coverUrls.isNotEmpty() -> {
                 imageCacheManager.queueCoverCache(coverUrls, rom.id, rom.name)
                 coverUrls.first()
