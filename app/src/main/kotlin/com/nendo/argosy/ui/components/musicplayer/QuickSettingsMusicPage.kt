@@ -1,7 +1,15 @@
 package com.nendo.argosy.ui.components.musicplayer
 
-import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.theme.Motion
 import androidx.compose.foundation.layout.Arrangement
@@ -113,12 +121,15 @@ private fun MusicPlayerMain(state: MusicPlayerUiState, viewModel: MusicPlayerVie
         if (state.hasQueue) {
             val coverPath = state.playback.coverPath.takeIf { state.playback.overrideTitle == null }
             val expanded = state.focusedRow == MusicPlayerRow.TRANSPORT && coverPath != null
-            if (expanded) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(tween(Motion.durationContent)) + fadeIn(tween(Motion.durationContent)),
+                exit = shrinkVertically(tween(Motion.durationContent)) + fadeOut(tween(Motion.durationContent)),
+                modifier = Modifier.weight(EXPANDED_COVER_WEIGHT, fill = false)
+            ) {
                 ExpandedCover(
                     coverPath = coverPath,
-                    modifier = Modifier
-                        .weight(EXPANDED_COVER_WEIGHT, fill = false)
-                        .padding(start = Dimens.spacingLg, end = Dimens.spacingLg, top = Dimens.spacingSm)
+                    modifier = Modifier.padding(start = Dimens.spacingLg, end = Dimens.spacingLg, top = Dimens.spacingSm)
                 )
             }
             NowPlayingHeader(state = state, launcherLabel = launcherLabel, expanded = expanded)
@@ -213,7 +224,8 @@ private fun TrackList(
     val tracksFocused = state.focusedRow == MusicPlayerRow.TRACKS
     val anchor = if (tracksFocused) state.trackFocus else state.playback.index
     LaunchedEffect(anchor, tracks.size) {
-        if (anchor in tracks.indices) listState.animateScrollToItemCentered(anchor)
+        snapshotFlow { listState.layoutInfo.viewportSize.height }
+            .collectLatest { if (anchor in tracks.indices) listState.animateScrollToItemCentered(anchor) }
     }
     if (tracks.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth()) {
@@ -327,34 +339,43 @@ private fun NowPlayingHeader(state: MusicPlayerUiState, launcherLabel: String, e
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .animateContentSize(animationSpec = tween(Motion.durationContent))
             .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
     ) {
-        if (expanded) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                NowPlayingText(
-                    title = title,
-                    gameTitle = gameTitle,
-                    sourceLabel = sourceLabel,
-                    position = position,
-                    alignment = Alignment.CenterHorizontally
-                )
-            }
-        } else {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                MusicCover(coverPath = coverPath, size = ComponentDefaults.MusicPlayer.coverSizeDp.dp)
-                Spacer(modifier = Modifier.width(Dimens.spacingMd))
-                NowPlayingText(
-                    title = title,
-                    gameTitle = gameTitle,
-                    sourceLabel = sourceLabel,
-                    position = position,
-                    alignment = Alignment.Start,
-                    modifier = Modifier.weight(1f)
-                )
+        AnimatedContent(
+            targetState = expanded,
+            transitionSpec = {
+                fadeIn(tween(Motion.durationContent)) togetherWith
+                    fadeOut(tween(Motion.durationContent)) using
+                    SizeTransform(clip = false) { _, _ -> tween(Motion.durationContent) }
+            },
+            label = "nowPlayingHeader"
+        ) { isExpanded ->
+            if (isExpanded) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    NowPlayingText(
+                        title = title,
+                        gameTitle = gameTitle,
+                        sourceLabel = sourceLabel,
+                        position = position,
+                        alignment = Alignment.CenterHorizontally
+                    )
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MusicCover(coverPath = coverPath, size = ComponentDefaults.MusicPlayer.coverSizeDp.dp)
+                    Spacer(modifier = Modifier.width(Dimens.spacingMd))
+                    NowPlayingText(
+                        title = title,
+                        gameTitle = gameTitle,
+                        sourceLabel = sourceLabel,
+                        position = position,
+                        alignment = Alignment.Start,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(Dimens.spacingSm))

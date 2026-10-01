@@ -82,7 +82,6 @@ data class MusicPlayerUiState(
     val transportButton: MusicTransportButton = MusicTransportButton.PLAY_PAUSE,
     val sourceButton: MusicBrowseKind = MusicBrowseKind.PLAYLISTS,
     val trackFocus: Int = 0,
-    val trackAnchor: Int? = null,
     val browse: MusicBrowseUi? = null
 ) {
     val isAudible: Boolean get() = playback.isPlaying && !playback.userPaused

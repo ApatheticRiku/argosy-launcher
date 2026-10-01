@@ -58,8 +58,7 @@ class MusicPlayerViewModel @Inject constructor(
                     val sourceChanged = playback.sourceId != state.playback.sourceId
                     val next = state.copy(
                         playback = playback,
-                        trackFocus = if (sourceChanged) playback.index else state.trackFocus.coerceIn(0, lastTrack),
-                        trackAnchor = state.trackAnchor.takeUnless { sourceChanged }
+                        trackFocus = if (sourceChanged) playback.index else state.trackFocus.coerceIn(0, lastTrack)
                     )
                     val rowGone = when (state.focusedRow) {
                         MusicPlayerRow.TRANSPORT -> !next.hasQueue
@@ -107,14 +106,14 @@ class MusicPlayerViewModel @Inject constructor(
                 delta < 0 -> if (state.hasQueue) state.copy(focusedRow = MusicPlayerRow.TRANSPORT) else state
                 trackCount > 0 -> state.copy(
                     focusedRow = MusicPlayerRow.TRACKS,
-                    trackFocus = (state.trackAnchor ?: state.playback.index).coerceIn(0, trackCount - 1)
+                    trackFocus = state.playback.index.coerceIn(0, trackCount - 1)
                 )
                 else -> state
             }
             MusicPlayerRow.TRACKS -> {
                 val target = state.trackFocus + delta
                 when {
-                    target < 0 -> state.copy(focusedRow = MusicPlayerRow.SOURCES, trackAnchor = state.trackFocus)
+                    target < 0 -> state.copy(focusedRow = MusicPlayerRow.SOURCES)
                     target >= trackCount -> state
                     else -> state.copy(trackFocus = target)
                 }
@@ -129,10 +128,7 @@ class MusicPlayerViewModel @Inject constructor(
         val state = _uiState.value
         if (state.focusedRow != MusicPlayerRow.TRACKS) return false
         _uiState.update {
-            it.copy(
-                focusedRow = if (it.hasQueue) MusicPlayerRow.TRANSPORT else MusicPlayerRow.SOURCES,
-                trackAnchor = it.trackFocus
-            )
+            it.copy(focusedRow = if (it.hasQueue) MusicPlayerRow.TRANSPORT else MusicPlayerRow.SOURCES)
         }
         return true
     }
@@ -154,7 +150,7 @@ class MusicPlayerViewModel @Inject constructor(
                 }
                 true
             }
-            MusicPlayerRow.TRACKS -> false
+            MusicPlayerRow.TRACKS -> leaveTrackList()
         }
     }
 
