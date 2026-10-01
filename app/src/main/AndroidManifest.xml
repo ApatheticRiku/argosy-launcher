@@ -87,7 +87,7 @@
             android:clearTaskOnLaunch="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|colorMode|keyboard|keyboardHidden|navigation|touchscreen|fontScale|fontWeightAdjustment"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Argosy">
 
@@ -184,7 +184,7 @@
         <activity
             android:name=".hardware.SecondaryHomeActivity"
             android:label="@string/secondary_home_label"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|colorMode|keyboard|keyboardHidden|navigation|touchscreen|fontScale|fontWeightAdjustment"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Argosy"
             android:taskAffinity=""
@@ -199,7 +199,7 @@
 
         <activity
             android:name=".hardware.AppScreenActivity"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|colorMode|keyboard|keyboardHidden|navigation|touchscreen|fontScale|fontWeightAdjustment"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Argosy"
             android:taskAffinity=".appscreen"
@@ -221,7 +221,7 @@
 
         <activity
             android:name=".ui.screens.player.PlayerActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|density|uiMode|colorMode|keyboard|keyboardHidden|navigation|touchscreen|fontScale|fontWeightAdjustment"
             android:launchMode="singleTop"
             android:theme="@style/Theme.Argosy"
             android:taskAffinity=""
