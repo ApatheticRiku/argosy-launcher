@@ -208,11 +208,7 @@ fun InGameStateManager(
             .focusProperties { canFocus = false }
     ) {
         val isSquarish = maxWidth < 500.dp || (maxWidth / maxHeight < 1.4f)
-        val effectiveMode = if (isSquarish && viewMode == StateManagerViewMode.SPLIT) {
-            StateManagerViewMode.CAROUSEL
-        } else {
-            viewMode
-        }
+        val effectiveMode = viewMode
         SideEffect { effectiveModeState.value = effectiveMode }
 
         Column(modifier = Modifier.fillMaxSize()) {
@@ -245,6 +241,7 @@ fun InGameStateManager(
                 when (effectiveMode) {
                     StateManagerViewMode.SPLIT -> SplitLayout(
                         slots = slots,
+                        showPreview = !isSquarish,
                         focusedIndex = focusedIndex,
                         onFocusChange = onFocusChange,
                         onSave = onSave,
@@ -352,6 +349,7 @@ fun InGameStateManager(
 @Composable
 private fun SplitLayout(
     slots: List<SaveStateManager.SlotInfo>,
+    showPreview: Boolean,
     focusedIndex: Int,
     onFocusChange: (Int) -> Unit,
     onSave: (Int) -> Unit,
@@ -359,8 +357,7 @@ private fun SplitLayout(
     loadAllowed: Boolean = true
 ) {
     Row(modifier = Modifier.fillMaxSize()) {
-        // Left panel: screenshot preview (40%)
-        Box(
+        if (showPreview) Box(
             modifier = Modifier
                 .weight(0.4f)
                 .fillMaxHeight()
@@ -424,7 +421,6 @@ private fun SplitLayout(
             }
         }
 
-        // Right panel: slot grid (60%)
         val gridState = rememberLazyGridState()
 
         LaunchedEffect(focusedIndex) {
