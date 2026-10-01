@@ -250,7 +250,6 @@ class AccountSwitchStateService @Inject constructor(
             markNeedsSync(applying, artifact, targetPath, toUserId)
             return@withContext PlacementResult.FAILED
         }
-        stateCacheManager.restoreStateScreenshot(cache.id, targetPath)
 
         persist(
             applying.copy(

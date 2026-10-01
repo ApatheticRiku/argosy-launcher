@@ -142,6 +142,10 @@ class RomMConnectionManager @Inject constructor(
 
     fun isConnected(): Boolean = _connectionState.value is ConnectionState.Connected
 
+    suspend fun isReachable(): Boolean = withContext(Dispatchers.IO) {
+        isConnected() && baseUrl.isNotEmpty() && apiFactory.reachability.isReachable(baseUrl)
+    }
+
     fun getDeviceId(): String? = cachedDeviceId
 
     fun getConnectedVersion(): String? {
@@ -439,6 +443,7 @@ class RomMConnectionManager @Inject constructor(
                 Logger.info(TAG, "connect: heartbeat failed at $normalizedUrl with ${response.code()}")
                 return RomMResult.Error("Server returned ${response.code()}")
             }
+            apiFactory.reachability.recordReachable(normalizedUrl)
             val newApi = createApi(normalizedUrl, token)
             if (token != null && !isTokenAccepted(newApi)) {
                 Logger.info(TAG, "connect: server live at $normalizedUrl but the token was rejected")

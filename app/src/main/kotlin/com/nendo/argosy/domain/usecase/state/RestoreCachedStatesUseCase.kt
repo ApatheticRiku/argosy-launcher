@@ -173,12 +173,7 @@ class RestoreCachedStatesUseCase @Inject constructor(
 
                 val targetFile = File(targetDir, cacheFile.name)
                 cacheFile.copyTo(targetFile, overwrite = true)
-
-                val screenshotCacheFile = stateCacheManager.getScreenshotFile(state)
-                if (screenshotCacheFile != null) {
-                    val screenshotTarget = File(targetDir, screenshotCacheFile.name)
-                    screenshotCacheFile.copyTo(screenshotTarget, overwrite = true)
-                }
+                stateCacheManager.restoreScreenshot(state, targetFile)
 
                 stateOwnershipTracker.record(
                     statePath = targetFile.absolutePath,

@@ -22,9 +22,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 private const val TAG = "LaunchWithSync"
+private const val PRE_LAUNCH_SYNC_BUDGET_MS = 8_000L
 
 class LaunchWithSyncUseCase @Inject constructor(
     private val gameDao: GameDao,
@@ -52,7 +54,7 @@ class LaunchWithSyncUseCase @Inject constructor(
             return@flow
         }
 
-        if (!romMRepository.isConnected()) {
+        if (!romMRepository.isReachable()) {
             emit(SyncState.Skipped)
             return@flow
         }
@@ -124,7 +126,10 @@ class LaunchWithSyncUseCase @Inject constructor(
     private suspend fun syncStatesQuietly(gameId: Long, emulatorPackage: String, channelName: String?) {
         runCatching { syncStatesOnSessionEndUseCase.adoptOffSessionStates(gameId, emulatorPackage, queueUploads = false) }
             .onFailure { Logger.error(TAG, "Off-session state adoption failed for gameId=$gameId", it) }
-        runCatching { preLaunchStateSyncUseCase(gameId, emulatorPackage, channelName) }
+        runCatching {
+            val activeChannel = channelName ?: activeSaveRepository.getActiveChannel(gameId)
+            preLaunchStateSyncUseCase(gameId, emulatorPackage, activeChannel)
+        }
             .onFailure { Logger.error(TAG, "Pre-launch state sync failed for gameId=$gameId", it) }
     }
 
@@ -182,9 +187,9 @@ class LaunchWithSyncUseCase @Inject constructor(
         }
 
         if (!SavePathRegistry.canSyncWithSettings(emulatorId, prefs.saveSyncEnabled)) {
-            if (romMRepository.isConnected()) {
+            if (romMRepository.isReachable()) {
                 refreshMainSiblingInBackground(gameId)
-                syncStatesQuietly(gameId, emulatorPackage, channelName)
+                withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) { syncStatesQuietly(gameId, emulatorPackage, channelName) }
             }
             emit(SyncProgress.Skipped)
             return@flow
@@ -193,7 +198,7 @@ class LaunchWithSyncUseCase @Inject constructor(
         emit(SyncProgress.PreLaunch.CheckingSave(channelName, found = true))
         emit(SyncProgress.PreLaunch.Connecting(channelName))
 
-        if (!romMRepository.isConnected()) {
+        if (!romMRepository.isReachable()) {
             emit(SyncProgress.PreLaunch.Connecting(channelName, success = false))
             emit(SyncProgress.Skipped)
             return@flow
@@ -209,11 +214,16 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         saveSyncRepository.crossEmulatorMigrateIfNeeded(gameId, emulatorId)
 
-        val syncResult = coroutineScope {
-            val stateSync = async { syncStatesQuietly(gameId, emulatorPackage, channelName) }
-            val saveSync = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName, secureSaves = prefs.secureSaves)
-            stateSync.await()
-            saveSync
+        val syncResult = withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) {
+            coroutineScope {
+                val stateSync = async { syncStatesQuietly(gameId, emulatorPackage, channelName) }
+                val saveSync = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName, secureSaves = prefs.secureSaves)
+                stateSync.await()
+                saveSync
+            }
+        } ?: run {
+            Logger.warn(TAG, "Pre-launch sync for gameId=$gameId exceeded ${PRE_LAUNCH_SYNC_BUDGET_MS}ms, launching with local data")
+            PreLaunchSyncResult.NoConnection
         }
 
         when (syncResult) {

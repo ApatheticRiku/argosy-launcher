@@ -319,6 +319,7 @@ class StateCacheManager @Inject constructor(
             val targetFile = File(targetPath)
             targetFile.parentFile?.mkdirs()
             cacheFile.copyTo(targetFile, overwrite = true)
+            restoreScreenshot(entity, targetFile)
 
             Log.d(TAG, "Restored state from cache $cacheId to $targetPath")
             stateOwnershipTracker.record(
@@ -337,26 +338,6 @@ class StateCacheManager @Inject constructor(
             false
         }
     }
-
-    /**
-     * Writes the cached screenshot beside a state just restored to [targetPath].
-     *
-     * The live convention is a `.png` sidecar named after the state file, which is what
-     * [cacheState] reads and what the emulator's own slot UI expects. Restoring the state without
-     * it leaves the incoming account looking at the outgoing account's thumbnail.
-     */
-    suspend fun restoreStateScreenshot(cacheId: Long, targetPath: String): Boolean =
-        withContext(Dispatchers.IO) {
-            val entity = stateCacheDao.getById(cacheId) ?: return@withContext false
-            val screenshot = getScreenshotFile(entity) ?: return@withContext false
-            try {
-                screenshot.copyTo(File("$targetPath.png"), overwrite = true)
-                true
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to restore screenshot for cache $cacheId", e)
-                false
-            }
-        }
 
     /**
      * Hash of the bytes currently at a live state path, or null when nothing is there.
@@ -824,6 +805,20 @@ class StateCacheManager @Inject constructor(
         val relativePath = entity.screenshotPath ?: return null
         val file = File(cacheBaseDir, relativePath)
         return if (file.exists()) file else null
+    }
+
+    /**
+     * Puts the cached screenshot beside a restored live state as `<state>.png`, the name the
+     * in-game slot list reads, or removes a stale one so it cannot caption different content.
+     */
+    fun restoreScreenshot(entity: StateCacheEntity, liveStateFile: File) {
+        val target = File("${liveStateFile.absolutePath}.png")
+        val cached = getScreenshotFile(entity)
+        if (cached != null) {
+            cached.copyTo(target, overwrite = true)
+        } else {
+            target.delete()
+        }
     }
 
     suspend fun deleteStatesForChannel(gameId: Long, channelName: String?) = withContext(Dispatchers.IO) {

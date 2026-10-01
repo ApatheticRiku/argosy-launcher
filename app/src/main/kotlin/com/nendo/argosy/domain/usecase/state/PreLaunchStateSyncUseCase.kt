@@ -8,6 +8,7 @@ import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.StateCacheEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
+import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.data.remote.romm.RomMState
@@ -31,14 +32,11 @@ internal data class ReconciledState(
  * A dropped row keeps its cached file and is queued to be re-created, so the slot is never
  * resolved by discarding what the player has locally.
  */
-/**
- * Whether a downloaded state belongs in the live directory for this launch. The live directory
- * holds one channel at a time and its file names carry no channel, so loading another channel's
- * slot there overwrites the active one. Null and empty both mean the default channel, and the
- * comparison ignores case because the server round-trips the name through a file name.
- */
+internal fun stateChannelKey(channel: String?): String =
+    SaveSyncApiClient.namedChannelOrNull(channel)?.lowercase().orEmpty()
+
 internal fun belongsToChannel(stateChannel: String?, activeChannel: String?): Boolean =
-    stateChannel.orEmpty().equals(activeChannel.orEmpty(), ignoreCase = true)
+    stateChannelKey(stateChannel) == stateChannelKey(activeChannel)
 
 internal fun reconcileDeadServerLinks(
     localStates: List<StateCacheEntity>,
@@ -148,15 +146,16 @@ class PreLaunchStateSyncUseCase @Inject constructor(
 
         val repaired = reconciled.map { it.state }
         val localByRommId = repaired.filter { it.rommSaveId != null }.associateBy { it.rommSaveId }
-        val localBySlot = repaired.associateBy { it.slotNumber to it.channelName }
+        val localBySlot = repaired.associateBy { it.slotNumber to stateChannelKey(it.channelName) }
 
         var downloadedCount = 0
 
         for (serverState in newestPerSlot(serverStates)) {
             val parsed = stateCacheManager.parseStateFileName(serverState.fileName)
+            if (!belongsToChannel(parsed.channelName, channelName)) continue
             val slotNumber = parsed.slotNumber
             val linked = localByRommId[serverState.id]
-            val localState = linked ?: localBySlot[slotNumber to parsed.channelName]
+            val localState = linked ?: localBySlot[slotNumber to stateChannelKey(parsed.channelName)]
             val serverUpdatedAt = stateCacheManager.parseTimestamp(serverState.updatedAt)
 
             val shouldDownload = when {
@@ -207,15 +206,6 @@ class PreLaunchStateSyncUseCase @Inject constructor(
                     is StateCacheManager.StateCloudResult.Success -> {
                         downloadedCount++
                         Log.d(TAG, "Downloaded state ${serverState.fileName} for ${game.title}")
-                        if (!belongsToChannel(parsed.channelName, channelName)) {
-                            Log.d(
-                                TAG,
-                                "Cached ${serverState.fileName} for channel " +
-                                    "${parsed.channelName ?: "default"} without loading it; " +
-                                    "${channelName ?: "default"} is active"
-                            )
-                            continue
-                        }
                         materializeToLiveDir(
                             serverState.id,
                             game.localPath,
@@ -257,7 +247,7 @@ class PreLaunchStateSyncUseCase @Inject constructor(
         serverStates
             .groupBy {
                 val parsed = stateCacheManager.parseStateFileName(it.fileName)
-                parsed.slotNumber to parsed.channelName
+                parsed.slotNumber to stateChannelKey(parsed.channelName)
             }
             .map { (_, candidates) ->
                 candidates.maxByOrNull { writtenAt(it) ?: Instant.MIN } ?: candidates.first()

@@ -18,7 +18,8 @@ private const val READ_WRITE_TIMEOUT_SECONDS = 60L
 
 @Singleton
 class RomMApiFactory @Inject constructor(
-    private val userCertStore: com.nendo.argosy.data.remote.ssl.UserCertStore
+    private val userCertStore: com.nendo.argosy.data.remote.ssl.UserCertStore,
+    val reachability: RomMReachability
 ) {
 
     fun create(
@@ -56,6 +57,7 @@ class RomMApiFactory @Inject constructor(
         }
 
         val client = OkHttpClient.Builder()
+            .apply { if (probeTimeoutSeconds == null) addInterceptor(reachability.interceptor) }
             .addInterceptor(authInterceptor)
             .addInterceptor(downloadTimeoutInterceptor)
             .addInterceptor(loggingInterceptor)

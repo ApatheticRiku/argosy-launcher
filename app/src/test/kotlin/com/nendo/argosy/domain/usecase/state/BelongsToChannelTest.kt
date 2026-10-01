@@ -18,6 +18,13 @@ class BelongsToChannelTest {
     }
 
     @Test
+    fun `the literal autosave channel is the default channel`() {
+        assertTrue(belongsToChannel(stateChannel = null, activeChannel = "autosave"))
+        assertTrue(belongsToChannel(stateChannel = "Autosave", activeChannel = null))
+        assertFalse(belongsToChannel(stateChannel = "autosave", activeChannel = "Speedrun"))
+    }
+
+    @Test
     fun `a named channel accepts its own states`() {
         assertTrue(belongsToChannel(stateChannel = "Speedrun", activeChannel = "Speedrun"))
     }

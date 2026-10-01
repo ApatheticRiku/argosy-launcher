@@ -85,6 +85,7 @@ class LaunchWithSyncUseCaseTest {
         } returns emulatorPackage
         every { emulatorResolver.resolveEmulatorId(emulatorPackage) } returns emulatorId
         coEvery { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.isReachable() } returns true
     }
 
     @After
@@ -206,8 +207,9 @@ class LaunchWithSyncUseCaseTest {
     }
 
     @Test
-    fun `no main-sibling refresh runs when RomM is not connected`() = runTest {
-        coEvery { romMRepository.isConnected() } returns false
+    fun `no main-sibling refresh runs when RomM is not reachable`() = runTest {
+        coEvery { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.isReachable() } returns false
 
         useCase.invokeWithProgress(gameId).toList()
 

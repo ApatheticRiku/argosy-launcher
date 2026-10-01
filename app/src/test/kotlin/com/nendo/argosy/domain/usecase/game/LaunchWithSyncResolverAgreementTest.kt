@@ -64,6 +64,7 @@ class LaunchWithSyncResolverAgreementTest {
         every { preferencesRepository.userPreferences } returns MutableStateFlow(UserPreferences(saveSyncEnabled = true))
         coEvery { gameDao.getById(GAME_ID) } returns game
         coEvery { romMRepository.isConnected() } returns true
+        coEvery { romMRepository.isReachable() } returns true
         coEvery { emulatorConfigDao.getByGameId(GAME_ID) } returns EmulatorConfigEntity(
             platformId = PLATFORM_ID,
             gameId = GAME_ID,

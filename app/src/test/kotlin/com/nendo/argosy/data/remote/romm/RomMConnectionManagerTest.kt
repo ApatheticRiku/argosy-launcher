@@ -34,6 +34,7 @@ class RomMConnectionManagerTest {
         every { preferences.preferences } returns flowOf(stored)
         val apiFactory: RomMApiFactory = mockk()
         every { apiFactory.create(any(), any(), any()) } returns api
+        every { apiFactory.reachability } returns mockk(relaxed = true)
         coEvery { api.heartbeat() } coAnswers {
             heartbeats.incrementAndGet()
             delay(HEARTBEAT_DELAY_MS)
