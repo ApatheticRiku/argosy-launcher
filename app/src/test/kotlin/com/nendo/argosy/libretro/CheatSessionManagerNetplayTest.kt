@@ -48,7 +48,7 @@ class CheatSessionManagerNetplayTest {
         val repository = mockk<CheatsRepository>(relaxed = true)
         coEvery { repository.getCheatsForGame(any()) } returns initialCheats andThen initialCheats.map { it.copy(enabled = false) }
         coEvery { repository.getVariantsForGame(any()) } returns emptyList()
-        coEvery { repository.getSelectedVariant(any()) } returns null
+        coEvery { repository.resolveSelectedVariant(any()) } returns null
         coEvery { repository.isConfigured() } returns false
         coEvery { gameDao.getById(any()) } returns null
         val manager = CheatSessionManager(

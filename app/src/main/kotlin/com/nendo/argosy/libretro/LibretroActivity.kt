@@ -2007,6 +2007,12 @@ class LibretroActivity : ComponentActivity() {
         val current = stored?.let { def.resolveStored(it) } ?: def.defaultValue
         val currentIndex = rotation.indexOf(current).coerceAtLeast(0)
         val newValue = rotation[(currentIndex + direction).mod(rotation.size)]
+        val inherited = (if (perGame) coreOptionOverrides[optionKey] else null)
+            ?.let { def.resolveStored(it) } ?: def.defaultValue
+        if (newValue == inherited) {
+            resetCoreOption(optionKey)
+            return
+        }
         if (perGame) {
             gameCoreOptionOverrides = gameCoreOptionOverrides + (optionKey to newValue)
         } else {

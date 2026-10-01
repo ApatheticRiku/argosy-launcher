@@ -152,11 +152,29 @@ class CheatsRepository @Inject constructor(
         gameDao.updateCheatsSelectedVariant(gameId, region, version)
     }
 
-    suspend fun getSelectedVariant(gameId: Long): Pair<String, String>? {
+    /**
+     * Returns the stored cheat variant, or the one variant the ROM file name identifies
+     * (region and revision tags), persisting it so later loads agree.
+     */
+    suspend fun resolveSelectedVariant(gameId: Long): Pair<String, String>? {
         val game = gameDao.getById(gameId) ?: return null
-        val region = game.cheatsSelectedRegion ?: return null
-        val version = game.cheatsSelectedVersion ?: return null
-        return region to version
+        val region = game.cheatsSelectedRegion
+        val version = game.cheatsSelectedVersion
+        if (region != null && version != null) return region to version
+
+        val fileName = game.rommFileName ?: game.localPath?.substringAfterLast("/") ?: return null
+        val parsed = RomFileNameParser.parse(fileName)
+        val parsedRegion = parsed.region ?: return null
+        val parsedVersion = parsed.version.orEmpty()
+        val match = cheatDao.getVariantsForGame(gameId)
+            .filter {
+                it.variantRegion.equals(parsedRegion, ignoreCase = true) &&
+                    it.variantVersion.equals(parsedVersion, ignoreCase = true)
+            }
+            .singleOrNull() ?: return null
+        gameDao.updateCheatsSelectedVariant(gameId, match.variantRegion, match.variantVersion)
+        Logger.debug(TAG, "Inferred cheat variant for game=$gameId from '$fileName': ${match.variantRegion} ${match.variantVersion}")
+        return match.variantRegion to match.variantVersion
     }
 
     private fun mapPlatformSlug(platform: String): String? {

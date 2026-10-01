@@ -38,6 +38,7 @@ import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.generated.DimensionTokens
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.horizontalEdgeFade
 import com.nendo.argosy.util.formatSaveTimestamp
 
 @Composable
@@ -59,6 +60,7 @@ internal fun QuickLoadHistoryStrip(
         state = listState,
         modifier = modifier
             .fillMaxWidth()
+            .horizontalEdgeFade(listState, fadeWidth = Dimens.spacingXl)
             .heightIn(min = DimensionTokens.Layout.inGameQuickHistoryThumbHeight.dp + Dimens.spacingXs * 2),
         contentPadding = PaddingValues(Dimens.spacingXs),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),

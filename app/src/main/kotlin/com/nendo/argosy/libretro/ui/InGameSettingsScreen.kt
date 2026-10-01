@@ -78,6 +78,7 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.data.preferences.GripReserveMode
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_DEFAULT_PERCENT
 import com.nendo.argosy.ui.util.touchOnly
+import com.nendo.argosy.ui.util.verticalEdgeFade
 
 
 enum class InGameSettingsTab(@StringRes val labelRes: Int) {
@@ -637,10 +638,16 @@ fun InGameSettingsScreen(
             )
             HorizontalDivider()
 
+            val currentListState = when (currentTab) {
+                InGameSettingsTab.VIDEO -> videoListState
+                InGameSettingsTab.CONTROLS -> controlsListState
+                InGameSettingsTab.CORE_OPTIONS -> coreOptionsListState
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
+                    .verticalEdgeFade(currentListState, fadeHeight = Dimens.spacingXl)
                     .focusProperties { canFocus = false }
             ) {
                 when (currentTab) {

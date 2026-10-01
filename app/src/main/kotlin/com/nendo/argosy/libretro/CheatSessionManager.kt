@@ -56,7 +56,7 @@ class CheatSessionManager(
             }
 
             variants = cheatsRepository.getVariantsForGame(gameId)
-            selectedVariant = cheatsRepository.getSelectedVariant(gameId)
+            selectedVariant = cheatsRepository.resolveSelectedVariant(gameId)
             cheats = cheatsRepository.getCheatsForGame(gameId)
             Log.d(TAG, "Loaded ${cheats.size} cheats for game $gameId, ${variants.size} variants, selected=$selectedVariant")
             if (cheats.any { it.enabled }) {

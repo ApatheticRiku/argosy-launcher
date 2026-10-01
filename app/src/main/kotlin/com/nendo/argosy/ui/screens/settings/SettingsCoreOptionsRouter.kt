@@ -94,11 +94,17 @@ internal fun routeCycleCoreOptionValue(vm: SettingsViewModel, optionKey: String,
     val currentIndex = values.indexOf(option.currentValue).coerceAtLeast(0)
     val newIndex = (currentIndex + direction).mod(values.size)
     val newValue = values[newIndex]
+    val defaultValue = CoreOptionManifestRegistry.getManifest(core.coreId)
+        ?.options?.firstOrNull { it.key == optionKey }?.defaultValue
 
     vm.viewModelScope.launch {
-        vm.coreOptionsRepo.upsert(
-            CoreOptionOverrideEntity(core.coreId, optionKey, newValue)
-        )
+        if (newValue == defaultValue) {
+            vm.coreOptionsRepo.delete(core.coreId, optionKey)
+        } else {
+            vm.coreOptionsRepo.upsert(
+                CoreOptionOverrideEntity(core.coreId, optionKey, newValue)
+            )
+        }
         val optionItems = loadOptionsForCore(vm, core.coreId)
         vm._uiState.update {
             it.copy(

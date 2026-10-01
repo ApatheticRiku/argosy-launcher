@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import com.nendo.argosy.ui.theme.generated.MotionTokens
 
 /** Fades list content at the edges, but only toward directions that can still scroll. */
@@ -78,6 +79,31 @@ fun Modifier.verticalEdgeFade(
     edgeFadeDraw(fadeHeight, { topAlpha }, { bottomAlpha })
 }
 
+fun Modifier.horizontalEdgeFade(
+    listState: LazyListState,
+    fadeWidth: Dp,
+): Modifier = composed {
+    val startAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollBackward) 1f else 0f,
+        animationSpec = tween(MotionTokens.Tween.microMs),
+        label = "fade-start",
+    )
+    val endAlpha by animateFloatAsState(
+        targetValue = if (listState.canScrollForward) 1f else 0f,
+        animationSpec = tween(MotionTokens.Tween.microMs),
+        label = "fade-end",
+    )
+    graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+        .drawWithContent {
+            drawContent()
+            val fadePx = fadeWidth.toPx().coerceAtMost(size.width / 2f)
+            val leftAlpha = if (layoutDirection == LayoutDirection.Ltr) startAlpha else endAlpha
+            val rightAlpha = if (layoutDirection == LayoutDirection.Ltr) endAlpha else startAlpha
+            drawHorizontalEdge(leftAlpha, fadePx, left = true)
+            drawHorizontalEdge(rightAlpha, fadePx, left = false)
+        }
+}
+
 private fun Modifier.edgeFadeDraw(
     fadeHeight: Dp,
     topAlpha: () -> Float,
@@ -89,6 +115,23 @@ private fun Modifier.edgeFadeDraw(
         drawEdge(topAlpha(), fadePx, top = true)
         drawEdge(bottomAlpha(), fadePx, top = false)
     }
+
+private fun ContentDrawScope.drawHorizontalEdge(alpha: Float, fadePx: Float, left: Boolean) {
+    if (alpha <= 0f) return
+    val solid = Color.Black
+    val faded = Color.Black.copy(alpha = 1f - alpha)
+    val startX = if (left) 0f else size.width - fadePx
+    drawRect(
+        brush = Brush.horizontalGradient(
+            colors = if (left) listOf(faded, solid) else listOf(solid, faded),
+            startX = startX,
+            endX = startX + fadePx,
+        ),
+        topLeft = Offset(startX, 0f),
+        size = Size(fadePx, size.height),
+        blendMode = BlendMode.DstIn,
+    )
+}
 
 private fun ContentDrawScope.drawEdge(alpha: Float, fadePx: Float, top: Boolean) {
     if (alpha <= 0f) return

@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +63,7 @@ import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.verticalEdgeFade
 import androidx.annotation.StringRes
+import kotlinx.coroutines.flow.collectLatest
 
 sealed class InGameMenuAction {
     data object SwapDisc : InGameMenuAction()
@@ -444,7 +446,10 @@ private fun InGameMenuList(
 
     LaunchedEffect(focusedIndex, menuItems.size, gridColumns) {
         if (menuItems.isEmpty()) return@LaunchedEffect
-        menuGridState.animateScrollToItemCentered(focusedIndex.coerceIn(0, menuItems.lastIndex))
+        snapshotFlow { menuGridState.layoutInfo.viewportSize.height }
+            .collectLatest {
+                menuGridState.animateScrollToItemCentered(focusedIndex.coerceIn(0, menuItems.lastIndex))
+            }
     }
 
     Column(
@@ -473,7 +478,7 @@ private fun InGameMenuList(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f, fill = false)
-                .verticalEdgeFade(menuGridState, fadeHeight = Dimens.spacingLg),
+                .verticalEdgeFade(menuGridState, fadeHeight = Dimens.spacingXl),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
