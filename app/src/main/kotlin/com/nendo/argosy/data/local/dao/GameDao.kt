@@ -23,6 +23,9 @@ const val SHOWCASE_COVER_LIMIT = 250
 internal const val INSTALLED_SQL =
     "(localPath IS NOT NULL OR (steamLauncher IS NOT NULL AND steamLauncher != '${GameEntity.LAUNCHER_UNSPECIFIED}'))"
 
+internal const val ENABLED_PLATFORM_SQL =
+    "EXISTS (SELECT 1 FROM platforms p WHERE p.id = games.platformId AND p.isVisible = 1 AND p.syncEnabled = 1)"
+
 private const val SOURCE_COVER_DERIVED_RESET =
     "gradientColors = CASE WHEN coverOverridePath IS NULL THEN NULL ELSE gradientColors END, " +
         "coverAspectRatio = CASE WHEN coverOverridePath IS NULL THEN NULL ELSE coverAspectRatio END"
@@ -412,6 +415,7 @@ interface GameDao {
         SELECT * FROM games
         WHERE lastPlayed IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND $ENABLED_PLATFORM_SQL
         ORDER BY lastPlayed DESC LIMIT :limit
     """)
     fun observeRecentlyPlayed(ownerUserId: Long?, limit: Int = 20): Flow<List<GameEntity>>
@@ -420,6 +424,7 @@ interface GameDao {
         SELECT * FROM games
         WHERE lastPlayed IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+        AND $ENABLED_PLATFORM_SQL
         ORDER BY lastPlayed DESC LIMIT :limit
     """)
     suspend fun getRecentlyPlayed(ownerUserId: Long?, limit: Int = 20): List<GameEntity>
@@ -434,6 +439,7 @@ interface GameDao {
         WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         AND lastPlayed IS NULL
         AND addedAt > :threshold
+        AND $ENABLED_PLATFORM_SQL
         AND (:installedOnly = 0
             OR localPath IS NOT NULL OR source = 'ANDROID_APP'
             OR (source = 'STEAM' AND steamLauncher IS NOT NULL AND steamLauncher != 'native'))
