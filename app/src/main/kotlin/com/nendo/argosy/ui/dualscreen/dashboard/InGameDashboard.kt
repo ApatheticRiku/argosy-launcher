@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,8 +63,8 @@ import com.nendo.argosy.hardware.CompanionSessionTimer
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.dualscreen.COVER_ASPECT
 import com.nendo.argosy.ui.screens.gamedetail.GameDocument
-import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderOverlay
-import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderState
+import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderController
+import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderPane
 import com.nendo.argosy.ui.theme.ALauncherColors
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -81,7 +82,8 @@ enum class DashboardSection(@StringRes val labelRes: Int, val icon: ImageVector)
 }
 
 /**
- * Everything the dashboard can ask of the running game and of the document reader it hosts.
+ * Everything the dashboard can ask of the running game, plus opening one of its documents in
+ * the dashboard's reader.
  */
 class DashboardActions(
     val onQuickSave: () -> Unit,
@@ -90,13 +92,7 @@ class DashboardActions(
     val onOpenCheats: () -> Unit,
     val onOpenSettings: () -> Unit,
     val onQuit: () -> Unit,
-    val onOpenDocument: (GameDocument) -> Unit,
-    val onReaderTurnPage: (Int) -> Unit,
-    val onReaderDismiss: () -> Unit,
-    val onReaderLinesPerPage: (Int) -> Unit,
-    val onReaderSpreads: (Boolean) -> Unit,
-    val onReaderToggleHighlight: (Int) -> Unit,
-    val onReaderCycleHighlightColor: (Int) -> Unit
+    val onOpenDocument: (GameDocument) -> Unit
 )
 
 private val RAIL_WIDTH = DimensionTokens.Layout.companionRailWidth.dp
@@ -120,12 +116,14 @@ fun InGameDashboard(
     controls: SessionControls,
     achievements: List<AchievementUi>,
     sessionTimer: CompanionSessionTimer?,
-    reader: DocumentReaderState?,
+    reader: DocumentReaderController,
     actions: DashboardActions,
     appBar: @Composable () -> Unit
 ) {
     if (!state.isLoaded) return
     val theme = LocalArgosyTheme.current
+    val readerState by reader.state.collectAsState()
+    val readerOpen = readerState != null
     var section by remember(state.gameId) { mutableStateOf(DashboardSection.SESSION) }
     var quitArmedUntil by remember(state.gameId) { mutableLongStateOf(0L) }
     var sessionMillis by remember { mutableLongStateOf(sessionTimer?.getActiveMillis() ?: 0L) }
@@ -137,8 +135,8 @@ fun InGameDashboard(
             delay(1000)
         }
     }
-    LaunchedEffect(reader == null) {
-        if (reader == null && (section == DashboardSection.MANUAL || section == DashboardSection.GUIDE)) {
+    LaunchedEffect(readerOpen) {
+        if (!readerOpen && (section == DashboardSection.MANUAL || section == DashboardSection.GUIDE)) {
             section = DashboardSection.SESSION
         }
     }
@@ -148,7 +146,7 @@ fun InGameDashboard(
         when (target) {
             DashboardSection.MANUAL -> state.manual?.let(actions.onOpenDocument)
             DashboardSection.GUIDE -> state.walkthrough?.let(actions.onOpenDocument)
-            else -> if (reader != null) actions.onReaderDismiss()
+            else -> if (readerOpen) reader.dismiss()
         }
         section = target
     }
@@ -213,8 +211,8 @@ fun InGameDashboard(
                         DashboardSection.TROPHIES -> TrophiesSection(content)
                         DashboardSection.MANUAL, DashboardSection.GUIDE -> Unit
                     }
-                    if (wide && reader != null) {
-                        Box(modifier = Modifier.padding(bottom = footerHeight)) { ReaderPane(reader, actions) }
+                    if (wide && readerOpen) {
+                        DashboardReader(reader, Modifier.fillMaxSize().padding(bottom = footerHeight))
                     }
                     Box(
                         modifier = Modifier
@@ -226,7 +224,7 @@ fun InGameDashboard(
                     }
                 }
         }
-        if (!wide && reader != null) ReaderPane(reader, actions)
+        if (!wide && readerOpen) DashboardReader(reader, Modifier.fillMaxSize())
     }
 }
 
@@ -250,16 +248,12 @@ class DashboardContent(
 }
 
 @Composable
-private fun ReaderPane(reader: DocumentReaderState, actions: DashboardActions) {
-    DocumentReaderOverlay(
-        state = reader,
-        onLinesPerPageMeasured = actions.onReaderLinesPerPage,
-        onDismiss = actions.onReaderDismiss,
-        onTurnPage = actions.onReaderTurnPage,
-        onSpreadsMeasured = actions.onReaderSpreads,
-        onToggleHighlight = actions.onReaderToggleHighlight,
-        onCycleHighlightColor = actions.onReaderCycleHighlightColor,
-        showsControllerHints = false
+private fun DashboardReader(reader: DocumentReaderController, modifier: Modifier) {
+    DocumentReaderPane(
+        reader = reader,
+        showsControllerHints = false,
+        onDismiss = reader::dismiss,
+        modifier = modifier
     )
 }
 

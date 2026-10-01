@@ -1,10 +1,5 @@
 package com.nendo.argosy.libretro.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.Box
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.DocumentHighlightStore
@@ -12,7 +7,6 @@ import com.nendo.argosy.data.repository.GameDocumentLoader
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.ui.screens.gamedetail.GameDocument
 import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderController
-import com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderOverlay
 import com.nendo.argosy.ui.screens.gamedetail.components.gameDocuments
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
@@ -83,28 +77,5 @@ fun DocumentReaderController.menuPanelInputHandler(onDismiss: () -> Unit): Input
     return object : InputHandler by base {
         override fun onLeft(): InputResult =
             if ((state.value?.pageIndex ?: 0) > 0) base.onLeft() else InputResult.UNHANDLED
-    }
-}
-
-@Composable
-fun InGameDocumentReader(
-    reader: DocumentReaderController,
-    showsControllerHints: Boolean,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val state by reader.state.collectAsState()
-    val current = state ?: return
-    Box(modifier = modifier) {
-        DocumentReaderOverlay(
-            state = current,
-            onLinesPerPageMeasured = reader::setLinesPerPage,
-            onDismiss = onDismiss,
-            onTurnPage = reader::turnPage,
-            onSpreadsMeasured = reader::setShowsSpreads,
-            onToggleHighlight = reader::toggleHighlightAt,
-            onCycleHighlightColor = reader::cycleHighlightColor,
-            showsControllerHints = showsControllerHints
-        )
     }
 }

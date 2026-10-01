@@ -1482,7 +1482,7 @@ class LibretroActivity : ComponentActivity() {
                     !walkthroughInMenu
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        com.nendo.argosy.libretro.ui.InGameDocumentReader(
+                        com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderPane(
                             reader = inGameDocuments.reader(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH),
                             showsControllerHints = false,
                             onDismiss = ::closeWalkthroughPanel,
@@ -1542,7 +1542,7 @@ class LibretroActivity : ComponentActivity() {
                     activeMenuHandler = androidx.compose.runtime.remember(kind) {
                         reader.inputHandler(onDismiss = ::closeReader)
                     }
-                    com.nendo.argosy.libretro.ui.InGameDocumentReader(
+                    com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderPane(
                         reader = reader,
                         showsControllerHints = isGamepadConnectedState,
                         onDismiss = ::closeReader,
@@ -2166,7 +2166,7 @@ class LibretroActivity : ComponentActivity() {
     @androidx.compose.runtime.Composable
     private fun buildWalkthroughSection(): InputHandler {
         val reader = inGameDocuments.reader(com.nendo.argosy.libretro.ui.InGameDocumentKind.WALKTHROUGH)
-        com.nendo.argosy.libretro.ui.InGameDocumentReader(
+        com.nendo.argosy.ui.screens.gamedetail.components.DocumentReaderPane(
             reader = reader,
             showsControllerHints = isGamepadConnectedState,
             onDismiss = ::closeMenuSection,

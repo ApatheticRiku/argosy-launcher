@@ -105,14 +105,13 @@ fun PresentationSlotContent(
                 val manager = com.nendo.argosy.DualScreenManagerHolder.instance ?: return@Box
                 val bar = rememberInGameAppBarState()
                 val controls by manager.sessionControls.collectAsState()
-                val reader by manager.dashboardReader.state.collectAsState()
                 val actions = remember(manager) { dashboardActions(manager) }
                 com.nendo.argosy.ui.dualscreen.dashboard.InGameDashboard(
                     state = slot.state,
                     controls = controls,
                     achievements = slot.achievements,
                     sessionTimer = manager.swappedSessionTimer,
-                    reader = reader,
+                    reader = manager.dashboardReader,
                     actions = actions,
                     appBar = { if (bar != null) InGameAppBar(bar) }
                 )
@@ -156,13 +155,7 @@ private fun dashboardActions(manager: com.nendo.argosy.DualScreenManager) =
         onOpenCheats = { manager.sessionQuickActions?.openCheats() },
         onOpenSettings = { manager.sessionQuickActions?.openGameSettings() },
         onQuit = { manager.sessionQuickActions?.quit() },
-        onOpenDocument = { manager.openDashboardDocument(it) },
-        onReaderTurnPage = { manager.dashboardReader.turnPage(it) },
-        onReaderDismiss = { manager.dashboardReader.dismiss() },
-        onReaderLinesPerPage = { manager.dashboardReader.setLinesPerPage(it) },
-        onReaderSpreads = { manager.dashboardReader.setShowsSpreads(it) },
-        onReaderToggleHighlight = { manager.dashboardReader.toggleHighlightAt(it) },
-        onReaderCycleHighlightColor = { manager.dashboardReader.cycleHighlightColor(it) }
+        onOpenDocument = { manager.openDashboardDocument(it) }
     )
 
 private data class InGameAppBarState(
