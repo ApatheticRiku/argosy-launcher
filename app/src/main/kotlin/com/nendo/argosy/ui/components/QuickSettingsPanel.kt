@@ -445,7 +445,7 @@ fun QuickSettingsPanel(
                         }
                     }
 
-                    FooterHints(hints = footerHints, onHintClick = onHintClick)
+                    FooterHints(hints = footerHints, onHintClick = onHintClick, forced = true)
                     FooterSpacer()
                 }
                 VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
