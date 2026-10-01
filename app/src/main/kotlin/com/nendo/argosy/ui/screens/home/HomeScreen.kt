@@ -658,7 +658,7 @@ fun HomeScreen(
         val edgeThresholdPx = with(LocalDensity.current) { 80.dp.toPx() }
 
         val swipeGestureModifier = Modifier
-            .pointerInput(Unit) {
+            .pointerInput(swipeThreshold) {
                 var totalDragY = 0f
                 detectVerticalDragGestures(
                     onDragStart = { totalDragY = 0f },
@@ -671,7 +671,7 @@ fun HomeScreen(
                     onVerticalDrag = { _, dragAmount -> totalDragY += dragAmount }
                 )
             }
-            .pointerInput(Unit) {
+            .pointerInput(swipeThreshold, edgeThresholdPx) {
                 var totalDragX = 0f
                 var startX = 0f
                 detectHorizontalDragGestures(

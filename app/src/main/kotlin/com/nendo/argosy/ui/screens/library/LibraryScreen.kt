@@ -321,7 +321,7 @@ fun LibraryScreen(
     val currentOnDrawerToggle by rememberUpdatedState(onDrawerToggle)
     val currentIsPlatformGrid by rememberUpdatedState(uiState.isPlatformGrid)
 
-    val swipeGestureModifier = Modifier.pointerInput(Unit) {
+    val swipeGestureModifier = Modifier.pointerInput(swipeThreshold, edgeThreshold) {
         var totalDragX = 0f
         var totalDragY = 0f
         var startX = 0f
