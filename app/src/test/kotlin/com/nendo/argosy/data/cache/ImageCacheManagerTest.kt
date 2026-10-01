@@ -119,6 +119,19 @@ class ImageCacheManagerTest {
     )
 
     @Test
+    fun `cached art matches its source url and stops matching once the server url changes`() {
+        val oldUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-01"
+        val newUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-30"
+        val hash = java.security.MessageDigest.getInstance("MD5").digest(oldUrl.toByteArray())
+            .joinToString("") { "%02x".format(it) }.take(12)
+        val cached = "/data/user/0/app/files/covers/snes/cover_42_$hash.jpg"
+
+        assertTrue(imageCacheManager.isCachedFromAny(cached, listOf(oldUrl)))
+        assertFalse(imageCacheManager.isCachedFromAny(cached, listOf(newUrl)))
+        assertTrue(imageCacheManager.isCachedFromAny(cached, listOf(newUrl, oldUrl)))
+    }
+
+    @Test
     fun `getCustomCachePath returns null by default`() {
         assertNull(imageCacheManager.getCustomCachePath())
     }

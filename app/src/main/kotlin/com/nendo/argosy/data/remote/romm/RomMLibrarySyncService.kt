@@ -1117,7 +1117,9 @@ class RomMLibrarySyncService @Inject constructor(
 
         val backgroundUrls = apiClient.buildBackgroundUrls(rom)
         val cachedBackground = when {
-            !contentChanged && existing?.backgroundPath?.startsWith("/") == true -> existing.backgroundPath
+            !contentChanged && existing?.backgroundPath?.startsWith("/") == true &&
+                (backgroundUrls.isEmpty() || imageCacheManager.isCachedFromAny(existing.backgroundPath, backgroundUrls)) ->
+                existing.backgroundPath
             backgroundUrls.isNotEmpty() -> {
                 imageCacheManager.queueBackgroundCache(backgroundUrls, rom.id, rom.name)
                 backgroundUrls.first()
@@ -1127,7 +1129,9 @@ class RomMLibrarySyncService @Inject constructor(
 
         val coverUrls = apiClient.buildCoverUrls(rom)
         val cachedCover = when {
-            !contentChanged && existing?.coverPath?.startsWith("/") == true -> existing.coverPath
+            !contentChanged && existing?.coverPath?.startsWith("/") == true &&
+                (coverUrls.isEmpty() || imageCacheManager.isCachedFromAny(existing.coverPath, coverUrls)) ->
+                existing.coverPath
             coverUrls.isNotEmpty() -> {
                 imageCacheManager.queueCoverCache(coverUrls, rom.id, rom.name)
                 coverUrls.first()

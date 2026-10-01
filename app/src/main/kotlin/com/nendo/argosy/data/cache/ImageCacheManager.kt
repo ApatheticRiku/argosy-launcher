@@ -504,6 +504,16 @@ class ImageCacheManager @Inject constructor(
         return sampleSize
     }
 
+    /**
+     * Whether the cached file at [localPath] was downloaded from one of [urls]. Cached art is named
+     * after a hash of its source url, so a server-side change to the art, which changes the url,
+     * reads as not cached.
+     */
+    fun isCachedFromAny(localPath: String, urls: List<String>): Boolean {
+        val name = File(localPath).nameWithoutExtension
+        return urls.any { name.endsWith("_${it.md5Hash()}") }
+    }
+
     private fun String.md5Hash(): String {
         val md = MessageDigest.getInstance("MD5")
         val digest = md.digest(toByteArray())
