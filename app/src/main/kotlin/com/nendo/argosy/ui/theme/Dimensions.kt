@@ -77,6 +77,7 @@ object Dimens {
     val footerHeight: Dp @Composable get() = footerHeightBase.dp * scale
     val modalWidth: Dp @Composable get() = DimensionTokens.Layout.modalWidth.dp * scale
     val modalWidthLg: Dp @Composable get() = DimensionTokens.Layout.modalWidthLg.dp * scale
+    val quickPanelWidthFriends: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthFriends.dp * scale
     val modalWidthXl: Dp @Composable get() = DimensionTokens.Layout.modalWidthXl.dp * scale
 
     val playerTransportHeight: Dp @Composable get() = DimensionTokens.Layout.playerTransportHeight.dp * scale

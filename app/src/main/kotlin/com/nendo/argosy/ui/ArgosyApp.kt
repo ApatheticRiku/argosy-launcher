@@ -61,6 +61,10 @@ import com.nendo.argosy.ui.components.QuickSettingsInputRouter
 import com.nendo.argosy.ui.components.QuickSettingsPage
 import com.nendo.argosy.ui.components.QuickSettingsPanel
 import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.quickSettingsEffectivePage
+import com.nendo.argosy.ui.components.friends.QuickFriendsInputHandler
+import com.nendo.argosy.ui.components.friends.QuickFriendsModals
+import com.nendo.argosy.ui.components.friends.QuickSettingsFriendsPage
 import com.nendo.argosy.ui.components.musicplayer.MusicPlayerInputHandler
 import com.nendo.argosy.ui.components.musicplayer.MusicPlayerViewModel
 import com.nendo.argosy.ui.components.musicplayer.QuickSettingsMusicPage
@@ -135,6 +139,7 @@ fun ArgosyApp(
     val quickSettingsFocusIndex by viewModel.quickSettingsFocusIndex.collectAsState()
     val quickSettingsPage by viewModel.quickSettingsPage.collectAsState()
     val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
+    val quickFriendsState by viewModel.quickFriends.state.collectAsState()
     val musicPlayerUiState by musicPlayerViewModel.uiState.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
@@ -447,7 +452,23 @@ fun ArgosyApp(
         }
     }
 
-    val quickSettingsInputHandler = remember(viewModel, musicPlayerViewModel, inputDispatcher, openRommSignIn) {
+    val quickFriendsInputHandler = remember(viewModel, inputDispatcher) {
+        QuickFriendsInputHandler(
+            controller = viewModel.quickFriends,
+            showQuayPass = { viewModel.quickSettingsState.value.isSocialLinked },
+            wrapMode = { viewModel.uiState.value.menuWrapMode },
+            onToggleQuayPass = { viewModel.toggleQuayPassFromQuickSettings() },
+            onOpenProfile = { friend ->
+                inputDispatcher.unsubscribeDrawer()
+                viewModel.setQuickSettingsOpen(false)
+                navigateFromDrawer(Screen.UserProfile.createRoute(friend.id))
+            }
+        )
+    }
+
+    val quickSettingsInputHandler = remember(
+        viewModel, musicPlayerViewModel, inputDispatcher, openRommSignIn, quickFriendsInputHandler
+    ) {
         QuickSettingsInputRouter(
             panelHandler = viewModel.createQuickSettingsInputHandler(
                 onDismiss = {
@@ -455,8 +476,11 @@ fun ArgosyApp(
                     viewModel.setQuickSettingsOpen(false)
                 }
             ),
-            pageHandler = MusicPlayerInputHandler(musicPlayerViewModel, openRommSignIn),
-            pageActive = { viewModel.isQuickSettingsPageActive(QuickSettingsPage.MUSIC) }
+            pageHandlers = mapOf(
+                QuickSettingsPage.FRIENDS to quickFriendsInputHandler,
+                QuickSettingsPage.MUSIC to MusicPlayerInputHandler(musicPlayerViewModel, openRommSignIn)
+            ),
+            activePage = { viewModel.activeQuickSettingsPage() }
         )
     }
 
@@ -1143,38 +1167,6 @@ fun ArgosyApp(
                             scope.launch { drawerState.close() }
                             navigateFromDrawer(route)
                         },
-                        onShowFriendCode = { viewModel.showFriendCodeModal() },
-                        onShowAddFriend = { viewModel.showAddFriendModal() },
-                        onDismissModal = { viewModel.dismissDrawerModal() },
-                        onRegenerateFriendCode = { viewModel.regenerateFriendCode() },
-                        onAddFriendByCode = { code -> viewModel.addFriendByCode(code) },
-                        onJoinFriendSession = { friend ->
-                            inputDispatcher.unsubscribeDrawer()
-                            viewModel.setDrawerOpen(false)
-                            scope.launch { drawerState.close() }
-                            viewModel.joinFriendNetplaySession(friend)
-                        },
-                        onShowFriendOptions = { friend -> viewModel.showFriendOptionsModal(friend.id) },
-                        onSelectTab = { tab ->
-                            when (tab) {
-                                DrawerTab.NAVIGATION -> viewModel.switchToNavTab()
-                                DrawerTab.FRIENDS -> viewModel.switchToFriendsTab()
-                            }
-                        },
-                        onHintClick = { button ->
-                            when (button) {
-                                com.nendo.argosy.ui.components.InputButton.A -> {
-                                    drawerInputHandler.onConfirm()
-                                }
-                                com.nendo.argosy.ui.components.InputButton.X -> {
-                                    drawerInputHandler.onContextMenu()
-                                }
-                                com.nendo.argosy.ui.components.InputButton.Y -> {
-                                    drawerInputHandler.onSecondaryAction()
-                                }
-                                else -> Unit
-                            }
-                        },
                         modifier = Modifier.onSizeChanged { drawerWidthPx = it.width.toFloat() }
                     )
                 }
@@ -1298,6 +1290,24 @@ fun ArgosyApp(
                 musicPlayerUiState.browse?.notice ==
                 com.nendo.argosy.ui.components.musicplayer.MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
             val signInHint = stringResource(R.string.ui_quick_settings_music_hint_sign_in)
+            val panelState = QuickSettingsState(
+                themeMode = quickSettingsUiState.themeMode,
+                soundEnabled = quickSettingsUiState.soundEnabled,
+                hapticEnabled = quickSettingsUiState.hapticEnabled,
+                vibrationStrength = quickSettingsUiState.vibrationStrength,
+                fanMode = quickSettingsUiState.fanMode,
+                fanSpeed = quickSettingsUiState.fanSpeed,
+                performanceMode = quickSettingsUiState.performanceMode,
+                deviceSettingsSupported = quickSettingsUiState.deviceSettingsSupported,
+                deviceSettingsEnabled = quickSettingsUiState.deviceSettingsEnabled,
+                systemVolume = quickSettingsUiState.systemVolume,
+                screenBrightness = quickSettingsUiState.screenBrightness,
+                isDualScreenActive = isDualScreenDevice && companionActive,
+                isSocialLinked = quickSettingsUiState.isSocialLinked,
+                isSocialConnected = quickSettingsUiState.isSocialConnected,
+                quayPassEnabled = quickSettingsUiState.quayPassEnabled,
+                isRolesSwapped = isRolesSwapped
+            )
             QuickSettingsPanel(
                 onHintClick = { button ->
                     if (button == com.nendo.argosy.ui.components.InputButton.Y && musicNeedsSignIn) {
@@ -1305,23 +1315,7 @@ fun ArgosyApp(
                     }
                 },
                 isVisible = isQuickSettingsOpen,
-                state = QuickSettingsState(
-                    themeMode = quickSettingsUiState.themeMode,
-                    soundEnabled = quickSettingsUiState.soundEnabled,
-                    hapticEnabled = quickSettingsUiState.hapticEnabled,
-                    vibrationStrength = quickSettingsUiState.vibrationStrength,
-                    fanMode = quickSettingsUiState.fanMode,
-                    fanSpeed = quickSettingsUiState.fanSpeed,
-                    performanceMode = quickSettingsUiState.performanceMode,
-                    deviceSettingsSupported = quickSettingsUiState.deviceSettingsSupported,
-                    deviceSettingsEnabled = quickSettingsUiState.deviceSettingsEnabled,
-                    systemVolume = quickSettingsUiState.systemVolume,
-                    screenBrightness = quickSettingsUiState.screenBrightness,
-                    isDualScreenActive = isDualScreenDevice && companionActive,
-                    isSocialLinked = quickSettingsUiState.isSocialLinked,
-                    quayPassEnabled = quickSettingsUiState.quayPassEnabled,
-                    isRolesSwapped = isRolesSwapped
-                ),
+                state = panelState,
                 page = quickSettingsPage,
                 focusedIndex = quickSettingsFocusIndex,
                 onPageSelect = { viewModel.selectQuickSettingsPage(it) },
@@ -1334,8 +1328,15 @@ fun ArgosyApp(
                 onPerformanceModeCycle = { viewModel.cyclePerformanceMode() },
                 onVolumeChange = { viewModel.setSystemVolume(it) },
                 onBrightnessChange = { viewModel.setScreenBrightness(it) },
-                onQuayPassToggle = { viewModel.toggleQuayPassFromQuickSettings() },
                 onSwapDisplays = { dsm?.swapRoles() },
+                friendsPage = {
+                    QuickSettingsFriendsPage(
+                        state = quickFriendsState,
+                        showQuayPass = quickSettingsUiState.isSocialLinked,
+                        quayPassEnabled = quickSettingsUiState.quayPassEnabled,
+                        onRowClick = { quickFriendsInputHandler.tapRow(it) }
+                    )
+                },
                 musicPage = {
                     QuickSettingsMusicPage(viewModel = musicPlayerViewModel, onOpenRommSignIn = openRommSignIn)
                 },
@@ -1343,6 +1344,11 @@ fun ArgosyApp(
                 footerHints = listOfNotNull(
                     (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn }
                 )
+            )
+
+            QuickFriendsModals(
+                state = quickFriendsState,
+                controller = viewModel.quickFriends
             )
 
             saveConflictInfo?.let { info ->

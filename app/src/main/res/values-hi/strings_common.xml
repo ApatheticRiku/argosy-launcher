@@ -413,26 +413,8 @@
     <string name="ui_custom_grid_confirm_sign_in">साइन इन करें</string>
     <string name="ui_custom_grid_confirm_library">लाइब्रेरी</string>
 
-    <string name="ui_friend_options_join">जॉइन करें</string>
-    <string name="ui_friend_options_view_profile">प्रोफ़ाइल देखें</string>
-    <string name="ui_friend_options_my_code">मेरा फ्रेंड कोड</string>
-    <string name="ui_friend_options_add_friend">फ्रेंड जोड़ें</string>
-    <string name="ui_friend_options_footer_select">चुनें</string>
-    <string name="ui_friend_options_footer_close">बंद करें</string>
-    <string name="ui_friend_options_presence_in_game">गेम में</string>
-    <string name="ui_friend_options_presence_hosting">%1$s होस्ट कर रहे हैं</string>
-    <string name="ui_friend_options_presence_playing">%1$s खेल रहे हैं</string>
-    <string name="ui_friend_options_presence_online">ऑनलाइन</string>
-    <string name="ui_friend_options_presence_away">दूर</string>
-    <string name="ui_friend_options_presence_watching_title">%1$s देख रहे हैं</string>
-    <string name="ui_friend_options_presence_watching">देख रहे हैं</string>
-    <string name="ui_friend_options_presence_offline">ऑफ़लाइन</string>
-
-    <string name="ui_friends_options_title">फ्रेंड्स</string>
-    <string name="ui_friends_options_footer_select">चुनें</string>
-    <string name="ui_friends_options_footer_close">बंद करें</string>
-    <string name="ui_friends_options_add_by_code">कोड से फ्रेंड जोड़ें</string>
-    <string name="ui_friends_options_show_code">मेरा फ्रेंड कोड दिखाएं</string>
+    <string name="ui_quick_friends_my_code">मेरा फ्रेंड कोड</string>
+    <string name="ui_quick_friends_add_friend">फ्रेंड जोड़ें</string>
 
     <string name="ui_friend_code_title">मेरा फ्रेंड कोड</string>
     <string name="ui_friend_code_footer_regenerate">रीजनरेट</string>
@@ -620,12 +602,6 @@
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 
-    <string name="ui_drawer_tab_navigation">नेव</string>
-    <string name="ui_drawer_tab_friends">फ्रेंड्स</string>
-    <string name="ui_drawer_footer_favorite">पसंदीदा</string>
-    <string name="ui_drawer_footer_unfavorite">पसंदीदा हटाएँ</string>
-    <string name="ui_drawer_footer_options">विकल्प</string>
-    <string name="ui_drawer_footer_join">जॉइन करें</string>
     <string name="ui_drawer_friends_empty">अभी तक कोई फ्रेंड नहीं</string>
     <string name="ui_drawer_friends_online">ऑनलाइन (%1$d)</string>
     <string name="ui_drawer_friends_offline">ऑफ़लाइन (%1$d)</string>

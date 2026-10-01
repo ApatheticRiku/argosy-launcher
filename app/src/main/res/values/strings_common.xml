@@ -833,46 +833,10 @@
          library rather than playing or browsing badges. Noun. -->
     <string name="ui_custom_grid_confirm_library">Library</string>
 
-    <!-- Row of the menu over a friend, shown when they are hosting a game that can be joined.
-         Verb. -->
-    <string name="ui_friend_options_join">Join</string>
-    <!-- Row of the menu over a friend. Verb phrase: opens their profile. -->
-    <string name="ui_friend_options_view_profile">View Profile</string>
-    <!-- Row of the menu over a friend. Noun phrase: shows this device's own friend code. -->
-    <string name="ui_friend_options_my_code">My Friend Code</string>
-    <!-- Row of the menu over a friend. Verb phrase: opens the field for a friend's code. -->
-    <string name="ui_friend_options_add_friend">Add Friend</string>
-    <!-- Footer hint on that menu. Verb: takes the row under the cursor. -->
-    <string name="ui_friend_options_footer_select">Select</string>
-    <!-- Footer hint on that menu. Verb: closes it. -->
-    <string name="ui_friend_options_footer_close">Close</string>
-    <!-- Friend's status in that menu when the game they are in is not known. -->
-    <string name="ui_friend_options_presence_in_game">In Game</string>
-    <!-- Friend's status when they are hosting a netplay game. %1$s is the game's title. -->
-    <string name="ui_friend_options_presence_hosting">Hosting %1$s</string>
-    <!-- Friend's status when they are in a game on their own. %1$s is the game's title. -->
-    <string name="ui_friend_options_presence_playing">Playing %1$s</string>
-    <!-- Friend's status when they are reachable but not in a game. Adjective. -->
-    <string name="ui_friend_options_presence_online">Online</string>
-    <!-- Friend's status when their device has been idle. Adjective. -->
-    <string name="ui_friend_options_presence_away">Away</string>
-    <!-- Friend's status when they are watching something. %1$s is the film or episode. -->
-    <string name="ui_friend_options_presence_watching_title">Watching %1$s</string>
-    <!-- Friend's status when they are watching something unnamed. -->
-    <string name="ui_friend_options_presence_watching">Watching</string>
-    <!-- Friend's status when they are not reachable. Adjective. -->
-    <string name="ui_friend_options_presence_offline">Offline</string>
-
-    <!-- Heading of the menu reached from the drawer's friends tab. Noun, plural. -->
-    <string name="ui_friends_options_title">Friends</string>
-    <!-- Footer hint on that menu. Verb: takes the row under the cursor. -->
-    <string name="ui_friends_options_footer_select">Select</string>
-    <!-- Footer hint on that menu. Verb: closes it. -->
-    <string name="ui_friends_options_footer_close">Close</string>
-    <!-- Row of that menu. Verb phrase: opens the field for a friend's code. -->
-    <string name="ui_friends_options_add_by_code">Add Friend by Code</string>
-    <!-- Row of that menu. Verb phrase: shows this device's own code. -->
-    <string name="ui_friends_options_show_code">Show My Friend Code</string>
+    <!-- Row of the quick panel's Friends page. Noun phrase: opens this device's own friend code. -->
+    <string name="ui_quick_friends_my_code">My Friend Code</string>
+    <!-- Row of the quick panel's Friends page. Verb phrase: opens the field for a friend's code. -->
+    <string name="ui_quick_friends_add_friend">Add Friend</string>
 
     <!-- Heading of the modal showing this device's own friend code. -->
     <string name="ui_friend_code_title">My Friend Code</string>
@@ -1266,24 +1230,9 @@
         <item quantity="other">%d tracks</item>
     </plurals>
 
-    <!-- Main drawer (ui/components/MainDrawer.kt) -->
+    <!-- Quick panel Friends page (ui/components/friends/QuickSettingsFriendsPage.kt) -->
 
-    <!-- Drawer tab holding the launcher's screens. Noun, short for "navigation". Keep it short:
-         the two tabs sit side by side. -->
-    <string name="ui_drawer_tab_navigation">Nav</string>
-    <!-- Drawer tab holding the reader's friends. Noun, plural. -->
-    <string name="ui_drawer_tab_friends">Friends</string>
-    <!-- Footer hint on the friends tab. Verb: marks the friend under the cursor as a
-         favourite. -->
-    <string name="ui_drawer_footer_favorite">Favorite</string>
-    <!-- Footer hint on the friends tab. Verb: removes the friend under the cursor from the
-         favourites. -->
-    <string name="ui_drawer_footer_unfavorite">Unfavorite</string>
-    <!-- Footer hint on the friends tab. Noun, plural: opens the menu for that friend. -->
-    <string name="ui_drawer_footer_options">Options</string>
-    <!-- Footer hint on the friends tab, when that friend is hosting a game. Verb. -->
-    <string name="ui_drawer_footer_join">Join</string>
-    <!-- Shown on the friends tab when the reader has no friends yet. -->
+    <!-- Shown on the quick panel's Friends page when the reader has no friends yet. -->
     <string name="ui_drawer_friends_empty">No friends yet</string>
     <!-- Heading over the reachable friends. %1$d is how many. Rendered in caps in English. -->
     <string name="ui_drawer_friends_online">ONLINE (%1$d)</string>
@@ -1297,6 +1246,9 @@
     <string name="ui_drawer_friend_in_game">In Game</string>
     <!-- Icon description on the star beside a friend marked as a favourite. Noun. -->
     <string name="ui_drawer_friend_favorite">Favorite</string>
+
+    <!-- Main drawer (ui/components/MainDrawer.kt) -->
+
     <!-- Shown on the drawer's account row when no game server account is signed in. -->
     <string name="ui_drawer_account_none">No account</string>
     <!-- Second line of the drawer's account row, naming what the row is. Noun. -->

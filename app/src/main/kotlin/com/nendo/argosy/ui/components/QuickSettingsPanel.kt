@@ -73,13 +73,12 @@ import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.primitives.ArgosyToggle
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
-import com.nendo.argosy.ui.quaypass.QuayPassIcons
 import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
-private const val MUSIC_PANEL_MAX_SCREEN_FRACTION = 0.65f
+private const val WIDE_PAGE_MAX_SCREEN_FRACTION = 0.65f
 private const val LABEL_WEIGHT = 3f
 private const val VALUE_WEIGHT = 2f
 
@@ -123,6 +122,7 @@ data class QuickSettingsState(
     val isDualScreenActive: Boolean = false,
     val isRolesSwapped: Boolean = false,
     val isSocialLinked: Boolean = false,
+    val isSocialConnected: Boolean = false,
     val quayPassEnabled: Boolean = false
 )
 
@@ -181,9 +181,9 @@ sealed class QuickSettingsItem(
         visibleWhen = { it.deviceSettingsSupported && it.deviceSettingsEnabled && it.fanMode == FanMode.CUSTOM }
     )
 
-    data object QuayPass : QuickSettingsItem(
-        "quaypass", QuickSettingsPage.FRIENDS,
-        visibleWhen = { it.isSocialLinked }
+    data object FriendsPage : QuickSettingsItem(
+        "friendsPage", QuickSettingsPage.FRIENDS,
+        visibleWhen = { it.isSocialLinked || it.isSocialConnected }
     )
 
     data object MusicPlayer : QuickSettingsItem("musicPlayer", QuickSettingsPage.MUSIC)
@@ -195,7 +195,7 @@ sealed class QuickSettingsItem(
 
         val ALL: List<QuickSettingsItem>
             get() = listOf(
-                QuayPass,
+                FriendsPage,
                 DisplayHeader, Theme, ScreenBrightness,
                 AudioHeader, SystemVolume, UISounds,
                 OtherHeader, Haptic, VibrationStrength,
@@ -256,8 +256,8 @@ fun QuickSettingsPanel(
     onPerformanceModeCycle: () -> Unit,
     onVolumeChange: (Float) -> Unit,
     onBrightnessChange: (Float) -> Unit,
-    onQuayPassToggle: () -> Unit = {},
     onSwapDisplays: () -> Unit = {},
+    friendsPage: @Composable () -> Unit = {},
     musicPage: @Composable () -> Unit = {},
     onDismiss: () -> Unit,
     footerHints: List<Pair<InputButton, String>> = emptyList(),
@@ -288,9 +288,14 @@ fun QuickSettingsPanel(
         }
 
         val screenWidth = LocalConfiguration.current.screenWidthDp.dp
-        val musicWidth = min(Dimens.modalWidthLg, screenWidth * MUSIC_PANEL_MAX_SCREEN_FRACTION)
+        val musicWidth = min(Dimens.modalWidthLg, screenWidth * WIDE_PAGE_MAX_SCREEN_FRACTION)
+        val friendsWidth = min(Dimens.quickPanelWidthFriends, screenWidth * WIDE_PAGE_MAX_SCREEN_FRACTION)
         val panelWidth by animateDpAsState(
-            targetValue = if (activePage == QuickSettingsPage.MUSIC) musicWidth else Dimens.modalWidth - Dimens.footerHeight,
+            targetValue = when (activePage) {
+                QuickSettingsPage.MUSIC -> musicWidth
+                QuickSettingsPage.FRIENDS -> friendsWidth
+                else -> Dimens.modalWidth - Dimens.footerHeight
+            },
             animationSpec = tween(Motion.durationSlide),
             label = "quickSettingsPanelWidth"
         )
@@ -434,13 +439,11 @@ fun QuickSettingsPanel(
                                     onClick = onSwapDisplays
                                 )
 
-                                QuickSettingsItem.QuayPass -> QuickSettingToggle(
-                                    icon = if (state.quayPassEnabled) QuayPassIcons.On else QuayPassIcons.Off,
-                                    label = stringResource(R.string.ui_quick_settings_quaypass),
-                                    isEnabled = state.quayPassEnabled,
-                                    isFocused = isFocused(item),
-                                    onClick = onQuayPassToggle
-                                )
+                                QuickSettingsItem.FriendsPage -> Box(
+                                    modifier = Modifier.fillParentMaxSize()
+                                ) {
+                                    friendsPage()
+                                }
                             }
                         }
                     }
@@ -460,7 +463,7 @@ fun QuickSettingsPanel(
 }
 
 @Composable
-private fun QuickSettingsGroupHeader(title: String) {
+internal fun QuickSettingsGroupHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.labelMedium,

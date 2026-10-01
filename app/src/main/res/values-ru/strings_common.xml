@@ -433,26 +433,8 @@
     <string name="ui_custom_grid_confirm_sign_in">Войти</string>
     <string name="ui_custom_grid_confirm_library">Библиотека</string>
 
-    <string name="ui_friend_options_join">Присоединиться</string>
-    <string name="ui_friend_options_view_profile">Просмотреть профиль</string>
-    <string name="ui_friend_options_my_code">Мой код друга</string>
-    <string name="ui_friend_options_add_friend">Добавить друга</string>
-    <string name="ui_friend_options_footer_select">Выбрать</string>
-    <string name="ui_friend_options_footer_close">Закрыть</string>
-    <string name="ui_friend_options_presence_in_game">В игре</string>
-    <string name="ui_friend_options_presence_hosting">Хостит %1$s</string>
-    <string name="ui_friend_options_presence_playing">Играет в %1$s</string>
-    <string name="ui_friend_options_presence_online">В сети</string>
-    <string name="ui_friend_options_presence_away">Нет на месте</string>
-    <string name="ui_friend_options_presence_watching_title">Смотрит %1$s</string>
-    <string name="ui_friend_options_presence_watching">Смотрит</string>
-    <string name="ui_friend_options_presence_offline">Не в сети</string>
-
-    <string name="ui_friends_options_title">Друзья</string>
-    <string name="ui_friends_options_footer_select">Выбрать</string>
-    <string name="ui_friends_options_footer_close">Закрыть</string>
-    <string name="ui_friends_options_add_by_code">Добавить друга по коду</string>
-    <string name="ui_friends_options_show_code">Показать мой код друга</string>
+    <string name="ui_quick_friends_my_code">Мой код друга</string>
+    <string name="ui_quick_friends_add_friend">Добавить друга</string>
 
     <string name="ui_friend_code_title">Мой код друга</string>
     <string name="ui_friend_code_footer_regenerate">Обновить</string>
@@ -636,12 +618,6 @@
         <item quantity="other">%d трека</item>
     </plurals>
 
-    <string name="ui_drawer_tab_navigation">Меню</string>
-    <string name="ui_drawer_tab_friends">Друзья</string>
-    <string name="ui_drawer_footer_favorite">Избранное</string>
-    <string name="ui_drawer_footer_unfavorite">Убрать из избранного</string>
-    <string name="ui_drawer_footer_options">Параметры</string>
-    <string name="ui_drawer_footer_join">Присоединиться</string>
     <string name="ui_drawer_friends_empty">Пока нет друзей</string>
     <string name="ui_drawer_friends_online">В СЕТИ (%1$d)</string>
     <string name="ui_drawer_friends_offline">НЕ В СЕТИ (%1$d)</string>

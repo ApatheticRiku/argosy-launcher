@@ -436,26 +436,8 @@
     <string name="ui_custom_grid_confirm_sign_in">Se connecter</string>
     <string name="ui_custom_grid_confirm_library">Bibliothèque</string>
 
-    <string name="ui_friend_options_join">Rejoindre</string>
-    <string name="ui_friend_options_view_profile">Voir le profil</string>
-    <string name="ui_friend_options_my_code">Mon code ami</string>
-    <string name="ui_friend_options_add_friend">Ajouter un ami</string>
-    <string name="ui_friend_options_footer_select">Sélectionner</string>
-    <string name="ui_friend_options_footer_close">Fermer</string>
-    <string name="ui_friend_options_presence_in_game">En jeu</string>
-    <string name="ui_friend_options_presence_hosting">Héberge %1$s</string>
-    <string name="ui_friend_options_presence_playing">Joue à %1$s</string>
-    <string name="ui_friend_options_presence_online">En ligne</string>
-    <string name="ui_friend_options_presence_away">Absent</string>
-    <string name="ui_friend_options_presence_watching_title">Regarde %1$s</string>
-    <string name="ui_friend_options_presence_watching">En visionnage</string>
-    <string name="ui_friend_options_presence_offline">Hors ligne</string>
-
-    <string name="ui_friends_options_title">Amis</string>
-    <string name="ui_friends_options_footer_select">Sélectionner</string>
-    <string name="ui_friends_options_footer_close">Fermer</string>
-    <string name="ui_friends_options_add_by_code">Ajouter un ami par code</string>
-    <string name="ui_friends_options_show_code">Afficher mon code ami</string>
+    <string name="ui_quick_friends_my_code">Mon code ami</string>
+    <string name="ui_quick_friends_add_friend">Ajouter un ami</string>
 
     <string name="ui_friend_code_title">Mon code ami</string>
     <string name="ui_friend_code_footer_regenerate">Régénérer</string>
@@ -645,12 +627,6 @@
 
     <!-- Main drawer (ui/components/MainDrawer.kt) -->
 
-    <string name="ui_drawer_tab_navigation">Nav</string>
-    <string name="ui_drawer_tab_friends">Amis</string>
-    <string name="ui_drawer_footer_favorite">Favori</string>
-    <string name="ui_drawer_footer_unfavorite">Retirer des favoris</string>
-    <string name="ui_drawer_footer_options">Options</string>
-    <string name="ui_drawer_footer_join">Rejoindre</string>
     <string name="ui_drawer_friends_empty">Aucun ami pour l\'instant</string>
     <string name="ui_drawer_friends_online">EN LIGNE (%1$d)</string>
     <string name="ui_drawer_friends_offline">HORS LIGNE (%1$d)</string>

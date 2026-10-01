@@ -6,12 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +19,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CollectionsBookmark
@@ -32,8 +29,6 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.VideoLibrary
 import com.nendo.argosy.ui.quaypass.QuayPassIcons
 import androidx.compose.material3.HorizontalDivider
@@ -47,32 +42,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.core.graphics.toColorInt
 import com.nendo.argosy.R
-import com.nendo.argosy.data.social.Friend
-import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.ACCOUNTS_SECTION_NAME
 import com.nendo.argosy.ui.DRAWER_ACCOUNT_ROW_INDEX
 import com.nendo.argosy.ui.DRAWER_NAV_ITEM_OFFSET
 import com.nendo.argosy.ui.DrawerItem
-import com.nendo.argosy.ui.DrawerModal
 import com.nendo.argosy.ui.DrawerState
-import com.nendo.argosy.ui.DrawerTab
-import com.nendo.argosy.ui.components.friends.AddFriendModal
-import com.nendo.argosy.ui.components.friends.FriendCodeModal
-import com.nendo.argosy.ui.components.friends.FriendOptionsModal
-import com.nendo.argosy.ui.components.friends.FriendsOption
-import com.nendo.argosy.ui.components.friends.FriendsOptionsModal
 import com.nendo.argosy.ui.components.friends.SocialAvatar
-import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.navigation.Screen
@@ -84,15 +65,6 @@ fun MainDrawer(
     drawerState: DrawerState,
     isOpen: Boolean,
     onNavigate: (String) -> Unit,
-    onShowFriendCode: () -> Unit,
-    onShowAddFriend: () -> Unit,
-    onDismissModal: () -> Unit,
-    onRegenerateFriendCode: () -> Unit,
-    onAddFriendByCode: (String) -> Unit,
-    onJoinFriendSession: (Friend) -> Unit,
-    onShowFriendOptions: (Friend) -> Unit,
-    onSelectTab: (DrawerTab) -> Unit,
-    onHintClick: ((InputButton) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     ModalDrawerSheet(modifier = modifier) {
@@ -107,8 +79,7 @@ fun MainDrawer(
                 localAvatarDoodle = drawerState.localAvatarDoodle,
                 rommUsername = drawerState.rommUsername,
                 rommAvatarUrl = drawerState.rommAvatarUrl,
-                isFocused = drawerState.currentTab == DrawerTab.NAVIGATION &&
-                    drawerState.navFocusIndex == DRAWER_ACCOUNT_ROW_INDEX,
+                isFocused = drawerState.navFocusIndex == DRAWER_ACCOUNT_ROW_INDEX,
                 onOpenAccounts = {
                     onNavigate(Screen.Settings.createRoute(section = ACCOUNTS_SECTION_NAME))
                 }
@@ -118,191 +89,21 @@ fun MainDrawer(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            if (drawerState.socialConnected) {
-                TabHeader(currentTab = drawerState.currentTab, onSelectTab = onSelectTab)
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
-            }
-
-            when (drawerState.currentTab) {
-                DrawerTab.NAVIGATION -> {
-                    NavigationContent(
-                        items = items,
-                        currentRoute = currentRoute,
-                        focusedIndex = drawerState.navFocusIndex - DRAWER_NAV_ITEM_OFFSET,
-                        downloadCount = drawerState.downloadCount,
-                        saveSyncAttentionCount = drawerState.saveSyncAttentionCount,
-                        isRommConnected = drawerState.rommConnected,
-                        onNavigate = onNavigate,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                DrawerTab.FRIENDS -> {
-                    FriendsContent(
-                        friends = drawerState.friends,
-                        onlineCount = drawerState.onlineFriendCount,
-                        focusedIndex = drawerState.friendsFocusIndex,
-                        onJoinSession = onJoinFriendSession,
-                        onShowOptions = onShowFriendOptions,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-
-            if (drawerState.currentTab == DrawerTab.FRIENDS) {
-                FooterSpacer()
-            }
+            NavigationContent(
+                items = items,
+                currentRoute = currentRoute,
+                focusedIndex = drawerState.navFocusIndex - DRAWER_NAV_ITEM_OFFSET,
+                downloadCount = drawerState.downloadCount,
+                saveSyncAttentionCount = drawerState.saveSyncAttentionCount,
+                isRommConnected = drawerState.rommConnected,
+                onNavigate = onNavigate,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 
     if (isOpen) {
-        val focusedFriend = drawerState.friends.getOrNull(drawerState.friendsFocusIndex)
-        val focusedIsJoinable = focusedFriend?.currentGame?.netplaySession?.joinable == true
-        val favoriteHint = stringResource(
-            if (focusedFriend?.isFavorite == true) {
-                R.string.ui_drawer_footer_unfavorite
-            } else {
-                R.string.ui_drawer_footer_favorite
-            }
-        )
-        val optionsHint = stringResource(R.string.ui_drawer_footer_options)
-        val joinHint = stringResource(R.string.ui_drawer_footer_join)
-        FooterHints(
-            hints = if (drawerState.currentTab == DrawerTab.FRIENDS) {
-                buildList {
-                    if (focusedFriend != null) add(InputButton.Y to favoriteHint)
-                    add(InputButton.X to optionsHint)
-                    if (focusedIsJoinable) add(InputButton.A to joinHint)
-                }
-            } else {
-                emptyList()
-            },
-            onHintClick = onHintClick
-        )
-    }
-
-    when (val modal = drawerState.modal) {
-        is DrawerModal.FriendOptions -> {
-            val friend = drawerState.friends.firstOrNull { it.id == modal.friendId }
-            if (friend != null) {
-                FriendOptionsModal(
-                    friend = friend,
-                    onJoinSession = {
-                        onDismissModal()
-                        onJoinFriendSession(it)
-                    },
-                    onViewProfile = {
-                        onDismissModal()
-                        onNavigate(Screen.UserProfile.createRoute(it.id))
-                    },
-                    onShowFriendCode = {
-                        onDismissModal()
-                        onShowFriendCode()
-                    },
-                    onShowAddFriend = {
-                        onDismissModal()
-                        onShowAddFriend()
-                    },
-                    onDismiss = onDismissModal
-                )
-            } else {
-                LaunchedEffect(modal) { onDismissModal() }
-            }
-        }
-        DrawerModal.FriendsOptions -> {
-            FriendsOptionsModal(
-                onSelectOption = { option ->
-                    onDismissModal()
-                    when (option) {
-                        FriendsOption.ADD_FRIEND -> onShowAddFriend()
-                        FriendsOption.SHOW_CODE -> onShowFriendCode()
-                    }
-                },
-                onDismiss = onDismissModal
-            )
-        }
-        DrawerModal.FriendCode -> {
-            FriendCodeModal(
-                code = drawerState.friendCode,
-                url = drawerState.friendCodeUrl,
-                onRegenerate = onRegenerateFriendCode,
-                onDismiss = onDismissModal
-            )
-        }
-        DrawerModal.AddFriend -> {
-            AddFriendModal(
-                onSubmit = { code ->
-                    onAddFriendByCode(code)
-                    onDismissModal()
-                },
-                onDismiss = onDismissModal
-            )
-        }
-        DrawerModal.None -> {}
-    }
-}
-
-@Composable
-private fun TabHeader(currentTab: DrawerTab, onSelectTab: (DrawerTab) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Dimens.spacingLg),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        InputGlyph(
-            button = InputButton.LB,
-            size = Dimens.iconSm,
-            tint = LocalArgosyTheme.current.textMute
-        )
-        TabIndicator(
-            label = stringResource(R.string.ui_drawer_tab_navigation),
-            isSelected = currentTab == DrawerTab.NAVIGATION,
-            onClick = { onSelectTab(DrawerTab.NAVIGATION) }
-        )
-        TabIndicator(
-            label = stringResource(R.string.ui_drawer_tab_friends),
-            isSelected = currentTab == DrawerTab.FRIENDS,
-            onClick = { onSelectTab(DrawerTab.FRIENDS) }
-        )
-        InputGlyph(
-            button = InputButton.RB,
-            size = Dimens.iconSm,
-            tint = LocalArgosyTheme.current.textMute
-        )
-    }
-}
-
-@Composable
-private fun TabIndicator(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickableNoFocus(onClick = onClick)
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-        Spacer(modifier = Modifier.height(Dimens.spacingXs))
-        Box(
-            modifier = Modifier
-                .width(32.dp)
-                .height(2.dp)
-                .background(
-                    if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
-                    RoundedCornerShape(1.dp)
-                )
-        )
+        FooterHints(hints = emptyList())
     }
 }
 
@@ -360,222 +161,6 @@ private fun NavigationContent(
         }
 
         DrawerDeviceStatus(isRommConnected = isRommConnected)
-    }
-}
-
-@Composable
-private fun FriendsContent(
-    friends: List<Friend>,
-    onlineCount: Int,
-    focusedIndex: Int,
-    onJoinSession: (Friend) -> Unit,
-    onShowOptions: (Friend) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(focusedIndex) {
-        if (friends.isNotEmpty() && focusedIndex in friends.indices) {
-            val layoutInfo = listState.layoutInfo
-            val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
-            val itemHeight = layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 60
-            val centerOffset = (viewportHeight - itemHeight) / 2
-            listState.animateScrollToItem(focusedIndex, -centerOffset)
-        }
-    }
-
-    if (friends.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxWidth(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.padding(Dimens.spacingLg)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    modifier = Modifier.size(Dimens.spacingXxl),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-                Spacer(modifier = Modifier.height(Dimens.radiusLg))
-                Text(
-                    text = stringResource(R.string.ui_drawer_friends_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
-    } else {
-        val offlineCount = friends.size - onlineCount
-
-        LazyColumn(
-            state = listState,
-            modifier = modifier,
-            contentPadding = PaddingValues(vertical = Dimens.spacingSm)
-        ) {
-            itemsIndexed(friends, key = { _, f -> f.id }) { index, friend ->
-                Column {
-                    if (index == 0 && onlineCount > 0) {
-                        SectionLabel(
-                            stringResource(R.string.ui_drawer_friends_online, onlineCount)
-                        )
-                    }
-                    if (index == onlineCount && offlineCount > 0) {
-                        SectionLabel(
-                            stringResource(R.string.ui_drawer_friends_offline, offlineCount)
-                        )
-                    }
-                    FriendItem(
-                        friend = friend,
-                        isFocused = index == focusedIndex,
-                        onJoinSession = onJoinSession,
-                        onShowOptions = onShowOptions
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionLabel(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingSm)
-    )
-}
-
-@Composable
-private fun FriendItem(
-    friend: Friend,
-    isFocused: Boolean,
-    onJoinSession: (Friend) -> Unit,
-    onShowOptions: (Friend) -> Unit
-) {
-    val backgroundColor = if (isFocused) {
-        LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
-    } else {
-        Color.Transparent
-    }
-
-    val avatarColor = try {
-        Color(friend.avatarColor.toColorInt())
-    } catch (_: Exception) {
-        MaterialTheme.colorScheme.primary
-    }
-
-    val isOnline = friend.isOnlineNow
-    val isInGame = friend.presence == PresenceStatus.IN_GAME
-    val isJoinable = friend.currentGame?.netplaySession?.joinable == true
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Dimens.spacingMd, vertical = 2.dp)
-            .clip(RoundedCornerShape(Dimens.radiusMd))
-            .background(backgroundColor)
-            .clickableNoFocus(
-                onClick = { if (isJoinable) onJoinSession(friend) else onShowOptions(friend) },
-                onLongClick = { onShowOptions(friend) }
-            )
-            .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingSm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(contentAlignment = Alignment.BottomEnd) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(avatarColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = friend.displayName.take(1).uppercase(),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (isOnline) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(2.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF22C55E))
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(Dimens.radiusLg))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = friend.displayName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (isFocused) {
-                    lerp(LocalArgosyTheme.current.focusAccent, Color.White, 0.45f)
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (isInGame) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SportsEsports,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color(0xFF22C55E)
-                    )
-                    Text(
-                        text = if (friend.currentGame != null) {
-                            if (friend.currentGame.netplaySession != null) {
-                                stringResource(
-                                    R.string.ui_drawer_friend_hosting,
-                                    friend.currentGame.title
-                                )
-                            } else {
-                                stringResource(
-                                    R.string.ui_drawer_friend_playing,
-                                    friend.currentGame.title
-                                )
-                            }
-                        } else {
-                            stringResource(R.string.ui_drawer_friend_in_game)
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF22C55E),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-
-        if (friend.isFavorite) {
-            Icon(
-                imageVector = Icons.Filled.Star,
-                contentDescription = stringResource(R.string.ui_drawer_friend_favorite),
-                modifier = Modifier.size(14.dp),
-                tint = Color(0xFFFBBF24)
-            )
-        }
     }
 }
 

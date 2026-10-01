@@ -397,26 +397,8 @@
     <string name="ui_custom_grid_confirm_sign_in">登录</string>
     <string name="ui_custom_grid_confirm_library">游戏库</string>
 
-    <string name="ui_friend_options_join">加入</string>
-    <string name="ui_friend_options_view_profile">查看资料</string>
-    <string name="ui_friend_options_my_code">我的好友码</string>
-    <string name="ui_friend_options_add_friend">添加好友</string>
-    <string name="ui_friend_options_footer_select">选择</string>
-    <string name="ui_friend_options_footer_close">关闭</string>
-    <string name="ui_friend_options_presence_in_game">游戏中</string>
-    <string name="ui_friend_options_presence_hosting">正在主持%1$s</string>
-    <string name="ui_friend_options_presence_playing">正在玩%1$s</string>
-    <string name="ui_friend_options_presence_online">在线</string>
-    <string name="ui_friend_options_presence_away">离开</string>
-    <string name="ui_friend_options_presence_watching_title">正在看%1$s</string>
-    <string name="ui_friend_options_presence_watching">正在观看</string>
-    <string name="ui_friend_options_presence_offline">离线</string>
-
-    <string name="ui_friends_options_title">好友</string>
-    <string name="ui_friends_options_footer_select">选择</string>
-    <string name="ui_friends_options_footer_close">关闭</string>
-    <string name="ui_friends_options_add_by_code">通过好友码添加</string>
-    <string name="ui_friends_options_show_code">显示我的好友码</string>
+    <string name="ui_quick_friends_my_code">我的好友码</string>
+    <string name="ui_quick_friends_add_friend">添加好友</string>
 
     <string name="ui_friend_code_title">我的好友码</string>
     <string name="ui_friend_code_footer_regenerate">重新生成</string>
@@ -594,12 +576,6 @@
         <item quantity="other">%d 首</item>
     </plurals>
 
-    <string name="ui_drawer_tab_navigation">导航</string>
-    <string name="ui_drawer_tab_friends">好友</string>
-    <string name="ui_drawer_footer_favorite">收藏</string>
-    <string name="ui_drawer_footer_unfavorite">取消收藏</string>
-    <string name="ui_drawer_footer_options">选项</string>
-    <string name="ui_drawer_footer_join">加入</string>
     <string name="ui_drawer_friends_empty">还没有好友</string>
     <string name="ui_drawer_friends_online">在线（%1$d）</string>
     <string name="ui_drawer_friends_offline">离线（%1$d）</string>

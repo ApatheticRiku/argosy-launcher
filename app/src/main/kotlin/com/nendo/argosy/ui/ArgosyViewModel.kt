@@ -23,7 +23,6 @@ import com.nendo.argosy.data.netplay.NetplayPreflightResult
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.NetplayInvitePayload
 import com.nendo.argosy.data.social.NetplaySession
-import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.data.social.SocialUser
@@ -55,6 +54,7 @@ import com.nendo.argosy.ui.components.PerformanceMode
 import com.nendo.argosy.ui.components.QuickSettingsItem
 import com.nendo.argosy.ui.components.QuickSettingsPage
 import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.friends.QuickFriendsController
 import com.nendo.argosy.ui.components.quickSettingsEffectivePage
 import com.nendo.argosy.ui.components.quickSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.components.quickSettingsMaxFocusIndex
@@ -111,16 +111,6 @@ data class ArgosyUiState(
     val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP
 )
 
-enum class DrawerTab { NAVIGATION, FRIENDS }
-
-sealed class DrawerModal {
-    data object None : DrawerModal()
-    data object FriendsOptions : DrawerModal()
-    data class FriendOptions(val friendId: String) : DrawerModal()
-    data object FriendCode : DrawerModal()
-    data object AddFriend : DrawerModal()
-}
-
 /**
  * Focus index of the drawer's account row, which sits above the [DrawerItem] list and is not one
  * of them. [DRAWER_NAV_ITEM_OFFSET] converts between a drawerItems index and a drawer focus index.
@@ -132,7 +122,6 @@ internal const val ACCOUNTS_SECTION_NAME = "ACCOUNTS"
 data class DrawerState(
     val rommConnected: Boolean = false,
     val rommConnecting: Boolean = false,
-    val socialConnected: Boolean = false,
     val localUser: SocialUser? = null,
     val localAvatarDoodle: String? = null,
     val rommUsername: String? = null,
@@ -140,14 +129,7 @@ data class DrawerState(
     val downloadCount: Int = 0,
     val saveSyncAttentionCount: Int = 0,
     val emulatorUpdatesAvailable: Int = 0,
-    val currentTab: DrawerTab = DrawerTab.NAVIGATION,
-    val navFocusIndex: Int = 0,
-    val friendsFocusIndex: Int = 0,
-    val friends: List<Friend> = emptyList(),
-    val onlineFriendCount: Int = 0,
-    val friendCode: String? = null,
-    val friendCodeUrl: String? = null,
-    val modal: DrawerModal = DrawerModal.None
+    val navFocusIndex: Int = 0
 )
 
 data class QuickSettingsUiState(
@@ -163,6 +145,7 @@ data class QuickSettingsUiState(
     val systemVolume: Float = 1f,
     val screenBrightness: Float = 0.5f,
     val isSocialLinked: Boolean = false,
+    val isSocialConnected: Boolean = false,
     val quayPassEnabled: Boolean = false
 )
 
@@ -476,22 +459,16 @@ class ArgosyViewModel @Inject constructor(
         initialValue = ArgosyUiState()
     )
 
-    private val _drawerTab = MutableStateFlow(DrawerTab.NAVIGATION)
     private val _navFocusIndex = MutableStateFlow(0)
-    private val _friendsFocusIndex = MutableStateFlow(0)
-    private val _drawerModal = MutableStateFlow<DrawerModal>(DrawerModal.None)
+
+    val quickFriends = QuickFriendsController(socialRepository, viewModelScope)
 
     val drawerUiState: StateFlow<DrawerState> = combine(
         listOf(
             romMRepository.connectionState,
             downloadManager.state,
             emulatorUpdateManager.assignedUpdateCount,
-            _drawerTab,
             _navFocusIndex,
-            _friendsFocusIndex,
-            socialRepository.friends,
-            socialRepository.friendCode,
-            _drawerModal,
             socialRepository.connectionState,
             steamContentManager.activeDownload,
             steamContentManager.downloadQueue,
@@ -504,43 +481,25 @@ class ArgosyViewModel @Inject constructor(
         val connection = values[0] as ConnectionState
         val downloads = values[1] as DownloadQueueState
         val emulatorUpdateCount = values[2] as Int
-        val tab = values[3] as DrawerTab
-        val navIndex = values[4] as Int
-        val friendsIndex = values[5] as Int
+        val navIndex = values[3] as Int
+        val socialConnection = values[4] as SocialConnectionState
+        val steamActiveDownload = values[5] as com.nendo.argosy.data.steam.SteamDownloadProgress?
         @Suppress("UNCHECKED_CAST")
-        val friends = values[6] as List<Friend>
-        val friendCodeData = values[7] as SocialRepository.FriendCode?
-        val modal = values[8] as DrawerModal
-        val socialConnection = values[9] as SocialConnectionState
-        val steamActiveDownload = values[10] as com.nendo.argosy.data.steam.SteamDownloadProgress?
+        val steamQueue = values[6] as List<com.nendo.argosy.data.steam.QueuedSteamDownload>
+        val saveSyncAttentionCount = values[7] as Int
+        val userPrefs = values[8] as com.nendo.argosy.data.preferences.UserPreferences
+        val mediaActiveDownload = values[9] as com.nendo.argosy.data.download.MediaDownloadProgress?
         @Suppress("UNCHECKED_CAST")
-        val steamQueue = values[11] as List<com.nendo.argosy.data.steam.QueuedSteamDownload>
-        val saveSyncAttentionCount = values[12] as Int
-        val userPrefs = values[13] as com.nendo.argosy.data.preferences.UserPreferences
-        val mediaActiveDownload = values[14] as com.nendo.argosy.data.download.MediaDownloadProgress?
-        @Suppress("UNCHECKED_CAST")
-        val mediaQueue = values[15] as List<com.nendo.argosy.data.download.QueuedMediaDownload>
+        val mediaQueue = values[10] as List<com.nendo.argosy.data.download.QueuedMediaDownload>
 
         val steamActive = steamActiveDownload != null
         val steamQueued = steamQueue.size
         val downloadCount = downloads.activeDownloads.size + downloads.queue.size +
             (if (steamActive) 1 else 0) + steamQueued +
             (if (mediaActiveDownload != null) 1 else 0) + mediaQueue.size
-        val sortedFriends = friends
-            .filter { it.isAccepted }
-            .distinctBy { it.id }
-            .sortedWith(
-                compareByDescending<Friend> { it.isOnlineNow }
-                    .thenByDescending { it.isFavorite }
-                    .thenByDescending { it.presence == PresenceStatus.IN_GAME }
-                    .thenByDescending { it.presence == PresenceStatus.WATCHING }
-                    .thenByDescending { it.presence == PresenceStatus.ONLINE }
-                    .thenBy { it.displayName.lowercase() }
-            )
         DrawerState(
             rommConnected = connection is ConnectionState.Connected,
             rommConnecting = connection is ConnectionState.Connecting,
-            socialConnected = socialConnection is SocialConnectionState.Connected,
             localUser = (socialConnection as? SocialConnectionState.Connected)?.user,
             localAvatarDoodle = userPrefs.socialAvatarDoodle.takeIf { userPrefs.socialAvatarUseDoodle },
             rommUsername = userPrefs.rommUsername?.takeIf { it.isNotBlank() },
@@ -548,14 +507,7 @@ class ArgosyViewModel @Inject constructor(
             downloadCount = downloadCount,
             saveSyncAttentionCount = saveSyncAttentionCount,
             emulatorUpdatesAvailable = emulatorUpdateCount,
-            currentTab = tab,
-            navFocusIndex = navIndex,
-            friendsFocusIndex = friendsIndex,
-            friends = sortedFriends,
-            onlineFriendCount = sortedFriends.count { it.isOnlineNow },
-            friendCode = friendCodeData?.code,
-            friendCodeUrl = friendCodeData?.url,
-            modal = modal
+            navFocusIndex = navIndex
         )
     }.stateIn(
         scope = viewModelScope,
@@ -633,7 +585,6 @@ class ArgosyViewModel @Inject constructor(
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
     fun setDrawerOpen(open: Boolean) {
-        if (open) _drawerTab.value = DrawerTab.NAVIGATION
         _isDrawerOpen.value = open
     }
 
@@ -644,7 +595,7 @@ class ArgosyViewModel @Inject constructor(
     fun resetAllModals() {
         _isDrawerOpen.value = false
         _isQuickSettingsOpen.value = false
-        _drawerModal.value = DrawerModal.None
+        quickFriends.dismissModal()
         modalResetSignal.emit()
     }
 
@@ -666,50 +617,6 @@ class ArgosyViewModel @Inject constructor(
         _navFocusIndex.value = if (index >= 0) index + DRAWER_NAV_ITEM_OFFSET else 0
     }
 
-    fun switchToNavTab() {
-        _drawerTab.value = DrawerTab.NAVIGATION
-    }
-
-    fun switchToFriendsTab() {
-        _drawerTab.value = DrawerTab.FRIENDS
-        _friendsFocusIndex.value = 0
-        if (socialRepository.friendCode.value == null) {
-            socialRepository.requestFriendCode()
-        }
-    }
-
-    fun showFriendsOptionsModal() {
-        _drawerModal.value = DrawerModal.FriendsOptions
-    }
-
-    fun showFriendOptionsModal(friendId: String) {
-        _drawerModal.value = DrawerModal.FriendOptions(friendId)
-    }
-
-    fun showFriendCodeModal() {
-        _drawerModal.value = DrawerModal.FriendCode
-        if (socialRepository.friendCode.value == null) {
-            socialRepository.requestFriendCode()
-        }
-    }
-
-    fun showAddFriendModal() {
-        _drawerModal.value = DrawerModal.AddFriend
-    }
-
-
-    fun dismissDrawerModal() {
-        _drawerModal.value = DrawerModal.None
-    }
-
-    fun regenerateFriendCode() {
-        socialRepository.regenerateFriendCode()
-    }
-
-    fun addFriendByCode(code: String) {
-        socialRepository.addFriendByCode(code)
-    }
-
     private fun moveWrappedFocus(
         focusFlow: MutableStateFlow<Int>,
         delta: Int,
@@ -726,106 +633,27 @@ class ArgosyViewModel @Inject constructor(
         onNavigate: (String) -> Unit,
         onDismiss: () -> Unit
     ): InputHandler = object : InputHandler {
-        override fun onUp(): InputResult {
-            val wrapMode = uiState.value.menuWrapMode
-            return when (_drawerTab.value) {
-                DrawerTab.NAVIGATION ->
-                    moveWrappedFocus(_navFocusIndex, -1, drawerNavLastIndex, wrapMode)
-                DrawerTab.FRIENDS -> {
-                    val friends = drawerUiState.value.friends
-                    if (friends.isEmpty()) return InputResult.UNHANDLED
-                    moveWrappedFocus(_friendsFocusIndex, -1, friends.lastIndex, wrapMode)
-                }
-            }
-        }
+        override fun onUp(): InputResult =
+            moveWrappedFocus(_navFocusIndex, -1, drawerNavLastIndex, uiState.value.menuWrapMode)
 
-        override fun onDown(): InputResult {
-            val wrapMode = uiState.value.menuWrapMode
-            return when (_drawerTab.value) {
-                DrawerTab.NAVIGATION ->
-                    moveWrappedFocus(_navFocusIndex, 1, drawerNavLastIndex, wrapMode)
-                DrawerTab.FRIENDS -> {
-                    val friends = drawerUiState.value.friends
-                    if (friends.isEmpty()) return InputResult.UNHANDLED
-                    moveWrappedFocus(_friendsFocusIndex, 1, friends.lastIndex, wrapMode)
-                }
-            }
-        }
-
-        override fun onLeft(): InputResult {
-            if (_drawerTab.value == DrawerTab.FRIENDS) {
-                switchToNavTab()
-                return InputResult.HANDLED
-            }
-            return InputResult.UNHANDLED
-        }
-
-        override fun onRight(): InputResult {
-            if (_drawerTab.value == DrawerTab.NAVIGATION && drawerUiState.value.socialConnected) {
-                switchToFriendsTab()
-                return InputResult.HANDLED
-            }
-            return InputResult.UNHANDLED
-        }
+        override fun onDown(): InputResult =
+            moveWrappedFocus(_navFocusIndex, 1, drawerNavLastIndex, uiState.value.menuWrapMode)
 
         override fun onConfirm(): InputResult {
-            return when (_drawerTab.value) {
-                DrawerTab.NAVIGATION -> {
-                    val currentIndex = _navFocusIndex.value
-                    if (currentIndex == DRAWER_ACCOUNT_ROW_INDEX) {
-                        onNavigate(Screen.Settings.createRoute(section = ACCOUNTS_SECTION_NAME))
-                        return InputResult.HANDLED
-                    }
-                    val itemIndex = currentIndex - DRAWER_NAV_ITEM_OFFSET
-                    if (itemIndex in drawerItems.indices) {
-                        Log.d("ArgosyViewModel", "Navigating to drawer item: ${drawerItems[itemIndex].route}")
-                        onNavigate(drawerItems[itemIndex].route)
-                    }
-                    InputResult.HANDLED
-                }
-                DrawerTab.FRIENDS -> {
-                    val friends = drawerUiState.value.friends
-                    val friend = friends.getOrNull(_friendsFocusIndex.value)
-                    val session = friend?.currentGame?.netplaySession
-                    if (friend != null && session != null && session.joinable) {
-                        onDismiss()
-                        joinFriendNetplaySession(friend)
-                    }
-                    InputResult.HANDLED
-                }
-            }
-        }
-
-        override fun onSecondaryAction(): InputResult {
-            if (_drawerTab.value == DrawerTab.FRIENDS) {
-                val friends = drawerUiState.value.friends
-                val index = _friendsFocusIndex.value
-                friends.getOrNull(index)?.let { friend ->
-                    socialRepository.toggleFavoriteFriend(friend.id)
-                }
+            val currentIndex = _navFocusIndex.value
+            if (currentIndex == DRAWER_ACCOUNT_ROW_INDEX) {
+                onNavigate(Screen.Settings.createRoute(section = ACCOUNTS_SECTION_NAME))
                 return InputResult.HANDLED
             }
-            return InputResult.UNHANDLED
-        }
-
-        override fun onContextMenu(): InputResult {
-            if (_drawerTab.value == DrawerTab.FRIENDS) {
-                val friend = drawerUiState.value.friends.getOrNull(_friendsFocusIndex.value)
-                if (friend != null) {
-                    showFriendOptionsModal(friend.id)
-                } else {
-                    showFriendsOptionsModal()
-                }
-                return InputResult.HANDLED
+            val itemIndex = currentIndex - DRAWER_NAV_ITEM_OFFSET
+            if (itemIndex in drawerItems.indices) {
+                Log.d("ArgosyViewModel", "Navigating to drawer item: ${drawerItems[itemIndex].route}")
+                onNavigate(drawerItems[itemIndex].route)
             }
-            return InputResult.UNHANDLED
+            return InputResult.HANDLED
         }
 
         override fun onBack(): InputResult {
-            if (_drawerModal.value != DrawerModal.None) {
-                dismissDrawerModal()
-                return InputResult.HANDLED
-            }
             onDismiss()
             return InputResult.handled(SoundType.CLOSE_MODAL)
         }
@@ -833,22 +661,6 @@ class ArgosyViewModel @Inject constructor(
         override fun onMenu(): InputResult {
             onDismiss()
             return InputResult.handled(SoundType.CLOSE_MODAL)
-        }
-
-        override fun onPrevSection(): InputResult {
-            if (_drawerTab.value == DrawerTab.FRIENDS) {
-                switchToNavTab()
-                return InputResult.HANDLED
-            }
-            return InputResult.UNHANDLED
-        }
-
-        override fun onNextSection(): InputResult {
-            if (_drawerTab.value == DrawerTab.NAVIGATION && drawerUiState.value.socialConnected) {
-                switchToFriendsTab()
-                return InputResult.HANDLED
-            }
-            return InputResult.UNHANDLED
         }
     }
 
@@ -891,8 +703,9 @@ class ArgosyViewModel @Inject constructor(
         preferencesRepository.userPreferences,
         _deviceSettings,
         _systemVolume,
-        _screenBrightness
-    ) { prefs, device, volume, brightness ->
+        _screenBrightness,
+        socialRepository.connectionState
+    ) { prefs, device, volume, brightness, social ->
         QuickSettingsUiState(
             themeMode = prefs.themeMode,
             soundEnabled = prefs.soundEnabled,
@@ -906,6 +719,7 @@ class ArgosyViewModel @Inject constructor(
             systemVolume = volume,
             screenBrightness = brightness,
             isSocialLinked = prefs.isSocialLinked,
+            isSocialConnected = social is SocialConnectionState.Connected,
             quayPassEnabled = prefs.quayPassEnabled
         )
     }.stateIn(
@@ -1022,12 +836,6 @@ class ArgosyViewModel @Inject constructor(
     fun dismissNetplayInvite() {
         _netplayInvitePrompt.value = null
         _netplayInviteFocusIndex.value = 0
-    }
-
-    fun joinFriendNetplaySession(friend: Friend) {
-        val session = friend.currentGame?.netplaySession ?: return
-        if (!session.joinable) return
-        netplayJoinService.start(session, friend)
     }
 
     @Suppress("unused")
@@ -1222,8 +1030,11 @@ class ArgosyViewModel @Inject constructor(
         _isQuickSettingsOpen.value = open
         if (open) {
             _quickSettingsFocusIndex.value = 0
+            quickFriends.resetFocus()
             loadDeviceSettings()
             refreshAudioVisualSettings()
+        } else {
+            quickFriends.dismissModal()
         }
     }
 
@@ -1410,6 +1221,7 @@ class ArgosyViewModel @Inject constructor(
             screenBrightness = qs.screenBrightness,
             isDualScreenActive = _isDualScreenMode,
             isSocialLinked = qs.isSocialLinked,
+            isSocialConnected = qs.isSocialConnected,
             quayPassEnabled = qs.quayPassEnabled
         )
     }
@@ -1424,8 +1236,7 @@ class ArgosyViewModel @Inject constructor(
     private fun activeQuickSettingsPage(state: QuickSettingsState): QuickSettingsPage =
         quickSettingsEffectivePage(_quickSettingsPage.value, state)
 
-    fun isQuickSettingsPageActive(page: QuickSettingsPage): Boolean =
-        activeQuickSettingsPage(currentQuickSettingsState()) == page
+    fun activeQuickSettingsPage(): QuickSettingsPage = activeQuickSettingsPage(currentQuickSettingsState())
 
     private fun focusedQuickSettingsItem(state: QuickSettingsState): QuickSettingsItem? =
         quickSettingsItemAtFocusIndex(activeQuickSettingsPage(state), _quickSettingsFocusIndex.value, state)
@@ -1434,6 +1245,7 @@ class ArgosyViewModel @Inject constructor(
         if (page == activeQuickSettingsPage(currentQuickSettingsState())) return
         _quickSettingsPage.update { page }
         _quickSettingsFocusIndex.update { 0 }
+        quickFriends.resetFocus()
     }
 
     private fun cycleQuickSettingsPage(delta: Int): InputResult {
@@ -1531,10 +1343,6 @@ class ArgosyViewModel @Inject constructor(
                 QuickSettingsItem.UISounds -> {
                     val enabled = toggleSound()
                     InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-                }
-                QuickSettingsItem.QuayPass -> {
-                    toggleQuayPassFromQuickSettings()
-                    InputResult.handled(SoundType.TOGGLE)
                 }
                 QuickSettingsItem.SwapDisplays -> {
                     com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
