@@ -80,6 +80,7 @@ val InGameMenuAction.icon: ImageVector
 internal fun InGameMenuRail(
     menuItems: List<Pair<Int, InGameMenuAction>>,
     openAction: InGameMenuAction?,
+    focusedIndex: Int,
     railFocused: Boolean,
     isEnabled: (InGameMenuAction) -> Boolean,
     onSelect: (InGameMenuAction) -> Unit,
@@ -87,9 +88,10 @@ internal fun InGameMenuRail(
 ) {
     val listState = rememberLazyListState()
     val openIndex = menuItems.indexOfFirst { it.second == openAction }
+    val anchorIndex = if (railFocused) focusedIndex else openIndex
 
-    LaunchedEffect(openIndex) {
-        listState.animateScrollToItemCentered(openIndex)
+    LaunchedEffect(anchorIndex) {
+        listState.animateScrollToItemCentered(anchorIndex)
     }
 
     LazyColumn(
@@ -102,13 +104,13 @@ internal fun InGameMenuRail(
         itemsIndexed(
             items = menuItems,
             key = { _: Int, item: Pair<Int, InGameMenuAction> -> item.second.toString() }
-        ) { _, item ->
+        ) { index, item ->
             val (labelRes, action) = item
             InGameMenuRailIcon(
                 icon = action.icon,
                 label = stringResource(labelRes),
                 isOpen = action == openAction,
-                isFocused = railFocused && action == openAction,
+                isFocused = railFocused && index == focusedIndex,
                 enabled = isEnabled(action),
                 onClick = { onSelect(action) }
             )

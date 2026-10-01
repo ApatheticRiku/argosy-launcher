@@ -377,6 +377,7 @@ fun InGameMenu(
     return InGameMenuPanel(
         menuItems = menuItems,
         openSection = openSection,
+        focusedIndex = focusedIndex,
         railFocused = railFocused,
         condensedWidth = condensedWidth,
         listHandler = inputHandler,
@@ -742,13 +743,14 @@ private fun MenuButton(
     enabled: Boolean = true
 ) {
     val backgroundColor = when {
-        !enabled && isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+        !enabled && isFocused -> MaterialTheme.colorScheme.primary.copy(alpha = DISABLED_FOCUS_FILL_ALPHA)
         !enabled -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         isFocused -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
 
     val textColor = when {
+        !enabled && isFocused -> MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_FOCUS_TEXT_ALPHA)
         !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
         isFocused -> MaterialTheme.colorScheme.onPrimary
         else -> MaterialTheme.colorScheme.onSurfaceVariant
@@ -773,3 +775,5 @@ private fun MenuButton(
 }
 
 private const val HARDCORE_BADGE_FILL_ALPHA = 0.15f
+private const val DISABLED_FOCUS_FILL_ALPHA = 0.35f
+private const val DISABLED_FOCUS_TEXT_ALPHA = 0.7f

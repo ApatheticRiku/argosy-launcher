@@ -47,6 +47,7 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 internal fun InGameMenuPanel(
     menuItems: List<Pair<Int, InGameMenuAction>>,
     openSection: InGameMenuSection?,
+    focusedIndex: Int,
     railFocused: Boolean,
     condensedWidth: Dp,
     listHandler: InputHandler,
@@ -60,6 +61,8 @@ internal fun InGameMenuPanel(
 ): InputHandler {
     val currentMenuItems = rememberUpdatedState(menuItems)
     val currentOpenSection = rememberUpdatedState(openSection)
+    val currentFocusedIndex = rememberUpdatedState(focusedIndex)
+    val currentIsEnabled = rememberUpdatedState(isEnabled)
     val currentRailFocused = rememberUpdatedState(railFocused)
     val currentOnFocusChange = rememberUpdatedState(onFocusChange)
     val currentOnRailFocusChange = rememberUpdatedState(onRailFocusChange)
@@ -137,6 +140,7 @@ internal fun InGameMenuPanel(
                     InGameMenuRail(
                         menuItems = menuItems,
                         openAction = openSection?.action,
+                        focusedIndex = focusedIndex,
                         railFocused = railFocused,
                         isEnabled = isEnabled,
                         onSelect = { action ->
@@ -181,25 +185,35 @@ internal fun InGameMenuPanel(
 
             private fun stepRail(delta: Int): InputResult {
                 val items = currentMenuItems.value
-                val broadIndices = items.indices.filter { items[it].second.broadSection != null }
-                if (broadIndices.isEmpty()) return InputResult.HANDLED
-                val openAction = currentOpenSection.value?.action
-                val current = items.indexOfFirst { it.second == openAction }
-                val position = broadIndices.indexOf(current)
+                val reachable = items.indices.filter { currentIsEnabled.value(items[it].second) }
+                if (reachable.isEmpty()) return InputResult.HANDLED
+                val current = currentFocusedIndex.value
+                val position = reachable.indexOf(current)
                 val target = if (position < 0) {
-                    broadIndices.first()
+                    reachable.first()
                 } else {
-                    broadIndices[(position + delta).mod(broadIndices.size)]
+                    reachable[(position + delta).mod(reachable.size)]
                 }
-                if (target != current) {
-                    currentOnFocusChange.value(target)
-                    currentOnAction.value(items[target].second)
-                }
+                if (target == current) return InputResult.HANDLED
+                currentOnFocusChange.value(target)
+                val action = items[target].second
+                if (action.broadSection != null) currentOnAction.value(action)
                 return InputResult.HANDLED
             }
 
             private fun leaveRail(): InputResult {
+                val openAction = currentOpenSection.value?.action
+                val openIndex = currentMenuItems.value.indexOfFirst { it.second == openAction }
+                if (openIndex >= 0) currentOnFocusChange.value(openIndex)
                 currentOnRailFocusChange.value(false)
+                return InputResult.HANDLED
+            }
+
+            private fun confirmRail(): InputResult {
+                val action = currentMenuItems.value.getOrNull(currentFocusedIndex.value)?.second
+                    ?: return leaveRail()
+                if (action.broadSection != null) return leaveRail()
+                currentOnAction.value(action)
                 return InputResult.HANDLED
             }
 
@@ -215,7 +229,7 @@ internal fun InGameMenuPanel(
 
             override fun onRight(): InputResult = if (onRail) leaveRail() else forward { it.onRight() }
 
-            override fun onConfirm(): InputResult = if (onRail) leaveRail() else forward { it.onConfirm() }
+            override fun onConfirm(): InputResult = if (onRail) confirmRail() else forward { it.onConfirm() }
 
             override fun onBack(): InputResult {
                 if (!onRail) return forward { it.onBack() }
