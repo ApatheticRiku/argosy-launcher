@@ -2,9 +2,11 @@ package com.nendo.argosy.ui.input
 
 import android.content.Context
 import android.os.Build
+import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.annotation.RequiresApi
 import androidx.core.content.getSystemService
 import com.nendo.argosy.util.PServerExecutor
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,6 +27,12 @@ class HapticFeedbackManager @Inject constructor(
 ) {
     companion object {
         private const val DEFAULT_STRENGTH = 0.5f
+        private const val FOCUS_SCALE = 0.6f
+        private const val MIN_SCALE = 0.05f
+        private const val ERROR_GAP_MS = 80
+        private const val PREVIEW_GAP_MS = 140
+        private const val FALLBACK_PULSE_MS = 20L
+        private const val FALLBACK_HEAVY_PULSE_MS = 35L
     }
 
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -38,9 +46,20 @@ class HapticFeedbackManager @Inject constructor(
 
     @Volatile
     private var cachedStrength: Float? = null
-    private val hasAmplitudeControl = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        vibrator?.hasAmplitudeControl() == true
-    } else false
+
+    private val supportsPrimitives: Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+            vibrator?.areAllPrimitivesSupported(
+                VibrationEffect.Composition.PRIMITIVE_CLICK,
+                VibrationEffect.Composition.PRIMITIVE_THUD
+            ) == true
+
+    private val touchAttributes: VibrationAttributes? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            VibrationAttributes.createForUsage(VibrationAttributes.USAGE_TOUCH)
+        } else {
+            null
+        }
 
     val supportsSystemVibration: Boolean
         get() = PServerExecutor.isAvailable
@@ -69,52 +88,72 @@ class HapticFeedbackManager @Inject constructor(
 
     private fun currentStrength(): Float = cachedStrength ?: getSystemVibrationStrength()
 
-    private fun getAmplitude(): Int = (currentStrength() * 255).toInt().coerceIn(1, 255)
-
     fun vibrate(pattern: HapticPattern) {
-        if (!enabled || vibrator == null || !vibrator.hasVibrator()) return
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val amplitude = getAmplitude()
-
-            val effect = if (hasAmplitudeControl) {
-                when (pattern) {
-                    HapticPattern.FOCUS_CHANGE -> VibrationEffect.createOneShot(100L, amplitude)
-                    HapticPattern.SELECTION -> VibrationEffect.createOneShot(150L, amplitude)
-                    HapticPattern.BOUNDARY_HIT -> VibrationEffect.createOneShot(150L, 255)
-                    HapticPattern.ERROR -> VibrationEffect.createOneShot(240L, 255)
-                    HapticPattern.STRENGTH_PREVIEW -> VibrationEffect.createWaveform(
-                        longArrayOf(0, 500, 100, 500, 100, 500),
-                        intArrayOf(0, amplitude, 0, amplitude, 0, amplitude),
-                        -1
-                    )
-                }
-            } else {
-                val strength = currentStrength()
-                val duration = (45 + strength * 105).toLong()
-                when (pattern) {
-                    HapticPattern.FOCUS_CHANGE -> VibrationEffect.createOneShot(duration, VibrationEffect.DEFAULT_AMPLITUDE)
-                    HapticPattern.SELECTION -> VibrationEffect.createOneShot(duration + 45, VibrationEffect.DEFAULT_AMPLITUDE)
-                    HapticPattern.BOUNDARY_HIT -> VibrationEffect.createOneShot(180L, VibrationEffect.DEFAULT_AMPLITUDE)
-                    HapticPattern.ERROR -> VibrationEffect.createOneShot(300L, VibrationEffect.DEFAULT_AMPLITUDE)
-                    HapticPattern.STRENGTH_PREVIEW -> VibrationEffect.createWaveform(
-                        longArrayOf(0, 500, 100, 500, 100, 500),
-                        -1
-                    )
-                }
-            }
-            vibrator.vibrate(effect)
-        } else {
-            @Suppress("DEPRECATION")
-            val strength = currentStrength()
-            val duration = (45 + strength * 105).toLong()
-            when (pattern) {
-                HapticPattern.FOCUS_CHANGE -> vibrator.vibrate(duration)
-                HapticPattern.SELECTION -> vibrator.vibrate(duration + 45)
-                HapticPattern.BOUNDARY_HIT -> vibrator.vibrate(180L)
-                HapticPattern.ERROR -> vibrator.vibrate(300L)
-                HapticPattern.STRENGTH_PREVIEW -> vibrator.vibrate(longArrayOf(0, 500, 100, 500, 100, 500), -1)
-            }
+        val vibrator = vibrator ?: return
+        if (!enabled || !vibrator.hasVibrator()) return
+        val effect = when {
+            supportsPrimitives -> composedEffect(pattern)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> predefinedEffect(pattern)
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> pulseEffect(pattern)
+            else -> null
         }
+        when {
+            effect == null -> legacyPulse(vibrator, pattern)
+            touchAttributes != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ->
+                vibrator.vibrate(effect, touchAttributes)
+            else -> vibrator.vibrate(effect)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun composedEffect(pattern: HapticPattern): VibrationEffect {
+        val strength = currentStrength().coerceIn(MIN_SCALE, 1f)
+        val click = VibrationEffect.Composition.PRIMITIVE_CLICK
+        val thud = VibrationEffect.Composition.PRIMITIVE_THUD
+        val composition = VibrationEffect.startComposition()
+        when (pattern) {
+            HapticPattern.FOCUS_CHANGE -> composition.addPrimitive(click, (strength * FOCUS_SCALE).coerceAtLeast(MIN_SCALE))
+            HapticPattern.SELECTION -> composition.addPrimitive(click, strength)
+            HapticPattern.BOUNDARY_HIT -> composition.addPrimitive(thud, strength)
+            HapticPattern.ERROR -> composition
+                .addPrimitive(click, strength)
+                .addPrimitive(click, strength, ERROR_GAP_MS)
+            HapticPattern.STRENGTH_PREVIEW -> composition
+                .addPrimitive(click, strength)
+                .addPrimitive(click, strength, PREVIEW_GAP_MS)
+                .addPrimitive(click, strength, PREVIEW_GAP_MS)
+        }
+        return composition.compose()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun predefinedEffect(pattern: HapticPattern): VibrationEffect = VibrationEffect.createPredefined(
+        when (pattern) {
+            HapticPattern.FOCUS_CHANGE -> VibrationEffect.EFFECT_TICK
+            HapticPattern.SELECTION -> VibrationEffect.EFFECT_CLICK
+            HapticPattern.BOUNDARY_HIT -> VibrationEffect.EFFECT_HEAVY_CLICK
+            HapticPattern.ERROR -> VibrationEffect.EFFECT_DOUBLE_CLICK
+            HapticPattern.STRENGTH_PREVIEW -> VibrationEffect.EFFECT_CLICK
+        }
+    )
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun pulseEffect(pattern: HapticPattern): VibrationEffect {
+        val amplitude = (currentStrength() * 255).toInt().coerceIn(1, 255)
+        val duration = when (pattern) {
+            HapticPattern.BOUNDARY_HIT, HapticPattern.ERROR -> FALLBACK_HEAVY_PULSE_MS
+            else -> FALLBACK_PULSE_MS
+        }
+        return VibrationEffect.createOneShot(duration, amplitude)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun legacyPulse(vibrator: Vibrator, pattern: HapticPattern) {
+        vibrator.vibrate(
+            when (pattern) {
+                HapticPattern.BOUNDARY_HIT, HapticPattern.ERROR -> FALLBACK_HEAVY_PULSE_MS
+                else -> FALLBACK_PULSE_MS
+            }
+        )
     }
 }
