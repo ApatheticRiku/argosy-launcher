@@ -165,6 +165,7 @@ class ArgosyApp : Application(), Configuration.Provider, ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         appScope.launch { userCertStore.initialize() }
+        appScope.launch { com.nendo.argosy.util.RootShell.isAvailable }
         appScope.launch { socialSyncCoordinator.discardQueueWithoutSocialAccount() }
         appScope.launch { variantFileCleanup.runOnce() }
         UpdateCheckWorker.schedule(this)

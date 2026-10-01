@@ -47,7 +47,7 @@ object RootScriptRunner {
         }
     }
 
-    fun reboot(): Boolean = PServerExecutor.execute("svc power reboot || reboot").isSuccess
+    fun reboot(): Boolean = RootShell.execute("svc power reboot || reboot").isSuccess
 
     private fun runError(context: Context, script: RootScript, error: Throwable) = RootScriptResult.Error(
         script,

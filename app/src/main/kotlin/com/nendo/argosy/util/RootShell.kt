@@ -4,10 +4,10 @@ import android.content.Context
 import java.io.File
 
 /**
- * Runs shell scripts as root through the vendor root daemon ([PServerExecutor]). The daemon returns
- * only the first line of output and mangles its own argument quoting, so every script is written to
- * a file, run through a wrapper that captures its full output, and reported as an exit code plus
- * output lines.
+ * Runs shell scripts as root through the AYN/Retroid daemon [PServerExecutor] or Ayaneo's
+ * [XsuExecutor]. Neither reports a script's exit code and the daemon returns only the first line of
+ * output, so every script is written to a file, run through a wrapper that captures its full
+ * output, and reported as an exit code plus output lines.
  */
 object RootShell {
 
@@ -24,7 +24,10 @@ object RootShell {
     private val lock = Any()
 
     val isAvailable: Boolean
-        get() = PServerExecutor.isAvailable
+        get() = PServerExecutor.isAvailable || XsuExecutor.isAvailable
+
+    fun execute(command: String): kotlin.Result<String?> =
+        if (PServerExecutor.isAvailable) PServerExecutor.execute(command) else XsuExecutor.execute(command)
 
     fun quote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 
@@ -42,8 +45,8 @@ object RootShell {
                 )
             }
             listOf(script, wrapper).forEach { it.setReadable(true, false) }
-            val exit = PServerExecutor.execute("sh ${wrapper.absolutePath}").getOrElse { error ->
-                Logger.warn(TAG, "root daemon refused the call: ${error.message}")
+            val exit = execute("sh ${wrapper.absolutePath}").getOrElse { error ->
+                Logger.warn(TAG, "root route refused the call: ${error.message}")
                 return null
             }?.trim()?.toIntOrNull()
             val lines = if (output.canRead()) output.readLines() else emptyList()
