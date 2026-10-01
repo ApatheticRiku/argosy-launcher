@@ -300,7 +300,7 @@
     <string name="settings_interface_lock_screen_art_title">Lock Screen Art</string>
     <!-- Setting subtitle. Explains what the switch does and warns that it takes over the lock
          screen wallpaper. "Home app" is the app the device shows when Home is pressed. -->
-    <string name="settings_interface_lock_screen_art_subtitle">While Argosy is your home app, the lock screen shows your library, or the game you left running. Replaces your lock screen wallpaper.</string>
+    <string name="settings_interface_lock_screen_art_subtitle">While Argosy is your home app, the lock screen shows your library, or the game you left running. Replaces your lock screen wallpaper for good.</string>
 
     <!-- Row title. Noun: the time of day shown in the status bar. -->
     <string name="settings_interface_status_clock_title">Clock</string>
@@ -2936,9 +2936,10 @@
     <string name="settings_emulators_rail_platforms">Platforms</string>
 
     <!-- Toggle row. "Session" is one play session of a game; the emulator is the external emulator app, not Argosy's built-in one. -->
-    <string name="settings_emulators_close_on_session_end_title">Close Emulator on Session End</string>
-    <!-- Second line of that row while it is on. "Synced" is save sync to the server. -->
-    <string name="settings_emulators_close_on_session_end_subtitle_on">The emulator app is closed once its save has been read and synced</string>
+    <string name="settings_emulators_close_on_session_end_title">Close Emulator When Returning to Argosy</string>
+    <!-- Second line of that row while it is on. "Synced" is save sync to the server; the second
+         sentence warns that progress not saved inside the game is lost. -->
+    <string name="settings_emulators_close_on_session_end_subtitle_on">Closes the emulator once its save has synced. Unsaved progress is lost.</string>
     <!-- Second line of that row while it is off. -->
     <string name="settings_emulators_close_on_session_end_subtitle_off">The emulator app stays open in the background</string>
     <!-- Row that asks whether newer emulator apps exist. Verb phrase. -->

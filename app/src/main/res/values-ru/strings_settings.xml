@@ -107,7 +107,7 @@
     <string name="settings_interface_compact_footer_title">Компактная панель</string>
     <string name="settings_interface_compact_footer_subtitle">Использовать более тонкую панель подсказок</string>
     <string name="settings_interface_lock_screen_art_title">Картинка экрана блокировки</string>
-    <string name="settings_interface_lock_screen_art_subtitle">Пока Argosy — ваше приложение главного экрана, на экране блокировки показывается ваша библиотека или незакрытая игра. Заменяет обои экрана блокировки.</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Пока Argosy — ваше приложение главного экрана, на экране блокировки показывается ваша библиотека или незакрытая игра. Заменяет обои экрана блокировки безвозвратно.</string>
     <string name="settings_interface_controller_grip_title">Хват контроллера</string>
     <string name="settings_interface_controller_grip_subtitle">Сдвинуть интерфейс выше зоны, занимаемой хватом</string>
     <string name="settings_interface_home_screen_title">Главный экран</string>
@@ -1621,8 +1621,8 @@
     <string name="settings_emulators_section_disabled">Отключённые платформы</string>
     <string name="settings_emulators_rail_platforms">Платформы</string>
 
-    <string name="settings_emulators_close_on_session_end_title">Закрывать эмулятор после сессии</string>
-    <string name="settings_emulators_close_on_session_end_subtitle_on">Приложение эмулятора закрывается после того, как его сохранение прочитано и синхронизировано</string>
+    <string name="settings_emulators_close_on_session_end_title">Закрывать эмулятор при возврате в Argosy</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">Закрывает эмулятор после синхронизации сохранения. Несохранённый прогресс теряется.</string>
     <string name="settings_emulators_close_on_session_end_subtitle_off">Приложение эмулятора остаётся открытым в фоне</string>
     <string name="settings_emulators_check_updates_title">Проверить обновления</string>
     <string name="settings_emulators_check_updates_subtitle">Проверить обновления эмуляторов</string>

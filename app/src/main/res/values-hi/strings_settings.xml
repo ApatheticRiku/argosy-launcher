@@ -104,7 +104,7 @@
     <string name="settings_interface_compact_footer_title">कॉम्पैक्ट फ़ुटर</string>
     <string name="settings_interface_compact_footer_subtitle">पतली कंट्रोल गाइड बार का उपयोग करें</string>
     <string name="settings_interface_lock_screen_art_title">लॉक स्क्रीन चित्र</string>
-    <string name="settings_interface_lock_screen_art_subtitle">जब Argosy आपका होम ऐप हो, लॉक स्क्रीन पर आपकी लाइब्रेरी या चालू छोड़ा गया गेम दिखता है। यह आपके लॉक स्क्रीन वॉलपेपर की जगह लेता है।</string>
+    <string name="settings_interface_lock_screen_art_subtitle">जब Argosy आपका होम ऐप हो, लॉक स्क्रीन पर आपकी लाइब्रेरी या चालू छोड़ा गया गेम दिखता है। यह आपके लॉक स्क्रीन वॉलपेपर की जगह हमेशा के लिए ले लेता है।</string>
     <string name="settings_interface_controller_grip_title">कंट्रोलर ग्रिप</string>
     <string name="settings_interface_controller_grip_subtitle">ग्रिप वाले हिस्से से UI को ऊपर खिसकाएँ</string>
     <string name="settings_interface_home_screen_title">होम स्क्रीन</string>
@@ -1542,8 +1542,8 @@
     <string name="settings_emulators_section_disabled">बंद किए गए प्लेटफ़ॉर्म</string>
     <string name="settings_emulators_rail_platforms">प्लेटफ़ॉर्म</string>
 
-    <string name="settings_emulators_close_on_session_end_title">सत्र समाप्त होने पर एमुलेटर बंद करें</string>
-    <string name="settings_emulators_close_on_session_end_subtitle_on">सेव पढ़े और सिंक होने के बाद एमुलेटर ऐप बंद कर दिया जाता है</string>
+    <string name="settings_emulators_close_on_session_end_title">Argosy पर लौटने पर एमुलेटर बंद करें</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">सेव सिंक होने के बाद एमुलेटर बंद कर देता है। बिना सेव की गई प्रगति खो जाती है।</string>
     <string name="settings_emulators_close_on_session_end_subtitle_off">एमुलेटर ऐप बैकग्राउंड में खुला रहता है</string>
     <string name="settings_emulators_check_updates_title">अपडेट जाँचें</string>
     <string name="settings_emulators_check_updates_subtitle">एमुलेटर अपडेट जाँचें</string>

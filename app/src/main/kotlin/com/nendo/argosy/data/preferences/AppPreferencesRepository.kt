@@ -18,7 +18,7 @@ import javax.inject.Singleton
 data class AppPreferences(
     val firstRunComplete: Boolean = false,
     val betaUpdatesEnabled: Boolean = false,
-    val closeEmulatorOnSessionEnd: Boolean = true,
+    val closeEmulatorOnSessionEnd: Boolean = false,
     val hiddenApps: Set<String> = emptySet(),
     val secondaryHomeApps: Set<String> = emptySet(),
     val visibleSystemApps: Set<String> = emptySet(),
@@ -69,7 +69,7 @@ class AppPreferencesRepository @Inject constructor(
         AppPreferences(
             firstRunComplete = prefs[Keys.FIRST_RUN_COMPLETE] ?: false,
             betaUpdatesEnabled = prefs[Keys.BETA_UPDATES_ENABLED] ?: false,
-            closeEmulatorOnSessionEnd = prefs[Keys.CLOSE_EMULATOR_ON_SESSION_END] ?: true,
+            closeEmulatorOnSessionEnd = prefs[Keys.CLOSE_EMULATOR_ON_SESSION_END] ?: false,
             hiddenApps = prefs[Keys.HIDDEN_APPS]
                 ?.split(",")
                 ?.filter { it.isNotBlank() }

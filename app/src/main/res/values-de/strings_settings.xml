@@ -114,7 +114,7 @@
     <string name="settings_interface_compact_footer_title">Kompakter Footer</string>
     <string name="settings_interface_compact_footer_subtitle">Schmalere Bedienleiste verwenden</string>
     <string name="settings_interface_lock_screen_art_title">Sperrbildschirm-Motiv</string>
-    <string name="settings_interface_lock_screen_art_subtitle">Solange Argosy deine Startbildschirm-App ist, zeigt der Sperrbildschirm deine Bibliothek oder das laufende Spiel. Ersetzt dein Sperrbildschirm-Hintergrundbild.</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Solange Argosy deine Startbildschirm-App ist, zeigt der Sperrbildschirm deine Bibliothek oder das laufende Spiel. Ersetzt dein Sperrbildschirm-Hintergrundbild dauerhaft.</string>
     <string name="settings_interface_controller_grip_title">Controller-Griff</string>
     <string name="settings_interface_controller_grip_subtitle">Schiebt die Oberfläche aus dem vom Griff verdeckten Bereich</string>
     <string name="settings_interface_home_screen_title">Startbildschirm</string>
@@ -1552,8 +1552,8 @@
     <string name="settings_emulators_section_disabled">Deaktivierte Plattformen</string>
     <string name="settings_emulators_rail_platforms">Plattformen</string>
 
-    <string name="settings_emulators_close_on_session_end_title">Emulator nach der Sitzung schließen</string>
-    <string name="settings_emulators_close_on_session_end_subtitle_on">Die Emulator-App wird geschlossen, sobald ihr Spielstand gelesen und synchronisiert wurde</string>
+    <string name="settings_emulators_close_on_session_end_title">Emulator bei Rückkehr zu Argosy schließen</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">Schließt den Emulator, sobald sein Spielstand synchronisiert ist. Ungespeicherter Fortschritt geht verloren.</string>
     <string name="settings_emulators_close_on_session_end_subtitle_off">Die Emulator-App bleibt im Hintergrund geöffnet</string>
     <string name="settings_emulators_check_updates_title">Nach Updates suchen</string>
     <string name="settings_emulators_check_updates_subtitle">Nach Emulator-Updates suchen</string>

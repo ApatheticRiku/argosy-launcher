@@ -116,7 +116,7 @@
     <string name="settings_interface_compact_footer_title">Pie de página compacto</string>
     <string name="settings_interface_compact_footer_subtitle">Usar una barra de controles más fina</string>
     <string name="settings_interface_lock_screen_art_title">Imagen de la pantalla de bloqueo</string>
-    <string name="settings_interface_lock_screen_art_subtitle">Mientras Argosy sea tu aplicación de inicio, la pantalla de bloqueo muestra tu biblioteca o el juego que dejaste en curso. Sustituye tu fondo de pantalla de bloqueo.</string>
+    <string name="settings_interface_lock_screen_art_subtitle">Mientras Argosy sea tu aplicación de inicio, la pantalla de bloqueo muestra tu biblioteca o el juego que dejaste en curso. Sustituye tu fondo de pantalla de bloqueo de forma permanente.</string>
     <string name="settings_interface_controller_grip_title">Agarre del mando</string>
     <string name="settings_interface_controller_grip_subtitle">Desplazar la interfaz fuera del área que cubre un agarre</string>
     <string name="settings_interface_home_screen_title">Pantalla de inicio</string>
@@ -1593,8 +1593,8 @@
     <string name="settings_emulators_section_disabled">Plataformas desactivadas</string>
     <string name="settings_emulators_rail_platforms">Plataformas</string>
 
-    <string name="settings_emulators_close_on_session_end_title">Cerrar el emulador al terminar la sesión</string>
-    <string name="settings_emulators_close_on_session_end_subtitle_on">La app del emulador se cierra cuando su partida guardada se ha leído y sincronizado</string>
+    <string name="settings_emulators_close_on_session_end_title">Cerrar el emulador al volver a Argosy</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">Cierra el emulador cuando su partida guardada se ha sincronizado. Se pierde el progreso sin guardar.</string>
     <string name="settings_emulators_close_on_session_end_subtitle_off">La app del emulador sigue abierta en segundo plano</string>
     <string name="settings_emulators_check_updates_title">Buscar actualizaciones</string>
     <string name="settings_emulators_check_updates_subtitle">Buscar actualizaciones de emuladores</string>

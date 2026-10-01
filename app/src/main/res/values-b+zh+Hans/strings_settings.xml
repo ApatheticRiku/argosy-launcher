@@ -102,7 +102,7 @@
     <string name="settings_interface_compact_footer_title">紧凑底栏</string>
     <string name="settings_interface_compact_footer_subtitle">使用更薄的操作提示栏</string>
     <string name="settings_interface_lock_screen_art_title">锁屏图片</string>
-    <string name="settings_interface_lock_screen_art_subtitle">当 Argosy 是你的主屏幕应用时，锁屏会显示你的游戏库或未退出的游戏。会替换你的锁屏壁纸。</string>
+    <string name="settings_interface_lock_screen_art_subtitle">当 Argosy 是你的主屏幕应用时，锁屏会显示你的游戏库或未退出的游戏。会永久替换你的锁屏壁纸。</string>
     <string name="settings_interface_controller_grip_title">手柄夹持</string>
     <string name="settings_interface_controller_grip_subtitle">将界面上移，避开夹持配件遮挡的区域</string>
     <string name="settings_interface_home_screen_title">主屏幕</string>
@@ -1506,8 +1506,8 @@
     <string name="settings_emulators_section_disabled">已禁用的平台</string>
     <string name="settings_emulators_rail_platforms">平台</string>
 
-    <string name="settings_emulators_close_on_session_end_title">会话结束时关闭模拟器</string>
-    <string name="settings_emulators_close_on_session_end_subtitle_on">存档读取并同步完成后，模拟器应用将被关闭</string>
+    <string name="settings_emulators_close_on_session_end_title">返回 Argosy 时关闭模拟器</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">存档同步完成后关闭模拟器。未保存的进度会丢失。</string>
     <string name="settings_emulators_close_on_session_end_subtitle_off">模拟器应用将继续在后台运行</string>
     <string name="settings_emulators_check_updates_title">检查更新</string>
     <string name="settings_emulators_check_updates_subtitle">检查模拟器更新</string>
