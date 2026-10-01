@@ -19,6 +19,7 @@ import com.nendo.argosy.data.repository.AppsRepository
 import com.nendo.argosy.data.repository.InstalledApp
 import com.nendo.argosy.ui.components.AppContextMenuItem
 import com.nendo.argosy.ui.components.AppMenuRow
+import com.nendo.argosy.ui.components.ListReorder
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.SoundFeedbackManager
@@ -54,7 +55,7 @@ data class AppsUiState(
     val showHiddenApps: Boolean = false,
     val showContextMenu: Boolean = false,
     val contextMenuFocusIndex: Int = 0,
-    val isReorderMode: Boolean = false,
+    val reorder: ListReorder<AppUi>? = null,
     val isTouchMode: Boolean = false,
     val hasSelectedApp: Boolean = false,
     val screenWidthDp: Int = 0,
@@ -63,6 +64,9 @@ data class AppsUiState(
 ) {
     val columnsCount: Int
         get() = GridUtils.getAppGridColumns(gridDensity, screenWidthDp)
+
+    val isReorderMode: Boolean
+        get() = reorder != null
 
     val focusedApp: AppUi?
         get() = apps.getOrNull(focusedIndex)
@@ -111,7 +115,6 @@ class AppsViewModel @Inject constructor(
     private var visibleSystemApps: Set<String> = emptySet()
     private var secondaryHomeApps: Set<String> = emptySet()
     private var customOrder: List<String> = emptyList()
-    private var originalAppsBeforeReorder: List<AppUi> = emptyList()
 
     init {
         _uiState.update { it.copy(hasSecondaryDisplay = displayAffinityHelper.hasSecondaryDisplay) }
@@ -170,7 +173,8 @@ class AppsViewModel @Inject constructor(
                         )
                     },
                     isLoading = false,
-                    focusedIndex = 0
+                    focusedIndex = 0,
+                    reorder = null
                 )
             }
         }
@@ -405,7 +409,11 @@ class AppsViewModel @Inject constructor(
 
     fun handleSecondaryAction() {
         val state = _uiState.value
-        if (state.showContextMenu || state.isReorderMode) return
+        if (state.showContextMenu) return
+        if (state.isReorderMode) {
+            saveReorderAndExit()
+            return
+        }
         if (state.hasSecondaryDisplay) {
             val dsm = DualScreenManagerHolder.instance
             val presentation = displayAffinityHelper
@@ -420,31 +428,37 @@ class AppsViewModel @Inject constructor(
     }
 
     fun enterReorderMode() {
-        if (_uiState.value.apps.isEmpty()) return
-        originalAppsBeforeReorder = _uiState.value.apps
-        _uiState.update { it.copy(isReorderMode = true) }
+        _uiState.update { state ->
+            if (state.isReorderMode) return@update state
+            val reorder = ListReorder.lift(state.apps, state.focusedIndex) ?: return@update state
+            state.copy(reorder = reorder)
+        }
     }
 
     fun saveReorderAndExit() {
-        _uiState.update { it.copy(isReorderMode = false) }
-        saveCustomOrder()
-        originalAppsBeforeReorder = emptyList()
+        var committed: List<AppUi>? = null
+        _uiState.update { state ->
+            val reorder = state.reorder ?: return@update state
+            committed = reorder.changedOrder(state.apps)
+            state.copy(reorder = null)
+        }
+        val apps = committed ?: return
+        saveCustomOrder(apps.map { it.packageName })
     }
 
     fun cancelReorderAndExit() {
         _uiState.update { state ->
+            val reorder = state.reorder ?: return@update state
             state.copy(
-                isReorderMode = false,
-                apps = originalAppsBeforeReorder,
-                focusedIndex = 0
+                reorder = null,
+                apps = reorder.backup,
+                focusedIndex = reorder.originIndex
             )
         }
-        originalAppsBeforeReorder = emptyList()
     }
 
-    private fun saveCustomOrder() {
+    private fun saveCustomOrder(order: List<String>) {
         viewModelScope.launch {
-            val order = _uiState.value.apps.map { it.packageName }
             preferencesRepository.setAppOrder(order)
             customOrder = order
         }
@@ -452,6 +466,7 @@ class AppsViewModel @Inject constructor(
 
     fun moveAppInReorderMode(direction: FocusDirection) {
         _uiState.update { state ->
+            val reorder = state.reorder ?: return@update state
             if (state.apps.isEmpty()) return@update state
 
             val cols = state.columnsCount
@@ -475,13 +490,9 @@ class AppsViewModel @Inject constructor(
                 }
             }
 
-            if (targetIndex == current) return@update state
-
-            val mutableApps = state.apps.toMutableList()
-            val movingApp = mutableApps.removeAt(current)
-            mutableApps.add(targetIndex, movingApp)
-
-            state.copy(apps = mutableApps, focusedIndex = targetIndex)
+            val step = reorder.moveTo(state.apps, targetIndex)
+            if (!step.moved) return@update state
+            state.copy(apps = step.items, reorder = step.reorder, focusedIndex = step.reorder.heldIndex)
         }
     }
 
@@ -528,6 +539,15 @@ class AppsViewModel @Inject constructor(
         val state = _uiState.value
         if (index < 0 || index >= state.apps.size) return
 
+        if (state.isReorderMode) {
+            _uiState.update { current ->
+                val reorder = current.reorder ?: return@update current
+                val step = reorder.moveTo(current.apps, index)
+                current.copy(apps = step.items, reorder = step.reorder, focusedIndex = step.reorder.heldIndex)
+            }
+            return
+        }
+
         _uiState.update { it.copy(focusedIndex = index, hasSelectedApp = true, isTouchMode = true) }
         launchAppAt(index)
     }
@@ -535,6 +555,7 @@ class AppsViewModel @Inject constructor(
     fun handleAppLongPress(index: Int) {
         val state = _uiState.value
         if (index < 0 || index >= state.apps.size) return
+        if (state.isReorderMode) return
 
         if (index != state.focusedIndex) {
             _uiState.update { it.copy(focusedIndex = index, hasSelectedApp = true, isTouchMode = true) }

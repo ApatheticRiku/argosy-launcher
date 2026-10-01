@@ -73,6 +73,12 @@
          product Argosy syncs from and stays untranslated. "Settings" names Argosy's own
          settings screen. -->
     <string name="library_landing_empty_body">Sync your library from Rom Manager in Settings</string>
+    <!-- Footer hint on the library landing that picks up the focused platform to change its place in the platform order. Verb. -->
+    <string name="library_landing_hint_reorder">Reorder</string>
+    <!-- Footer hint beside the d-pad while a platform is picked up on the library landing. Verb. -->
+    <string name="library_landing_hint_move">Move</string>
+    <!-- Footer hint while a platform is picked up on the library landing: puts it back where it was. Verb. -->
+    <string name="library_landing_hint_cancel">Cancel</string>
 
     <!-- Headline shown in place of the game list when a chosen platform has no games.
          %1$s is the platform's name, for example "SNES". -->
@@ -281,9 +287,6 @@
 
     <!-- Button hint on the apps screen while reordering. Verb, moves the held app one place. -->
     <string name="library_apps_hint_move">Move</string>
-    <!-- Button hint on the apps screen while reordering. Verb, keeps the new order. Not the
-         noun for a saved game. -->
-    <string name="library_apps_hint_save">Save</string>
     <!-- Button hint on the apps screen while reordering. Verb, abandons the new order. -->
     <string name="library_apps_hint_cancel">Cancel</string>
     <!-- Button hint on the apps screen. Verb, starts the focused app. -->

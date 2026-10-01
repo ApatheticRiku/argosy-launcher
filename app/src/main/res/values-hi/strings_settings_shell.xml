@@ -297,6 +297,8 @@
     <string name="settings_shell_footer_remove_shaderstack">हटाएँ</string>
     <string name="settings_shell_footer_remove_frame">हटाएँ</string>
     <string name="settings_shell_footer_add_shaderstack">जोड़ें</string>
+    <string name="settings_shell_footer_shaderstack_move">खिसकाएँ</string>
+    <string name="settings_shell_footer_shaderstack_cancel">रद्द करें</string>
     <string name="settings_shell_footer_platform_builtin">प्लेटफ़ॉर्म</string>
     <string name="settings_shell_footer_reset_to_default_builtinvideo">डिफ़ॉल्ट पर रीसेट करें</string>
     <string name="settings_shell_footer_reset_to_default_storage">डिफ़ॉल्ट पर रीसेट करें</string>
@@ -322,6 +324,9 @@
     <string name="settings_shell_footer_select_default">चुनें</string>
     <string name="settings_shell_footer_display">डिस्प्ले</string>
     <string name="settings_shell_footer_enable">चालू करें</string>
+    <string name="settings_shell_footer_platforms_reorder">फिर से व्यवस्थित करें</string>
+    <string name="settings_shell_footer_platforms_move">मूव</string>
+    <string name="settings_shell_footer_platforms_cancel">रद्द करें</string>
     <string name="settings_shell_footer_update">अपडेट करें</string>
     <string name="settings_shell_footer_reset_builtinvideo_override">रीसेट करें</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">रीसेट करें</string>
@@ -353,7 +358,6 @@
 
     <string name="settings_shell_managepins_loading">लोड हो रहा है&#8230;</string>
     <string name="settings_shell_managepins_reorder_move">मूव करें</string>
-    <string name="settings_shell_managepins_reorder_done">पूर्ण</string>
     <string name="settings_shell_managepins_reorder_cancel">रद्द करें</string>
     <string name="settings_shell_managepins_navigate">नेविगेट करें</string>
     <string name="settings_shell_managepins_reorder_hint">क्रम बदलें</string>
@@ -378,10 +382,9 @@
     <string name="settings_shell_bgm_synced_folders">सिंक किए गए फ़ोल्डर</string>
     <string name="settings_shell_bgm_tracks">ट्रैक</string>
     <string name="settings_shell_bgm_reorder_move">मूव करें</string>
-    <string name="settings_shell_bgm_reorder_done">पूर्ण</string>
     <string name="settings_shell_bgm_reorder_cancel">रद्द करें</string>
     <string name="settings_shell_bgm_add_music_empty">संगीत जोड़ें</string>
-    <string name="settings_shell_bgm_move_hint">मूव करें</string>
+    <string name="settings_shell_bgm_reorder_hint">क्रम बदलें</string>
     <string name="settings_shell_bgm_add_music_hint">संगीत जोड़ें</string>
     <string name="settings_shell_bgm_remove_verb">हटाएँ</string>
     <string name="settings_shell_bgm_remove_verb_uncovered">हटाएँ</string>
@@ -403,8 +406,6 @@
     <string name="settings_shell_bgm_moving_desc">मूव हो रहा है</string>
     <string name="settings_shell_bgm_file_missing">फ़ाइल गुम है - प्लेबैक के दौरान छोड़ दी गई</string>
     <string name="settings_shell_bgm_disabled_desc">बंद है - प्लेबैक से बाहर</string>
-    <string name="settings_shell_bgm_move_up_desc">ऊपर ले जाएँ</string>
-    <string name="settings_shell_bgm_move_down_desc">नीचे ले जाएँ</string>
     <string name="settings_shell_bgm_remove_desc">हटाएँ</string>
     <string name="settings_shell_bgm_empty_state">कोई संगीत नहीं - म्यूज़िक ब्राउज़र या लोकल फ़ाइलों से जोड़ें</string>
 

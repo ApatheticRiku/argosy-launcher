@@ -302,7 +302,7 @@ class PerGameSettingsDelegate @Inject constructor(
                 ?: SavePathRegistry.resolvePathWithPackage(saveConfig, effectivePackage, context.filesDir.absolutePath).firstOrNull()
         }
 
-        val showSaveBasePathRow = !showSavePathRow && saveConfig != null && saveConfig.supported
+        val showSaveBasePathRow = !showSavePathRow && saveConfig != null && saveConfig.isUsable
         val saveBasePath = if (!showSaveBasePathRow || saveConfig == null) {
             null
         } else {

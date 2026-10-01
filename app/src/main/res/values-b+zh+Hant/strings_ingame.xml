@@ -236,6 +236,8 @@
     <string name="ingame_shader_footer_picker_cancel">取消</string>
     <string name="ingame_shader_footer_shader">著色器</string>
     <string name="ingame_shader_footer_reorder">重新排序</string>
+    <string name="ingame_shader_footer_move">移動</string>
+    <string name="ingame_shader_footer_cancel">取消</string>
     <string name="ingame_shader_footer_adjust">調整</string>
     <string name="ingame_shader_footer_add">新增</string>
     <string name="ingame_shader_footer_remove">移除</string>

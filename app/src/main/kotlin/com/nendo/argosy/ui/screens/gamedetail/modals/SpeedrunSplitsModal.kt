@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.gamedetail.modals
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -22,6 +24,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.Lifecycle
@@ -32,6 +36,10 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.Modal
 import com.nendo.argosy.ui.components.NestedModal
+import com.nendo.argosy.ui.components.dragReorderContainer
+import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.liftedReorderHints
+import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.LocalInputDispatcher
@@ -92,29 +100,29 @@ fun SpeedrunSplitsModal(
                 return InputResult.HANDLED
             }
             override fun onBack(): InputResult {
+                val reordering = currentState.value.isReordering
                 delegate.dismiss()
-                return InputResult.handled(SoundType.CLOSE_MODAL)
+                return InputResult.handled(if (reordering) SoundType.BACK else SoundType.CLOSE_MODAL)
             }
             override fun onContextMenu(): InputResult {
-                val s = currentState.value
-                if (s.prompt == null && s.import == null) delegate.promptNew()
-                return InputResult.HANDLED
-            }
-            override fun onSecondaryAction(): InputResult {
                 val s = currentState.value
                 if (s.prompt == null && s.import == null) delegate.promptDelete()
                 return InputResult.HANDLED
             }
-            override fun onPrevSection(): InputResult {
-                if (currentState.value.import == null) delegate.moveSegment(-1)
+            override fun onSecondaryAction(): InputResult {
+                val s = currentState.value
+                if (s.prompt != null || s.import != null || s.editingCategory == null) return InputResult.HANDLED
+                if (s.isReordering) delegate.dropSegment() else delegate.liftSegment()
+                return InputResult.handled(SoundType.SELECT)
+            }
+            override fun onSelect(): InputResult {
+                val s = currentState.value
+                if (s.prompt == null && s.import == null) delegate.promptNew()
                 return InputResult.HANDLED
             }
-            override fun onNextSection(): InputResult {
-                if (currentState.value.import == null) delegate.moveSegment(1)
-                return InputResult.HANDLED
-            }
+            override fun onPrevSection(): InputResult = InputResult.HANDLED
+            override fun onNextSection(): InputResult = InputResult.HANDLED
             override fun onMenu(): InputResult = InputResult.HANDLED
-            override fun onSelect(): InputResult = InputResult.HANDLED
         }
     }
 
@@ -134,7 +142,20 @@ fun SpeedrunSplitsModal(
 
     val editing = state.editingCategory
     val listState = rememberLazyListState()
-    FocusedScroll(listState = listState, focusedIndex = state.focusIndex)
+    val haptics = LocalHapticFeedback.current
+    val dragState = rememberDragReorderState(
+        listState = listState,
+        canDrag = { key -> key is Long && currentState.value.segments.any { it.key == key } },
+        onLift = { key ->
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            delegate.liftSegmentAt(key as Long)
+        },
+        onMove = { key, index -> delegate.moveHeldSegmentTo(key as Long, index) },
+        onDrop = { delegate.dropSegment() }
+    )
+    if (dragState.draggingKey == null) {
+        FocusedScroll(listState = listState, focusedIndex = state.focusIndex)
+    }
 
     Modal(
         title = if (editing != null) {
@@ -144,36 +165,65 @@ fun SpeedrunSplitsModal(
         },
         subtitle = if (editing == null) gameTitle else null,
         onDismiss = { delegate.dismiss() },
-        footerHints = if (editing != null) {
-            listOf(
-                InputButton.X to stringResource(R.string.gamedetail_speedrun_footer_add_segment),
-                InputButton.Y to stringResource(R.string.gamedetail_speedrun_footer_delete),
-                InputButton.LB_RB to stringResource(R.string.gamedetail_speedrun_footer_move),
+        footerHints = when {
+            state.isReordering -> liftedReorderHints(
+                move = stringResource(R.string.gamedetail_speedrun_footer_move),
+                cancel = stringResource(R.string.gamedetail_speedrun_footer_cancel)
+            )
+            editing != null -> listOf(
+                InputButton.SELECT to stringResource(R.string.gamedetail_speedrun_footer_add_segment),
+                InputButton.Y to stringResource(R.string.gamedetail_speedrun_footer_reorder),
+                InputButton.X to stringResource(R.string.gamedetail_speedrun_footer_delete),
                 InputButton.B to stringResource(R.string.gamedetail_speedrun_footer_back)
             )
-        } else {
-            listOf(
+            else -> listOf(
                 InputButton.A to stringResource(R.string.gamedetail_speedrun_footer_open),
-                InputButton.X to stringResource(R.string.gamedetail_speedrun_footer_new_category),
+                InputButton.SELECT to stringResource(R.string.gamedetail_speedrun_footer_new_category),
                 InputButton.B to stringResource(R.string.gamedetail_speedrun_footer_close)
             )
+        },
+        onFooterHintClick = { button ->
+            when (button) {
+                InputButton.A -> inputHandler.onConfirm()
+                InputButton.B -> inputHandler.onBack()
+                InputButton.X -> inputHandler.onContextMenu()
+                InputButton.Y -> inputHandler.onSecondaryAction()
+                InputButton.SELECT -> inputHandler.onSelect()
+                else -> Unit
+            }
         }
     ) {
         if (editing != null) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .dragReorderContainer(dragState)
             ) {
-                itemsIndexed(state.segments, key = { index, _ -> index }) { index, segment ->
-                    OptionItem(
-                        label = stringResource(
-                            R.string.gamedetail_speedrun_segment_row,
-                            index + 1,
-                            segment
-                        ),
-                        isFocused = state.focusIndex == index,
-                        onClick = { delegate.confirmFocusedAt(index) }
-                    )
+                itemsIndexed(state.segments, key = { _, segment -> segment.key }) { index, segment ->
+                    Box(
+                        modifier = Modifier
+                            .then(
+                                if (dragState.draggingKey == null || dragState.draggingKey == segment.key) {
+                                    Modifier
+                                } else {
+                                    Modifier.animateItem()
+                                }
+                            )
+                            .dragReorderItem(dragState, segment.key)
+                    ) {
+                        OptionItem(
+                            label = stringResource(
+                                R.string.gamedetail_speedrun_segment_row,
+                                index + 1,
+                                segment.name
+                            ),
+                            isFocused = state.focusIndex == index,
+                            trailingIcon = if (state.reorder?.heldIndex == index) Icons.Default.DragHandle else null,
+                            trailingTint = MaterialTheme.colorScheme.primary,
+                            onClick = { delegate.confirmFocusedAt(index) }
+                        )
+                    }
                 }
                 item(key = "rename-category") {
                     OptionItem(
@@ -203,7 +253,7 @@ fun SpeedrunSplitsModal(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    InputGlyph(button = InputButton.X)
+                    InputGlyph(button = InputButton.SELECT)
                     Text(
                         text = stringResource(R.string.gamedetail_speedrun_empty_suffix),
                         style = MaterialTheme.typography.bodySmall,

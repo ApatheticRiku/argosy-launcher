@@ -126,7 +126,6 @@
     <string name="settings_nav_ring_pinned">始终开启</string>
     <string name="settings_nav_ring_hint_reorder">重新排序</string>
     <string name="settings_nav_ring_hint_move">移动</string>
-    <string name="settings_nav_ring_hint_drop">放下</string>
     <string name="settings_nav_ring_hint_cancel">取消</string>
     <string name="settings_shell_header_installers">托管安装器</string>
     <string name="settings_installers_add_title">添加仓库</string>
@@ -1571,6 +1570,9 @@
     <string name="settings_platform_package_path_title">应用包路径</string>
     <string name="settings_platform_package_path_accessible">可访问</string>
     <string name="settings_platform_package_path_blocked">被阻止</string>
+    <string name="settings_platform_package_path_via_direct">直接访问</string>
+    <string name="settings_platform_package_path_via_unicode">通过Unicode路径</string>
+    <string name="settings_platform_package_path_via_root">通过root</string>
     <string name="settings_platform_package_path_checking">正在检查...</string>
 
     <string name="settings_platform_bios_status_title">状态</string>
@@ -1580,10 +1582,6 @@
 
     <string name="settings_platform_clear_art_title">清除缓存的美术资源</string>
     <string name="settings_platform_clear_art_subtitle">删除此平台已下载的封面与截图，以便重新获取。你自己选择的封面会被保留</string>
-    <string name="settings_platform_move_earlier_title">前移</string>
-    <string name="settings_platform_move_earlier_subtitle">在所有列出平台的地方更靠前显示此平台</string>
-    <string name="settings_platform_move_later_title">后移</string>
-    <string name="settings_platform_move_later_subtitle">在所有列出平台的地方更靠后显示此平台</string>
     <string name="settings_platform_scan_busy">正在扫描...</string>
     <string name="settings_platform_scan_files_title">扫描文件</string>
     <string name="settings_platform_scan_files_subtitle">检查新增或缺失的ROM文件</string>
@@ -1993,7 +1991,6 @@
     <string name="settings_region_priority_hint_reorder">重新排序</string>
     <string name="settings_region_priority_hint_close">关闭</string>
     <string name="settings_region_priority_hint_move">移动</string>
-    <string name="settings_region_priority_hint_drop">放下</string>
     <string name="settings_region_priority_hint_cancel">取消</string>
 
     <!-- ===== Driver version picker modal ===== -->

@@ -30,6 +30,9 @@
 
     <string name="library_landing_empty_title">尚無平台</string>
     <string name="library_landing_empty_body">請在設定中從Rom Manager同步您的遊戲庫</string>
+    <string name="library_landing_hint_reorder">重新排序</string>
+    <string name="library_landing_hint_move">移動</string>
+    <string name="library_landing_hint_cancel">取消</string>
 
     <string name="library_empty_title_platform">找不到%1$s遊戲</string>
     <string name="library_empty_title_all">尚無遊戲</string>
@@ -115,7 +118,6 @@
     <string name="library_apps_empty">找不到應用程式</string>
 
     <string name="library_apps_hint_move">移動</string>
-    <string name="library_apps_hint_save">儲存</string>
     <string name="library_apps_hint_cancel">取消</string>
     <string name="library_apps_hint_open">開啟</string>
     <string name="library_apps_hint_back">返回</string>

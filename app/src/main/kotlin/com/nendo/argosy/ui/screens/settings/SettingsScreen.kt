@@ -60,6 +60,7 @@ import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.TextEntryModal
+import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.filebrowser.FileBrowserMode
 import com.nendo.argosy.ui.filebrowser.FileBrowserScreen
@@ -722,6 +723,7 @@ fun SettingsScreen(
                         InputButton.Y -> { inputHandler.onSecondaryAction() }
                         InputButton.LB_RB -> { inputHandler.onNextSection() }
                         InputButton.LT_RT -> { inputHandler.onNextTrigger() }
+                        InputButton.SELECT -> { inputHandler.onSelect() }
                         InputButton.B -> { inputHandler.onBack() }
                         else -> Unit
                     }
@@ -1726,6 +1728,31 @@ private fun SettingsFooter(
     if (uiState.controls.shortcutCaptureTarget != null) {
         return
     }
+    if (uiState.currentSection == SettingsSection.PLATFORMS && uiState.emulators.isReorderingPlatforms) {
+        FooterHints(
+            hints = liftedReorderHints(
+                move = stringResource(R.string.settings_shell_footer_platforms_move),
+                cancel = stringResource(R.string.settings_shell_footer_platforms_cancel)
+            ),
+            onHintClick = onHintClick,
+            forced = true
+        )
+        FooterSpacer()
+        return
+    }
+    if (uiState.currentSection == SettingsSection.SHADER_STACK && shaderStack.isReordering) {
+        FooterHints(
+            hints = liftedReorderHints(
+                move = stringResource(R.string.settings_shell_footer_shaderstack_move),
+                cancel = stringResource(R.string.settings_shell_footer_shaderstack_cancel),
+                moveButton = InputButton.DPAD_HORIZONTAL
+            ),
+            onHintClick = onHintClick,
+            forced = true
+        )
+        FooterSpacer()
+        return
+    }
 
     val navigateHint = stringResource(R.string.settings_shell_footer_navigate)
     val navigateVerticalHint = stringResource(R.string.settings_shell_footer_navigate_vertical)
@@ -1768,6 +1795,7 @@ private fun SettingsFooter(
     val selectDefaultHint = stringResource(R.string.settings_shell_footer_select_default)
     val displayHint = stringResource(R.string.settings_shell_footer_display)
     val enableHint = stringResource(R.string.settings_shell_footer_enable)
+    val platformsReorderHint = stringResource(R.string.settings_shell_footer_platforms_reorder)
     val updateHint = stringResource(R.string.settings_shell_footer_update)
     val resetBuiltinVideoOverrideHint = stringResource(R.string.settings_shell_footer_reset_builtinvideo_override)
     val resetBuiltinControlsOverrideHint = stringResource(R.string.settings_shell_footer_reset_builtincontrols_override)
@@ -1796,14 +1824,14 @@ private fun SettingsFooter(
         if (uiState.currentSection == SettingsSection.SHADER_STACK) {
             if (shaderStack.entries.isNotEmpty()) {
                 add(InputButton.LB_RB to shaderHint)
-                add(InputButton.LT_RT to reorderHint)
                 if (shaderStack.selectedShaderParams.isNotEmpty()) {
                     add(InputButton.DPAD_HORIZONTAL to adjustShaderStackHint)
                     add(InputButton.A to resetShaderStackHint)
                 }
-                add(InputButton.Y to removeShaderStackHint)
+                add(InputButton.Y to reorderHint)
+                add(InputButton.X to removeShaderStackHint)
             }
-            add(InputButton.X to addShaderStackHint)
+            add(InputButton.SELECT to addShaderStackHint)
         }
         if ((uiState.currentSection == SettingsSection.BUILTIN_VIDEO ||
             uiState.currentSection == SettingsSection.BUILTIN_CONTROLS) &&
@@ -1981,6 +2009,7 @@ private fun SettingsFooter(
                 if (!focusedItem.config.platform.syncEnabled) {
                     add(InputButton.Y to enableHint)
                 } else {
+                    add(InputButton.Y to platformsReorderHint)
                     val emulatorId = focusedItem.config.effectiveEmulatorId
                     if (emulatorId != null && emulatorId in uiState.emulators.emulatorUpdateVersions) {
                         add(InputButton.X to updateHint)

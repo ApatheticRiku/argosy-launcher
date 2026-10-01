@@ -239,6 +239,8 @@
     <string name="ingame_shader_footer_picker_cancel">रद्द करें</string>
     <string name="ingame_shader_footer_shader">शेडर</string>
     <string name="ingame_shader_footer_reorder">क्रम बदलें</string>
+    <string name="ingame_shader_footer_move">खिसकाएँ</string>
+    <string name="ingame_shader_footer_cancel">रद्द करें</string>
     <string name="ingame_shader_footer_adjust">बदलें</string>
     <string name="ingame_shader_footer_add">जोड़ें</string>
     <string name="ingame_shader_footer_remove">हटाएं</string>

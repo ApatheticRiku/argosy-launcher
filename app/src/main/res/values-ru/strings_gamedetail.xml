@@ -354,6 +354,8 @@
     <string name="gamedetail_speedrun_footer_add_segment">Добавить сегмент</string>
     <string name="gamedetail_speedrun_footer_delete">Удалить</string>
     <string name="gamedetail_speedrun_footer_move">Переместить</string>
+    <string name="gamedetail_speedrun_footer_reorder">Порядок</string>
+    <string name="gamedetail_speedrun_footer_cancel">Отмена</string>
     <string name="gamedetail_speedrun_footer_back">Назад</string>
     <string name="gamedetail_speedrun_footer_open">Открыть</string>
     <string name="gamedetail_speedrun_footer_new_category">Новая категория</string>

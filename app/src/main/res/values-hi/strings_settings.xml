@@ -128,7 +128,6 @@
     <string name="settings_nav_ring_pinned">हमेशा चालू</string>
     <string name="settings_nav_ring_hint_reorder">क्रम बदलें</string>
     <string name="settings_nav_ring_hint_move">खिसकाएँ</string>
-    <string name="settings_nav_ring_hint_drop">रखें</string>
     <string name="settings_nav_ring_hint_cancel">रद्द करें</string>
     <string name="settings_shell_header_installers">प्रबंधित इंस्टॉलर</string>
     <string name="settings_installers_add_title">रिपॉज़िटरी जोड़ें</string>
@@ -1609,6 +1608,9 @@
     <string name="settings_platform_package_path_title">पैकेज पाथ</string>
     <string name="settings_platform_package_path_accessible">एक्सेसिबल</string>
     <string name="settings_platform_package_path_blocked">ब्लॉक्ड</string>
+    <string name="settings_platform_package_path_via_direct">सीधे</string>
+    <string name="settings_platform_package_path_via_unicode">Unicode पाथ के ज़रिए</string>
+    <string name="settings_platform_package_path_via_root">रूट के ज़रिए</string>
     <string name="settings_platform_package_path_checking">जाँचा जा रहा है...</string>
 
     <string name="settings_platform_bios_status_title">स्टेटस</string>
@@ -1618,10 +1620,6 @@
 
     <string name="settings_platform_clear_art_title">कैश किया गया आर्टवर्क साफ़ करें</string>
     <string name="settings_platform_clear_art_subtitle">इस प्लेटफ़ॉर्म के डाउनलोड किए गए कवर और स्क्रीनशॉट हटाएँ ताकि वे फिर से लाए जाएँ। आपके खुद चुने गए कवर बने रहते हैं</string>
-    <string name="settings_platform_move_earlier_title">पहले ले जाएँ</string>
-    <string name="settings_platform_move_earlier_subtitle">जहाँ भी प्लेटफ़ॉर्म सूचीबद्ध होते हैं वहाँ इसे पहले दिखाएँ</string>
-    <string name="settings_platform_move_later_title">बाद में ले जाएँ</string>
-    <string name="settings_platform_move_later_subtitle">जहाँ भी प्लेटफ़ॉर्म सूचीबद्ध होते हैं वहाँ इसे आगे दिखाएँ</string>
     <string name="settings_platform_scan_busy">स्कैन हो रहा है...</string>
     <string name="settings_platform_scan_files_title">फ़ाइलें स्कैन करें</string>
     <string name="settings_platform_scan_files_subtitle">नई या गुम ROM फ़ाइलें जाँचें</string>
@@ -2040,7 +2038,6 @@
     <string name="settings_region_priority_hint_reorder">क्रम बदलें</string>
     <string name="settings_region_priority_hint_close">बंद करें</string>
     <string name="settings_region_priority_hint_move">खिसकाएँ</string>
-    <string name="settings_region_priority_hint_drop">रखें</string>
     <string name="settings_region_priority_hint_cancel">रद्द करें</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->

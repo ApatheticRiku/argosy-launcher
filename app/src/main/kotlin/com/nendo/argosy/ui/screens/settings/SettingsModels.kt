@@ -357,9 +357,11 @@ data class ControlsState(
     val navRingRoutes: List<String> = com.nendo.argosy.ui.navigation.NavRing.DEFAULT_TOKENS,
     val showNavRingModal: Boolean = false,
     val navRingFocusIndex: Int = 0,
-    val navRingHeld: String? = null,
-    val navRingBackup: List<String>? = null
-)
+    val navRingReorder: com.nendo.argosy.ui.components.ListReorder<String>? = null
+) {
+    val navRingHeld: String?
+        get() = navRingReorder?.let { navRingRoutes.getOrNull(it.heldIndex) }
+}
 
 fun ControlsState.shortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut): Int = when (shortcut) {
     com.nendo.argosy.ui.input.UiShortcut.OPEN_NAVIGATION -> openNavigationKey
@@ -513,12 +515,22 @@ data class EmulatorState(
     val appPickerModalState: AppPickerModalState? = null,
     val showMemcardPicker: Boolean = false,
     val memcardPickerInfo: MemcardPickerInfo? = null,
-    val memcardPickerFocusIndex: Int = 0
+    val memcardPickerFocusIndex: Int = 0,
+    val platformReorder: com.nendo.argosy.ui.components.ListReorder<PlatformEmulatorConfig>? = null
 ) {
     val assignedUpdatesAvailable: Int
         get() = platforms.count { config ->
             config.effectiveEmulatorId != null && config.effectiveEmulatorId in emulatorUpdateVersions
         }
+
+    val activePlatforms: List<PlatformEmulatorConfig>
+        get() = platforms.filter { it.platform.syncEnabled }
+
+    val isReorderingPlatforms: Boolean
+        get() = platformReorder != null
+
+    val heldPlatformId: Long?
+        get() = platformReorder?.let { activePlatforms.getOrNull(it.heldIndex)?.platform?.id }
 }
 
 data class EmulatorUpdateModal(
@@ -591,7 +603,7 @@ data class PlatformDetailState(
     val downloadedGames: Int = 0,
     val favorites: Int = 0,
     val totalPlayTimeMs: Long = 0,
-    val packagePathAccessible: Boolean? = null,
+    val packagePathAccess: com.nendo.argosy.data.emulator.PackageDataAccess? = null,
     val biosTotal: Int = 0,
     val biosDownloaded: Int = 0,
     val hasBiosRequirements: Boolean = false,
@@ -667,9 +679,11 @@ data class ShaderStackState(
     val shaderPickerFocusIndex: Int = 0,
     val shaderPickerCategory: String? = null,
     val downloadingShaderId: String? = null,
-    val preInstallsSynced: Boolean = false
+    val preInstallsSynced: Boolean = false,
+    val reorder: com.nendo.argosy.ui.components.ListReorder<ShaderStackEntry>? = null
 ) {
     val isEmpty: Boolean get() = entries.isEmpty()
+    val isReordering: Boolean get() = reorder != null
     val selectedEntry: ShaderStackEntry? get() = entries.getOrNull(selectedIndex)
     val maxParamFocusIndex: Int get() = (selectedShaderParams.size - 1).coerceAtLeast(0)
 }
@@ -1286,8 +1300,7 @@ data class SyncSettingsState(
     val regionPriority: List<String> = SyncFilterPreferences.ALL_KNOWN_REGIONS,
     val showRegionPriority: Boolean = false,
     val regionPriorityFocusIndex: Int = 0,
-    val regionPriorityHeld: String? = null,
-    val regionPriorityBackup: List<String>? = null,
+    val regionPriorityReorder: com.nendo.argosy.ui.components.ListReorder<String>? = null,
     val showPlatformFiltersModal: Boolean = false,
     val platformFiltersModalFocusIndex: Int = 0,
     val platformFiltersList: List<PlatformFilterItem> = emptyList(),
@@ -1328,7 +1341,10 @@ data class SyncSettingsState(
     val saveCacheCount: Int = 0,
     val stateCacheCount: Int = 0,
     val pathCacheCount: Int = 0
-)
+) {
+    val regionPriorityHeld: String?
+        get() = regionPriorityReorder?.let { regionPriority.getOrNull(it.heldIndex) }
+}
 
 data class InstalledSteamLauncher(
     val packageName: String,

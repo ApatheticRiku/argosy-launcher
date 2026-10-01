@@ -130,7 +130,6 @@
     <string name="settings_nav_ring_pinned">Toujours activée</string>
     <string name="settings_nav_ring_hint_reorder">Réorganiser</string>
     <string name="settings_nav_ring_hint_move">Déplacer</string>
-    <string name="settings_nav_ring_hint_drop">Poser</string>
     <string name="settings_nav_ring_hint_cancel">Annuler</string>
     <string name="settings_shell_header_installers">INSTALLATEURS GÉRÉS</string>
     <string name="settings_installers_add_title">Ajouter un dépôt</string>
@@ -1652,6 +1651,9 @@
     <string name="settings_platform_package_path_title">Chemin du paquet</string>
     <string name="settings_platform_package_path_accessible">Accessible</string>
     <string name="settings_platform_package_path_blocked">Bloqué</string>
+    <string name="settings_platform_package_path_via_direct">Direct</string>
+    <string name="settings_platform_package_path_via_unicode">Via chemin Unicode</string>
+    <string name="settings_platform_package_path_via_root">Via root</string>
     <string name="settings_platform_package_path_checking">Vérification...</string>
 
     <string name="settings_platform_bios_status_title">État</string>
@@ -1661,10 +1663,6 @@
 
     <string name="settings_platform_clear_art_title">Effacer les visuels en cache</string>
     <string name="settings_platform_clear_art_subtitle">Supprimer les jaquettes et captures d\'écran téléchargées pour cette plateforme afin qu\'elles soient retéléchargées. Les jaquettes que vous avez choisies vous-même sont conservées</string>
-    <string name="settings_platform_move_earlier_title">Déplacer plus tôt</string>
-    <string name="settings_platform_move_earlier_subtitle">Afficher cette plateforme plus tôt partout où les plateformes sont listées</string>
-    <string name="settings_platform_move_later_title">Déplacer plus tard</string>
-    <string name="settings_platform_move_later_subtitle">Afficher cette plateforme plus loin partout où les plateformes sont listées</string>
     <string name="settings_platform_scan_busy">Analyse...</string>
     <string name="settings_platform_scan_files_title">Analyser les fichiers</string>
     <string name="settings_platform_scan_files_subtitle">Vérifier les fichiers ROM nouveaux ou manquants</string>
@@ -2091,7 +2089,6 @@
     <string name="settings_region_priority_hint_reorder">Réorganiser</string>
     <string name="settings_region_priority_hint_close">Fermer</string>
     <string name="settings_region_priority_hint_move">Déplacer</string>
-    <string name="settings_region_priority_hint_drop">Déposer</string>
     <string name="settings_region_priority_hint_cancel">Annuler</string>
 
     <!-- ===== Fenetre de selection de pilote ===== -->

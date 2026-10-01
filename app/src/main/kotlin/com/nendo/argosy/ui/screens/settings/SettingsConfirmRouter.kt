@@ -1249,6 +1249,7 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
         state.builtinControls.showHotkeysModal -> { vm.hideHotkeysModal(); true }
         state.controls.shortcutCaptureTarget != null -> { vm.cancelShortcutCapture(); true }
         state.controls.showNavRingModal -> { vm.backNavRing(); true }
+        vm.shaderChainManager.shaderStack.isReordering -> { vm.cancelShaderLift(); true }
         state.accounts.pairing.active -> { vm.cancelAddAccount(); true }
         state.accounts.switchInProgress -> true
         state.server.rommAddressVerifyPrompt != null -> { vm.cancelUnverifiedRommAddress(); true }
@@ -1445,8 +1446,6 @@ private fun routePlatformDetailConfirm(vm: SettingsViewModel, state: SettingsUiS
         PlatformDetailItem.BuiltinControls -> vm.navigateToBuiltinControlsForPlatform(state.platformDetail.platformIndex)
         PlatformDetailItem.BuiltinCoreOptions -> vm.navigateToCoreOptionsForPlatform()
         PlatformDetailItem.ClearArtCache -> vm.clearPlatformArtCache(config.platform.slug)
-        PlatformDetailItem.MoveEarlier -> vm.movePlatformOrder(config.platform.id, -1)
-        PlatformDetailItem.MoveLater -> vm.movePlatformOrder(config.platform.id, 1)
         PlatformDetailItem.ScanFiles -> vm.scanFilesForPlatform(config.platform.id)
         PlatformDetailItem.ScanApps -> vm.scanInstalledAndroidGames()
         PlatformDetailItem.RomPath -> vm.openPlatformFolderPicker(config.platform.id)

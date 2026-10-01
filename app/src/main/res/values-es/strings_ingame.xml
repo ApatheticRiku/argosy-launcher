@@ -242,6 +242,8 @@
     <string name="ingame_shader_footer_picker_cancel">Cancelar</string>
     <string name="ingame_shader_footer_shader">Shader</string>
     <string name="ingame_shader_footer_reorder">Reordenar</string>
+    <string name="ingame_shader_footer_move">Mover</string>
+    <string name="ingame_shader_footer_cancel">Cancelar</string>
     <string name="ingame_shader_footer_adjust">Ajustar</string>
     <string name="ingame_shader_footer_add">Agregar</string>
     <string name="ingame_shader_footer_remove">Quitar</string>

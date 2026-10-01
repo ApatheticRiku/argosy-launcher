@@ -295,6 +295,8 @@
     <string name="settings_shell_footer_remove_shaderstack">移除</string>
     <string name="settings_shell_footer_remove_frame">移除</string>
     <string name="settings_shell_footer_add_shaderstack">添加</string>
+    <string name="settings_shell_footer_shaderstack_move">移动</string>
+    <string name="settings_shell_footer_shaderstack_cancel">取消</string>
     <string name="settings_shell_footer_platform_builtin">平台</string>
     <string name="settings_shell_footer_reset_to_default_builtinvideo">恢复默认</string>
     <string name="settings_shell_footer_reset_to_default_storage">恢复默认</string>
@@ -320,6 +322,9 @@
     <string name="settings_shell_footer_select_default">选择</string>
     <string name="settings_shell_footer_display">显示</string>
     <string name="settings_shell_footer_enable">启用</string>
+    <string name="settings_shell_footer_platforms_reorder">重新排列</string>
+    <string name="settings_shell_footer_platforms_move">移动</string>
+    <string name="settings_shell_footer_platforms_cancel">取消</string>
     <string name="settings_shell_footer_update">更新</string>
     <string name="settings_shell_footer_reset_builtinvideo_override">重置</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">重置</string>
@@ -351,7 +356,6 @@
 
     <string name="settings_shell_managepins_loading">正在加载...</string>
     <string name="settings_shell_managepins_reorder_move">移动</string>
-    <string name="settings_shell_managepins_reorder_done">完成</string>
     <string name="settings_shell_managepins_reorder_cancel">取消</string>
     <string name="settings_shell_managepins_navigate">导航</string>
     <string name="settings_shell_managepins_reorder_hint">重新排序</string>
@@ -375,10 +379,9 @@
     <string name="settings_shell_bgm_synced_folders">已同步的文件夹</string>
     <string name="settings_shell_bgm_tracks">曲目</string>
     <string name="settings_shell_bgm_reorder_move">移动</string>
-    <string name="settings_shell_bgm_reorder_done">完成</string>
     <string name="settings_shell_bgm_reorder_cancel">取消</string>
     <string name="settings_shell_bgm_add_music_empty">添加音乐</string>
-    <string name="settings_shell_bgm_move_hint">移动</string>
+    <string name="settings_shell_bgm_reorder_hint">重新排序</string>
     <string name="settings_shell_bgm_add_music_hint">添加音乐</string>
     <string name="settings_shell_bgm_remove_verb">移除</string>
     <string name="settings_shell_bgm_remove_verb_uncovered">移除</string>
@@ -398,8 +401,6 @@
     <string name="settings_shell_bgm_moving_desc">正在移动</string>
     <string name="settings_shell_bgm_file_missing">文件缺失 - 播放时会跳过</string>
     <string name="settings_shell_bgm_disabled_desc">已停用 - 不参与播放</string>
-    <string name="settings_shell_bgm_move_up_desc">上移</string>
-    <string name="settings_shell_bgm_move_down_desc">下移</string>
     <string name="settings_shell_bgm_remove_desc">移除</string>
     <string name="settings_shell_bgm_empty_state">暂无音乐 - 可从音乐浏览器或本地文件添加</string>
 

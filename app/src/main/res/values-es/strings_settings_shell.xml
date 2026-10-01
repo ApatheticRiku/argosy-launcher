@@ -306,6 +306,8 @@
     <string name="settings_shell_footer_remove_shaderstack">Quitar</string>
     <string name="settings_shell_footer_remove_frame">Quitar</string>
     <string name="settings_shell_footer_add_shaderstack">Añadir</string>
+    <string name="settings_shell_footer_shaderstack_move">Mover</string>
+    <string name="settings_shell_footer_shaderstack_cancel">Cancelar</string>
     <string name="settings_shell_footer_platform_builtin">Plataforma</string>
     <string name="settings_shell_footer_reset_to_default_builtinvideo">Restablecer predeterminado</string>
     <string name="settings_shell_footer_reset_to_default_storage">Restablecer predeterminado</string>
@@ -331,6 +333,9 @@
     <string name="settings_shell_footer_select_default">Seleccionar</string>
     <string name="settings_shell_footer_display">Mostrar</string>
     <string name="settings_shell_footer_enable">Activar</string>
+    <string name="settings_shell_footer_platforms_reorder">Reordenar</string>
+    <string name="settings_shell_footer_platforms_move">Mover</string>
+    <string name="settings_shell_footer_platforms_cancel">Cancelar</string>
     <string name="settings_shell_footer_update">Actualizar</string>
     <string name="settings_shell_footer_reset_builtinvideo_override">Restablecer</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">Restablecer</string>
@@ -362,7 +367,6 @@
 
     <string name="settings_shell_managepins_loading">Cargando…</string>
     <string name="settings_shell_managepins_reorder_move">Mover</string>
-    <string name="settings_shell_managepins_reorder_done">Listo</string>
     <string name="settings_shell_managepins_reorder_cancel">Cancelar</string>
     <string name="settings_shell_managepins_navigate">Navegar</string>
     <string name="settings_shell_managepins_reorder_hint">Reordenar</string>
@@ -388,10 +392,9 @@
     <string name="settings_shell_bgm_synced_folders">Carpetas sincronizadas</string>
     <string name="settings_shell_bgm_tracks">Pistas</string>
     <string name="settings_shell_bgm_reorder_move">Mover</string>
-    <string name="settings_shell_bgm_reorder_done">Listo</string>
     <string name="settings_shell_bgm_reorder_cancel">Cancelar</string>
     <string name="settings_shell_bgm_add_music_empty">Añadir música</string>
-    <string name="settings_shell_bgm_move_hint">Mover</string>
+    <string name="settings_shell_bgm_reorder_hint">Reordenar</string>
     <string name="settings_shell_bgm_add_music_hint">Añadir música</string>
     <string name="settings_shell_bgm_remove_verb">Quitar</string>
     <string name="settings_shell_bgm_remove_verb_uncovered">Quitar</string>
@@ -415,8 +418,6 @@
     <string name="settings_shell_bgm_moving_desc">Moviendo</string>
     <string name="settings_shell_bgm_file_missing">Falta el archivo - omitido durante la reproducción</string>
     <string name="settings_shell_bgm_disabled_desc">Desactivada - excluida de la reproducción</string>
-    <string name="settings_shell_bgm_move_up_desc">Subir</string>
-    <string name="settings_shell_bgm_move_down_desc">Bajar</string>
     <string name="settings_shell_bgm_remove_desc">Quitar</string>
     <string name="settings_shell_bgm_empty_state">Sin música - añádela desde el navegador de música o archivos locales</string>
 

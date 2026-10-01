@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -88,7 +89,20 @@ fun ShaderStackSection(
                     ShaderTabBar(
                         entries = entries,
                         selectedIndex = shaderStack.selectedIndex,
-                        onTabTap = { manager.selectShaderInStack(it) }
+                        heldIndex = shaderStack.reorder?.heldIndex,
+                        onTabTap = { index ->
+                            if (shaderStack.isReordering) {
+                                manager.moveHeldShaderTo(index)
+                            } else {
+                                manager.selectShaderInStack(index)
+                            }
+                        },
+                        onTabLongPress = { index ->
+                            if (!shaderStack.isReordering) {
+                                manager.selectShaderInStack(index)
+                                manager.liftShader()
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(Dimens.spacingSm))
@@ -163,7 +177,9 @@ fun ShaderStackSection(
 private fun ShaderTabBar(
     entries: List<ShaderStackEntry>,
     selectedIndex: Int,
-    onTabTap: (Int) -> Unit
+    heldIndex: Int?,
+    onTabTap: (Int) -> Unit,
+    onTabLongPress: (Int) -> Unit
 ) {
     val scrollState = rememberScrollState()
     val tabWidths = remember { mutableMapOf<Int, Int>() }
@@ -190,11 +206,12 @@ private fun ShaderTabBar(
     ) {
         entries.forEachIndexed { index, entry ->
             val isSelected = index == selectedIndex
+            val isHeld = index == heldIndex
             val focusAccent = LocalArgosyTheme.current.focusAccent
-            val bgColor = if (isSelected) {
-                focusAccent.copy(alpha = 0.15f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            val bgColor = when {
+                isHeld -> focusAccent.copy(alpha = 0.3f)
+                isSelected -> focusAccent.copy(alpha = 0.15f)
+                else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             }
             val textColor = if (isSelected) {
                 lerp(focusAccent, Color.White, 0.45f)
@@ -206,7 +223,21 @@ private fun ShaderTabBar(
                 modifier = Modifier
                     .clip(RoundedCornerShape(Dimens.radiusMd))
                     .background(bgColor)
-                    .clickableNoFocus { onTabTap(index) }
+                    .then(
+                        if (isHeld) {
+                            Modifier.border(
+                                width = Dimens.borderThin,
+                                color = focusAccent,
+                                shape = RoundedCornerShape(Dimens.radiusMd)
+                            )
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .clickableNoFocus(
+                        onClick = { onTabTap(index) },
+                        onLongClick = { onTabLongPress(index) }
+                    )
                     .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
                     .onSizeChanged { size -> tabWidths[index] = size.width }
             ) {

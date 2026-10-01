@@ -17,8 +17,12 @@ data class SavePathConfig(
     val usesInternalStorage: Boolean = false,
     val usesGciFormat: Boolean = false,
     val savesBesideRom: Boolean = false,
-    val supported: Boolean = true
-)
+    private val supported: Boolean = true,
+    val requiresRoot: Boolean = false
+) {
+    val isUsable: Boolean
+        get() = supported && (!requiresRoot || RootShell.isAvailable)
+}
 
 private const val BUILTIN_EMULATOR_ID = EmulatorRegistry.BUILTIN_ID
 
@@ -412,7 +416,7 @@ object SavePathRegistry {
                 "{extStorage}/duckstation/memcards"
             ),
             saveExtensions = listOf("mcd"),
-            supported = RootShell.isAvailable
+            requiresRoot = true
         ),
 
         // PS2 - folder memory card mode (per-game directories)
@@ -761,7 +765,7 @@ object SavePathRegistry {
 
     fun getConfig(emulatorId: String): SavePathConfig? {
         val config = configs[emulatorId] ?: familyFallbackConfig(emulatorId) ?: return null
-        return if (config.supported) config else null
+        return if (config.isUsable) config else null
     }
 
     fun getConfigByPackage(packageName: String): SavePathConfig? {
@@ -815,13 +819,13 @@ object SavePathRegistry {
     /** Whether a per-game save path override applies: file-based saves only, psx memcards excluded. */
     fun supportsPerGameSavePath(config: SavePathConfig?, platformSlug: String): Boolean =
         config != null &&
-            config.supported &&
+            config.isUsable &&
             !config.usesFolderBasedSaves &&
             !config.usesGciFormat &&
             !config.usesSharedMemoryCard &&
             PlatformDefinitions.getCanonicalSlug(platformSlug) != "psx"
 
-    fun getAllConfigs(): Map<String, SavePathConfig> = configs.filterValues { it.supported }
+    fun getAllConfigs(): Map<String, SavePathConfig> = configs.filterValues { it.isUsable }
 
     fun canSyncWithSettings(
         emulatorId: String,

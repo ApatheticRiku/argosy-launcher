@@ -131,7 +131,6 @@
     <string name="settings_nav_ring_pinned">Всегда включена</string>
     <string name="settings_nav_ring_hint_reorder">Порядок</string>
     <string name="settings_nav_ring_hint_move">Переместить</string>
-    <string name="settings_nav_ring_hint_drop">Поставить</string>
     <string name="settings_nav_ring_hint_cancel">Отмена</string>
     <string name="settings_shell_header_installers">УПРАВЛЯЕМЫЕ УСТАНОВЩИКИ</string>
     <string name="settings_installers_add_title">Добавить репозиторий</string>
@@ -1692,6 +1691,9 @@
     <string name="settings_platform_package_path_title">Путь пакета</string>
     <string name="settings_platform_package_path_accessible">Доступен</string>
     <string name="settings_platform_package_path_blocked">Заблокирован</string>
+    <string name="settings_platform_package_path_via_direct">Напрямую</string>
+    <string name="settings_platform_package_path_via_unicode">Через путь Unicode</string>
+    <string name="settings_platform_package_path_via_root">Через root</string>
     <string name="settings_platform_package_path_checking">Проверка...</string>
 
     <string name="settings_platform_bios_status_title">Статус</string>
@@ -1701,10 +1703,6 @@
 
     <string name="settings_platform_clear_art_title">Очистить кэш обложек</string>
     <string name="settings_platform_clear_art_subtitle">Удаляет скачанные обложки и скриншоты для этой платформы, чтобы они были загружены заново. Выбранные вами обложки сохраняются</string>
-    <string name="settings_platform_move_earlier_title">Переместить раньше</string>
-    <string name="settings_platform_move_earlier_subtitle">Показывать эту платформу раньше везде, где перечисляются платформы</string>
-    <string name="settings_platform_move_later_title">Переместить позже</string>
-    <string name="settings_platform_move_later_subtitle">Показывать эту платформу позже везде, где перечисляются платформы</string>
     <string name="settings_platform_scan_busy">Сканирование...</string>
     <string name="settings_platform_scan_files_title">Найти файлы</string>
     <string name="settings_platform_scan_files_subtitle">Проверить новые или отсутствующие файлы ROM</string>
@@ -2139,7 +2137,6 @@
     <string name="settings_region_priority_hint_reorder">Изменить порядок</string>
     <string name="settings_region_priority_hint_close">Закрыть</string>
     <string name="settings_region_priority_hint_move">Переместить</string>
-    <string name="settings_region_priority_hint_drop">Опустить</string>
     <string name="settings_region_priority_hint_cancel">Отмена</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->

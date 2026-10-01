@@ -6,14 +6,23 @@ import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import com.nendo.argosy.util.Logger
+import com.nendo.argosy.util.RootShell
 import javax.inject.Inject
 import javax.inject.Singleton
+
+enum class PackageDataAccess {
+    DIRECT,
+    UNICODE,
+    ROOT,
+    BLOCKED
+}
 
 @Singleton
 class SavePathValidator @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val emulatorSaveConfigDao: EmulatorSaveConfigDao,
     private val fileAccessLayer: FileAccessLayer,
+    private val androidDataAccessor: com.nendo.argosy.data.storage.AndroidDataAccessor,
     private val saveHandlerRegistry: PlatformSaveHandlerRegistry
 ) {
     companion object {
@@ -45,7 +54,7 @@ class SavePathValidator @Inject constructor(
             return Result.PermissionRequired
         }
 
-        val resolvedPaths = resolvePaths(emulatorId, config, emulatorPackage)
+        val resolvedPaths = resolvePaths(config, emulatorPackage)
 
         for (path in resolvedPaths) {
             val checkPath = packageDataRoot(path) ?: path
@@ -72,12 +81,11 @@ class SavePathValidator @Inject constructor(
     }
 
     suspend fun resolvePaths(
-        emulatorId: String,
         config: SavePathConfig,
         emulatorPackage: String?,
         platformSlug: String? = null
     ): List<String> {
-        val basePath = emulatorSaveConfigDao.getByEmulator(emulatorId)
+        val basePath = emulatorSaveConfigDao.getByEmulator(config.emulatorId)
             ?.takeIf { it.isUserOverride || it.isAutoDetected }
             ?.savePathPattern
             ?.takeIf { it.isNotBlank() }
@@ -91,19 +99,25 @@ class SavePathValidator @Inject constructor(
         }
     }
 
-    fun isPackageDataAccessible(emulatorId: String, emulatorPackage: String? = null): Boolean {
-        if (!hasFileAccessPermission()) return false
+    fun packageDataAccess(emulatorId: String, emulatorPackage: String? = null): PackageDataAccess {
+        if (!hasFileAccessPermission()) return PackageDataAccess.BLOCKED
 
-        val config = SavePathRegistry.getConfigIncludingUnsupported(emulatorId) ?: return false
+        val config = SavePathRegistry.getConfigIncludingUnsupported(emulatorId) ?: return PackageDataAccess.BLOCKED
+        if (config.requiresRoot && !RootShell.isAvailable) return PackageDataAccess.BLOCKED
         val resolvedPaths = SavePathRegistry.resolvePathWithPackage(config, emulatorPackage, context.filesDir.absolutePath)
         val roots = resolvedPaths.mapNotNull { packageDataRoot(it) }.distinct()
 
-        return roots.any { root ->
+        val reachable = roots.firstOrNull { root ->
             try {
                 fileAccessLayer.exists(root) && fileAccessLayer.listFiles(root) != null
             } catch (_: SecurityException) {
                 false
             }
+        } ?: return PackageDataAccess.BLOCKED
+        return when {
+            config.requiresRoot -> PackageDataAccess.ROOT
+            fileAccessLayer.isRestrictedPath(reachable) && androidDataAccessor.isAltAccessSupported() -> PackageDataAccess.UNICODE
+            else -> PackageDataAccess.DIRECT
         }
     }
 

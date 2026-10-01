@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -203,10 +204,12 @@ fun EmulatorsSection(
                         }
                         val hasUpdate = !isDisabled && config.effectiveEmulatorId != null &&
                             config.effectiveEmulatorId in emulators.emulatorUpdateVersions
+                        val platformId = config.platform.id
                         ActionPreference(
                             title = config.platform.name,
                             subtitle = subtitle,
                             isFocused = isFocused(item),
+                            icon = if (emulators.heldPlatformId == platformId) Icons.Default.DragHandle else null,
                             trailingText = if (isDisabled) null else emulatorName,
                             badge = if (hasUpdate) {
                                 stringResource(R.string.settings_emulators_platform_update_badge)
@@ -214,7 +217,14 @@ fun EmulatorsSection(
                                 null
                             },
                             isEnabled = !isDisabled,
-                            onClick = { openFrom(item) { viewModel.navigateToPlatformDetail(item.index) } }
+                            onLongClick = { viewModel.liftPlatformAt(platformId) },
+                            onClick = {
+                                if (emulators.isReorderingPlatforms) {
+                                    viewModel.moveHeldPlatformTo(platformId)
+                                } else {
+                                    openFrom(item) { viewModel.navigateToPlatformDetail(item.index) }
+                                }
+                            }
                         )
                     }
                 }

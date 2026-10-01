@@ -393,6 +393,8 @@
     <string name="gamedetail_speedrun_footer_add_segment">सेगमेंट जोड़ें</string>
     <string name="gamedetail_speedrun_footer_delete">हटाएं</string>
     <string name="gamedetail_speedrun_footer_move">मूव करें</string>
+    <string name="gamedetail_speedrun_footer_reorder">क्रम बदलें</string>
+    <string name="gamedetail_speedrun_footer_cancel">रद्द करें</string>
     <string name="gamedetail_speedrun_footer_back">वापस</string>
     <string name="gamedetail_speedrun_footer_open">खोलें</string>
     <string name="gamedetail_speedrun_footer_new_category">नई श्रेणी</string>

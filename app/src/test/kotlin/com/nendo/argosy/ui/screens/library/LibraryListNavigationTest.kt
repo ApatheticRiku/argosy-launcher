@@ -187,6 +187,7 @@ class LibraryListNavigationTest {
         socialRepository = mockk(relaxed = true),
         saveListStatusRepository = mockk(relaxed = true),
         libraryDefaultPlatformMigration = mockk(relaxed = true),
-        showcaseSource = mockk(relaxed = true)
+        showcaseSource = mockk(relaxed = true),
+        reorderPlatforms = mockk(relaxed = true)
     )
 }

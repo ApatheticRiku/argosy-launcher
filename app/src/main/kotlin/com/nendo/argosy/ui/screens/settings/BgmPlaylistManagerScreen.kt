@@ -22,8 +22,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material3.Icon
@@ -42,6 +40,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -49,6 +49,10 @@ import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.dragReorderContainer
+import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.liftedReorderHints
+import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.ModalInputEffect
@@ -70,52 +74,59 @@ fun BgmPlaylistManagerScreen(
 
     val inputHandler = remember(viewModel) {
         object : InputHandler {
-            override fun onUp(): InputResult {
-                val st = viewModel.uiState.value
-                if (!st.isReordering) {
-                    viewModel.moveFocus(-1)
-                    return InputResult.HANDLED
-                }
-                return if (viewModel.moveFocusedRow(-1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
-            }
+            override fun onUp(): InputResult = move(-1)
 
-            override fun onDown(): InputResult {
+            override fun onDown(): InputResult = move(1)
+
+            private fun move(delta: Int): InputResult {
                 val st = viewModel.uiState.value
                 if (!st.isReordering) {
-                    viewModel.moveFocus(1)
+                    viewModel.moveFocus(delta)
                     return InputResult.HANDLED
                 }
-                return if (viewModel.moveFocusedRow(1)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
+                return if (viewModel.moveHeld(delta)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
             }
 
             override fun onLeft(): InputResult = InputResult.handled(SoundType.SILENT)
             override fun onRight(): InputResult = InputResult.handled(SoundType.SILENT)
 
             override fun onConfirm(): InputResult {
-                val st = viewModel.uiState.value
-                if (st.isReordering) {
-                    viewModel.commitReorder()
-                    return InputResult.HANDLED
+                if (viewModel.uiState.value.isReordering) {
+                    viewModel.drop()
+                    return InputResult.handled(SoundType.SELECT)
                 }
-                if (st.focusedEntry == null) return InputResult.handled(SoundType.SILENT)
-                viewModel.beginReorder()
-                return InputResult.HANDLED
+                return if (viewModel.toggleFocusedTrack()) InputResult.handled(SoundType.TOGGLE)
+                else InputResult.handled(SoundType.SILENT)
             }
 
             override fun onBack(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering) viewModel.cancelReorder() else currentOnDismiss()
+                if (st.isReordering) {
+                    viewModel.cancel()
+                    return InputResult.handled(SoundType.BACK)
+                }
+                currentOnDismiss()
                 return InputResult.HANDLED
             }
 
             override fun onSecondaryAction(): InputResult {
                 val st = viewModel.uiState.value
-                if (st.isReordering || st.isEmpty) return InputResult.handled(SoundType.SILENT)
-                viewModel.removeFocused()
-                return InputResult.HANDLED
+                when {
+                    st.isReordering -> viewModel.drop()
+                    st.focusedEntry == null -> return InputResult.handled(SoundType.SILENT)
+                    else -> viewModel.lift()
+                }
+                return InputResult.handled(SoundType.SELECT)
             }
 
             override fun onContextMenu(): InputResult {
+                val st = viewModel.uiState.value
+                if (st.isReordering || st.isEmpty) return InputResult.handled(SoundType.SILENT)
+                return if (viewModel.removeFocused()) InputResult.HANDLED
+                else InputResult.handled(SoundType.SILENT)
+            }
+
+            override fun onSelect(): InputResult {
                 val st = viewModel.uiState.value
                 if (st.isReordering) return InputResult.handled(SoundType.SILENT)
                 currentOnAddMusic()
@@ -127,15 +138,33 @@ fun BgmPlaylistManagerScreen(
             override fun onPrevTrigger(): InputResult = InputResult.handled(SoundType.SILENT)
             override fun onNextTrigger(): InputResult = InputResult.handled(SoundType.SILENT)
             override fun onMenu(): InputResult = InputResult.handled(SoundType.SILENT)
-            override fun onSelect(): InputResult = InputResult.handled(SoundType.SILENT)
         }
     }
 
     ModalInputEffect(active = true, handler = inputHandler)
 
     val listState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
+    val trackKeyPrefix = "track-"
+
+    val dragState = rememberDragReorderState(
+        listState = listState,
+        canDrag = { key -> key is String && key.startsWith(trackKeyPrefix) },
+        onLift = { key ->
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            (key as String).removePrefix(trackKeyPrefix).toLongOrNull()?.let(viewModel::liftAt)
+        },
+        onMove = { key, lazyIndex ->
+            val trackId = (key as String).removePrefix(trackKeyPrefix).toLongOrNull()
+            val sourceCount = uiState.folderSources.size
+            val trackOffset = if (sourceCount > 0) sourceCount + 2 else 0
+            if (trackId != null) viewModel.moveHeldTo(trackId, lazyIndex - trackOffset)
+        },
+        onDrop = { viewModel.drop() }
+    )
 
     LaunchedEffect(uiState.focusedIndex, uiState.folderSources.size, uiState.entries.size) {
+        if (dragState.draggingKey != null) return@LaunchedEffect
         if (uiState.isEmpty || uiState.focusedIndex !in 0 until uiState.focusCount) return@LaunchedEffect
         val sourceCount = uiState.folderSources.size
         val lazyIndex = when {
@@ -170,6 +199,7 @@ fun BgmPlaylistManagerScreen(
                 val sourceCount = uiState.folderSources.size
                 LazyColumn(
                     state = listState,
+                    modifier = Modifier.dragReorderContainer(dragState),
                     contentPadding = PaddingValues(
                         start = Dimens.spacingLg,
                         end = Dimens.spacingLg,
@@ -194,19 +224,25 @@ fun BgmPlaylistManagerScreen(
                             BgmPlaylistGroupHeader(stringResource(R.string.settings_shell_bgm_tracks))
                         }
                     }
-                    itemsIndexed(uiState.entries, key = { _, row -> "track-${row.id}" }) { index, row ->
+                    itemsIndexed(uiState.entries, key = { _, row -> "$trackKeyPrefix${row.id}" }) { index, row ->
                         val focusIndex = sourceCount + index
+                        val rowKey = "$trackKeyPrefix${row.id}"
                         BgmPlaylistEntryRow(
                             row = row,
                             position = index + 1,
                             isFocused = uiState.focusedIndex == focusIndex,
-                            isBeingMoved = uiState.isReordering && uiState.focusedIndex == focusIndex,
-                            canMoveUp = index > 0,
-                            canMoveDown = index < uiState.entries.lastIndex,
-                            onClick = { viewModel.setFocusIndex(focusIndex) },
-                            onMoveUp = { viewModel.moveTrack(index, -1) },
-                            onMoveDown = { viewModel.moveTrack(index, 1) },
-                            onRemove = { viewModel.toggleOrRemoveTrack(index) },
+                            isBeingMoved = uiState.heldTrackIndex == index,
+                            modifier = Modifier
+                                .then(
+                                    if (dragState.draggingKey == null || dragState.draggingKey == rowKey) {
+                                        Modifier
+                                    } else {
+                                        Modifier.animateItem()
+                                    }
+                                )
+                                .dragReorderItem(dragState, rowKey),
+                            onClick = { if (!uiState.isReordering) viewModel.setFocusIndex(focusIndex) },
+                            onRemove = { viewModel.removeTrack(index) },
                             onSetEnabled = { viewModel.setTrackEnabled(index, it) }
                         )
                     }
@@ -215,29 +251,37 @@ fun BgmPlaylistManagerScreen(
         }
 
         val hints = when {
-            uiState.isReordering -> listOf(
-                InputButton.DPAD_VERTICAL to stringResource(R.string.settings_shell_bgm_reorder_move),
-                InputButton.A to stringResource(R.string.settings_shell_bgm_reorder_done),
-                InputButton.B to stringResource(R.string.settings_shell_bgm_reorder_cancel)
+            uiState.isReordering -> liftedReorderHints(
+                move = stringResource(R.string.settings_shell_bgm_reorder_move),
+                cancel = stringResource(R.string.settings_shell_bgm_reorder_cancel)
             )
             uiState.isEmpty -> listOf(
-                InputButton.X to stringResource(R.string.settings_shell_bgm_add_music_empty)
+                InputButton.SELECT to stringResource(R.string.settings_shell_bgm_add_music_empty)
             )
             else -> buildList {
                 val focusedEntry = uiState.focusedEntry
-                if (focusedEntry != null) add(InputButton.A to stringResource(R.string.settings_shell_bgm_move_hint))
-                add(InputButton.X to stringResource(R.string.settings_shell_bgm_add_music_hint))
-                val trackVerb = when {
-                    focusedEntry == null -> stringResource(R.string.settings_shell_bgm_remove_verb)
-                    !focusedEntry.isFolderCovered -> stringResource(R.string.settings_shell_bgm_remove_verb_uncovered)
-                    focusedEntry.enabled -> stringResource(R.string.settings_shell_bgm_disable_verb)
-                    else -> stringResource(R.string.settings_shell_bgm_enable_verb)
+                if (focusedEntry != null) {
+                    add(InputButton.Y to stringResource(R.string.settings_shell_bgm_reorder_hint))
+                    val toggleVerb = if (focusedEntry.enabled) {
+                        stringResource(R.string.settings_shell_bgm_disable_verb)
+                    } else {
+                        stringResource(R.string.settings_shell_bgm_enable_verb)
+                    }
+                    add(InputButton.A to toggleVerb)
                 }
-                add(InputButton.Y to trackVerb)
+                add(InputButton.SELECT to stringResource(R.string.settings_shell_bgm_add_music_hint))
+                when {
+                    focusedEntry == null -> add(InputButton.X to stringResource(R.string.settings_shell_bgm_remove_verb))
+                    !focusedEntry.isFolderCovered -> add(
+                        InputButton.X to stringResource(R.string.settings_shell_bgm_remove_verb_uncovered)
+                    )
+                    else -> Unit
+                }
             }
         }
 
         FooterHints(
+            forced = uiState.isReordering,
             hints = hints,
             onHintClick = { button ->
                 when (button) {
@@ -245,6 +289,7 @@ fun BgmPlaylistManagerScreen(
                     InputButton.B -> inputHandler.onBack()
                     InputButton.X -> inputHandler.onContextMenu()
                     InputButton.Y -> inputHandler.onSecondaryAction()
+                    InputButton.SELECT -> inputHandler.onSelect()
                     else -> {}
                 }
             }
@@ -396,11 +441,8 @@ private fun BgmPlaylistEntryRow(
     position: Int,
     isFocused: Boolean,
     isBeingMoved: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onRemove: () -> Unit,
     onSetEnabled: (Boolean) -> Unit
 ) {
@@ -411,7 +453,7 @@ private fun BgmPlaylistEntryRow(
     val contentAlpha = if (row.enabled) 1f else disabledAlpha
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(
@@ -490,31 +532,14 @@ private fun BgmPlaylistEntryRow(
             }
         }
 
-        IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-            Icon(
-                Icons.Default.KeyboardArrowUp,
-                contentDescription = stringResource(R.string.settings_shell_bgm_move_up_desc),
-                tint = if (canMoveUp) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-            )
-        }
-        IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-            Icon(
-                Icons.Default.KeyboardArrowDown,
-                contentDescription = stringResource(R.string.settings_shell_bgm_move_down_desc),
-                tint = if (canMoveDown) MaterialTheme.colorScheme.onSurfaceVariant
-                else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-            )
-        }
-        if (row.isFolderCovered) {
-            Spacer(modifier = Modifier.width(Dimens.spacingSm))
-            ArgosyToggle(
-                checked = row.enabled,
-                onToggle = onSetEnabled,
-                focused = isFocused
-            )
-            Spacer(modifier = Modifier.width(Dimens.spacingXs))
-        } else {
+        Spacer(modifier = Modifier.width(Dimens.spacingSm))
+        ArgosyToggle(
+            checked = row.enabled,
+            onToggle = onSetEnabled,
+            focused = isFocused
+        )
+        Spacer(modifier = Modifier.width(Dimens.spacingXs))
+        if (!row.isFolderCovered) {
             IconButton(onClick = onRemove) {
                 Icon(
                     Icons.Default.Close,

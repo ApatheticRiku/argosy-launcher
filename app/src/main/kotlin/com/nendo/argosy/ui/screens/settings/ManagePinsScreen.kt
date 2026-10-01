@@ -43,6 +43,8 @@ import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -54,6 +56,10 @@ import com.nendo.argosy.domain.model.PinnedCollection
 import com.nendo.argosy.domain.usecase.collection.CategoryType
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.dragReorderContainer
+import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.liftedReorderHints
+import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.Dimens
@@ -85,8 +91,21 @@ fun ManagePinsScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
+    val haptics = LocalHapticFeedback.current
+
+    val dragState = rememberDragReorderState(
+        listState = listState,
+        canDrag = { key -> uiState.pins.any { it.id == key } },
+        onLift = { key ->
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            viewModel.liftAt(key)
+        },
+        onMove = { key, index -> viewModel.moveHeldTo(key, index) },
+        onDrop = { viewModel.drop() }
+    )
 
     LaunchedEffect(uiState.focusedIndex) {
+        if (dragState.draggingKey != null) return@LaunchedEffect
         if (uiState.pins.isNotEmpty() && uiState.focusedIndex in uiState.pins.indices) {
             val visibleItems = listState.layoutInfo.visibleItemsInfo
             val viewportHeight = listState.layoutInfo.viewportEndOffset
@@ -121,6 +140,7 @@ fun ManagePinsScreen(
                 else -> {
                     LazyColumn(
                         state = listState,
+                        modifier = Modifier.dragReorderContainer(dragState),
                         contentPadding = PaddingValues(
                             start = Dimens.spacingLg,
                             end = Dimens.spacingLg,
@@ -133,7 +153,16 @@ fun ManagePinsScreen(
                             PinRow(
                                 pin = pin,
                                 isFocused = uiState.focusedIndex == index,
-                                isBeingMoved = uiState.reorderingIndex == index,
+                                isBeingMoved = uiState.reorder?.heldIndex == index,
+                                modifier = Modifier
+                                    .then(
+                                        if (dragState.draggingKey == null || dragState.draggingKey == pin.id) {
+                                            Modifier
+                                        } else {
+                                            Modifier.animateItem()
+                                        }
+                                    )
+                                    .dragReorderItem(dragState, pin.id),
                                 onClick = { viewModel.setFocusIndex(index) }
                             )
                         }
@@ -143,25 +172,28 @@ fun ManagePinsScreen(
         }
 
         val hints = if (uiState.isReorderMode) {
-            listOf(
-                InputButton.DPAD_VERTICAL to stringResource(R.string.settings_shell_managepins_reorder_move),
-                InputButton.A to stringResource(R.string.settings_shell_managepins_reorder_done),
-                InputButton.B to stringResource(R.string.settings_shell_managepins_reorder_cancel)
+            liftedReorderHints(
+                move = stringResource(R.string.settings_shell_managepins_reorder_move),
+                cancel = stringResource(R.string.settings_shell_managepins_reorder_cancel)
             )
         } else {
-            listOf(
-                InputButton.DPAD to stringResource(R.string.settings_shell_managepins_navigate),
-                InputButton.A to stringResource(R.string.settings_shell_managepins_reorder_hint),
-                InputButton.Y to stringResource(R.string.settings_shell_managepins_unpin),
-                InputButton.B to stringResource(R.string.settings_shell_managepins_back_hint)
-            )
+            buildList {
+                add(InputButton.DPAD to stringResource(R.string.settings_shell_managepins_navigate))
+                if (uiState.pins.isNotEmpty()) {
+                    add(InputButton.Y to stringResource(R.string.settings_shell_managepins_reorder_hint))
+                    add(InputButton.X to stringResource(R.string.settings_shell_managepins_unpin))
+                }
+                add(InputButton.B to stringResource(R.string.settings_shell_managepins_back_hint))
+            }
         }
 
         FooterHints(
+            forced = uiState.isReorderMode,
             hints = hints,
             onHintClick = { button ->
                 when (button) {
                     InputButton.A -> { inputHandler.onConfirm() }
+                    InputButton.X -> { inputHandler.onContextMenu() }
                     InputButton.Y -> { inputHandler.onSecondaryAction() }
                     InputButton.B -> { inputHandler.onBack() }
                     else -> Unit
@@ -202,6 +234,7 @@ private fun PinRow(
     pin: PinnedCollection,
     isFocused: Boolean,
     isBeingMoved: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
     val alpha by animateFloatAsState(
@@ -223,7 +256,7 @@ private fun PinRow(
     val focusedContentColor = lerp(focusAccent, Color.White, 0.45f)
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { this.alpha = alpha }
             .clip(RoundedCornerShape(Dimens.radiusMd))

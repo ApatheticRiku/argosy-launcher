@@ -77,6 +77,7 @@ import com.nendo.argosy.ui.components.AppMenuRow
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.primitives.InputGlyph
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.theme.Dimens
@@ -273,10 +274,10 @@ fun AppsScreen(
             val selectSwapsRoles = selectSwapMode == com.nendo.argosy.data.preferences.SelectSwapMode.TAP
             FooterHints(
                 hints = when {
-                    uiState.isReorderMode -> listOf(
-                        InputButton.DPAD to stringResource(R.string.library_apps_hint_move),
-                        InputButton.A to stringResource(R.string.library_apps_hint_save),
-                        InputButton.B to stringResource(R.string.library_apps_hint_cancel)
+                    uiState.isReorderMode -> liftedReorderHints(
+                        move = stringResource(R.string.library_apps_hint_move),
+                        cancel = stringResource(R.string.library_apps_hint_cancel),
+                        moveButton = InputButton.DPAD
                     )
                     else -> listOf(
                         InputButton.A to stringResource(

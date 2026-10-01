@@ -24,7 +24,9 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.ui.screens.settings.PlatformFilterItem
 import com.nendo.argosy.ui.screens.settings.SyncSettingsState
+import com.nendo.argosy.ui.components.ListReorder
 import com.nendo.argosy.ui.components.PLATFORM_HEADER_COUNT
+import com.nendo.argosy.ui.components.ReorderStep
 import com.nendo.argosy.ui.components.PLATFORM_HEADER_SEARCH
 import com.nendo.argosy.ui.components.PLATFORM_HEADER_SORT
 import com.nendo.argosy.util.PlatformFilterLogic
@@ -210,8 +212,7 @@ class SyncSettingsDelegate @Inject constructor(
             it.copy(
                 showRegionPriority = true,
                 regionPriorityFocusIndex = 0,
-                regionPriorityHeld = null,
-                regionPriorityBackup = null
+                regionPriorityReorder = null
             )
         }
     }
@@ -219,20 +220,19 @@ class SyncSettingsDelegate @Inject constructor(
     fun dismissRegionPriority() {
         _state.update { state ->
             state.copy(
-                regionPriority = state.regionPriorityBackup ?: state.regionPriority,
+                regionPriority = state.regionPriorityReorder?.backup ?: state.regionPriority,
                 showRegionPriority = false,
                 regionPriorityFocusIndex = 0,
-                regionPriorityHeld = null,
-                regionPriorityBackup = null
+                regionPriorityReorder = null
             )
         }
     }
 
-    fun isHoldingRegionPriority(): Boolean = _state.value.regionPriorityHeld != null
+    fun isHoldingRegionPriority(): Boolean = _state.value.regionPriorityReorder != null
 
     fun focusRegionPriority(index: Int) {
         _state.update { state ->
-            if (state.regionPriorityHeld != null || index !in state.regionPriority.indices) {
+            if (state.regionPriorityReorder != null || index !in state.regionPriority.indices) {
                 state
             } else {
                 state.copy(regionPriorityFocusIndex = index)
@@ -242,10 +242,10 @@ class SyncSettingsDelegate @Inject constructor(
 
     fun moveRegionPriorityFocus(delta: Int) {
         _state.update { state ->
-            val held = state.regionPriorityHeld
+            val reorder = state.regionPriorityReorder
             when {
                 state.regionPriority.isEmpty() -> state
-                held != null -> reorderHeld(state, held, state.regionPriority.indexOf(held) + delta)
+                reorder != null -> applyRegionStep(state, reorder.moveBy(state.regionPriority, delta))
                 else -> state.copy(
                     regionPriorityFocusIndex = (state.regionPriorityFocusIndex + delta)
                         .mod(state.regionPriority.size)
@@ -256,41 +256,39 @@ class SyncSettingsDelegate @Inject constructor(
 
     fun liftRegionPriority() {
         _state.update { state ->
-            if (state.regionPriorityHeld != null) return@update state
-            val region = state.regionPriority.getOrNull(state.regionPriorityFocusIndex)
+            if (state.regionPriorityReorder != null) return@update state
+            val reorder = ListReorder.lift(state.regionPriority, state.regionPriorityFocusIndex)
                 ?: return@update state
-            state.copy(regionPriorityHeld = region, regionPriorityBackup = state.regionPriority)
+            state.copy(regionPriorityReorder = reorder)
         }
     }
 
     fun liftRegionPriorityAt(region: String) {
         _state.update { state ->
             val index = state.regionPriority.indexOf(region)
-            if (index == -1) return@update state
-            state.copy(
-                regionPriorityHeld = region,
-                regionPriorityBackup = state.regionPriorityBackup ?: state.regionPriority,
-                regionPriorityFocusIndex = index
-            )
+            val reorder = ListReorder.liftOrRegrab(state.regionPriorityReorder, state.regionPriority, index)
+                ?: return@update state
+            state.copy(regionPriorityReorder = reorder, regionPriorityFocusIndex = reorder.heldIndex)
         }
     }
 
     fun moveRegionPriorityTo(region: String, targetIndex: Int) {
         _state.update { state ->
-            if (state.regionPriorityHeld != region) state else reorderHeld(state, region, targetIndex)
+            val reorder = state.regionPriorityReorder
+            if (reorder == null || state.regionPriorityHeld != region) {
+                state
+            } else {
+                applyRegionStep(state, reorder.moveTo(state.regionPriority, targetIndex))
+            }
         }
     }
 
     fun dropRegionPriority(scope: CoroutineScope) {
         var committed: List<String>? = null
         _state.update { state ->
-            if (state.regionPriorityHeld == null) {
-                committed = null
-                state
-            } else {
-                committed = state.regionPriority.takeIf { it != state.regionPriorityBackup }
-                state.copy(regionPriorityHeld = null, regionPriorityBackup = null)
-            }
+            val reorder = state.regionPriorityReorder
+            committed = reorder?.changedOrder(state.regionPriority)
+            if (reorder == null) state else state.copy(regionPriorityReorder = null)
         }
         val order = committed ?: return
         scope.launch { preferencesRepository.setRegionPriority(order) }
@@ -298,28 +296,21 @@ class SyncSettingsDelegate @Inject constructor(
 
     fun cancelRegionPriorityHold() {
         _state.update { state ->
-            val backup = state.regionPriorityBackup ?: state.regionPriority
-            val held = state.regionPriorityHeld
+            val reorder = state.regionPriorityReorder ?: return@update state
             state.copy(
-                regionPriority = backup,
-                regionPriorityHeld = null,
-                regionPriorityBackup = null,
-                regionPriorityFocusIndex = held?.let { backup.indexOf(it) }?.takeIf { it >= 0 }
-                    ?: state.regionPriorityFocusIndex
+                regionPriority = reorder.backup,
+                regionPriorityReorder = null,
+                regionPriorityFocusIndex = reorder.originIndex
             )
         }
     }
 
-    private fun reorderHeld(state: SyncSettingsState, region: String, targetIndex: Int): SyncSettingsState {
-        val order = state.regionPriority.toMutableList()
-        val from = order.indexOf(region)
-        if (from == -1) return state
-        val to = targetIndex.coerceIn(0, order.size - 1)
-        if (to == from) return state
-        order.removeAt(from)
-        order.add(to, region)
-        return state.copy(regionPriority = order.toList(), regionPriorityFocusIndex = to)
-    }
+    private fun applyRegionStep(state: SyncSettingsState, step: ReorderStep<String>): SyncSettingsState =
+        state.copy(
+            regionPriority = step.items,
+            regionPriorityReorder = step.reorder,
+            regionPriorityFocusIndex = step.reorder.heldIndex
+        )
 
     fun toggleRegionMode(scope: CoroutineScope) {
         scope.launch {

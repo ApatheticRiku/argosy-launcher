@@ -9,6 +9,8 @@ import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.core.input.DetectedLayout
+import com.nendo.argosy.ui.components.ListReorder
+import com.nendo.argosy.ui.components.ReorderStep
 import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.UiShortcut
@@ -194,8 +196,7 @@ class ControlsSettingsDelegate @Inject constructor(
             it.copy(
                 showNavRingModal = true,
                 navRingFocusIndex = 0,
-                navRingHeld = null,
-                navRingBackup = null
+                navRingReorder = null
             )
         }
     }
@@ -203,22 +204,21 @@ class ControlsSettingsDelegate @Inject constructor(
     fun dismissNavRingModal() {
         _state.update { state ->
             state.copy(
-                navRingRoutes = state.navRingBackup ?: state.navRingRoutes,
+                navRingRoutes = state.navRingReorder?.backup ?: state.navRingRoutes,
                 showNavRingModal = false,
                 navRingFocusIndex = 0,
-                navRingHeld = null,
-                navRingBackup = null
+                navRingReorder = null
             )
         }
     }
 
     fun backNavRing() {
-        if (_state.value.navRingHeld != null) cancelNavRingHold() else dismissNavRingModal()
+        if (_state.value.navRingReorder != null) cancelNavRingHold() else dismissNavRingModal()
     }
 
     fun focusNavRing(index: Int) {
         _state.update { state ->
-            if (state.navRingHeld != null || index !in NavRing.rows(state.navRingRoutes).indices) {
+            if (state.navRingReorder != null || index !in NavRing.rows(state.navRingRoutes).indices) {
                 state
             } else {
                 state.copy(navRingFocusIndex = index)
@@ -228,9 +228,9 @@ class ControlsSettingsDelegate @Inject constructor(
 
     fun moveNavRingFocus(delta: Int) {
         _state.update { state ->
-            val held = state.navRingHeld
-            if (held != null) {
-                reorderNavRing(state, held, state.navRingRoutes.indexOf(held) + delta)
+            val reorder = state.navRingReorder
+            if (reorder != null) {
+                applyNavRingStep(state, reorder.moveBy(state.navRingRoutes, delta))
             } else {
                 val rowCount = NavRing.rows(state.navRingRoutes).size
                 state.copy(navRingFocusIndex = (state.navRingFocusIndex + delta).mod(rowCount))
@@ -240,7 +240,7 @@ class ControlsSettingsDelegate @Inject constructor(
 
     fun confirmNavRing(scope: CoroutineScope) {
         val state = _state.value
-        if (state.navRingHeld != null) {
+        if (state.navRingReorder != null) {
             dropNavRing(scope)
             return
         }
@@ -250,7 +250,7 @@ class ControlsSettingsDelegate @Inject constructor(
     fun toggleNavRing(scope: CoroutineScope, token: String) {
         var committed: List<String>? = null
         _state.update { state ->
-            if (state.navRingHeld != null) return@update state
+            if (state.navRingReorder != null) return@update state
             val updated = NavRing.toggle(state.navRingRoutes, token)
             if (updated == state.navRingRoutes) return@update state
             committed = updated
@@ -263,70 +263,65 @@ class ControlsSettingsDelegate @Inject constructor(
     }
 
     fun toggleNavRingLift(scope: CoroutineScope) {
-        if (_state.value.navRingHeld != null) dropNavRing(scope) else liftNavRing()
+        if (_state.value.navRingReorder != null) dropNavRing(scope) else liftNavRing()
     }
 
     fun liftNavRing() {
         _state.update { state ->
-            if (state.navRingHeld != null) return@update state
-            val token = NavRing.rows(state.navRingRoutes).getOrNull(state.navRingFocusIndex)
+            if (state.navRingReorder != null) return@update state
+            val reorder = ListReorder.lift(state.navRingRoutes, state.navRingFocusIndex)
                 ?: return@update state
-            if (token !in state.navRingRoutes) return@update state
-            state.copy(navRingHeld = token, navRingBackup = state.navRingRoutes)
+            state.copy(navRingReorder = reorder)
         }
     }
 
     fun liftNavRingAt(token: String) {
         _state.update { state ->
             val index = state.navRingRoutes.indexOf(token)
-            if (index == -1) return@update state
-            state.copy(
-                navRingHeld = token,
-                navRingBackup = state.navRingBackup ?: state.navRingRoutes,
-                navRingFocusIndex = index
-            )
+            val reorder = ListReorder.liftOrRegrab(state.navRingReorder, state.navRingRoutes, index)
+                ?: return@update state
+            state.copy(navRingReorder = reorder, navRingFocusIndex = reorder.heldIndex)
         }
     }
 
     fun moveNavRingTo(token: String, targetIndex: Int) {
         _state.update { state ->
-            if (state.navRingHeld != token) state else reorderNavRing(state, token, targetIndex)
+            val reorder = state.navRingReorder
+            if (reorder == null || state.navRingHeld != token) {
+                state
+            } else {
+                applyNavRingStep(state, reorder.moveTo(state.navRingRoutes, targetIndex))
+            }
         }
     }
 
     fun dropNavRing(scope: CoroutineScope) {
         var committed: List<String>? = null
         _state.update { state ->
-            if (state.navRingHeld == null) {
-                committed = null
-                state
-            } else {
-                committed = state.navRingRoutes.takeIf { it != state.navRingBackup }
-                state.copy(navRingHeld = null, navRingBackup = null)
-            }
+            val reorder = state.navRingReorder
+            committed = reorder?.changedOrder(state.navRingRoutes)
+            if (reorder == null) state else state.copy(navRingReorder = null)
         }
         committed?.let { order -> scope.launch { preferencesRepository.setNavRingRoutes(order) } }
     }
 
     fun cancelNavRingHold() {
         _state.update { state ->
-            val backup = state.navRingBackup ?: state.navRingRoutes
-            val held = state.navRingHeld
+            val reorder = state.navRingReorder ?: return@update state
             state.copy(
-                navRingRoutes = backup,
-                navRingHeld = null,
-                navRingBackup = null,
-                navRingFocusIndex = held?.let { backup.indexOf(it) }?.takeIf { it >= 0 }
-                    ?: state.navRingFocusIndex
+                navRingRoutes = reorder.backup,
+                navRingReorder = null,
+                navRingFocusIndex = reorder.originIndex
             )
         }
     }
 
-    private fun reorderNavRing(state: ControlsState, token: String, targetIndex: Int): ControlsState {
-        val updated = NavRing.move(state.navRingRoutes, token, targetIndex)
-        if (updated == state.navRingRoutes) return state
-        return state.copy(navRingRoutes = updated, navRingFocusIndex = updated.indexOf(token))
-    }
+    private fun applyNavRingStep(state: ControlsState, step: ReorderStep<String>): ControlsState =
+        state.copy(
+            navRingRoutes = step.items,
+            navRingReorder = step.reorder,
+            navRingFocusIndex = step.reorder.heldIndex
+        )
 
     fun startShortcutCapture(shortcut: UiShortcut) {
         _state.update { it.copy(shortcutCaptureTarget = shortcut) }

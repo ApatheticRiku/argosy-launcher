@@ -566,10 +566,21 @@ fun ActionPreference(
     spinIcon: Boolean = false,
     showResetButton: Boolean = false,
     onReset: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit
 ) {
+    val rowModifier = if (onLongClick != null) {
+        preferenceModifier(isFocused, isDangerous).then(
+            Modifier.clickableNoFocus(
+                onClick = { if (isEnabled) onClick() },
+                onLongClick = { if (isEnabled) onLongClick() }
+            )
+        )
+    } else {
+        preferenceModifier(isFocused, isDangerous) { if (isEnabled) onClick() }
+    }
     Row(
-        modifier = preferenceModifier(isFocused, isDangerous) { if (isEnabled) onClick() },
+        modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {

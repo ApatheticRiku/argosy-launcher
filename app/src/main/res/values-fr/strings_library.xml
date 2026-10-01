@@ -42,6 +42,9 @@
 
     <string name="library_landing_empty_title">Aucune plateforme pour l\'instant</string>
     <string name="library_landing_empty_body">Synchronisez votre bibliothèque depuis Rom Manager dans les paramètres</string>
+    <string name="library_landing_hint_reorder">Réorganiser</string>
+    <string name="library_landing_hint_move">Déplacer</string>
+    <string name="library_landing_hint_cancel">Annuler</string>
 
     <string name="library_empty_title_platform">Aucun jeu %1$s trouvé</string>
     <string name="library_empty_title_all">Aucun jeu pour l\'instant</string>
@@ -131,7 +134,6 @@
     <string name="library_apps_empty">Aucune application trouvée</string>
 
     <string name="library_apps_hint_move">Déplacer</string>
-    <string name="library_apps_hint_save">Enregistrer</string>
     <string name="library_apps_hint_cancel">Annuler</string>
     <string name="library_apps_hint_open">Ouvrir</string>
     <string name="library_apps_hint_back">Retour</string>

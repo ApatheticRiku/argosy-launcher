@@ -11,27 +11,21 @@ class PlatformRepository @Inject constructor(
     private val platformDao: PlatformDao
 ) {
     /**
-     * Moves a platform one place along the order every platform list is drawn in, swapping with the
-     * neighbour it passes so the sequence stays contiguous.
-     *
-     * Answers false at either end, and when the platform is not in the stored order at all.
+     * Places [orderedIds], which may be a subset of all platforms, in that sequence within the slots
+     * they already hold in the stored order; answers false when the order did not change.
      */
-    suspend fun movePlatform(platformId: Long, delta: Int): Boolean {
-        if (delta == 0) return false
+    suspend fun applyPlatformOrder(orderedIds: List<Long>): Boolean {
         val ordered = platformDao.getAllPlatforms()
             .sortedWith(compareBy({ it.sortOrder }, { it.name }))
-        val index = ordered.indexOfFirst { it.id == platformId }
-        if (index < 0) return false
-        val target = index + delta
-        if (target !in ordered.indices) return false
-        val moving = ordered[index]
-        val displaced = ordered[target]
-        platformDao.updateSortOrder(moving.id, target)
-        platformDao.updateSortOrder(displaced.id, index)
-        ordered.forEachIndexed { position, platform ->
-            if (position != index && position != target && platform.sortOrder != position) {
-                platformDao.updateSortOrder(platform.id, position)
-            }
+        val byId = ordered.associateBy { it.id }
+        val placed = orderedIds.distinct().mapNotNull { byId[it] }
+        val placedIds = placed.mapTo(HashSet()) { it.id }
+        val slots = ordered.indices.filter { ordered[it].id in placedIds }
+        val reordered = ordered.toMutableList()
+        slots.zip(placed).forEach { (slot, platform) -> reordered[slot] = platform }
+        if (reordered.map { it.id } == ordered.map { it.id }) return false
+        reordered.forEachIndexed { position, platform ->
+            if (platform.sortOrder != position) platformDao.updateSortOrder(platform.id, position)
         }
         return true
     }

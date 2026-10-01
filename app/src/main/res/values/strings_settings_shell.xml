@@ -384,6 +384,10 @@
     <!-- Footer hint shown only on an imported frame row. Verb. -->
     <string name="settings_shell_footer_remove_frame">Remove</string>
     <string name="settings_shell_footer_add_shaderstack">Add</string>
+    <!-- Footer hint while a shader is picked up in the stack. Verb: the d-pad shifts it along the stack. -->
+    <string name="settings_shell_footer_shaderstack_move">Move</string>
+    <!-- Footer hint while a shader is picked up in the stack. Verb: puts the stack back the way it was. -->
+    <string name="settings_shell_footer_shaderstack_cancel">Cancel</string>
     <!-- LB/RB hint that cycles the platform context on built-in video/controls screens. Noun. -->
     <string name="settings_shell_footer_platform_builtin">Platform</string>
     <string name="settings_shell_footer_reset_to_default_builtinvideo">Reset to Default</string>
@@ -434,6 +438,12 @@
     <string name="settings_shell_footer_select_default">Select</string>
     <string name="settings_shell_footer_display">Display</string>
     <string name="settings_shell_footer_enable">Enable</string>
+    <!-- Footer hint on the platforms list that picks up the focused platform to change its place in the platform order. Verb. -->
+    <string name="settings_shell_footer_platforms_reorder">Reorder</string>
+    <!-- Footer hint beside the d-pad while a platform is picked up in the platforms list. Verb. -->
+    <string name="settings_shell_footer_platforms_move">Move</string>
+    <!-- Footer hint while a platform is picked up in the platforms list: puts it back where it was. Verb. -->
+    <string name="settings_shell_footer_platforms_cancel">Cancel</string>
     <string name="settings_shell_footer_update">Update</string>
     <!-- Y-button hint that resets a built-in video per-platform override. Separate site from
          the other "Reset" hints above. Verb. -->
@@ -469,7 +479,6 @@
 
     <string name="settings_shell_managepins_loading">Loading&#8230;</string>
     <string name="settings_shell_managepins_reorder_move">Move</string>
-    <string name="settings_shell_managepins_reorder_done">Done</string>
     <string name="settings_shell_managepins_reorder_cancel">Cancel</string>
     <string name="settings_shell_managepins_navigate">Navigate</string>
     <string name="settings_shell_managepins_reorder_hint">Reorder</string>
@@ -500,15 +509,14 @@
     <!-- Group heading over the individual playlist tracks. Noun, plural. -->
     <string name="settings_shell_bgm_tracks">Tracks</string>
     <string name="settings_shell_bgm_reorder_move">Move</string>
-    <string name="settings_shell_bgm_reorder_done">Done</string>
     <string name="settings_shell_bgm_reorder_cancel">Cancel</string>
     <string name="settings_shell_bgm_add_music_empty">Add Music</string>
-    <!-- A-button hint that begins reordering the focused track. Verb. -->
-    <string name="settings_shell_bgm_move_hint">Move</string>
+    <!-- Footer hint that lifts the focused track so it can be moved to a new position. Verb. -->
+    <string name="settings_shell_bgm_reorder_hint">Reorder</string>
     <string name="settings_shell_bgm_add_music_hint">Add Music</string>
-    <!-- Y-button hint verb when no track has focus. Verb. -->
+    <!-- Footer hint verb when no track has focus. Verb. -->
     <string name="settings_shell_bgm_remove_verb">Remove</string>
-    <!-- Y-button hint verb when the focused track is not covered by a synced folder. Separate
+    <!-- Footer hint verb when the focused track is not covered by a synced folder. Separate
          usage site from the one above. Verb. -->
     <string name="settings_shell_bgm_remove_verb_uncovered">Remove</string>
     <string name="settings_shell_bgm_disable_verb">Disable</string>
@@ -530,8 +538,6 @@
     <string name="settings_shell_bgm_moving_desc">Moving</string>
     <string name="settings_shell_bgm_file_missing">File missing - skipped during playback</string>
     <string name="settings_shell_bgm_disabled_desc">Disabled - excluded from playback</string>
-    <string name="settings_shell_bgm_move_up_desc">Move up</string>
-    <string name="settings_shell_bgm_move_down_desc">Move down</string>
     <string name="settings_shell_bgm_remove_desc">Remove</string>
     <string name="settings_shell_bgm_empty_state">No music - add from the music browser or local files</string>
 

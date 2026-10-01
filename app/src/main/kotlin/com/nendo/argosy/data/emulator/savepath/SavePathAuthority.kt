@@ -115,7 +115,7 @@ open class SavePathAuthority @Inject constructor(
                 ?: request.emulatorId?.let {
                     SavePathRegistry.getConfigForPlatform(it, request.platformSlug)
                 }
-            )?.takeIf { it.supported }
+            )?.takeIf { it.isUsable }
 
     /**
      * The one key an override is stored and read under. Every write must use this and no other,

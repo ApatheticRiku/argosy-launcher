@@ -64,6 +64,9 @@ import com.nendo.argosy.ui.screens.settings.delegates.SteamSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.StorageAttributionDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.delegates.SyncSettingsDelegate
+import com.nendo.argosy.ui.screens.settings.sections.EmulatorsItem
+import com.nendo.argosy.ui.screens.settings.sections.createEmulatorsLayoutInfo
+import com.nendo.argosy.ui.screens.settings.sections.emulatorsItemAtFocusIndex
 import com.nendo.argosy.ui.components.TextEntryRow
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.util.LogLevel
@@ -79,7 +82,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -93,8 +95,7 @@ class SettingsViewModel @Inject constructor(
     internal val preferencesRepository: UserPreferencesRepository,
     internal val hapticManager: HapticFeedbackManager,
     internal val platformRepository: PlatformRepository,
-    internal val appPreferencesRepository:
-        com.nendo.argosy.data.preferences.AppPreferencesRepository,
+    private val reorderPlatforms: com.nendo.argosy.domain.usecase.platform.ReorderPlatformsUseCase,
     internal val libretroSettingsRepo: LibretroSettingsRepository,
     internal val touchLayoutRepository: com.nendo.argosy.data.repository.TouchLayoutRepository,
     internal val launchArgsRepo: com.nendo.argosy.data.repository.LaunchArgsRepository,
@@ -416,12 +417,12 @@ class SettingsViewModel @Inject constructor(
             val totalPlayTimeMs = playStatsRepo.getTotalActivePlayMsByPlatform(platformSlug)
             val allBiosStatus = biosRepository.getStatusByPlatform()
             val biosStatus = allBiosStatus.find { it.platformSlug == platformSlug }
-            val packagePathAccessible = if (config.effectiveEmulatorId == EmulatorRegistry.BUILTIN_ID) {
-                true
+            val packagePathAccess = if (config.effectiveEmulatorId == EmulatorRegistry.BUILTIN_ID) {
+                com.nendo.argosy.data.emulator.PackageDataAccess.DIRECT
             } else {
                 config.effectiveEmulatorPackage?.let { pkg ->
                     val emulatorId = config.effectiveEmulatorId ?: return@let null
-                    savePathValidator.isPackageDataAccessible(emulatorId, pkg)
+                    savePathValidator.packageDataAccess(emulatorId, pkg)
                 }
             }
 
@@ -434,7 +435,7 @@ class SettingsViewModel @Inject constructor(
                     downloadedGames = downloaded,
                     favorites = favorites,
                     totalPlayTimeMs = totalPlayTimeMs,
-                    packagePathAccessible = packagePathAccessible,
+                    packagePathAccess = packagePathAccess,
                     biosTotal = biosStatus?.totalFiles ?: 0,
                     biosDownloaded = biosStatus?.downloadedFiles ?: 0,
                     hasBiosRequirements = (biosStatus?.totalFiles ?: 0) > 0,
@@ -447,21 +448,46 @@ class SettingsViewModel @Inject constructor(
 
     val librarySyncProgress get() = romMRepository.syncProgress
 
-    /**
-     * Moves a platform one place in the order every platform list follows. Marks the order as the
-     * user's from the first successful move, so it is not overwritten on the next launch.
-     */
-    fun movePlatformOrder(platformId: Long, delta: Int) {
-        viewModelScope.launch {
-            if (!platformRepository.movePlatform(platformId, delta)) return@launch
-            appPreferencesRepository.setPlatformOrderCustomised()
-            val moved = uiState
-                .map { state -> state.emulators.platforms.indexOfFirst { it.platform.id == platformId } }
-                .first { it >= 0 }
-            _uiState.update {
-                it.copy(platformDetail = it.platformDetail.copy(platformIndex = moved))
-            }
-        }
+    fun liftFocusedPlatform(): Boolean {
+        val state = _uiState.value
+        val focused = emulatorsItemAtFocusIndex(
+            state.focusedIndex,
+            createEmulatorsLayoutInfo(state.emulators.platforms)
+        ) as? EmulatorsItem.PlatformItem ?: return false
+        return emulatorDelegate.liftPlatform(focused.config.platform.id)
+    }
+
+    fun liftPlatformAt(platformId: Long): Boolean {
+        if (!emulatorDelegate.liftPlatform(platformId)) return false
+        focusPlatform(platformId)
+        return true
+    }
+
+    fun moveHeldPlatform(delta: Int): Boolean {
+        if (!emulatorDelegate.moveHeldPlatform(delta)) return false
+        emulatorDelegate.state.value.heldPlatformId?.let(::focusPlatform)
+        return true
+    }
+
+    fun moveHeldPlatformTo(platformId: Long) {
+        if (!emulatorDelegate.moveHeldPlatformTo(platformId)) return
+        emulatorDelegate.state.value.heldPlatformId?.let(::focusPlatform)
+    }
+
+    fun dropPlatform() {
+        val order = emulatorDelegate.dropPlatform() ?: return
+        viewModelScope.launch { reorderPlatforms(order) }
+    }
+
+    fun cancelPlatformLift() {
+        emulatorDelegate.cancelPlatformLift()?.let(::focusPlatform)
+    }
+
+    private fun focusPlatform(platformId: Long) {
+        val focusIndex = createEmulatorsLayoutInfo(emulatorDelegate.state.value.platforms).layout
+            .focusableItems(Unit)
+            .indexOfFirst { it is EmulatorsItem.PlatformItem && it.config.platform.id == platformId }
+        if (focusIndex >= 0) setFocusIndex(focusIndex)
     }
 
     fun clearPlatformArtCache(platformSlug: String) {
@@ -809,7 +835,10 @@ class SettingsViewModel @Inject constructor(
 
     fun addShaderToStack(id: String, name: String) = shaderChainManager.addShaderToStack(id, name)
     fun removeShaderFromStack() = shaderChainManager.removeShaderFromStack()
-    fun reorderShaderInStack(direction: Int) = shaderChainManager.reorderShaderInStack(direction)
+    fun liftShader() = shaderChainManager.liftShader()
+    fun moveHeldShader(delta: Int) = shaderChainManager.moveHeldShader(delta)
+    fun dropShader() = shaderChainManager.dropShader()
+    fun cancelShaderLift() = shaderChainManager.cancelShaderLift()
     fun selectShaderInStack(index: Int) = shaderChainManager.selectShaderInStack(index)
     fun cycleShaderTab(direction: Int) = shaderChainManager.cycleShaderTab(direction)
     fun showShaderPicker() = shaderChainManager.showShaderPicker()

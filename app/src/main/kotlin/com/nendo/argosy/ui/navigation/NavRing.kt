@@ -68,17 +68,6 @@ object NavRing {
         else -> enabled + token
     }
 
-    fun move(enabled: List<String>, token: String, targetIndex: Int): List<String> {
-        val from = enabled.indexOf(token)
-        if (from == -1) return enabled
-        val to = targetIndex.coerceIn(0, enabled.size - 1)
-        if (to == from) return enabled
-        val order = enabled.toMutableList()
-        order.removeAt(from)
-        order.add(to, token)
-        return order.toList()
-    }
-
     /**
      * Route to switch to for a shoulder press, or null when [currentRoute] is not a drawer page.
      * On a ring page it steps through [ring]. On a page outside the ring it walks [pages] in

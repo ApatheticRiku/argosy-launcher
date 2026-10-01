@@ -224,7 +224,8 @@ class LibraryTileFilterArrivalTest {
         socialRepository = mockk(relaxed = true),
         saveListStatusRepository = mockk(relaxed = true),
         libraryDefaultPlatformMigration = mockk(relaxed = true),
-        showcaseSource = mockk(relaxed = true)
+        showcaseSource = mockk(relaxed = true),
+        reorderPlatforms = mockk(relaxed = true)
     )
 
     private fun LibraryViewModel.platformIds(): Set<Long> =

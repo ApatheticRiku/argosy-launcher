@@ -44,6 +44,8 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         interceptGameNativeFoldersModal(state, method)?.let { return it }
         interceptEmulatorPicker(state, method)?.let { return it }
         interceptDownloadDefaultsModal(state, method)?.let { return it }
+        interceptShaderReorder(method)?.let { return it }
+        interceptPlatformReorder(state, method)?.let { return it }
         interceptShaderPicker(method)?.let { return it }
         interceptScreenRoleModal(state, method)?.let { return it }
         interceptInstallerVariantPicker(state, method)?.let { return it }
@@ -317,10 +319,8 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         return when (method) {
             InputMethod.UP -> { viewModel.moveRegionPriorityFocus(-1); InputResult.HANDLED }
             InputMethod.DOWN -> { viewModel.moveRegionPriorityFocus(1); InputResult.HANDLED }
-            InputMethod.CONTEXT_MENU -> if (holding) {
-                InputResult.handled(SoundType.SILENT)
-            } else {
-                viewModel.liftRegionPriority()
+            InputMethod.SECONDARY_ACTION -> {
+                if (holding) viewModel.dropRegionPriority() else viewModel.liftRegionPriority()
                 InputResult.handled(SoundType.SELECT)
             }
             InputMethod.CONFIRM -> if (holding) {
@@ -502,6 +502,46 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             else -> InputResult.HANDLED
         }
     }
+
+    private fun interceptShaderReorder(method: InputMethod): InputResult? {
+        if (!viewModel.shaderChainManager.shaderStack.isReordering) return null
+        return when (method) {
+            InputMethod.LEFT -> moveHeldShader(-1)
+            InputMethod.RIGHT -> moveHeldShader(1)
+            InputMethod.CONFIRM, InputMethod.SECONDARY_ACTION -> {
+                viewModel.dropShader()
+                InputResult.handled(SoundType.SELECT)
+            }
+            InputMethod.BACK -> {
+                viewModel.cancelShaderLift()
+                InputResult.handled(SoundType.BACK)
+            }
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun moveHeldShader(delta: Int): InputResult =
+        if (viewModel.moveHeldShader(delta)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
+
+    private fun interceptPlatformReorder(state: SettingsUiState, method: InputMethod): InputResult? {
+        if (!state.emulators.isReorderingPlatforms) return null
+        return when (method) {
+            InputMethod.UP -> moveHeldPlatform(-1)
+            InputMethod.DOWN -> moveHeldPlatform(1)
+            InputMethod.CONFIRM, InputMethod.SECONDARY_ACTION -> {
+                viewModel.dropPlatform()
+                InputResult.handled(SoundType.SELECT)
+            }
+            InputMethod.BACK -> {
+                viewModel.cancelPlatformLift()
+                InputResult.handled(SoundType.BACK)
+            }
+            else -> InputResult.HANDLED
+        }
+    }
+
+    private fun moveHeldPlatform(delta: Int): InputResult =
+        if (viewModel.moveHeldPlatform(delta)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
 
     private fun interceptShaderPicker(method: InputMethod): InputResult? {
         if (!viewModel.shaderChainManager.shaderStack.showShaderPicker) return null

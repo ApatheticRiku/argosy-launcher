@@ -212,4 +212,9 @@
     <!-- Combines the season/episode marker with the episode's own title on a home media tile. %1$s is the marker (e.g. "S1 E4"), %2$s the episode title. -->
     <string name="home_media_episode_subtitle_with_name">%1$s - %2$s</string>
 
+    <!-- ================= List reorder (shared drop hint) ================= -->
+
+    <!-- Footer hint on every reorderable list while an item is lifted: drops the lifted item where it is and keeps the new order. Not the save-sync noun. -->
+    <string name="reorder_hint_done">Done</string>
+
 </resources>

@@ -135,7 +135,16 @@ class SavePathRegistryTest {
     fun `getConfigIncludingUnsupported returns config even when supported is false`() {
         val cfg = SavePathRegistry.getConfigIncludingUnsupported("redream")
         assertNotNull(cfg)
-        assertFalse(cfg!!.supported)
+        assertFalse(cfg!!.isUsable)
+    }
+
+    @Test
+    fun `duckstation needs root and is unusable without the root daemon`() {
+        val cfg = SavePathRegistry.getConfigIncludingUnsupported("duckstation")
+        assertNotNull(cfg)
+        assertTrue(cfg!!.requiresRoot)
+        assertFalse(cfg.isUsable)
+        assertNull(SavePathRegistry.getConfig("duckstation"))
     }
 
     @Test

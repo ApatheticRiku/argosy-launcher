@@ -57,6 +57,7 @@ import android.content.Context
 import com.nendo.argosy.ui.common.GridDirection
 import com.nendo.argosy.ui.common.GridFocusNavigator
 import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.components.ListReorder
 import com.nendo.argosy.ui.components.activeFilterSummary
 import com.nendo.argosy.ui.common.toLibraryGameUi
 import com.nendo.argosy.ui.common.toNotificationText
@@ -260,6 +261,7 @@ data class LibraryUiState(
     val view: LibraryView = LibraryView.PLATFORM_GRID,
     val platformCells: List<LibraryCellUi> = emptyList(),
     val platformGridFocusedIndex: Int = 0,
+    val platformReorder: ListReorder<LibraryCellUi>? = null,
     val canReturnToPlatformGrid: Boolean = false,
     val platforms: List<HomePlatformUi> = emptyList(),
     val currentPlatformIndex: Int = -1,
@@ -318,6 +320,12 @@ data class LibraryUiState(
 
     val isPlatformGrid: Boolean
         get() = view == LibraryView.PLATFORM_GRID
+
+    val isReorderingPlatforms: Boolean
+        get() = platformReorder != null
+
+    val focusedPlatformCell: LibraryCellUi?
+        get() = platformCells.getOrNull(platformGridFocusedIndex)?.takeIf { it.isPlatform }
 
     /**
      * A platform cell is a badge - a mark and two short lines - so it wants the game grid's narrower
@@ -476,7 +484,8 @@ class LibraryViewModel @Inject constructor(
     private val socialRepository: SocialRepository,
     private val saveListStatusRepository: SaveListStatusRepository,
     private val libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration,
-    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
+    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource,
+    private val reorderPlatforms: com.nendo.argosy.domain.usecase.platform.ReorderPlatformsUseCase
 ) : ViewModel() {
 
     val siblingChoiceState = siblingChoice.state
@@ -663,6 +672,7 @@ class LibraryViewModel @Inject constructor(
                 mediaCounts[library.libraryId]?.let { library.toLibraryCellUi(it) }
             }
         _uiState.update { state ->
+            if (state.isReorderingPlatforms) return@update state
             state.copy(
                 platformCells = cells,
                 platformGridFocusedIndex = state.platformGridFocusedIndex
@@ -1508,6 +1518,89 @@ class LibraryViewModel @Inject constructor(
         return true
     }
 
+    fun liftPlatformCell(): Boolean {
+        var lifted = false
+        _uiState.update { state ->
+            if (state.isReorderingPlatforms || state.focusedPlatformCell == null) return@update state
+            val first = state.platformCells.indexOfFirst { it.isPlatform }
+            val platformCells = state.platformCells.filter { it.isPlatform }
+            val reorder = ListReorder.lift(platformCells, state.platformGridFocusedIndex - first)
+                ?: return@update state
+            lifted = true
+            state.copy(platformReorder = reorder)
+        }
+        return lifted
+    }
+
+    fun liftPlatformCellAt(cellIndex: Int): Boolean {
+        val state = _uiState.value
+        if (state.isReorderingPlatforms || state.platformCells.getOrNull(cellIndex)?.isPlatform != true) return false
+        _uiState.update { it.copy(platformGridFocusedIndex = cellIndex) }
+        return liftPlatformCell()
+    }
+
+    fun moveHeldPlatformCell(direction: FocusMove): Boolean {
+        val state = _uiState.value
+        val cols = state.platformGridColumns.coerceAtLeast(1)
+        val delta = when (direction) {
+            FocusMove.LEFT -> -1
+            FocusMove.RIGHT -> 1
+            FocusMove.UP -> -cols
+            FocusMove.DOWN -> cols
+        }
+        return placeHeldPlatformCell(state.platformGridFocusedIndex + delta)
+    }
+
+    fun placeHeldPlatformCell(cellIndex: Int): Boolean {
+        var moved = false
+        _uiState.update { state ->
+            val reorder = state.platformReorder ?: return@update state
+            val first = state.platformCells.indexOfFirst { it.isPlatform }
+            val platformCells = state.platformCells.filter { it.isPlatform }
+            val step = reorder.moveTo(platformCells, cellIndex - first)
+            if (!step.moved) return@update state
+            moved = true
+            state.withPlatformCells(first, platformCells.size, step.items).copy(
+                platformReorder = step.reorder,
+                platformGridFocusedIndex = first + step.reorder.heldIndex
+            )
+        }
+        return moved
+    }
+
+    fun dropPlatformCell() {
+        var committed: List<LibraryCellUi>? = null
+        _uiState.update { state ->
+            val reorder = state.platformReorder ?: return@update state
+            committed = reorder.changedOrder(state.platformCells.filter { it.isPlatform })
+            state.copy(platformReorder = null)
+        }
+        val platformIds = committed?.mapNotNull { (it.target as? LibraryCellTarget.Platform)?.platformId }
+        viewModelScope.launch {
+            if (platformIds == null || !reorderPlatforms(platformIds)) refreshPlatformCells()
+        }
+    }
+
+    fun cancelPlatformCellLift() {
+        _uiState.update { state ->
+            val reorder = state.platformReorder ?: return@update state
+            val first = state.platformCells.indexOfFirst { it.isPlatform }
+            state.withPlatformCells(first, reorder.backup.size, reorder.backup).copy(
+                platformReorder = null,
+                platformGridFocusedIndex = first + reorder.originIndex
+            )
+        }
+        viewModelScope.launch { refreshPlatformCells() }
+    }
+
+    private fun LibraryUiState.withPlatformCells(
+        first: Int,
+        count: Int,
+        replacement: List<LibraryCellUi>
+    ): LibraryUiState = copy(
+        platformCells = platformCells.take(first) + replacement + platformCells.drop(first + count)
+    )
+
     /**
      * Opens whatever the cell under [index] stands for.
      *
@@ -2191,9 +2284,16 @@ class LibraryViewModel @Inject constructor(
         onNavigateToDefault: () -> Unit,
         onDrawerToggle: () -> Unit
     ): InputHandler = object : InputHandler {
+        private val isLiftingPlatform: Boolean
+            get() = _uiState.value.let { it.isPlatformGrid && it.isReorderingPlatforms }
+
+        private fun moveHeld(direction: FocusMove): InputResult =
+            if (moveHeldPlatformCell(direction)) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
+
         override fun onUp(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> moveHeld(FocusMove.UP)
                 state.isPlatformGrid ->
                     if (movePlatformGridFocus(FocusMove.UP)) InputResult.HANDLED else InputResult.UNHANDLED
                 state.showAddToCollectionModal -> { moveCollectionFocusUp(); InputResult.HANDLED }
@@ -2207,6 +2307,7 @@ class LibraryViewModel @Inject constructor(
         override fun onDown(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> moveHeld(FocusMove.DOWN)
                 state.isPlatformGrid ->
                     if (movePlatformGridFocus(FocusMove.DOWN)) InputResult.HANDLED else InputResult.UNHANDLED
                 state.showAddToCollectionModal -> { moveCollectionFocusDown(); InputResult.HANDLED }
@@ -2220,6 +2321,7 @@ class LibraryViewModel @Inject constructor(
         override fun onLeft(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> moveHeld(FocusMove.LEFT)
                 state.isPlatformGrid ->
                     if (movePlatformGridFocus(FocusMove.LEFT)) InputResult.HANDLED else InputResult.UNHANDLED
                 state.showAddToCollectionModal -> InputResult.HANDLED
@@ -2236,6 +2338,7 @@ class LibraryViewModel @Inject constructor(
         override fun onRight(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> moveHeld(FocusMove.RIGHT)
                 state.isPlatformGrid ->
                     if (movePlatformGridFocus(FocusMove.RIGHT)) InputResult.HANDLED else InputResult.UNHANDLED
                 state.showAddToCollectionModal -> InputResult.HANDLED
@@ -2250,6 +2353,10 @@ class LibraryViewModel @Inject constructor(
         override fun onConfirm(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> {
+                    dropPlatformCell()
+                    InputResult.handled(SoundType.SELECT)
+                }
                 state.isPlatformGrid -> {
                     openLandingCell(state.platformGridFocusedIndex, onMediaLibrarySelect)
                     InputResult.HANDLED
@@ -2277,6 +2384,10 @@ class LibraryViewModel @Inject constructor(
         override fun onBack(): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> {
+                    cancelPlatformCellLift()
+                    InputResult.handled(SoundType.BACK)
+                }
                 state.showAddToCollectionModal -> {
                     dismissAddToCollectionModal()
                     InputResult.HANDLED
@@ -2310,6 +2421,7 @@ class LibraryViewModel @Inject constructor(
         }
 
         override fun onMenu(): InputResult {
+            if (isLiftingPlatform) return InputResult.HANDLED
             if (_uiState.value.showAddToCollectionModal) return InputResult.HANDLED
             if (_uiState.value.showQuickMenu) {
                 toggleQuickMenu()
@@ -2324,7 +2436,13 @@ class LibraryViewModel @Inject constructor(
         }
 
         override fun onSecondaryAction(): InputResult {
-            if (_uiState.value.isPlatformGrid) return InputResult.HANDLED
+            if (isLiftingPlatform) {
+                dropPlatformCell()
+                return InputResult.handled(SoundType.SELECT)
+            }
+            if (_uiState.value.isPlatformGrid) {
+                return if (liftPlatformCell()) InputResult.handled(SoundType.SELECT) else InputResult.HANDLED
+            }
             if (_uiState.value.isSectionRailFocused) return InputResult.HANDLED
             val game = _uiState.value.focusedGame ?: return InputResult.UNHANDLED
             if (_uiState.value.showAddToCollectionModal || _uiState.value.showQuickMenu || _uiState.value.showFilterMenu) return InputResult.HANDLED
@@ -2350,6 +2468,7 @@ class LibraryViewModel @Inject constructor(
         }
 
         override fun onSelect(): InputResult {
+            if (isLiftingPlatform) return InputResult.HANDLED
             if (_uiState.value.showAddToCollectionModal) return InputResult.HANDLED
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
             if (_uiState.value.isPlatformGrid) return InputResult.HANDLED
@@ -2361,7 +2480,8 @@ class LibraryViewModel @Inject constructor(
         }
 
         override fun onLongSelect(): InputResult =
-            if (_uiState.value.showAddToCollectionModal) InputResult.HANDLED else InputResult.UNHANDLED
+            if (_uiState.value.showAddToCollectionModal || isLiftingPlatform) InputResult.HANDLED
+            else InputResult.UNHANDLED
 
         override fun onLongConfirm(): InputResult {
             if (_uiState.value.isPlatformGrid) return InputResult.handled(SoundType.BOUNDARY)
@@ -2382,6 +2502,7 @@ class LibraryViewModel @Inject constructor(
         private fun bumper(filterPage: Int): InputResult {
             val state = _uiState.value
             return when {
+                isLiftingPlatform -> InputResult.HANDLED
                 state.showFilterMenu -> { moveFilterOptionFocus(filterPage); InputResult.HANDLED }
                 state.hasInternalFocus && !state.isOnPlatformLanding -> InputResult.HANDLED
                 else -> InputResult.UNHANDLED

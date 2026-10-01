@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.currentIsRepeat
 import com.nendo.argosy.ui.input.InputHandler
@@ -88,10 +89,11 @@ internal class EmulatorsSectionInput(
         val state = viewModel.uiState.value
         val info = createEmulatorsLayoutInfo(state.emulators.platforms)
         val focused = emulatorsItemAtFocusIndex(state.focusedIndex, info)
-        if (focused is EmulatorsItem.PlatformItem && !focused.config.platform.syncEnabled) {
+        if (focused !is EmulatorsItem.PlatformItem) return InputResult.UNHANDLED
+        if (!focused.config.platform.syncEnabled) {
             viewModel.enablePlatformAndReload(focused.config.platform.id)
             return InputResult.HANDLED
         }
-        return InputResult.UNHANDLED
+        return if (viewModel.liftFocusedPlatform()) InputResult.handled(SoundType.SELECT) else InputResult.UNHANDLED
     }
 }

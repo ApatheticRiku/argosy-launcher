@@ -84,6 +84,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -109,6 +111,7 @@ import com.nendo.argosy.ui.components.AlphabetSidebarWidth
 import com.nendo.argosy.ui.components.CollectionItem
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
 import com.nendo.argosy.ui.components.SyncOverlay
@@ -369,12 +372,27 @@ fun LibraryScreen(
                         if (uiState.platformGridIsEmpty) {
                             LibraryPlatformGridEmpty()
                         } else {
+                            val haptics = LocalHapticFeedback.current
                             LibraryPlatformGrid(
                                 cells = uiState.platformCells,
                                 focusedIndex = uiState.platformGridFocusedIndex,
+                                heldIndex = uiState.platformReorder?.let { reorder ->
+                                    uiState.platformCells.indexOfFirst { it.isPlatform } + reorder.heldIndex
+                                },
                                 columns = uiState.platformGridColumns,
                                 gridState = platformGridState,
-                                onCellClick = { viewModel.openLandingCell(it, onMediaLibrarySelect) }
+                                onCellClick = { index ->
+                                    if (uiState.isReorderingPlatforms) {
+                                        viewModel.placeHeldPlatformCell(index)
+                                    } else {
+                                        viewModel.openLandingCell(index, onMediaLibrarySelect)
+                                    }
+                                },
+                                onCellLongClick = { index ->
+                                    if (viewModel.liftPlatformCellAt(index)) {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                }
                             )
                         }
                     }
@@ -518,7 +536,24 @@ fun LibraryScreen(
             }
 
             Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-                if (!uiState.isPlatformGrid) {
+                if (uiState.isPlatformGrid) {
+                    LibraryPlatformGridFooter(
+                        isReordering = uiState.isReorderingPlatforms,
+                        canReorder = uiState.focusedPlatformCell != null,
+                        onHintClick = { button ->
+                            when (button) {
+                                InputButton.A -> viewModel.dropPlatformCell()
+                                InputButton.B -> viewModel.cancelPlatformCellLift()
+                                InputButton.Y -> if (uiState.isReorderingPlatforms) {
+                                    viewModel.dropPlatformCell()
+                                } else {
+                                    viewModel.liftPlatformCell()
+                                }
+                                else -> {}
+                            }
+                        }
+                    )
+                } else {
                     val isViewingHidden = uiState.activeFilters.source == SourceFilter.HIDDEN
                     LibraryFooter(
                         focusedGame = uiState.focusedGame,
@@ -1267,6 +1302,30 @@ private fun LibraryGameCard(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             )
+    )
+}
+
+@Composable
+private fun LibraryPlatformGridFooter(
+    isReordering: Boolean,
+    canReorder: Boolean,
+    onHintClick: (InputButton) -> Unit
+) {
+    val liftedHints = liftedReorderHints(
+        move = stringResource(R.string.library_landing_hint_move),
+        cancel = stringResource(R.string.library_landing_hint_cancel),
+        moveButton = InputButton.DPAD
+    )
+    val reorderHint = stringResource(R.string.library_landing_hint_reorder)
+    val hints = when {
+        isReordering -> liftedHints
+        canReorder -> listOf(InputButton.Y to reorderHint)
+        else -> emptyList()
+    }
+    FooterHints(
+        hints = hints,
+        onHintClick = onHintClick,
+        forced = isReordering
     )
 }
 

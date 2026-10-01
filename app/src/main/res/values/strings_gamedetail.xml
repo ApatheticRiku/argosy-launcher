@@ -981,9 +981,14 @@
     <!-- Footer hint while a category's sections are open. Verb: removes the section under the
          cursor. -->
     <string name="gamedetail_speedrun_footer_delete">Delete</string>
-    <!-- Footer hint while a category's sections are open. Verb: the shoulder buttons shift the
-         section up or down the order. -->
+    <!-- Footer hint while a section is picked up. Verb: the d-pad shifts it up or down the
+         order. -->
     <string name="gamedetail_speedrun_footer_move">Move</string>
+    <!-- Footer hint while a category's sections are open. Verb: picks up the section under the
+         cursor so it can be moved to a new place in the order. -->
+    <string name="gamedetail_speedrun_footer_reorder">Reorder</string>
+    <!-- Footer hint while a section is picked up. Verb: puts the order back the way it was. -->
+    <string name="gamedetail_speedrun_footer_cancel">Cancel</string>
     <!-- Footer hint while a category's sections are open. Verb: goes back to the category list. -->
     <string name="gamedetail_speedrun_footer_back">Back</string>
     <!-- Footer hint on the category list. Verb: opens the category under the cursor. -->

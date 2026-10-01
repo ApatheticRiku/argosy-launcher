@@ -138,7 +138,6 @@
     <string name="settings_nav_ring_pinned">Immer an</string>
     <string name="settings_nav_ring_hint_reorder">Sortieren</string>
     <string name="settings_nav_ring_hint_move">Verschieben</string>
-    <string name="settings_nav_ring_hint_drop">Ablegen</string>
     <string name="settings_nav_ring_hint_cancel">Abbrechen</string>
     <string name="settings_shell_header_installers">VERWALTETE INSTALLER</string>
     <string name="settings_installers_add_title">Repository hinzufügen</string>
@@ -1619,6 +1618,9 @@
     <string name="settings_platform_package_path_title">Paketpfad</string>
     <string name="settings_platform_package_path_accessible">Zugänglich</string>
     <string name="settings_platform_package_path_blocked">Blockiert</string>
+    <string name="settings_platform_package_path_via_direct">Direkt</string>
+    <string name="settings_platform_package_path_via_unicode">Über Unicode-Pfad</string>
+    <string name="settings_platform_package_path_via_root">Über Root</string>
     <string name="settings_platform_package_path_checking">Wird geprüft…</string>
 
     <string name="settings_platform_bios_status_title">Status</string>
@@ -1628,10 +1630,6 @@
 
     <string name="settings_platform_clear_art_title">Zwischengespeicherte Grafik löschen</string>
     <string name="settings_platform_clear_art_subtitle">Heruntergeladene Cover und Screenshots für diese Plattform löschen, damit sie erneut geladen werden. Selbst gewählte Cover bleiben erhalten</string>
-    <string name="settings_platform_move_earlier_title">Nach vorne verschieben</string>
-    <string name="settings_platform_move_earlier_subtitle">Diese Plattform überall, wo Plattformen aufgelistet werden, weiter vorne anzeigen</string>
-    <string name="settings_platform_move_later_title">Nach hinten verschieben</string>
-    <string name="settings_platform_move_later_subtitle">Diese Plattform überall, wo Plattformen aufgelistet werden, weiter hinten anzeigen</string>
     <string name="settings_platform_scan_busy">Wird gescannt…</string>
     <string name="settings_platform_scan_files_title">Nach Dateien suchen</string>
     <string name="settings_platform_scan_files_subtitle">Nach neuen oder fehlenden ROM-Dateien suchen</string>
@@ -2050,7 +2048,6 @@
     <string name="settings_region_priority_hint_reorder">Umsortieren</string>
     <string name="settings_region_priority_hint_close">Schließen</string>
     <string name="settings_region_priority_hint_move">Verschieben</string>
-    <string name="settings_region_priority_hint_drop">Ablegen</string>
     <string name="settings_region_priority_hint_cancel">Abbrechen</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->

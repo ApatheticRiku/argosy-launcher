@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.local.entity.BgmPlaylistEntity
 import com.nendo.argosy.domain.usecase.music.GetBgmTrackGameCoversUseCase
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
+import com.nendo.argosy.ui.components.ListReorder
+import com.nendo.argosy.ui.components.ReorderStep
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,8 +43,10 @@ data class BgmPlaylistManagerState(
     val folderSources: List<BgmFolderSourceUi> = emptyList(),
     val entries: List<BgmPlaylistRowUi> = emptyList(),
     val focusedIndex: Int = 0,
-    val isReordering: Boolean = false
+    val reorder: ListReorder<BgmPlaylistRowUi>? = null
 ) {
+    val isReordering: Boolean get() = reorder != null
+    val heldTrackIndex: Int? get() = reorder?.heldIndex
     val focusCount: Int get() = folderSources.size + entries.size
     val isEmpty: Boolean get() = focusCount == 0
     val focusedSource: BgmFolderSourceUi? get() = folderSources.getOrNull(focusedIndex)
@@ -58,8 +62,6 @@ class BgmPlaylistManagerViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(BgmPlaylistManagerState())
     val uiState: StateFlow<BgmPlaylistManagerState> = _uiState.asStateFlow()
-
-    private var orderSnapshot: List<BgmPlaylistRowUi>? = null
 
     init {
         viewModelScope.launch {
@@ -130,60 +132,69 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         }
     }
 
-    fun beginReorder() {
-        val st = _uiState.value
-        if (st.entries.isEmpty() || st.isReordering || st.focusedEntry == null) return
-        orderSnapshot = st.entries
-        _uiState.update { it.copy(isReordering = true) }
+    fun lift() {
+        _uiState.update { st ->
+            if (st.isReordering) return@update st
+            val reorder = ListReorder.lift(st.entries, st.focusedIndex - st.folderSources.size)
+                ?: return@update st
+            st.copy(reorder = reorder)
+        }
     }
 
-    fun moveFocusedRow(delta: Int): Boolean {
+    fun liftAt(trackId: Long) {
+        _uiState.update { st ->
+            val index = st.entries.indexOfFirst { it.id == trackId }
+            val reorder = ListReorder.liftOrRegrab(st.reorder, st.entries, index) ?: return@update st
+            st.copy(reorder = reorder, focusedIndex = st.folderSources.size + reorder.heldIndex)
+        }
+    }
+
+    fun moveHeld(delta: Int): Boolean {
         var moved = false
         _uiState.update { st ->
-            if (!st.isReordering) return@update st
-            val trackIndex = st.focusedIndex - st.folderSources.size
-            val target = trackIndex + delta
-            if (trackIndex < 0 || target < 0 || target >= st.entries.size) return@update st
-            val reordered = st.entries.toMutableList().apply { add(target, removeAt(trackIndex)) }
-            moved = true
-            st.copy(entries = reordered, focusedIndex = st.folderSources.size + target)
+            val step = st.reorder?.moveBy(st.entries, delta) ?: return@update st
+            moved = step.moved
+            st.applyStep(step)
         }
         return moved
     }
 
-    fun commitReorder() {
-        val st = _uiState.value
-        if (!st.isReordering) return
-        orderSnapshot = null
-        _uiState.update { it.copy(isReordering = false) }
-        viewModelScope.launch { coordinator.reorder(st.entries.map { it.id }) }
+    fun moveHeldTo(trackId: Long, trackIndex: Int) {
+        _uiState.update { st ->
+            val reorder = st.reorder ?: return@update st
+            if (st.entries.getOrNull(reorder.heldIndex)?.id != trackId) return@update st
+            st.applyStep(reorder.moveTo(st.entries, trackIndex))
+        }
     }
 
-    fun cancelReorder() {
-        val snapshot = orderSnapshot
-        orderSnapshot = null
+    fun drop() {
+        var committed: List<BgmPlaylistRowUi>? = null
         _uiState.update { st ->
-            val entries = snapshot ?: st.entries
+            val reorder = st.reorder ?: return@update st
+            committed = reorder.changedOrder(st.entries)
+            st.copy(reorder = null)
+        }
+        val order = committed ?: return
+        viewModelScope.launch { coordinator.reorder(order.map { it.id }) }
+    }
+
+    fun cancel() {
+        _uiState.update { st ->
+            val reorder = st.reorder ?: return@update st
             st.copy(
-                isReordering = false,
-                entries = entries,
-                focusedIndex = st.focusedIndex.coerceIn(
-                    0,
-                    (st.folderSources.size + entries.size - 1).coerceAtLeast(0)
-                )
+                reorder = null,
+                entries = reorder.backup,
+                focusedIndex = st.folderSources.size + reorder.originIndex
             )
         }
     }
 
-    fun moveTrack(trackIndex: Int, delta: Int) {
-        val st = _uiState.value
-        if (st.isReordering) return
-        val target = trackIndex + delta
-        if (trackIndex !in st.entries.indices || target < 0 || target >= st.entries.size) return
-        val reordered = st.entries.toMutableList().apply { add(target, removeAt(trackIndex)) }
-        _uiState.update { it.copy(entries = reordered, focusedIndex = it.folderSources.size + target) }
-        viewModelScope.launch { coordinator.reorder(reordered.map { it.id }) }
-    }
+    private fun BgmPlaylistManagerState.applyStep(step: ReorderStep<BgmPlaylistRowUi>): BgmPlaylistManagerState =
+        copy(
+            entries = step.items,
+            reorder = step.reorder,
+            focusedIndex = folderSources.size + step.reorder.heldIndex
+        )
 
     fun removeSource(sourceIndex: Int) {
         val st = _uiState.value
@@ -192,34 +203,42 @@ class BgmPlaylistManagerViewModel @Inject constructor(
         viewModelScope.launch { coordinator.removeFolderSource(source.id) }
     }
 
-    fun toggleOrRemoveTrack(trackIndex: Int) {
+    fun removeTrack(trackIndex: Int): Boolean {
         val st = _uiState.value
-        if (st.isReordering) return
-        val row = st.entries.getOrNull(trackIndex) ?: return
+        if (st.isReordering) return false
+        val row = st.entries.getOrNull(trackIndex) ?: return false
+        if (row.isFolderCovered) return false
+        viewModelScope.launch { coordinator.removeById(row.id) }
+        return true
+    }
+
+    fun setTrackEnabled(trackIndex: Int, enabled: Boolean): Boolean {
+        val st = _uiState.value
+        if (st.isReordering) return false
+        val row = st.entries.getOrNull(trackIndex) ?: return false
+        if (row.enabled == enabled) return false
         viewModelScope.launch {
             when {
-                !row.isFolderCovered -> coordinator.removeById(row.id)
-                row.enabled -> coordinator.removeOrDisableById(row.id)
-                else -> coordinator.setTrackEnabled(row.id, true)
+                enabled || !row.isFolderCovered -> coordinator.setTrackEnabled(row.id, enabled)
+                else -> coordinator.removeOrDisableById(row.id)
             }
         }
+        return true
     }
 
-    fun setTrackEnabled(trackIndex: Int, enabled: Boolean) {
+    fun toggleFocusedTrack(): Boolean {
         val st = _uiState.value
-        if (st.isReordering) return
-        val row = st.entries.getOrNull(trackIndex) ?: return
-        if (!row.isFolderCovered || row.enabled == enabled) return
-        viewModelScope.launch {
-            if (enabled) coordinator.setTrackEnabled(row.id, true)
-            else coordinator.removeOrDisableById(row.id)
+        val row = st.focusedEntry ?: return false
+        return setTrackEnabled(st.focusedIndex - st.folderSources.size, !row.enabled)
+    }
+
+    fun removeFocused(): Boolean {
+        val st = _uiState.value
+        if (st.isReordering) return false
+        if (st.focusedSource != null) {
+            removeSource(st.focusedIndex)
+            return true
         }
-    }
-
-    fun removeFocused() {
-        val st = _uiState.value
-        if (st.isReordering) return
-        if (st.focusedIndex < st.folderSources.size) removeSource(st.focusedIndex)
-        else toggleOrRemoveTrack(st.focusedIndex - st.folderSources.size)
+        return removeTrack(st.focusedIndex - st.folderSources.size)
     }
 }

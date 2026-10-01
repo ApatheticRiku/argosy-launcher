@@ -43,6 +43,7 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.animateScrollToItemCentered
 import com.nendo.argosy.ui.components.dragReorderContainer
 import com.nendo.argosy.ui.components.dragReorderItem
+import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.components.rememberDragReorderState
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -172,20 +173,19 @@ fun RegionPriorityPopup(
     FooterHints(
         forced = heldRegion != null,
         hints = if (heldRegion != null) {
-            listOf(
-                InputButton.DPAD_VERTICAL to stringResource(R.string.settings_region_priority_hint_move),
-                InputButton.A to stringResource(R.string.settings_region_priority_hint_drop),
-                InputButton.B to stringResource(R.string.settings_region_priority_hint_cancel)
+            liftedReorderHints(
+                move = stringResource(R.string.settings_region_priority_hint_move),
+                cancel = stringResource(R.string.settings_region_priority_hint_cancel)
             )
         } else {
             listOf(
-                InputButton.X to stringResource(R.string.settings_region_priority_hint_reorder),
+                InputButton.Y to stringResource(R.string.settings_region_priority_hint_reorder),
                 InputButton.B to stringResource(R.string.settings_region_priority_hint_close)
             )
         },
         onHintClick = { button ->
             when (button) {
-                InputButton.X -> if (heldRegion == null) onLift() else Unit
+                InputButton.Y -> if (heldRegion == null) onLift() else Unit
                 InputButton.A -> if (heldRegion != null) onDrop() else Unit
                 InputButton.B -> onBack()
                 else -> Unit

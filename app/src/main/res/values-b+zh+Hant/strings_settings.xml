@@ -115,7 +115,6 @@
     <string name="settings_nav_ring_pinned">永遠開啟</string>
     <string name="settings_nav_ring_hint_reorder">重新排序</string>
     <string name="settings_nav_ring_hint_move">移動</string>
-    <string name="settings_nav_ring_hint_drop">放下</string>
     <string name="settings_nav_ring_hint_cancel">取消</string>
     <string name="settings_shell_header_installers">受管安裝程式</string>
     <string name="settings_installers_add_title">新增儲存庫</string>
@@ -1496,6 +1495,9 @@
     <string name="settings_platform_package_path_title">套件路徑</string>
     <string name="settings_platform_package_path_accessible">可存取</string>
     <string name="settings_platform_package_path_blocked">已封鎖</string>
+    <string name="settings_platform_package_path_via_direct">直接存取</string>
+    <string name="settings_platform_package_path_via_unicode">透過Unicode路徑</string>
+    <string name="settings_platform_package_path_via_root">透過root</string>
     <string name="settings_platform_package_path_checking">檢查中&#8230;</string>
 
     <string name="settings_platform_bios_status_title">狀態</string>
@@ -1505,10 +1507,6 @@
 
     <string name="settings_platform_clear_art_title">清除已快取的美術圖片</string>
     <string name="settings_platform_clear_art_subtitle">刪除此平台已下載的封面與螢幕截圖，以便重新取得。您自行選擇的封面會保留</string>
-    <string name="settings_platform_move_earlier_title">前移</string>
-    <string name="settings_platform_move_earlier_subtitle">在所有平台清單中提前顯示此平台</string>
-    <string name="settings_platform_move_later_title">後移</string>
-    <string name="settings_platform_move_later_subtitle">在所有平台清單中延後顯示此平台</string>
     <string name="settings_platform_scan_busy">掃描中&#8230;</string>
     <string name="settings_platform_scan_files_title">掃描檔案</string>
     <string name="settings_platform_scan_files_subtitle">檢查新增或遺失的ROM檔案</string>
@@ -1889,7 +1887,6 @@
     <string name="settings_region_priority_hint_reorder">重新排序</string>
     <string name="settings_region_priority_hint_close">關閉</string>
     <string name="settings_region_priority_hint_move">移動</string>
-    <string name="settings_region_priority_hint_drop">放下</string>
     <string name="settings_region_priority_hint_cancel">取消</string>
 
     <string name="settings_driver_picker_title">選擇版本</string>

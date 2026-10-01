@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.screens.library.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,18 +62,19 @@ val LibraryPlatformGridHeaderHeight: Dp
  * All Games leads rather than being replaced by the grid, so the unfiltered library stays a
  * destination for anyone who wants to browse everything at once.
  *
- * The header is the only thing drawn over the grid - the landing carries no footer, since A, B and
- * the d-pad are all the cursor needs here - so [LibraryPlatformGridHeaderHeight] is reserved twice:
- * once as content padding, which holds the top of the list clear, and once as the scroll inset that
- * keeps the focused cell out from under it on the way up.
+ * [LibraryPlatformGridHeaderHeight] is reserved twice: once as content padding, which holds the top
+ * of the list clear, and once as the scroll inset that keeps the focused cell out from under it on
+ * the way up. [heldIndex] marks the platform cell lifted for reordering.
  */
 @Composable
 fun LibraryPlatformGrid(
     cells: List<LibraryCellUi>,
     focusedIndex: Int,
+    heldIndex: Int?,
     columns: Int,
     gridState: LazyGridState,
     onCellClick: (Int) -> Unit,
+    onCellLongClick: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     GridFocusedScroll(
@@ -88,7 +90,7 @@ fun LibraryPlatformGrid(
             start = Dimens.spacingMd,
             end = Dimens.spacingMd,
             top = LibraryPlatformGridHeaderHeight,
-            bottom = Dimens.spacingXl
+            bottom = Dimens.footerHeight
         ),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
@@ -101,7 +103,9 @@ fun LibraryPlatformGrid(
             PlatformCell(
                 cell = cell,
                 isFocused = index == focusedIndex,
-                onClick = { onCellClick(index) }
+                isHeld = index == heldIndex,
+                onClick = { onCellClick(index) },
+                onLongClick = { onCellLongClick(index) }
             )
         }
     }
@@ -119,7 +123,9 @@ fun LibraryPlatformGrid(
 private fun PlatformCell(
     cell: LibraryCellUi,
     isFocused: Boolean,
-    onClick: () -> Unit
+    isHeld: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val shape = RoundedCornerShape(Dimens.radiusLg)
     val context = LocalContext.current
@@ -143,7 +149,14 @@ private fun PlatformCell(
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                 }
             )
-            .clickableNoFocus(onClick = onClick)
+            .then(
+                if (isHeld) {
+                    Modifier.border(Dimens.borderThin, MaterialTheme.colorScheme.primary, shape)
+                } else {
+                    Modifier
+                }
+            )
+            .clickableNoFocus(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = Dimens.spacingXs, vertical = Dimens.spacingSm),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -36,17 +37,21 @@ internal class ShaderStackSectionInput(
         return InputResult.UNHANDLED
     }
 
-    override fun onContextMenu(): InputResult {
+    override fun onSelect(): InputResult {
         viewModel.showShaderPicker()
         return InputResult.HANDLED
     }
 
     override fun onSecondaryAction(): InputResult {
-        if (viewModel.shaderChainManager.shaderStack.entries.isNotEmpty()) {
-            viewModel.removeShaderFromStack()
-            return InputResult.HANDLED
-        }
-        return InputResult.UNHANDLED
+        if (viewModel.shaderChainManager.shaderStack.entries.isEmpty()) return InputResult.UNHANDLED
+        viewModel.liftShader()
+        return InputResult.handled(SoundType.SELECT)
+    }
+
+    override fun onContextMenu(): InputResult {
+        if (viewModel.shaderChainManager.shaderStack.entries.isEmpty()) return InputResult.UNHANDLED
+        viewModel.removeShaderFromStack()
+        return InputResult.HANDLED
     }
 
     override fun onPrevSection(): InputResult {
@@ -65,15 +70,5 @@ internal class ShaderStackSectionInput(
             return InputResult.HANDLED
         }
         return InputResult.UNHANDLED
-    }
-
-    override fun onPrevTrigger(): InputResult {
-        viewModel.reorderShaderInStack(-1)
-        return InputResult.HANDLED
-    }
-
-    override fun onNextTrigger(): InputResult {
-        viewModel.reorderShaderInStack(1)
-        return InputResult.HANDLED
     }
 }

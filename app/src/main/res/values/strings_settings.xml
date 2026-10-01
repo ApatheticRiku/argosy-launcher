@@ -358,8 +358,6 @@
     <string name="settings_nav_ring_hint_reorder">Reorder</string>
     <!-- Footer hint beside the up/down arrows while a page is picked up. Verb. -->
     <string name="settings_nav_ring_hint_move">Move</string>
-    <!-- Footer hint beside a button: puts the picked-up page at its new position. Verb. -->
-    <string name="settings_nav_ring_hint_drop">Place</string>
     <!-- Footer hint beside a button: puts the picked-up page back where it was. Verb. -->
     <string name="settings_nav_ring_hint_cancel">Cancel</string>
 
@@ -3057,6 +3055,13 @@
     <string name="settings_platform_package_path_accessible">Accessible</string>
     <!-- Value of that row when Android refuses. Adjective. -->
     <string name="settings_platform_package_path_blocked">Blocked</string>
+    <!-- Second line of that row, naming how Argosy reaches the folder: plain file access. -->
+    <string name="settings_platform_package_path_via_direct">Direct</string>
+    <!-- Second line of that row: through the Unicode path workaround Android allows. "Unicode" is
+         the name of a text standard, never translated. -->
+    <string name="settings_platform_package_path_via_unicode">Via Unicode path</string>
+    <!-- Second line of that row: through the device's root service. -->
+    <string name="settings_platform_package_path_via_root">Via root</string>
     <!-- Value of that row while Argosy is still testing. -->
     <string name="settings_platform_package_path_checking">Checking...</string>
 
@@ -3073,14 +3078,6 @@
     <string name="settings_platform_clear_art_title">Clear Cached Artwork</string>
     <!-- Second line of that row. -->
     <string name="settings_platform_clear_art_subtitle">Delete downloaded covers and screenshots for this platform so they are fetched again. Covers you chose yourself are kept</string>
-    <!-- Row that moves this console up the list. Verb phrase. -->
-    <string name="settings_platform_move_earlier_title">Move Earlier</string>
-    <!-- Second line of that row. -->
-    <string name="settings_platform_move_earlier_subtitle">Show this platform sooner everywhere platforms are listed</string>
-    <!-- Row that moves this console down the list. Verb phrase. -->
-    <string name="settings_platform_move_later_title">Move Later</string>
-    <!-- Second line of that row. -->
-    <string name="settings_platform_move_later_subtitle">Show this platform further along everywhere platforms are listed</string>
     <!-- Shown on either scan row while the scan is running. -->
     <string name="settings_platform_scan_busy">Scanning...</string>
     <!-- Row that looks through the folder for game files. Verb phrase. -->
@@ -3912,8 +3909,6 @@
     <string name="settings_region_priority_hint_close">Close</string>
     <!-- Footer hint while a region is picked up. The d-pad moves it up or down the list. Verb. -->
     <string name="settings_region_priority_hint_move">Move</string>
-    <!-- Footer hint while a region is picked up. Put it down at its new position. Verb. -->
-    <string name="settings_region_priority_hint_drop">Drop</string>
     <!-- Footer hint while a region is picked up. Put it back where it was. Verb. -->
     <string name="settings_region_priority_hint_cancel">Cancel</string>
 

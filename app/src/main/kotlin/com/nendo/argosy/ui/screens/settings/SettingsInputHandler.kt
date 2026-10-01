@@ -182,6 +182,10 @@ class SettingsInputHandler(
         InputResult.UNHANDLED
     }
 
+    override fun onSelect(): InputResult = dispatch(InputMethod.SELECT) {
+        InputResult.UNHANDLED
+    }
+
     override fun onMenu(): InputResult = InputResult.UNHANDLED
 
     override fun onLeftStickClick(): InputResult = InputResult.UNHANDLED

@@ -48,6 +48,9 @@
 
     <string name="library_landing_empty_title">Пока нет платформ</string>
     <string name="library_landing_empty_body">Синхронизируйте библиотеку с Rom Manager в настройках</string>
+    <string name="library_landing_hint_reorder">Изменить порядок</string>
+    <string name="library_landing_hint_move">Переместить</string>
+    <string name="library_landing_hint_cancel">Отмена</string>
 
     <string name="library_empty_title_platform">Игры %1$s не найдены</string>
     <string name="library_empty_title_all">Пока нет игр</string>
@@ -139,7 +142,6 @@
     <string name="library_apps_empty">Приложения не найдены</string>
 
     <string name="library_apps_hint_move">Переместить</string>
-    <string name="library_apps_hint_save">Сохранить</string>
     <string name="library_apps_hint_cancel">Отмена</string>
     <string name="library_apps_hint_open">Открыть</string>
     <string name="library_apps_hint_back">Назад</string>

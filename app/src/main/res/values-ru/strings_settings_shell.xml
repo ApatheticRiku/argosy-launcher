@@ -308,6 +308,8 @@
     <string name="settings_shell_footer_remove_shaderstack">Удалить</string>
     <string name="settings_shell_footer_remove_frame">Удалить</string>
     <string name="settings_shell_footer_add_shaderstack">Добавить</string>
+    <string name="settings_shell_footer_shaderstack_move">Переместить</string>
+    <string name="settings_shell_footer_shaderstack_cancel">Отмена</string>
     <string name="settings_shell_footer_platform_builtin">Платформа</string>
     <string name="settings_shell_footer_reset_to_default_builtinvideo">Сбросить по умолчанию</string>
     <string name="settings_shell_footer_reset_to_default_storage">Сбросить по умолчанию</string>
@@ -333,6 +335,9 @@
     <string name="settings_shell_footer_select_default">Выбрать</string>
     <string name="settings_shell_footer_display">Экран</string>
     <string name="settings_shell_footer_enable">Включить</string>
+    <string name="settings_shell_footer_platforms_reorder">Изменить порядок</string>
+    <string name="settings_shell_footer_platforms_move">Переместить</string>
+    <string name="settings_shell_footer_platforms_cancel">Отмена</string>
     <string name="settings_shell_footer_update">Обновить</string>
     <string name="settings_shell_footer_reset_builtinvideo_override">Сбросить</string>
     <string name="settings_shell_footer_reset_builtincontrols_override">Сбросить</string>
@@ -364,7 +369,6 @@
 
     <string name="settings_shell_managepins_loading">Загрузка&#8230;</string>
     <string name="settings_shell_managepins_reorder_move">Переместить</string>
-    <string name="settings_shell_managepins_reorder_done">Готово</string>
     <string name="settings_shell_managepins_reorder_cancel">Отмена</string>
     <string name="settings_shell_managepins_navigate">Навигация</string>
     <string name="settings_shell_managepins_reorder_hint">Порядок</string>
@@ -391,10 +395,9 @@
     <string name="settings_shell_bgm_synced_folders">Синхронизированные папки</string>
     <string name="settings_shell_bgm_tracks">Треки</string>
     <string name="settings_shell_bgm_reorder_move">Переместить</string>
-    <string name="settings_shell_bgm_reorder_done">Готово</string>
     <string name="settings_shell_bgm_reorder_cancel">Отмена</string>
     <string name="settings_shell_bgm_add_music_empty">Добавить музыку</string>
-    <string name="settings_shell_bgm_move_hint">Переместить</string>
+    <string name="settings_shell_bgm_reorder_hint">Порядок</string>
     <string name="settings_shell_bgm_add_music_hint">Добавить музыку</string>
     <string name="settings_shell_bgm_remove_verb">Удалить</string>
     <string name="settings_shell_bgm_remove_verb_uncovered">Удалить</string>
@@ -420,8 +423,6 @@
     <string name="settings_shell_bgm_moving_desc">Перемещение</string>
     <string name="settings_shell_bgm_file_missing">Файл отсутствует - пропущен при воспроизведении</string>
     <string name="settings_shell_bgm_disabled_desc">Отключено - исключено из воспроизведения</string>
-    <string name="settings_shell_bgm_move_up_desc">Переместить вверх</string>
-    <string name="settings_shell_bgm_move_down_desc">Переместить вниз</string>
     <string name="settings_shell_bgm_remove_desc">Удалить</string>
     <string name="settings_shell_bgm_empty_state">Нет музыки - добавьте из браузера музыки или локальных файлов</string>
 

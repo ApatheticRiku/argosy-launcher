@@ -532,9 +532,13 @@
     <!-- Footer hint on the shader stack. Noun: the shoulder buttons move between the shaders
          in the stack. -->
     <string name="ingame_shader_footer_shader">Shader</string>
-    <!-- Footer hint on the shader stack. Verb: the triggers move the highlighted shader up or
-         down the stack. -->
+    <!-- Footer hint on the shader stack. Verb: picks up the highlighted shader so it can be
+         moved to a new place in the stack. -->
     <string name="ingame_shader_footer_reorder">Reorder</string>
+    <!-- Footer hint while a shader is picked up. Verb: the d-pad shifts it along the stack. -->
+    <string name="ingame_shader_footer_move">Move</string>
+    <!-- Footer hint while a shader is picked up. Verb: puts the stack back the way it was. -->
+    <string name="ingame_shader_footer_cancel">Cancel</string>
     <!-- Footer hint on the shader stack. Verb: left and right change the highlighted
          parameter's value. -->
     <string name="ingame_shader_footer_adjust">Adjust</string>

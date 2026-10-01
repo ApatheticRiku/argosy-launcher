@@ -20,6 +20,8 @@ import com.nendo.argosy.data.repository.EmulatorSaveConfigRepository
 import com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
 import com.nendo.argosy.libretro.LibretroCoreManager
 import com.nendo.argosy.libretro.LibretroCoreRegistry
+import com.nendo.argosy.ui.components.ListReorder
+import com.nendo.argosy.ui.components.ReorderStep
 import kotlinx.coroutines.flow.Flow
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
@@ -88,6 +90,76 @@ class EmulatorSettingsDelegate @Inject constructor(
 
     fun updateState(newState: EmulatorState) {
         _state.value = newState
+    }
+
+    fun liftPlatform(platformId: Long): Boolean {
+        var lifted = false
+        _state.update { st ->
+            if (st.isReorderingPlatforms) return@update st
+            val active = st.activePlatforms
+            val reorder = ListReorder.lift(active, active.indexOfFirst { it.platform.id == platformId })
+                ?: return@update st
+            lifted = true
+            st.copy(platformReorder = reorder)
+        }
+        return lifted
+    }
+
+    fun moveHeldPlatform(delta: Int): Boolean =
+        applyPlatformStep { reorder, active -> reorder.moveBy(active, delta) }
+
+    fun moveHeldPlatformTo(platformId: Long): Boolean {
+        if (_state.value.activePlatforms.none { it.platform.id == platformId }) return false
+        return applyPlatformStep { reorder, active ->
+            reorder.moveTo(active, active.indexOfFirst { it.platform.id == platformId })
+        }
+    }
+
+    private fun applyPlatformStep(
+        step: (ListReorder<PlatformEmulatorConfig>, List<PlatformEmulatorConfig>) -> ReorderStep<PlatformEmulatorConfig>
+    ): Boolean {
+        var moved = false
+        _state.update { st ->
+            val reorder = st.platformReorder ?: return@update st
+            val active = st.activePlatforms
+            val result = step(reorder, active)
+            if (!result.moved) return@update st
+            moved = true
+            st.copy(
+                platforms = result.items + st.platforms.filterNot { it.platform.syncEnabled },
+                platformReorder = result.reorder
+            )
+        }
+        return moved
+    }
+
+    /**
+     * Ends the lift and answers the new platform id order, or null when nothing moved.
+     */
+    fun dropPlatform(): List<Long>? {
+        var committed: List<Long>? = null
+        _state.update { st ->
+            val reorder = st.platformReorder ?: return@update st
+            committed = reorder.changedOrder(st.activePlatforms)?.map { it.platform.id }
+            st.copy(platformReorder = null)
+        }
+        return committed
+    }
+
+    /**
+     * Restores the order from before the lift and answers the id of the platform that was held.
+     */
+    fun cancelPlatformLift(): Long? {
+        var heldId: Long? = null
+        _state.update { st ->
+            val reorder = st.platformReorder ?: return@update st
+            heldId = reorder.backup.getOrNull(reorder.originIndex)?.platform?.id
+            st.copy(
+                platforms = reorder.backup + st.platforms.filterNot { it.platform.syncEnabled },
+                platformReorder = null
+            )
+        }
+        return heldId
     }
 
     fun showEmulatorPicker(config: PlatformEmulatorConfig, scope: CoroutineScope) {

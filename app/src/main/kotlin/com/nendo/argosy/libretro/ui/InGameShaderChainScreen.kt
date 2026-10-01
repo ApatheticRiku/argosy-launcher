@@ -18,9 +18,11 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.libretro.shader.ShaderChainManager
 import com.nendo.argosy.ui.components.FooterBar
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.sections.ShaderStackSection
@@ -40,97 +42,106 @@ fun InGameShaderChainScreen(
 
     val inputHandler = remember {
         object : InputHandler {
+            private val stack get() = manager.shaderStack
+
             override fun onUp(): InputResult {
-                if (manager.shaderStack.showShaderPicker) {
-                    manager.moveShaderPickerFocus(-1)
-                } else {
-                    manager.moveShaderParamFocus(-1)
+                when {
+                    stack.isReordering -> Unit
+                    stack.showShaderPicker -> manager.moveShaderPickerFocus(-1)
+                    else -> manager.moveShaderParamFocus(-1)
                 }
                 return InputResult.HANDLED
             }
 
             override fun onDown(): InputResult {
-                if (manager.shaderStack.showShaderPicker) {
-                    manager.moveShaderPickerFocus(1)
-                } else {
-                    manager.moveShaderParamFocus(1)
+                when {
+                    stack.isReordering -> Unit
+                    stack.showShaderPicker -> manager.moveShaderPickerFocus(1)
+                    else -> manager.moveShaderParamFocus(1)
                 }
                 return InputResult.HANDLED
             }
 
-            override fun onLeft(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
+            override fun onLeft(): InputResult = when {
+                stack.isReordering -> moveHeld(-1)
+                stack.showShaderPicker -> InputResult.HANDLED
+                else -> {
                     manager.adjustShaderParam(-1)
+                    InputResult.HANDLED
                 }
-                return InputResult.HANDLED
             }
 
-            override fun onRight(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
+            override fun onRight(): InputResult = when {
+                stack.isReordering -> moveHeld(1)
+                stack.showShaderPicker -> InputResult.HANDLED
+                else -> {
                     manager.adjustShaderParam(1)
+                    InputResult.HANDLED
                 }
-                return InputResult.HANDLED
             }
+
+            private fun moveHeld(delta: Int): InputResult =
+                if (manager.moveHeldShader(delta)) InputResult.HANDLED
+                else InputResult.handled(SoundType.BOUNDARY)
 
             override fun onConfirm(): InputResult {
-                if (manager.shaderStack.showShaderPicker) {
-                    manager.confirmShaderPickerSelection()
-                } else {
-                    manager.resetShaderParam()
+                when {
+                    stack.isReordering -> manager.dropShader()
+                    stack.showShaderPicker -> manager.confirmShaderPickerSelection()
+                    else -> manager.resetShaderParam()
                 }
                 return InputResult.HANDLED
             }
 
             override fun onBack(): InputResult {
-                if (manager.shaderStack.showShaderPicker) {
-                    manager.dismissShaderPicker()
-                } else {
-                    currentOnDismiss.value()
+                when {
+                    stack.isReordering -> manager.cancelShaderLift()
+                    stack.showShaderPicker -> manager.dismissShaderPicker()
+                    else -> currentOnDismiss.value()
                 }
                 return InputResult.HANDLED
             }
 
             override fun onPrevSection(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
+                if (!stack.showShaderPicker && !stack.isReordering) {
                     manager.cycleShaderTab(-1)
                 }
                 return InputResult.HANDLED
             }
 
             override fun onNextSection(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
+                if (!stack.showShaderPicker && !stack.isReordering) {
                     manager.cycleShaderTab(1)
                 }
                 return InputResult.HANDLED
             }
 
             override fun onContextMenu(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
-                    manager.showShaderPicker()
-                }
-                return InputResult.HANDLED
-            }
-
-            override fun onSecondaryAction(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
+                if (!stack.showShaderPicker && !stack.isReordering) {
                     manager.removeShaderFromStack()
                 }
                 return InputResult.HANDLED
             }
 
-            override fun onPrevTrigger(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
-                    manager.reorderShaderInStack(-1)
+            override fun onSecondaryAction(): InputResult {
+                when {
+                    stack.showShaderPicker -> Unit
+                    stack.isReordering -> manager.dropShader()
+                    else -> manager.liftShader()
                 }
                 return InputResult.HANDLED
             }
 
-            override fun onNextTrigger(): InputResult {
-                if (!manager.shaderStack.showShaderPicker) {
-                    manager.reorderShaderInStack(1)
+            override fun onSelect(): InputResult {
+                if (!stack.showShaderPicker && !stack.isReordering) {
+                    manager.showShaderPicker()
                 }
                 return InputResult.HANDLED
             }
+
+            override fun onPrevTrigger(): InputResult = InputResult.HANDLED
+
+            override fun onNextTrigger(): InputResult = InputResult.HANDLED
         }
     }
 
@@ -165,12 +176,18 @@ fun InGameShaderChainScreen(
                 }
 
                 FooterBar(
-                    hints = buildShaderChainFooterHints(manager.shaderStack.showShaderPicker),
+                    hints = buildShaderChainFooterHints(
+                        pickerOpen = manager.shaderStack.showShaderPicker,
+                        reordering = manager.shaderStack.isReordering,
+                        hasEntries = manager.shaderStack.entries.isNotEmpty()
+                    ),
                     onHintClick = { button ->
                         when (button) {
-                            InputButton.B -> currentOnDismiss.value()
-                            InputButton.X -> manager.showShaderPicker()
-                            InputButton.Y -> manager.removeShaderFromStack()
+                            InputButton.A -> inputHandler.onConfirm()
+                            InputButton.B -> inputHandler.onBack()
+                            InputButton.X -> inputHandler.onContextMenu()
+                            InputButton.Y -> inputHandler.onSecondaryAction()
+                            InputButton.SELECT -> inputHandler.onSelect()
                             else -> {}
                         }
                     }
@@ -184,29 +201,41 @@ fun InGameShaderChainScreen(
 
 @Composable
 private fun buildShaderChainFooterHints(
-    pickerOpen: Boolean
+    pickerOpen: Boolean,
+    reordering: Boolean,
+    hasEntries: Boolean
 ): List<Pair<InputButton, String>> {
     val browseLabel = stringResource(R.string.ingame_shader_footer_picker_browse)
     val pickerSelectLabel = stringResource(R.string.ingame_shader_footer_picker_select)
     val pickerCancelLabel = stringResource(R.string.ingame_shader_footer_picker_cancel)
     val shaderLabel = stringResource(R.string.ingame_shader_footer_shader)
     val reorderLabel = stringResource(R.string.ingame_shader_footer_reorder)
+    val moveLabel = stringResource(R.string.ingame_shader_footer_move)
+    val cancelLabel = stringResource(R.string.ingame_shader_footer_cancel)
     val adjustLabel = stringResource(R.string.ingame_shader_footer_adjust)
     val addLabel = stringResource(R.string.ingame_shader_footer_add)
     val removeLabel = stringResource(R.string.ingame_shader_footer_remove)
     val resetLabel = stringResource(R.string.ingame_shader_footer_reset)
     val backLabel = stringResource(R.string.ingame_shader_footer_back)
+    val liftedHints = liftedReorderHints(
+        move = moveLabel,
+        cancel = cancelLabel,
+        moveButton = InputButton.DPAD_HORIZONTAL
+    )
+    if (reordering) return liftedHints
     return buildList {
         if (pickerOpen) {
             add(InputButton.DPAD_VERTICAL to browseLabel)
             add(InputButton.A to pickerSelectLabel)
             add(InputButton.B to pickerCancelLabel)
         } else {
-            add(InputButton.LB_RB to shaderLabel)
-            add(InputButton.LT_RT to reorderLabel)
+            if (hasEntries) {
+                add(InputButton.LB_RB to shaderLabel)
+                add(InputButton.Y to reorderLabel)
+                add(InputButton.X to removeLabel)
+            }
             add(InputButton.DPAD_HORIZONTAL to adjustLabel)
-            add(InputButton.X to addLabel)
-            add(InputButton.Y to removeLabel)
+            add(InputButton.SELECT to addLabel)
             add(InputButton.A to resetLabel)
             add(InputButton.B to backLabel)
         }

@@ -187,4 +187,8 @@
     <string name="home_media_episode_subtitle_marker_episode_only">E%1$d</string>
     <string name="home_media_episode_subtitle_with_name">%1$s - %2$s</string>
 
+    <!-- ================= List reorder (shared drop hint) ================= -->
+
+    <string name="reorder_hint_done">完成</string>
+
 </resources>

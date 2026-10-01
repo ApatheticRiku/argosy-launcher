@@ -398,6 +398,8 @@
     <string name="gamedetail_speedrun_footer_add_segment">Ajouter un segment</string>
     <string name="gamedetail_speedrun_footer_delete">Supprimer</string>
     <string name="gamedetail_speedrun_footer_move">Déplacer</string>
+    <string name="gamedetail_speedrun_footer_reorder">Réorganiser</string>
+    <string name="gamedetail_speedrun_footer_cancel">Annuler</string>
     <string name="gamedetail_speedrun_footer_back">Retour</string>
     <string name="gamedetail_speedrun_footer_open">Ouvrir</string>
     <string name="gamedetail_speedrun_footer_new_category">Nouvelle catégorie</string>

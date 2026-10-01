@@ -17,13 +17,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Gamepad
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import com.nendo.argosy.data.emulator.EmulatorRegistry
+import com.nendo.argosy.data.emulator.PackageDataAccess
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
 import com.nendo.argosy.ui.common.labelRes
@@ -86,8 +85,6 @@ internal sealed class PlatformDetailItem(
     data object BuiltinCoreOptions : PlatformDetailItem("builtin_core_options", "emulator", { it.isBuiltin && !it.isAndroid })
 
     data object ClearArtCache : PlatformDetailItem("clear_art_cache", "platform")
-    data object MoveEarlier : PlatformDetailItem("move_earlier", "platform")
-    data object MoveLater : PlatformDetailItem("move_later", "platform")
     data object ScanFiles : PlatformDetailItem("scan_files", "platform", { !it.isAndroid })
     data object ScanApps : PlatformDetailItem("scan_apps", "platform", { it.isAndroid })
 
@@ -115,7 +112,7 @@ internal sealed class PlatformDetailItem(
                 Emulator, Core, Extension, DisplayTarget, LegacyMode, LaunchArgs, BuiltinVideo, BuiltinControls, BuiltinCoreOptions,
                 Header("header_platform", "platform", R.string.settings_platform_section_platform),
                 InfoItem("info_platform_stats", "platform"),
-                MoveEarlier, MoveLater, ScanFiles, ScanApps, ClearArtCache,
+                ScanFiles, ScanApps, ClearArtCache,
                 Header("header_bios", "bios", R.string.settings_platform_section_bios, { it.hasBios && !it.isAndroid }),
                 InfoItem("info_bios_status", "bios", { it.hasBios && !it.isAndroid }), BiosDownload, BiosInstall, BiosCopy,
                 Header("header_sync", "sync", R.string.settings_platform_section_sync),
@@ -499,15 +496,23 @@ fun PlatformDetailSection(
                             }
                         }
                         "info_package_path" -> {
-                            val status = when (detail.packagePathAccessible) {
-                                true -> stringResource(R.string.settings_platform_package_path_accessible)
-                                false -> stringResource(R.string.settings_platform_package_path_blocked)
+                            val access = detail.packagePathAccess
+                            val status = when (access) {
                                 null -> stringResource(R.string.settings_platform_package_path_checking)
+                                PackageDataAccess.BLOCKED -> stringResource(R.string.settings_platform_package_path_blocked)
+                                else -> stringResource(R.string.settings_platform_package_path_accessible)
+                            }
+                            val route = when (access) {
+                                PackageDataAccess.DIRECT -> stringResource(R.string.settings_platform_package_path_via_direct)
+                                PackageDataAccess.UNICODE -> stringResource(R.string.settings_platform_package_path_via_unicode)
+                                PackageDataAccess.ROOT -> stringResource(R.string.settings_platform_package_path_via_root)
+                                PackageDataAccess.BLOCKED, null -> null
                             }
                             InfoPreference(
                                 title = stringResource(R.string.settings_platform_package_path_title),
                                 value = status,
-                                isFocused = false
+                                isFocused = false,
+                                subtitle = route
                             )
                         }
                         "info_bios_status" -> {
@@ -535,20 +540,6 @@ fun PlatformDetailSection(
                     isFocused = isFocused(item),
                     icon = Icons.Default.Refresh,
                     onClick = { viewModel.clearPlatformArtCache(config.platform.slug) }
-                )
-                PlatformDetailItem.MoveEarlier -> ActionPreference(
-                    title = stringResource(R.string.settings_platform_move_earlier_title),
-                    subtitle = stringResource(R.string.settings_platform_move_earlier_subtitle),
-                    isFocused = isFocused(item),
-                    icon = Icons.Default.KeyboardArrowUp,
-                    onClick = { viewModel.movePlatformOrder(config.platform.id, -1) }
-                )
-                PlatformDetailItem.MoveLater -> ActionPreference(
-                    title = stringResource(R.string.settings_platform_move_later_title),
-                    subtitle = stringResource(R.string.settings_platform_move_later_subtitle),
-                    isFocused = isFocused(item),
-                    icon = Icons.Default.KeyboardArrowDown,
-                    onClick = { viewModel.movePlatformOrder(config.platform.id, 1) }
                 )
                 PlatformDetailItem.ScanFiles -> ActionPreference(
                     title = if (detail.isScanning) {
@@ -595,7 +586,7 @@ fun PlatformDetailSection(
                     val canReset = storageConfig?.canResetSavePath == true
                     val isBuiltinEmulator = config.effectiveEmulatorId == EmulatorRegistry.BUILTIN_ID
                     val accessBlocked = !isBuiltinEmulator && !config.effectiveEmulatorIsRetroArch &&
-                        detail.packagePathAccessible == false && !hasOverride
+                        detail.packagePathAccess == PackageDataAccess.BLOCKED && !hasOverride
                     ActionPreference(
                         title = stringResource(R.string.settings_platform_save_path_title),
                         subtitle = when {

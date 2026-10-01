@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import com.nendo.argosy.ui.components.ListReorder
+import com.nendo.argosy.ui.components.ReorderStep
 import com.nendo.argosy.ui.screens.settings.ShaderParamDef
 import com.nendo.argosy.ui.screens.settings.ShaderStackEntry
 import com.nendo.argosy.ui.screens.settings.ShaderStackState
@@ -60,7 +62,8 @@ class ShaderChainManager(
         shaderStack = shaderStack.copy(
             entries = entries,
             selectedIndex = 0,
-            paramFocusIndex = 0
+            paramFocusIndex = 0,
+            reorder = null
         )
         loadParamsForSelectedShader()
         syncPreInstalls()
@@ -106,20 +109,49 @@ class ShaderChainManager(
         renderPreview()
     }
 
-    fun reorderShaderInStack(direction: Int) {
-        val fromIndex = shaderStack.selectedIndex
-        val toIndex = fromIndex + direction
-        if (toIndex < 0 || toIndex >= shaderStack.entries.size) return
-        val newEntries = shaderStack.entries.toMutableList().apply {
-            val item = removeAt(fromIndex)
-            add(toIndex, item)
-        }
+    fun liftShader() {
+        if (shaderStack.isReordering) return
+        val reorder = ListReorder.lift(shaderStack.entries, shaderStack.selectedIndex) ?: return
+        shaderStack = shaderStack.copy(reorder = reorder)
+    }
+
+    fun moveHeldShader(delta: Int): Boolean {
+        val reorder = shaderStack.reorder ?: return false
+        return applyShaderStep(reorder.moveBy(shaderStack.entries, delta))
+    }
+
+    fun moveHeldShaderTo(index: Int): Boolean {
+        val reorder = shaderStack.reorder ?: return false
+        return applyShaderStep(reorder.moveTo(shaderStack.entries, index))
+    }
+
+    fun dropShader() {
+        val reorder = shaderStack.reorder ?: return
+        val changed = reorder.changedOrder(shaderStack.entries) != null
+        shaderStack = shaderStack.copy(reorder = null)
+        if (changed) notifyChainChanged()
+    }
+
+    fun cancelShaderLift() {
+        val reorder = shaderStack.reorder ?: return
+        val changed = reorder.changedOrder(shaderStack.entries) != null
         shaderStack = shaderStack.copy(
-            entries = newEntries,
-            selectedIndex = toIndex
+            entries = reorder.backup,
+            selectedIndex = reorder.originIndex,
+            reorder = null
         )
-        notifyChainChanged()
-        renderPreview()
+        if (changed) debouncedRenderPreview()
+    }
+
+    private fun applyShaderStep(step: ReorderStep<ShaderStackEntry>): Boolean {
+        if (!step.moved) return false
+        shaderStack = shaderStack.copy(
+            entries = step.items,
+            selectedIndex = step.reorder.heldIndex,
+            reorder = step.reorder
+        )
+        debouncedRenderPreview()
+        return true
     }
 
     fun selectShaderInStack(index: Int) {

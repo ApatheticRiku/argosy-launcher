@@ -245,6 +245,8 @@
     <string name="ingame_shader_footer_picker_cancel">Отмена</string>
     <string name="ingame_shader_footer_shader">Шейдер</string>
     <string name="ingame_shader_footer_reorder">Порядок</string>
+    <string name="ingame_shader_footer_move">Переместить</string>
+    <string name="ingame_shader_footer_cancel">Отмена</string>
     <string name="ingame_shader_footer_adjust">Изменить</string>
     <string name="ingame_shader_footer_add">Добавить</string>
     <string name="ingame_shader_footer_remove">Убрать</string>

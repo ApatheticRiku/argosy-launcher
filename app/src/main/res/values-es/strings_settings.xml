@@ -140,7 +140,6 @@
     <string name="settings_nav_ring_pinned">Siempre activa</string>
     <string name="settings_nav_ring_hint_reorder">Reordenar</string>
     <string name="settings_nav_ring_hint_move">Mover</string>
-    <string name="settings_nav_ring_hint_drop">Soltar</string>
     <string name="settings_nav_ring_hint_cancel">Cancelar</string>
     <string name="settings_shell_header_installers">INSTALADORES GESTIONADOS</string>
     <string name="settings_installers_add_title">Añadir repositorio</string>
@@ -1662,6 +1661,9 @@
     <string name="settings_platform_package_path_title">Ruta del paquete</string>
     <string name="settings_platform_package_path_accessible">Accesible</string>
     <string name="settings_platform_package_path_blocked">Bloqueada</string>
+    <string name="settings_platform_package_path_via_direct">Directo</string>
+    <string name="settings_platform_package_path_via_unicode">Mediante ruta Unicode</string>
+    <string name="settings_platform_package_path_via_root">Mediante root</string>
     <string name="settings_platform_package_path_checking">Comprobando...</string>
 
     <string name="settings_platform_bios_status_title">Estado</string>
@@ -1671,10 +1673,6 @@
 
     <string name="settings_platform_clear_art_title">Vaciar imágenes en caché</string>
     <string name="settings_platform_clear_art_subtitle">Elimina las carátulas y capturas descargadas de esta plataforma para que se vuelvan a obtener. Las carátulas que elegiste tú se conservan</string>
-    <string name="settings_platform_move_earlier_title">Mover antes</string>
-    <string name="settings_platform_move_earlier_subtitle">Mostrar esta plataforma antes en cualquier lista de plataformas</string>
-    <string name="settings_platform_move_later_title">Mover después</string>
-    <string name="settings_platform_move_later_subtitle">Mostrar esta plataforma más adelante en cualquier lista de plataformas</string>
     <string name="settings_platform_scan_busy">Analizando...</string>
     <string name="settings_platform_scan_files_title">Buscar archivos</string>
     <string name="settings_platform_scan_files_subtitle">Comprobar archivos ROM nuevos o faltantes</string>
@@ -2101,7 +2099,6 @@
     <string name="settings_region_priority_hint_reorder">Reordenar</string>
     <string name="settings_region_priority_hint_close">Cerrar</string>
     <string name="settings_region_priority_hint_move">Mover</string>
-    <string name="settings_region_priority_hint_drop">Soltar</string>
     <string name="settings_region_priority_hint_cancel">Cancelar</string>
 
     <!-- ===== Driver version picker modal (Settings > components > DriverVersionPickerModal) ===== -->

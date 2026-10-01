@@ -4,6 +4,8 @@ import android.content.Context
 import com.nendo.argosy.R
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.speedrun.SpeedrunRepository
+import com.nendo.argosy.ui.components.ListReorder
+import com.nendo.argosy.ui.components.ReorderStep
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -49,15 +51,23 @@ sealed class SpeedrunImport {
     data class Failed(val message: String) : SpeedrunImport()
 }
 
+data class SpeedrunSegmentUi(
+    val key: Long,
+    val name: String
+)
+
 data class SpeedrunSplitsState(
     val visible: Boolean = false,
     val categories: List<SpeedrunCategoryUi> = emptyList(),
     val editingCategory: SpeedrunCategoryUi? = null,
-    val segments: List<String> = emptyList(),
+    val segments: List<SpeedrunSegmentUi> = emptyList(),
     val focusIndex: Int = 0,
     val prompt: SpeedrunPrompt? = null,
-    val import: SpeedrunImport? = null
-)
+    val import: SpeedrunImport? = null,
+    val reorder: ListReorder<SpeedrunSegmentUi>? = null
+) {
+    val isReordering: Boolean get() = reorder != null
+}
 
 class SpeedrunSplitsDelegate @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -71,6 +81,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
     private var scope: CoroutineScope? = null
     private var gameId: Long = -1L
     private var gameTitle: String = ""
+    private var nextSegmentKey: Long = 0L
 
     fun open(scope: CoroutineScope, gameId: Long, gameTitle: String) {
         this.scope = scope
@@ -84,6 +95,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
     fun dismiss() {
         val s = _state.value
         when {
+            s.isReordering -> cancelSegmentLift()
             s.import is SpeedrunImport.Preview -> _state.update {
                 it.copy(import = (s.import as SpeedrunImport.Preview).options)
             }
@@ -216,12 +228,17 @@ class SpeedrunSplitsDelegate @Inject constructor(
 
     fun moveFocus(delta: Int) {
         val s = _state.value
+        if (s.isReordering) {
+            moveHeldSegment(delta)
+            return
+        }
         val itemCount = if (s.editingCategory != null) s.segments.size + 2 else s.categories.size + 1
         if (itemCount == 0) return
         _state.update { it.copy(focusIndex = (it.focusIndex + delta).mod(itemCount)) }
     }
 
     fun confirmFocusedAt(index: Int) {
+        if (_state.value.isReordering) return
         _state.update { it.copy(focusIndex = index) }
         confirmFocused()
     }
@@ -229,6 +246,10 @@ class SpeedrunSplitsDelegate @Inject constructor(
     fun confirmFocused() {
         val s = _state.value
         if (s.prompt != null) return
+        if (s.isReordering) {
+            dropSegment()
+            return
+        }
         val editing = s.editingCategory
         if (editing != null) {
             when {
@@ -240,7 +261,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
                                 context.getString(
                                     R.string.gamedetail_speedrun_prompt_rename_segment
                                 ),
-                                segment,
+                                segment.name,
                                 SpeedrunPrompt.Text.Target.RENAME_SEGMENT
                             )
                         )
@@ -273,7 +294,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
 
     fun promptNew() {
         val s = _state.value
-        if (s.prompt != null) return
+        if (s.prompt != null || s.isReordering) return
         _state.update {
             if (s.editingCategory != null) {
                 it.copy(
@@ -297,26 +318,73 @@ class SpeedrunSplitsDelegate @Inject constructor(
 
     fun promptDelete() {
         val s = _state.value
-        if (s.prompt != null || s.editingCategory == null) return
+        if (s.prompt != null || s.editingCategory == null || s.isReordering) return
         val segment = s.segments.getOrNull(s.focusIndex) ?: return
         if (s.segments.size <= 1) return
-        _state.update { it.copy(prompt = SpeedrunPrompt.ConfirmDelete(segment, isCategory = false)) }
+        _state.update { it.copy(prompt = SpeedrunPrompt.ConfirmDelete(segment.name, isCategory = false)) }
     }
 
-    fun moveSegment(delta: Int) {
-        val s = _state.value
-        if (s.editingCategory == null || s.prompt != null) return
-        val from = s.focusIndex
-        if (from !in s.segments.indices) return
-        val to = from + delta
-        if (to !in s.segments.indices) return
-        val reordered = s.segments.toMutableList().also {
-            val item = it.removeAt(from)
-            it.add(to, item)
+    fun liftSegment() {
+        _state.update { s ->
+            if (s.editingCategory == null || s.prompt != null || s.isReordering) return@update s
+            val reorder = ListReorder.lift(s.segments, s.focusIndex) ?: return@update s
+            s.copy(reorder = reorder)
         }
-        _state.update { it.copy(segments = reordered, focusIndex = to) }
-        persistSegments(s.editingCategory.id, reordered)
     }
+
+    fun liftSegmentAt(key: Long) {
+        _state.update { s ->
+            if (s.editingCategory == null || s.prompt != null) return@update s
+            val index = s.segments.indexOfFirst { it.key == key }
+            val reorder = ListReorder.liftOrRegrab(s.reorder, s.segments, index) ?: return@update s
+            s.copy(reorder = reorder, focusIndex = reorder.heldIndex)
+        }
+    }
+
+    fun moveHeldSegment(delta: Int): Boolean {
+        var moved = false
+        _state.update { s ->
+            val step = s.reorder?.moveBy(s.segments, delta) ?: return@update s
+            moved = step.moved
+            s.applyStep(step)
+        }
+        return moved
+    }
+
+    fun moveHeldSegmentTo(key: Long, targetIndex: Int) {
+        _state.update { s ->
+            val reorder = s.reorder ?: return@update s
+            if (s.segments.getOrNull(reorder.heldIndex)?.key != key) return@update s
+            s.applyStep(reorder.moveTo(s.segments, targetIndex))
+        }
+    }
+
+    fun dropSegment() {
+        var committed: List<SpeedrunSegmentUi>? = null
+        var categoryId: Long? = null
+        _state.update { s ->
+            val reorder = s.reorder ?: return@update s
+            committed = reorder.changedOrder(s.segments)
+            categoryId = s.editingCategory?.id
+            s.copy(reorder = null)
+        }
+        val order = committed ?: return
+        val id = categoryId ?: return
+        persistSegments(id, order)
+    }
+
+    fun cancelSegmentLift() {
+        _state.update { s ->
+            val reorder = s.reorder ?: return@update s
+            s.copy(segments = reorder.backup, reorder = null, focusIndex = reorder.originIndex)
+        }
+    }
+
+    private fun SpeedrunSplitsState.applyStep(step: ReorderStep<SpeedrunSegmentUi>): SpeedrunSplitsState =
+        copy(segments = step.items, reorder = step.reorder, focusIndex = step.reorder.heldIndex)
+
+    private fun keyedSegments(names: List<String>): List<SpeedrunSegmentUi> =
+        names.map { SpeedrunSegmentUi(key = nextSegmentKey++, name = it) }
 
     fun confirmPrompt(text: String) {
         val s = _state.value
@@ -379,7 +447,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
     private fun addSegment(name: String) {
         val s = _state.value
         val category = s.editingCategory ?: return
-        val updated = s.segments + name
+        val updated = s.segments + keyedSegments(listOf(name))
         _state.update { it.copy(segments = updated, prompt = null, focusIndex = updated.lastIndex) }
         persistSegments(category.id, updated)
     }
@@ -387,7 +455,7 @@ class SpeedrunSplitsDelegate @Inject constructor(
     private fun renameSegment(name: String) {
         val s = _state.value
         val category = s.editingCategory ?: return
-        val updated = s.segments.toMutableList().also { it[s.focusIndex] = name }
+        val updated = s.segments.toMutableList().also { it[s.focusIndex] = it[s.focusIndex].copy(name = name) }
         _state.update { it.copy(segments = updated, prompt = null) }
         persistSegments(category.id, updated)
     }
@@ -406,17 +474,18 @@ class SpeedrunSplitsDelegate @Inject constructor(
     private fun loadSegments(category: SpeedrunCategoryUi) {
         val currentScope = scope ?: return
         currentScope.launch(Dispatchers.IO) {
-            val segments = speedrunRepository.getSegmentNames(category.id)
+            val segments = keyedSegments(speedrunRepository.getSegmentNames(category.id))
             _state.update {
-                it.copy(editingCategory = category, segments = segments, focusIndex = 0)
+                it.copy(editingCategory = category, segments = segments, focusIndex = 0, reorder = null)
             }
         }
     }
 
-    private fun persistSegments(categoryId: Long, segments: List<String>) {
+    private fun persistSegments(categoryId: Long, segments: List<SpeedrunSegmentUi>) {
         val currentScope = scope ?: return
+        val names = segments.map { it.name }
         currentScope.launch(Dispatchers.IO) {
-            speedrunRepository.replaceSegments(categoryId, segments)
+            speedrunRepository.replaceSegments(categoryId, names)
         }
     }
 

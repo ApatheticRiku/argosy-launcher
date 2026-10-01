@@ -36,6 +36,9 @@
 
     <string name="library_landing_empty_title">अभी तक कोई प्लेटफ़ॉर्म नहीं</string>
     <string name="library_landing_empty_body">सेटिंग्स में Rom Manager से अपनी लाइब्रेरी सिंक करें</string>
+    <string name="library_landing_hint_reorder">फिर से व्यवस्थित करें</string>
+    <string name="library_landing_hint_move">मूव</string>
+    <string name="library_landing_hint_cancel">रद्द करें</string>
 
     <string name="library_empty_title_platform">कोई %1$s गेम नहीं मिला</string>
     <string name="library_empty_title_all">अभी तक कोई गेम नहीं</string>
@@ -123,7 +126,6 @@
     <string name="library_apps_empty">कोई ऐप नहीं मिला</string>
 
     <string name="library_apps_hint_move">मूव</string>
-    <string name="library_apps_hint_save">सेव करें</string>
     <string name="library_apps_hint_cancel">रद्द करें</string>
     <string name="library_apps_hint_open">खोलें</string>
     <string name="library_apps_hint_back">वापस</string>
