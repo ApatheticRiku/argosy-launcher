@@ -3,6 +3,7 @@ package com.nendo.argosy.data.emulator
 import android.os.Environment
 import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.util.AppPaths
+import com.nendo.argosy.util.RootShell
 
 data class SavePathConfig(
     val emulatorId: String,
@@ -404,10 +405,6 @@ object SavePathRegistry {
             saveExtensions = listOf("sav")
         ),
 
-        // PS1 - DuckStation per-game memory cards ({name}_1.mcd)
-        // Disabled: DuckStation creates files with 600 permissions (no group read),
-        // blocking content reads via the Unicode bypass. Re-enable when rooted or
-        // if upstream fixes file permissions to 660.
         "duckstation" to SavePathConfig(
             emulatorId = "duckstation",
             defaultPaths = listOf(
@@ -415,7 +412,7 @@ object SavePathRegistry {
                 "{extStorage}/duckstation/memcards"
             ),
             saveExtensions = listOf("mcd"),
-            supported = false
+            supported = RootShell.isAvailable
         ),
 
         // PS2 - folder memory card mode (per-game directories)

@@ -12,18 +12,10 @@ import java.io.File
 
 object RootScriptRunner {
     private const val WORK_DIR = "root-scripts"
-    private const val WRAPPER_NAME = "run-root-script.sh"
-    private const val OUTPUT_NAME = "run-output.txt"
-    private val WRAPPER = """
-        sh "${'$'}1" "${'$'}2" > "${'$'}3" 2>&1
-        rc=${'$'}?
-        chmod 644 "${'$'}3"
-        echo "${'$'}rc"
-    """.trimIndent()
     private val BOOKKEEPING = listOf("--- run", "log file:", "uid=", "storage visible:", "selinux:")
 
     val canRunDirectly: Boolean
-        get() = PServerExecutor.isAvailable
+        get() = RootShell.isAvailable
 
     fun write(context: Context, script: RootScript): RootScriptResult = try {
         val target = File("${StoragePathUtils.primaryExternalRoot}/${script.fileName}")
@@ -43,18 +35,13 @@ object RootScriptRunner {
             dir.setExecutable(true, false)
             val scriptFile = File(dir, script.fileName)
             copyAsset(context, script, scriptFile)
-            val wrapper = File(dir, WRAPPER_NAME).apply { writeText(WRAPPER) }
-            val output = File(dir, OUTPUT_NAME).apply { delete() }
-            listOf(scriptFile, wrapper).forEach { it.setReadable(true, false) }
+            scriptFile.setReadable(true, false)
 
-            val command = listOf(wrapper.absolutePath, scriptFile.absolutePath, context.packageName, output.absolutePath)
-                .joinToString(" ", prefix = "sh ")
-            val exitCode = PServerExecutor.execute(command).getOrElse { error ->
-                return runError(context, script, error)
-            }?.trim()?.toIntOrNull()
-
-            val lines = if (output.canRead()) output.readLines() else emptyList()
-            RootScriptResult.Ran(script, outcomeOf(exitCode, lines), visibleLines(lines))
+            val result = RootShell.run(
+                context,
+                "sh ${RootShell.quote(scriptFile.absolutePath)} ${RootShell.quote(context.packageName)}"
+            ) ?: return runError(context, script, IllegalStateException(context.getString(R.string.settings_root_script_run_failed)))
+            RootScriptResult.Ran(script, outcomeOf(result.exitCode, result.output), visibleLines(result.output))
         } catch (e: Exception) {
             runError(context, script, e)
         }

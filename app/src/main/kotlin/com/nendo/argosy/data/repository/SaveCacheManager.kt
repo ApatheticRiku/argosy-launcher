@@ -105,9 +105,11 @@ class SaveCacheManager @Inject constructor(
             return@withContext CacheResult.Failed
         }
 
+        fal.prepareSaveAccess(savePath)
         val saveFile = fal.getTransformedFile(savePath)
         var tempFile: File? = null
         val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, coreName)
+        unit?.memberPaths?.forEach(fal::prepareSaveAccess)
 
         if (!skipDuplicateCheck && !fal.isDirectory(savePath) && unit == null && precomputedContentHash == null) {
             val fileMtime = Instant.ofEpochMilli(saveFile.lastModified())
@@ -428,6 +430,7 @@ class SaveCacheManager @Inject constructor(
             Log.e(TAG, "[RESTORE] cache=${entity.id} unit bundle has entries the layout cannot place | zip=${cacheFile.name}")
             return false
         }
+        destinations.values.forEach(fal::prepareSaveAccess)
         val ok = saveArchiver.unzipEntriesTo(cacheFile, destinations)
         Log.d(TAG, "[RESTORE] cache=${entity.id} unit=${cacheFile.name} placed=${destinations.values} ok=$ok")
         return ok
@@ -454,10 +457,12 @@ class SaveCacheManager @Inject constructor(
             return@withContext CacheResult.Failed
         }
 
+        fal.prepareSaveAccess(savePath)
         val saveFile = fal.getTransformedFile(savePath)
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         var tempFile: File? = null
         val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, null)
+        unit?.memberPaths?.forEach(fal::prepareSaveAccess)
 
         try {
             val (contentHash, tempOrSource) = if (unit != null) {
@@ -556,6 +561,7 @@ class SaveCacheManager @Inject constructor(
             return@withContext false
         }
 
+        fal.prepareSaveAccess(targetPath)
         try {
             val writeOk = if (isUnitCache(entity)) {
                 restoreUnit(entity, cacheFile, targetPath)

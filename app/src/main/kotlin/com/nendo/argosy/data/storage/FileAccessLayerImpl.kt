@@ -14,7 +14,8 @@ import javax.inject.Singleton
 class FileAccessLayerImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val androidDataAccessor: AndroidDataAccessor,
-    private val managedStorageAccessor: ManagedStorageAccessor
+    private val managedStorageAccessor: ManagedStorageAccessor,
+    private val rootFileAccessor: RootFileAccessor
 ) : FileAccessLayer {
 
     companion object {
@@ -202,6 +203,7 @@ class FileAccessLayerImpl @Inject constructor(
     override fun readBytes(path: String): ByteArray? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val result = androidDataAccessor.readBytes(path)
+                ?: if (grantViaRoot(path)) androidDataAccessor.readBytes(path) else null
             if (result != null) return result
         }
 
@@ -219,6 +221,7 @@ class FileAccessLayerImpl @Inject constructor(
     override fun writeBytes(path: String, data: ByteArray): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             if (androidDataAccessor.writeBytes(path, data)) return true
+            if (grantViaRoot(path) && androidDataAccessor.writeBytes(path, data)) return true
         }
 
         if (isRestrictedPath(path)) {
@@ -265,6 +268,7 @@ class FileAccessLayerImpl @Inject constructor(
     override fun getInputStream(path: String): InputStream? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val stream = androidDataAccessor.getInputStream(path)
+                ?: if (grantViaRoot(path)) androidDataAccessor.getInputStream(path) else null
             if (stream != null) return stream
         }
 
@@ -281,6 +285,7 @@ class FileAccessLayerImpl @Inject constructor(
     override fun getOutputStream(path: String): OutputStream? {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val stream = androidDataAccessor.getOutputStream(path)
+                ?: if (grantViaRoot(path)) androidDataAccessor.getOutputStream(path) else null
             if (stream != null) return stream
         }
 
@@ -303,7 +308,9 @@ class FileAccessLayerImpl @Inject constructor(
 
     override fun copyFile(source: String, dest: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && (isRestrictedPath(source) || isRestrictedPath(dest))) {
-            return androidDataAccessor.copyFile(source, dest)
+            if (androidDataAccessor.copyFile(source, dest)) return true
+            val granted = grantViaRoot(source) or grantViaRoot(dest)
+            return granted && androidDataAccessor.copyFile(source, dest)
         }
         return try {
             val destFile = File(dest)
@@ -318,7 +325,9 @@ class FileAccessLayerImpl @Inject constructor(
 
     override fun copyDirectory(source: String, dest: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && (isRestrictedPath(source) || isRestrictedPath(dest))) {
-            return androidDataAccessor.copyDirectory(source, dest)
+            if (androidDataAccessor.copyDirectory(source, dest)) return true
+            val granted = grantViaRoot(source) or grantViaRoot(dest)
+            return granted && androidDataAccessor.copyDirectory(source, dest)
         }
         return try {
             val destFile = File(dest)
@@ -329,6 +338,9 @@ class FileAccessLayerImpl @Inject constructor(
             false
         }
     }
+
+    private fun grantViaRoot(path: String): Boolean =
+        isRestrictedPath(path) && rootFileAccessor.isAvailable && rootFileAccessor.grantGroupAccess(path)
 
     override fun walk(path: String): Sequence<FileInfo> {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
@@ -349,6 +361,10 @@ class FileAccessLayerImpl @Inject constructor(
 
     override fun getTransformedFile(path: String): File {
         return androidDataAccessor.getFile(path)
+    }
+
+    override fun prepareSaveAccess(path: String) {
+        grantViaRoot(path)
     }
 
     private fun extractVolumeAndPath(path: String): Pair<String, String>? {

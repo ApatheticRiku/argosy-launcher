@@ -92,4 +92,10 @@ interface FileAccessLayer {
 
     // Escape hatch for third-party APIs requiring File
     fun getTransformedFile(path: String): File
+
+    /**
+     * Makes an emulator's save at [path] readable and writable by Argosy before a backup or
+     * restore, where the device allows it. A no-op everywhere the save is already reachable.
+     */
+    fun prepareSaveAccess(path: String)
 }

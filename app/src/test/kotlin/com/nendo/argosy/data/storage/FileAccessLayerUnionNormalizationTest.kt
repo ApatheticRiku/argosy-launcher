@@ -16,6 +16,7 @@ class FileAccessLayerUnionNormalizationTest {
     private val context = mockk<Context>(relaxed = true)
     private val androidDataAccessor = mockk<AndroidDataAccessor>(relaxed = true)
     private val managedStorageAccessor = mockk<ManagedStorageAccessor>(relaxed = true)
+    private val rootFileAccessor = mockk<RootFileAccessor>(relaxed = true)
 
     private lateinit var fal: FileAccessLayerImpl
 
@@ -34,7 +35,7 @@ class FileAccessLayerUnionNormalizationTest {
             firstArg<String>().replace("/UCData/", "/Android/")
         }
         every { managedStorageAccessor.listFiles(any(), any()) } returns null
-        fal = FileAccessLayerImpl(context, androidDataAccessor, managedStorageAccessor)
+        fal = FileAccessLayerImpl(context, androidDataAccessor, managedStorageAccessor, rootFileAccessor)
     }
 
     @After

@@ -738,7 +738,10 @@ object EmulatorRegistry {
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.Custom(
                 activityClass = "com.github.stenzek.duckstation.EmulationActivity",
-                intentExtras = mapOf("bootPath" to ExtraValue.FileUriString)
+                intentExtras = mapOf(
+                    "bootPath" to ExtraValue.FileUriString,
+                    "resumeState" to ExtraValue.BooleanLiteral(false)
+                )
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=com.github.stenzek.duckstation"
         ),
@@ -1833,7 +1836,10 @@ object EmulatorRegistry {
             launchAction = Intent.ACTION_MAIN,
             launchConfig = LaunchConfig.Custom(
                 activityClass = "com.github.stenzek.duckstation.EmulationActivity",
-                intentExtras = mapOf("bootPath" to ExtraValue.FileUriString)
+                intentExtras = mapOf(
+                    "bootPath" to ExtraValue.FileUriString,
+                    "resumeState" to ExtraValue.BooleanLiteral(false)
+                )
             ),
             downloadUrl = "https://www.duckstation.org/android/"
         ),

@@ -513,6 +513,7 @@ class SaveDownloader @Inject constructor(
                     basePathOverride = overrideBaseFor(config, game.platformSlug)
                 )
                 val handler = client.getHandler(config, game.platformSlug, resolvedEmulatorId)
+                fal.prepareSaveAccess(targetPath)
                 val result = handler.extractDownload(tempZipFile, saveContext)
                 if (!result.success) {
                     Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Extraction failed | error=${result.error}")
@@ -669,6 +670,7 @@ class SaveDownloader @Inject constructor(
                         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Bundle placed | primary=$targetPath")
                     } else {
                         targetPath = unitPrimaryTarget(targetPath, game, resolvedEmulatorId, preferredCore) ?: targetPath
+                        fal.prepareSaveAccess(targetPath)
                         val bytesWithoutTrailer = saveArchiver.readBytesWithoutTrailer(tempSaveFile!!)
                         val written = if (bytesWithoutTrailer != null) {
                             saveArchiver.writeBytesToPath(targetPath, bytesWithoutTrailer)
