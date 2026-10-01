@@ -26,6 +26,8 @@ import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
 import com.nendo.argosy.domain.usecase.game.LaunchWithSyncUseCase
+import com.nendo.argosy.ui.input.HapticFeedbackManager
+import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.libretro.LaunchMode
@@ -114,6 +116,7 @@ class GameLaunchDelegate @Inject constructor(
     private val playSessionTracker: PlaySessionTracker,
     private val gameLauncher: GameLauncher,
     private val soundManager: SoundFeedbackManager,
+    private val hapticManager: HapticFeedbackManager,
     private val notificationManager: NotificationManager,
     private val savePathValidator: SavePathValidator,
     private val saveSyncRepository: SaveSyncRepository,
@@ -479,6 +482,7 @@ class GameLaunchDelegate @Inject constructor(
     }
 
     private fun dispatchErrorResult(result: LaunchResult, onLaunchFailed: () -> Unit) {
+        hapticManager.vibrate(HapticPattern.ERROR)
         when (result) {
             is LaunchResult.NoEmulator -> notificationManager.showError(
                 NotificationText.Res(R.string.notif_gamelaunch_no_emulator)

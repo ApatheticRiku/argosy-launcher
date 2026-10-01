@@ -609,8 +609,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         }
         vm.controlsDelegate.updateState(ControlsState(
             hapticEnabled = prefs.hapticEnabled,
-            vibrationStrength = vm.controlsDelegate.getVibrationStrength(),
-            vibrationSupported = vm.controlsDelegate.supportsSystemVibration,
+            vibrationStrength = prefs.hapticStrength,
             controllerLayout = prefs.controllerLayout,
             detectedLayout = detectedLayoutName,
             detectedDeviceName = detectionResult.deviceName,

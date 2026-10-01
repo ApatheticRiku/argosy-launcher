@@ -594,7 +594,7 @@ internal fun routeAdjustVibrationStrength(vm: SettingsViewModel, delta: Float) {
     if (wouldBe == current && delta != 0f) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
     }
-    vm.controlsDelegate.adjustVibrationStrength(delta)
+    vm.controlsDelegate.adjustVibrationStrength(vm.viewModelScope, delta)
 }
 
 // --- Sound & Volume ---

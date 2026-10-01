@@ -1310,7 +1310,6 @@ fun ArgosyApp(
                     soundEnabled = quickSettingsUiState.soundEnabled,
                     hapticEnabled = quickSettingsUiState.hapticEnabled,
                     vibrationStrength = quickSettingsUiState.vibrationStrength,
-                    vibrationSupported = quickSettingsUiState.vibrationSupported,
                     fanMode = quickSettingsUiState.fanMode,
                     fanSpeed = quickSettingsUiState.fanSpeed,
                     performanceMode = quickSettingsUiState.performanceMode,

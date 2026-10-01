@@ -34,6 +34,7 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.data.emulator.EmulatorUpdateManager
 import com.nendo.argosy.data.emulator.PlaySessionTracker
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.sync.ConflictInfo
@@ -153,8 +154,7 @@ data class QuickSettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val soundEnabled: Boolean = false,
     val hapticEnabled: Boolean = true,
-    val vibrationStrength: Float = 0.5f,
-    val vibrationSupported: Boolean = false,
+    val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = 25000,
     val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
@@ -434,6 +434,7 @@ class ArgosyViewModel @Inject constructor(
         viewModelScope.launch {
             preferencesRepository.userPreferences.collect { prefs ->
                 hapticManager.setEnabled(prefs.hapticEnabled)
+                hapticManager.setStrength(prefs.hapticStrength)
                 soundManager.setEnabled(prefs.soundEnabled)
                 soundManager.setVolume(prefs.soundVolume)
                 soundManager.setSoundConfigs(prefs.soundConfigs)
@@ -872,7 +873,6 @@ class ArgosyViewModel @Inject constructor(
     )
 
     private val _deviceSettings = MutableStateFlow(DeviceSettingsState())
-    private val _vibrationStrength = MutableStateFlow(hapticManager.getSystemVibrationStrength())
 
     private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val _systemVolume = MutableStateFlow(volumeController.getVolume().primary)
@@ -883,16 +883,14 @@ class ArgosyViewModel @Inject constructor(
     val quickSettingsState: StateFlow<QuickSettingsUiState> = combine(
         preferencesRepository.userPreferences,
         _deviceSettings,
-        _vibrationStrength,
         _systemVolume,
         _screenBrightness
-    ) { prefs, device, vibrationStrength, volume, brightness ->
+    ) { prefs, device, volume, brightness ->
         QuickSettingsUiState(
             themeMode = prefs.themeMode,
             soundEnabled = prefs.soundEnabled,
             hapticEnabled = prefs.hapticEnabled,
-            vibrationStrength = vibrationStrength,
-            vibrationSupported = hapticManager.supportsSystemVibration,
+            vibrationStrength = prefs.hapticStrength,
             fanMode = device.fanMode,
             fanSpeed = device.fanSpeed,
             performanceMode = device.performanceMode,
@@ -1280,7 +1278,7 @@ class ArgosyViewModel @Inject constructor(
         val newState = !current
         hapticManager.setEnabled(newState)
         if (newState) {
-            hapticManager.vibrate(HapticPattern.SELECTION)
+            hapticManager.vibrate(HapticPattern.TOGGLE_ON)
         }
         viewModelScope.launch {
             preferencesRepository.setHapticEnabled(newState)
@@ -1290,9 +1288,19 @@ class ArgosyViewModel @Inject constructor(
 
     fun setVibrationStrength(strength: Float) {
         val coercedStrength = strength.coerceIn(0f, 1f)
-        hapticManager.setSystemVibrationStrength(coercedStrength)
-        _vibrationStrength.value = coercedStrength
+        hapticManager.setStrength(coercedStrength)
         hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
+        viewModelScope.launch {
+            preferencesRepository.setHapticStrength(coercedStrength)
+        }
+    }
+
+    private fun adjustVibrationStrength(delta: Float) {
+        viewModelScope.launch {
+            val strength = preferencesRepository.adjustHapticStrength(delta)
+            hapticManager.setStrength(strength)
+            hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
+        }
     }
 
     private var volumeInputTimestamp = 0L
@@ -1386,7 +1394,6 @@ class ArgosyViewModel @Inject constructor(
             soundEnabled = qs.soundEnabled,
             hapticEnabled = qs.hapticEnabled,
             vibrationStrength = qs.vibrationStrength,
-            vibrationSupported = qs.vibrationSupported,
             fanMode = qs.fanMode,
             fanSpeed = qs.fanSpeed,
             performanceMode = qs.performanceMode,
@@ -1466,7 +1473,7 @@ class ArgosyViewModel @Inject constructor(
                     InputResult.HANDLED
                 }
                 QuickSettingsItem.VibrationStrength -> {
-                    setVibrationStrength((hapticManager.getSystemVibrationStrength() - 0.1f).coerceAtLeast(0f))
+                    adjustVibrationStrength(-ControlsPreferences.HAPTIC_STRENGTH_STEP)
                     InputResult.HANDLED
                 }
                 else -> InputResult.UNHANDLED
@@ -1488,7 +1495,7 @@ class ArgosyViewModel @Inject constructor(
                     InputResult.HANDLED
                 }
                 QuickSettingsItem.VibrationStrength -> {
-                    setVibrationStrength((hapticManager.getSystemVibrationStrength() + 0.1f).coerceAtMost(1f))
+                    adjustVibrationStrength(ControlsPreferences.HAPTIC_STRENGTH_STEP)
                     InputResult.HANDLED
                 }
                 else -> InputResult.UNHANDLED
@@ -1512,11 +1519,11 @@ class ArgosyViewModel @Inject constructor(
                 }
                 QuickSettingsItem.Haptic -> {
                     val enabled = toggleHaptic()
-                    InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
+                    InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
                 }
                 QuickSettingsItem.UISounds -> {
                     val enabled = toggleSound()
-                    InputResult.handled(if (enabled) SoundType.TOGGLE else SoundType.SILENT)
+                    InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
                 }
                 QuickSettingsItem.QuayPass -> {
                     toggleQuayPassFromQuickSettings()

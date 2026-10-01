@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nendo.argosy.core.input.SoundConfig
@@ -15,9 +16,11 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 data class ControlsPreferences(
     val hapticEnabled: Boolean = true,
+    val hapticStrength: Float = DEFAULT_HAPTIC_STRENGTH,
     val soundEnabled: Boolean = false,
     val soundVolume: Int = 40,
     val soundConfigs: Map<SoundType, SoundConfig> = emptyMap(),
@@ -39,6 +42,9 @@ data class ControlsPreferences(
     val navRingRoutes: List<String>? = null
 ) {
     companion object {
+        const val DEFAULT_HAPTIC_STRENGTH = 0.5f
+        const val HAPTIC_STRENGTH_STEPS = 10
+        const val HAPTIC_STRENGTH_STEP = 1f / HAPTIC_STRENGTH_STEPS
         const val DEFAULT_OPEN_NAVIGATION_KEY = KeyEvent.KEYCODE_BUTTON_C
         const val DEFAULT_OPEN_QUICK_PANEL_KEY = KeyEvent.KEYCODE_BUTTON_Z
         const val UNASSIGNED_KEY = KeyEvent.KEYCODE_UNKNOWN
@@ -51,6 +57,7 @@ class ControlsPreferencesRepository @Inject constructor(
 ) {
     private object Keys {
         val HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
+        val HAPTIC_STRENGTH = floatPreferencesKey("haptic_strength")
         val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         val SOUND_VOLUME = intPreferencesKey("sound_volume")
         val SOUND_CONFIGS = stringPreferencesKey("sound_configs")
@@ -75,6 +82,7 @@ class ControlsPreferencesRepository @Inject constructor(
     val preferences: Flow<ControlsPreferences> = dataStore.data.map { prefs ->
         ControlsPreferences(
             hapticEnabled = prefs[Keys.HAPTIC_ENABLED] ?: true,
+            hapticStrength = prefs[Keys.HAPTIC_STRENGTH] ?: ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
             soundEnabled = prefs[Keys.SOUND_ENABLED] ?: false,
             soundVolume = prefs[Keys.SOUND_VOLUME] ?: 40,
             soundConfigs = parseSoundConfigs(prefs[Keys.SOUND_CONFIGS]),
@@ -104,6 +112,25 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setHapticEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.HAPTIC_ENABLED] = enabled }
+    }
+
+    suspend fun setHapticStrength(strength: Float) {
+        dataStore.edit { it[Keys.HAPTIC_STRENGTH] = strength.coerceIn(0f, 1f) }
+    }
+
+    /**
+     * Moves the stored haptic strength by [delta] inside one DataStore transaction, snapping the
+     * result to the nearest of [ControlsPreferences.HAPTIC_STRENGTH_STEPS] steps, and returns the
+     * stored value.
+     */
+    suspend fun adjustHapticStrength(delta: Float): Float {
+        val steps = ControlsPreferences.HAPTIC_STRENGTH_STEPS
+        val updated = dataStore.edit { prefs ->
+            val current = prefs[Keys.HAPTIC_STRENGTH] ?: ControlsPreferences.DEFAULT_HAPTIC_STRENGTH
+            val snapped = ((current + delta).coerceIn(0f, 1f) * steps).roundToInt() / steps.toFloat()
+            prefs[Keys.HAPTIC_STRENGTH] = snapped
+        }
+        return updated[Keys.HAPTIC_STRENGTH] ?: ControlsPreferences.DEFAULT_HAPTIC_STRENGTH
     }
 
     suspend fun setSoundEnabled(enabled: Boolean) {

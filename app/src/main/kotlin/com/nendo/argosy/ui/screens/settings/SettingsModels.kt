@@ -19,6 +19,7 @@ import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
 import com.nendo.argosy.data.preferences.AppLanguage
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.repository.HardResetPreview
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.preferences.GripReserveMode
@@ -337,8 +338,7 @@ data class ScreenAssignment(
 
 data class ControlsState(
     val hapticEnabled: Boolean = true,
-    val vibrationStrength: Float = 0.5f,
-    val vibrationSupported: Boolean = false,
+    val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
     val controllerLayout: String = "auto",
     val detectedLayout: String? = null,
     val detectedDeviceName: String? = null,

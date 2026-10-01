@@ -8,5 +8,5 @@ internal fun toggleLeftRight(direction: Int, current: Boolean, set: (Boolean) ->
     val target = direction > 0
     if (target == current) return InputResult.handled(SoundType.SILENT)
     set(target)
-    return InputResult.handled(SoundType.TOGGLE)
+    return InputResult.toggled(target)
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.libretro.HotkeyManager
@@ -33,6 +34,7 @@ import com.nendo.argosy.ui.screens.settings.components.ShortcutCaptureModal
 import com.nendo.argosy.ui.screens.settings.delegates.ControlsSettingsDelegate
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
+import kotlin.math.roundToInt
 
 internal sealed class NavigationItem(
     val key: String,
@@ -63,7 +65,7 @@ internal sealed class NavigationItem(
     data object VibrationStrength : NavigationItem(
         key = "vibration",
         section = "feedback",
-        visibleWhen = { it.hapticEnabled && it.vibrationSupported }
+        visibleWhen = { it.hapticEnabled }
     )
 
     data object MenuWrap : NavigationItem("menuWrap", "menus")
@@ -151,10 +153,10 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val controls = uiState.controls
     val context = LocalContext.current
 
-    val visibleItems = remember(controls.hapticEnabled, controls.vibrationSupported, controls.hasSecondaryDisplay) {
+    val visibleItems = remember(controls.hapticEnabled, controls.hasSecondaryDisplay) {
         navigationLayout.visibleItems(controls)
     }
-    val sections = remember(controls.hapticEnabled, controls.vibrationSupported, controls.hasSecondaryDisplay, context) {
+    val sections = remember(controls.hapticEnabled, controls.hasSecondaryDisplay, context) {
         navigationLayout.buildSections(controls, context)
     }
 
@@ -243,11 +245,15 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
 
             NavigationItem.VibrationStrength -> SliderPreference(
                 title = stringResource(R.string.settings_navigation_vibration_title),
-                value = (controls.vibrationStrength * 10).toInt() + 1,
+                value = (controls.vibrationStrength * ControlsPreferences.HAPTIC_STRENGTH_STEPS).roundToInt() + 1,
                 minValue = 1,
-                maxValue = 11,
+                maxValue = ControlsPreferences.HAPTIC_STRENGTH_STEPS + 1,
                 isFocused = isFocused(item),
-                onAdjust = { viewModel.adjustVibrationStrength(if (it < 0) -0.1f else 0.1f) }
+                onAdjust = {
+                    viewModel.adjustVibrationStrength(
+                        if (it < 0) -ControlsPreferences.HAPTIC_STRENGTH_STEP else ControlsPreferences.HAPTIC_STRENGTH_STEP
+                    )
+                }
             )
 
             NavigationItem.MenuWrap -> CyclePreference(

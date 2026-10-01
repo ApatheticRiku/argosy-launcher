@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.domain.model.HomeLayoutKind
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
@@ -244,8 +245,8 @@ internal class LightSectionsInput(
         val state = viewModel.uiState.value
         val controls = state.controls
         when (navigationItemAtFocusIndex(state.focusedIndex, controls)) {
-            NavigationItem.VibrationStrength -> if (controls.hapticEnabled && controls.vibrationSupported) {
-                viewModel.adjustVibrationStrength(direction * 0.1f)
+            NavigationItem.VibrationStrength -> if (controls.hapticEnabled) {
+                viewModel.adjustVibrationStrength(direction * ControlsPreferences.HAPTIC_STRENGTH_STEP)
                 return InputResult.HANDLED
             }
             NavigationItem.HapticFeedback ->

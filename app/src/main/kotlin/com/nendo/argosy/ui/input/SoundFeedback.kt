@@ -49,7 +49,8 @@ enum class SoundPreset(val resourceId: Int?, val displayName: String) {
 @Singleton
 class SoundFeedbackManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val attributionRepository: StorageAttributionRepository
+    private val attributionRepository: StorageAttributionRepository,
+    private val hapticManager: HapticFeedbackManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val initLock = Any()
@@ -270,7 +271,16 @@ class SoundFeedbackManager @Inject constructor(
         }
     }
 
+    /**
+     * Plays the feedback for an app event: the event's haptic cue ([hapticCue]) and its sound.
+     * Use [playSound] where the caller plays its own haptic cue or previews a sound.
+     */
     fun play(type: SoundType) {
+        type.hapticCue?.let(hapticManager::vibrate)
+        playSound(type)
+    }
+
+    fun playSound(type: SoundType) {
         if (!shouldPlaySound(type)) return
         if (type == SoundType.BOUNDARY) {
             val now = SystemClock.elapsedRealtime()

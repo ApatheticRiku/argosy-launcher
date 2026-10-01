@@ -3,14 +3,8 @@ package com.nendo.argosy.ui.input
 import com.nendo.argosy.core.input.SoundType
 
 /**
- * Turns a handled input into what the user feels and hears.
- *
- * Held apart from [InputDispatcher] because the companion display routes its own key events and
- * never passes through the dispatcher: with the feedback living inside it, the second screen was
- * silent and still. Both paths use this instead, so a press means the same thing on either display.
- *
- * Repeated boundary presses latch to silence, so holding a direction against the end of a list
- * buzzes once rather than on every repeat.
+ * Plays the haptic cue and sound for a handled gamepad input, on either display. A held direction
+ * against the end of a list plays its boundary cue once, then stays silent until focus moves.
  */
 class InputFeedbackPlayer(
     private val hapticManager: HapticFeedbackManager? = null,
@@ -23,30 +17,38 @@ class InputFeedbackPlayer(
         if (!result.handled) return
 
         when (event) {
-            GamepadEvent.Up, GamepadEvent.Down, GamepadEvent.Left, GamepadEvent.Right -> {
-                val override = latchBoundary(result.soundOverride)
-                if (override != SoundType.SILENT) {
-                    hapticManager?.vibrate(HapticPattern.FOCUS_CHANGE)
-                }
-                soundManager?.play(override ?: SoundType.NAVIGATE)
-            }
+            GamepadEvent.Up, GamepadEvent.Down, GamepadEvent.Left, GamepadEvent.Right ->
+                playMove(result, SoundType.NAVIGATE)
             GamepadEvent.PrevSection, GamepadEvent.NextSection,
-            GamepadEvent.PrevTrigger, GamepadEvent.NextTrigger -> {
-                val override = latchBoundary(result.soundOverride)
-                if (override != SoundType.SILENT) {
-                    hapticManager?.vibrate(HapticPattern.FOCUS_CHANGE)
-                }
-                soundManager?.play(override ?: SoundType.SECTION_CHANGE)
-            }
+            GamepadEvent.PrevTrigger, GamepadEvent.NextTrigger ->
+                playMove(result, SoundType.SECTION_CHANGE)
             GamepadEvent.Confirm, GamepadEvent.LongConfirm -> {
-                hapticManager?.vibrate(HapticPattern.SELECTION)
-                soundManager?.play(result.soundOverride ?: SoundType.SELECT)
+                val sound = result.soundOverride ?: SoundType.SELECT
+                vibrate(result.hapticOverride ?: sound.hapticCue ?: HapticPattern.SELECTION)
+                soundManager?.playSound(sound)
             }
             GamepadEvent.Back -> {
-                soundManager?.play(result.soundOverride ?: SoundType.BACK)
+                val sound = result.soundOverride ?: SoundType.BACK
+                vibrate(result.hapticOverride ?: sound.hapticCue)
+                soundManager?.playSound(sound)
             }
-            else -> Unit
+            else -> vibrate(result.hapticOverride ?: result.soundOverride?.hapticCue)
         }
+    }
+
+    private fun playMove(result: InputResult, defaultSound: SoundType) {
+        val sound = latchBoundary(result.soundOverride) ?: defaultSound
+        val cue = when {
+            result.hapticOverride != null -> result.hapticOverride
+            sound == SoundType.SILENT -> null
+            else -> sound.hapticCue ?: HapticPattern.FOCUS_CHANGE
+        }
+        vibrate(cue)
+        soundManager?.playSound(sound)
+    }
+
+    private fun vibrate(pattern: HapticPattern?) {
+        if (pattern != null) hapticManager?.vibrate(pattern)
     }
 
     private fun latchBoundary(override: SoundType?): SoundType? {

@@ -47,24 +47,17 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun getVibrationStrength(): Float = hapticManager.getSystemVibrationStrength()
-
-    fun setVibrationStrength(strength: Float) {
-        hapticManager.setSystemVibrationStrength(strength)
-        _state.update { it.copy(vibrationStrength = strength) }
-        hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
-    }
-
-    fun adjustVibrationStrength(delta: Float) {
-        val current = _state.value.vibrationStrength
-        val newStrength = (current + delta).coerceIn(0f, 1f)
-        if (newStrength != current) {
-            setVibrationStrength(newStrength)
+    fun adjustVibrationStrength(scope: CoroutineScope, delta: Float) {
+        scope.launch {
+            val previous = _state.value.vibrationStrength
+            val strength = preferencesRepository.adjustHapticStrength(delta)
+            hapticManager.setStrength(strength)
+            _state.update { it.copy(vibrationStrength = strength) }
+            if (strength != previous) {
+                hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
+            }
         }
     }
-
-    val supportsSystemVibration: Boolean
-        get() = hapticManager.supportsSystemVibration
 
     fun setSwapAB(scope: CoroutineScope, enabled: Boolean) {
         scope.launch {

@@ -4,7 +4,8 @@ import com.nendo.argosy.core.input.SoundType
 
 data class InputResult(
     val handled: Boolean,
-    val soundOverride: SoundType? = null
+    val soundOverride: SoundType? = null,
+    val hapticOverride: HapticPattern? = null
 ) {
     companion object {
         val UNHANDLED = InputResult(handled = false)
@@ -13,6 +14,12 @@ data class InputResult(
         fun handled(soundOverride: SoundType? = null) = InputResult(
             handled = true,
             soundOverride = soundOverride
+        )
+
+        fun toggled(enabled: Boolean, sound: SoundType = SoundType.TOGGLE) = InputResult(
+            handled = true,
+            soundOverride = sound,
+            hapticOverride = if (enabled) HapticPattern.TOGGLE_ON else HapticPattern.TOGGLE_OFF
         )
     }
 }

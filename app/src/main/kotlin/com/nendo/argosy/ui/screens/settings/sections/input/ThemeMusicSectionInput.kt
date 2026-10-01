@@ -71,7 +71,7 @@ internal class ThemeMusicSectionInput(
                 val target = direction > 0
                 if (target == state.ambientAudio.enabled) return InputResult.handled(SoundType.SILENT)
                 viewModel.setAmbientAudioEnabled(target)
-                return InputResult.handled(if (target) SoundType.TOGGLE else SoundType.SILENT)
+                return InputResult.toggled(target, if (target) SoundType.TOGGLE else SoundType.SILENT)
             }
             ThemeMusicItem.BgmShuffle ->
                 return toggleLeftRight(direction, state.ambientAudio.shuffle) { viewModel.setAmbientAudioShuffle(it) }

@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.primitives.ArgosyToggle
 import com.nendo.argosy.ui.primitives.FocusIndicators
@@ -111,8 +112,7 @@ data class QuickSettingsState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val soundEnabled: Boolean = false,
     val hapticEnabled: Boolean = true,
-    val vibrationStrength: Float = 0.5f,
-    val vibrationSupported: Boolean = false,
+    val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = 25000,
     val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
@@ -160,7 +160,7 @@ sealed class QuickSettingsItem(
     data object Haptic : QuickSettingsItem("haptic", QuickSettingsPage.QUICK, QuickSettingsGroup.OTHER)
     data object VibrationStrength : QuickSettingsItem(
         "vibrationStrength", QuickSettingsPage.QUICK, QuickSettingsGroup.OTHER,
-        visibleWhen = { it.vibrationSupported && it.hapticEnabled }
+        visibleWhen = { it.hapticEnabled }
     )
 
     data object SwapDisplays : QuickSettingsItem(

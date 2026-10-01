@@ -792,7 +792,7 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
         ThemeMusicItem.BgmToggle -> {
             val newEnabled = !state.ambientAudio.enabled
             vm.setAmbientAudioEnabled(newEnabled)
-            return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
+            return InputResult.toggled(newEnabled, if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         ThemeMusicItem.BgmVolume -> vm.cycleAmbientAudioVolume()
         ThemeMusicItem.BgmPlaylist -> vm.openBgmPlaylistManager()
@@ -800,12 +800,14 @@ private fun routeThemeMusicConfirm(vm: SettingsViewModel, state: SettingsUiState
         ThemeMusicItem.BrowseLocalMusic -> vm.openBgmAddMusicBrowser()
         ThemeMusicItem.MusicLocation -> vm.openMusicLocationPicker()
         ThemeMusicItem.BgmShuffle -> {
-            vm.setAmbientAudioShuffle(!state.ambientAudio.shuffle)
-            return InputResult.handled(SoundType.TOGGLE)
+            val shuffle = !state.ambientAudio.shuffle
+            vm.setAmbientAudioShuffle(shuffle)
+            return InputResult.toggled(shuffle)
         }
         ThemeMusicItem.GameThemeToggle -> {
-            vm.setGameDetailThemeEnabled(!state.ambientAudio.gameDetailThemeEnabled)
-            return InputResult.handled(SoundType.TOGGLE)
+            val enabled = !state.ambientAudio.gameDetailThemeEnabled
+            vm.setGameDetailThemeEnabled(enabled)
+            return InputResult.toggled(enabled)
         }
         is ThemeMusicItem.Header, is ThemeMusicItem.SectionSpacer, null -> {}
     }
@@ -820,9 +822,9 @@ private fun routeThemeSoundsConfirm(vm: SettingsViewModel, state: SettingsUiStat
             vm.setSoundEnabled(newEnabled)
             if (newEnabled) {
                 vm.soundManager.setEnabled(true)
-                vm.soundManager.play(SoundType.TOGGLE)
+                vm.soundManager.playSound(SoundType.TOGGLE)
             }
-            return InputResult.handled(SoundType.SILENT)
+            return InputResult.toggled(newEnabled, SoundType.SILENT)
         }
         ThemeSoundsItem.UiSoundsVolume -> vm.cycleSoundVolume()
         is ThemeSoundsItem.SoundTypeItem -> vm.showSoundPicker(item.soundType)
@@ -1005,16 +1007,28 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
         NavigationItem.HapticFeedback -> {
             val newEnabled = !state.controls.hapticEnabled
             vm.setHapticEnabled(newEnabled)
-            return InputResult.handled(if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
+            return InputResult.toggled(newEnabled, if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         NavigationItem.VibrationStrength -> vm.cycleVibrationStrength()
         NavigationItem.ControllerLayout -> {
             vm.requestEnumPicker(NavigationItem.ControllerLayout.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        NavigationItem.SwapAB -> { vm.setSwapAB(!state.controls.swapAB); return InputResult.handled(SoundType.TOGGLE) }
-        NavigationItem.SwapXY -> { vm.setSwapXY(!state.controls.swapXY); return InputResult.handled(SoundType.TOGGLE) }
-        NavigationItem.SwapStartSelect -> { vm.setSwapStartSelect(!state.controls.swapStartSelect); return InputResult.handled(SoundType.TOGGLE) }
+        NavigationItem.SwapAB -> {
+            val swapped = !state.controls.swapAB
+            vm.setSwapAB(swapped)
+            return InputResult.toggled(swapped)
+        }
+        NavigationItem.SwapXY -> {
+            val swapped = !state.controls.swapXY
+            vm.setSwapXY(swapped)
+            return InputResult.toggled(swapped)
+        }
+        NavigationItem.SwapStartSelect -> {
+            val swapped = !state.controls.swapStartSelect
+            vm.setSwapStartSelect(swapped)
+            return InputResult.toggled(swapped)
+        }
         NavigationItem.SelectLCombo -> {
             vm.requestEnumPicker(NavigationItem.SelectLCombo.key)
             return InputResult.handled(SoundType.OPEN_MODAL)

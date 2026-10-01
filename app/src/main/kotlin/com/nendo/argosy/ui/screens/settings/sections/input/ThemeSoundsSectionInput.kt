@@ -40,7 +40,7 @@ internal class ThemeSoundsSectionInput(
         val state = viewModel.uiState.value
         val item = themeSoundsItemAtFocusIndex(state.focusedIndex, layoutState())
         if (item is ThemeSoundsItem.SoundTypeItem) {
-            viewModel.soundManager.play(item.soundType)
+            viewModel.soundManager.playSound(item.soundType)
         }
         return InputResult.handled(SoundType.SILENT)
     }
@@ -84,9 +84,9 @@ internal class ThemeSoundsSectionInput(
                 viewModel.setSoundEnabled(target)
                 if (target) {
                     viewModel.soundManager.setEnabled(true)
-                    viewModel.soundManager.play(SoundType.TOGGLE)
+                    viewModel.soundManager.playSound(SoundType.TOGGLE)
                 }
-                return InputResult.handled(SoundType.SILENT)
+                return InputResult.toggled(target, SoundType.SILENT)
             }
             else -> {}
         }

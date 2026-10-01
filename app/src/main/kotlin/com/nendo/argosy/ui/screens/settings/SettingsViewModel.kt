@@ -8,6 +8,7 @@ import com.nendo.argosy.ui.common.toHomeGameUi
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.ui.screens.home.toCompanionDetail
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.cache.ImageCacheProgress
 import com.nendo.argosy.data.emulator.BuiltinCoreResolver
 import com.nendo.argosy.data.emulator.EmulatorDetector
@@ -1408,7 +1409,8 @@ class SettingsViewModel @Inject constructor(
 
     fun setHapticEnabled(enabled: Boolean) = controlsDelegate.setHapticEnabled(viewModelScope, enabled)
 
-    fun cycleVibrationStrength() = controlsDelegate.adjustVibrationStrength(0.1f)
+    fun cycleVibrationStrength() =
+        controlsDelegate.adjustVibrationStrength(viewModelScope, ControlsPreferences.HAPTIC_STRENGTH_STEP)
 
     fun adjustVibrationStrength(delta: Float) = routeAdjustVibrationStrength(this, delta)
 

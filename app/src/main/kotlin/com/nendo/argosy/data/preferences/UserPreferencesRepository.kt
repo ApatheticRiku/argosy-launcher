@@ -88,6 +88,7 @@ class UserPreferencesRepository @Inject constructor(
             displayFontScale = display.displayFontScale,
             bodyFontScale = display.bodyFontScale,
             hapticEnabled = controls.hapticEnabled,
+            hapticStrength = controls.hapticStrength,
             soundEnabled = controls.soundEnabled,
             soundVolume = controls.soundVolume,
             swapAB = controls.swapAB,
@@ -446,6 +447,8 @@ class UserPreferencesRepository @Inject constructor(
     // --- Controls delegates ---
 
     suspend fun setHapticEnabled(enabled: Boolean) = controlsPrefs.setHapticEnabled(enabled)
+    suspend fun setHapticStrength(strength: Float) = controlsPrefs.setHapticStrength(strength)
+    suspend fun adjustHapticStrength(delta: Float): Float = controlsPrefs.adjustHapticStrength(delta)
     suspend fun setSoundEnabled(enabled: Boolean) = controlsPrefs.setSoundEnabled(enabled)
     suspend fun setSoundVolume(volume: Int) = controlsPrefs.setSoundVolume(volume)
     suspend fun setSoundConfigs(configs: Map<SoundType, SoundConfig>) = controlsPrefs.setSoundConfigs(configs)
@@ -767,6 +770,7 @@ data class UserPreferences(
     val displayFontScale: Int = 100,
     val bodyFontScale: Int = 100,
     val hapticEnabled: Boolean = true,
+    val hapticStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
     val soundEnabled: Boolean = false,
     val soundVolume: Int = 40,
     val swapAB: Boolean = false,

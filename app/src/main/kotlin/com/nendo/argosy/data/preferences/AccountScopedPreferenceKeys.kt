@@ -135,6 +135,7 @@ object AccountScopedPreferenceKeys {
         "sound_volume",
         "sound_configs",
         "haptic_enabled",
+        "haptic_strength",
         "game_detail_theme",
         "ambient_audio_enabled",
         "ambient_audio_volume",
