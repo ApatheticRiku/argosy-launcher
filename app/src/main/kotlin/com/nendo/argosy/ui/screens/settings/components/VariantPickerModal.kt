@@ -35,6 +35,7 @@ import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.screens.settings.VariantOption
 import com.nendo.argosy.ui.screens.settings.VariantPickerInfo
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -55,6 +56,7 @@ fun VariantPickerModal(
         focusedIndex = focusIndex
     )
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
@@ -170,6 +172,7 @@ fun EmulatorUpdateModal(
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

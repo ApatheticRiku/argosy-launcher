@@ -123,6 +123,7 @@ import com.nendo.argosy.ui.input.VariantPickerInputHandler
 import com.nendo.argosy.ui.input.HardcoreConflictInputHandler
 import com.nendo.argosy.ui.input.LocalModifiedInputHandler
 import com.nendo.argosy.ui.input.LocalInputDispatcher
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
@@ -1488,6 +1489,7 @@ private fun FilterMenuOverlay(
         }
     }
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
@@ -1838,6 +1840,7 @@ private fun QuickMenuOverlay(
     val options = rows.filterNot { it.isDangerous }.map { it.toEntry() }
     val dangerousOptions = rows.filter { it.isDangerous }.map { it.toEntry() }
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val listState = rememberLazyListState()

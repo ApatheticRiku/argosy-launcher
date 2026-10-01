@@ -34,6 +34,7 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SwitchPreference
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.theme.Motion
@@ -58,6 +59,7 @@ fun SyncFiltersModal(
     regionModePickerToken: Int = 0
 ) {
     val listState = rememberLazyListState()
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

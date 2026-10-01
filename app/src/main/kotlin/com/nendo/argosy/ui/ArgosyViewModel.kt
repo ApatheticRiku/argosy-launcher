@@ -400,8 +400,15 @@ class ArgosyViewModel @Inject constructor(
             val statusMirror = launch {
                 startupMaintenance.status.filterNotNull().collect { _startupStatus.value = it }
             }
-            startupMaintenance.awaitPass()
-            statusMirror.cancel()
+            try {
+                startupMaintenance.awaitPass()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                com.nendo.argosy.util.Logger.error("ArgosyViewModel", "Startup maintenance failed, continuing to home", e)
+            } finally {
+                statusMirror.cancel()
+            }
 
             _startupStatus.value = R.string.ui_startup_status_preparing_home
             homeLibraryDelegate.ensureInitialLoad(viewModelScope)

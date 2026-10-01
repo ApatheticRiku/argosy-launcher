@@ -24,6 +24,19 @@ class RootFileHarnessReceiver : BroadcastReceiver() {
         val path = intent.getStringExtra("path")
         val name = intent.getStringExtra("name")
         val group = intent.getStringExtra("group")
+        val mode = intent.getStringExtra("mode")
+        if (name != null && !isSafeName(name)) {
+            Log.w(TAG, "rejected name $name")
+            return
+        }
+        if (group != null && !GROUP_PATTERN.matches(group)) {
+            Log.w(TAG, "rejected group $group")
+            return
+        }
+        if (mode != null && !OCTAL_MODE_PATTERN.matches(mode) && !SYMBOLIC_MODE_PATTERN.matches(mode)) {
+            Log.w(TAG, "rejected mode $mode")
+            return
+        }
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try {
@@ -34,8 +47,9 @@ class RootFileHarnessReceiver : BroadcastReceiver() {
                     "backup" -> backup(work, path ?: return@launch, name ?: return@launch)
                     "restore" -> restore(work, name ?: return@launch, path ?: return@launch)
                     "regroup" -> regroup(work, path ?: return@launch, group ?: return@launch)
-                    "mode" -> runRoot(work, "p=${q(path ?: return@launch)}\nchmod ${intent.getStringExtra("mode") ?: return@launch} \"\$p\" && ls -lnd \"\$p\"")
-                    "delete" -> runRoot(work, "p=${q(path ?: return@launch)}\nrm -f \"\$p\" && echo deleted; ls -ln \"\$(dirname \"\$p\")\"")                    else -> Log.w(TAG, "unknown op $op")
+                    "mode" -> runRoot(work, "p=${q(path ?: return@launch)}\nchmod ${q(mode ?: return@launch)} \"\$p\" && ls -lnd \"\$p\"")
+                    "delete" -> runRoot(work, "p=${q(path ?: return@launch)}\nrm -f \"\$p\" && echo deleted; ls -ln \"\$(dirname \"\$p\")\"")
+                    else -> Log.w(TAG, "unknown op $op")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "op=$op failed", e)
@@ -95,8 +109,11 @@ class RootFileHarnessReceiver : BroadcastReceiver() {
     }
 
     private fun regroup(work: File, path: String, group: String) {
-        runRoot(work, "p=${q(path)}\nchgrp -R $group \"\$p\" && ls -lnd \"\$p\"")
+        runRoot(work, "p=${q(path)}\nchgrp -R ${q(group)} \"\$p\" && ls -lnd \"\$p\"")
     }
+
+    private fun isSafeName(name: String): Boolean =
+        name.isNotEmpty() && '/' !in name && ".." !in name
 
     private fun q(value: String): String = "'" + value.replace("'", "'\\''") + "'"
 
@@ -121,5 +138,8 @@ class RootFileHarnessReceiver : BroadcastReceiver() {
         const val SCRIPT_NAME = "harness-op.sh"
         const val WRAPPER_NAME = "harness-run.sh"
         const val OUTPUT_NAME = "harness-result.txt"
+        val OCTAL_MODE_PATTERN = Regex("^[0-7]{3,4}$")
+        val SYMBOLIC_MODE_PATTERN = Regex("^[ugoa]*[-+=][rwxX]+$")
+        val GROUP_PATTERN = Regex("^[0-9]+$")
     }
 }

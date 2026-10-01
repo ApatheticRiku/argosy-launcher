@@ -910,6 +910,7 @@ class LibraryViewModel @Inject constructor(
                 mediaRepository.showcasePosterUrls(target.libraryId, SHOWCASE_COVER_LIMIT)
             )
         }
+        if (!isDescribing) return
         dsm.presentSlot(owner, showcase)
     }
 
@@ -988,9 +989,12 @@ class LibraryViewModel @Inject constructor(
         if (!isDescribing) return
         val dsm = DualScreenManagerHolder.instance ?: return
         val friends = _uiState.value.friendsActivity
-        dsm.setCompanionDetail(companionOwner, gameId?.let { showcaseSource.gameDetail(it, friends) })
-        if (gameId != null && showcaseSource.backfillLogo(gameId) && isDescribing) {
-            dsm.setCompanionDetail(companionOwner, showcaseSource.gameDetail(gameId, friends))
+        val detail = gameId?.let { showcaseSource.gameDetail(it, friends) }
+        if (!isDescribing) return
+        dsm.setCompanionDetail(companionOwner, detail)
+        if (gameId != null && showcaseSource.backfillLogo(gameId)) {
+            val withLogo = showcaseSource.gameDetail(gameId, friends)
+            if (isDescribing) dsm.setCompanionDetail(companionOwner, withLogo)
         }
     }
 

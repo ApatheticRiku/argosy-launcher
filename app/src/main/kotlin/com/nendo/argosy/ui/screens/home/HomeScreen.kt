@@ -110,6 +110,7 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.input.LocalInputDispatcher
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.domain.model.RequiredAction
 import com.nendo.argosy.ui.components.FocusedScroll
@@ -2200,6 +2201,7 @@ private fun GameSelectOverlay(
         add(MenuEntry(label = hideLabel, isDangerous = true, onClick = onHide))
     }
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val listState = rememberLazyListState()

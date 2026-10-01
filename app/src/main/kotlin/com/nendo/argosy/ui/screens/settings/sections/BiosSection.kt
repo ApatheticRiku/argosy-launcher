@@ -59,6 +59,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.ModalInputEffect
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.ModalScaffold
@@ -596,6 +597,7 @@ private fun GpuDriverPromptModal(
     onInstallFromFile: () -> Unit,
     onSkip: () -> Unit
 ) {
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

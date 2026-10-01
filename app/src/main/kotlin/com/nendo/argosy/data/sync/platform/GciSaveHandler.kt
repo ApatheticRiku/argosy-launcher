@@ -235,6 +235,7 @@ class GciSaveHandler @Inject constructor(
                         val targetPath = GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, entryName)
                         val parentDir = File(targetPath).parent
                         if (parentDir != null) fal.mkdirs(parentDir)
+                        fal.prepareSaveAccess(targetPath)
 
                         if (fal.copyFile(tempGciFile.absolutePath, targetPath)) {
                             extractedPaths.add(targetPath)
@@ -297,6 +298,7 @@ class GciSaveHandler @Inject constructor(
         val targetPath = GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, gciFilename)
         val parentDir = File(targetPath).parent
         if (parentDir != null) fal.mkdirs(parentDir)
+        fal.prepareSaveAccess(targetPath)
 
         if (fal.copyFile(tempGciFile.absolutePath, targetPath)) {
             Logger.debug(TAG, "Extracted single GCI | $targetPath")

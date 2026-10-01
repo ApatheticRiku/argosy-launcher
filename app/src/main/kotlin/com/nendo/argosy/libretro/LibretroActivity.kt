@@ -2529,14 +2529,26 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun loadQuickHistorySlot(slotNumber: Int) {
-        inGameMessage = if (!canSerialize) {
-            getString(R.string.ingame_libretro_quicktimeline_load_unsupported_core)
-        } else if (saveStateManager.performSlotLoad(retroView, slotNumber)) {
-            getString(R.string.ingame_libretro_quicktimeline_load_success)
-        } else {
-            getString(R.string.ingame_libretro_quicktimeline_load_failure)
+        if (!canSerialize) {
+            inGameMessage = getString(R.string.ingame_libretro_quicktimeline_load_unsupported_core)
+            hideMenu()
+            return
         }
-        hideMenu()
+        lifecycleScope.launch {
+            val loaded = withContext(Dispatchers.IO) {
+                try {
+                    saveStateManager.performSlotLoad(retroView, slotNumber)
+                } catch (_: Exception) {
+                    false
+                }
+            }
+            inGameMessage = if (loaded) {
+                getString(R.string.ingame_libretro_quicktimeline_load_success)
+            } else {
+                getString(R.string.ingame_libretro_quicktimeline_load_failure)
+            }
+            hideMenu()
+        }
     }
 
     private fun handleMenuAction(action: InGameMenuAction) {

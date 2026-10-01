@@ -48,6 +48,7 @@ import com.nendo.argosy.core.emulator.EmulatorDownloadState
 import com.nendo.argosy.ui.screens.settings.EmulatorPickerInfo
 import com.nendo.argosy.ui.screens.settings.EmulatorUpdateInfo
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -136,6 +137,7 @@ fun EmulatorPickerPopup(
         focusedIndex = layout.focusToListIndex(focusIndex, layoutState)
     )
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

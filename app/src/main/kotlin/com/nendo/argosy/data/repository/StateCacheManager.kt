@@ -813,11 +813,15 @@ class StateCacheManager @Inject constructor(
      */
     fun restoreScreenshot(entity: StateCacheEntity, liveStateFile: File) {
         val target = File("${liveStateFile.absolutePath}.png")
-        val cached = getScreenshotFile(entity)
-        if (cached != null) {
-            cached.copyTo(target, overwrite = true)
-        } else {
-            target.delete()
+        try {
+            val cached = getScreenshotFile(entity)
+            if (cached != null) {
+                cached.copyTo(target, overwrite = true)
+            } else {
+                target.delete()
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not place the state screenshot at ${target.absolutePath}: ${e.message}")
         }
     }
 

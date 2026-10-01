@@ -12,7 +12,9 @@ import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.LibraryPointerRepair
 import com.nendo.argosy.domain.usecase.libretro.LibretroMigrationUseCase
 import com.nendo.argosy.domain.usecase.libretro.MigrationResult
+import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SafeCoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +27,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val WEEKLY_INTEGRITY_INTERVAL_MS = 7L * 24 * 60 * 60 * 1000
+private const val TAG = "StartupMaintenance"
 
 /**
  * The startup maintenance every launcher surface waits on before its first home render. One pass
@@ -41,7 +44,12 @@ class StartupMaintenanceCoordinator @Inject constructor(
     private val notificationManager: NotificationManager,
     private val libraryPointerRepair: LibraryPointerRepair
 ) {
-    private data class Step(@StringRes val label: Int, val run: suspend () -> Unit)
+    private class Step(
+        val key: String,
+        @StringRes val label: Int,
+        val isDue: suspend () -> Boolean = { true },
+        val run: suspend () -> Unit
+    )
 
     private val scope = SafeCoroutineScope(Dispatchers.IO, "StartupMaintenance")
 
@@ -49,10 +57,7 @@ class StartupMaintenanceCoordinator @Inject constructor(
     val status: StateFlow<Int?> = _status.asStateFlow()
 
     private val pass: Deferred<Unit> = scope.async(start = CoroutineStart.LAZY) {
-        for (step in buildSteps()) {
-            _status.value = step.label
-            step.run()
-        }
+        steps().forEach { runStep(it) }
         libraryPointerRepair.start()
     }
 
@@ -60,32 +65,45 @@ class StartupMaintenanceCoordinator @Inject constructor(
         pass.await()
     }
 
-    private suspend fun buildSteps(): List<Step> = buildList {
-        if (isWeeklyIntegrityCheckDue()) {
-            add(
-                Step(R.string.ui_startup_status_scanning_roms) {
-                    val validated = gameRepository.validateLocalFiles()
-                    val discovered = gameRepository.discoverLocalFiles()
-                    if (validated != null && discovered != null) {
-                        preferencesRepository.setLastIntegrityCheckTime(System.currentTimeMillis())
-                    }
-                }
-            )
+    private suspend fun runStep(step: Step) {
+        try {
+            if (!step.isDue()) return
+            _status.value = step.label
+            step.run()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.error(TAG, "Startup step ${step.key} failed, continuing", e)
         }
-        if (romMRepository.isConnected()) {
-            add(
-                Step(R.string.ui_startup_status_syncing_collections) {
-                    romMRepository.syncCollections()
-                }
-            )
-        }
-        add(
-            Step(R.string.ui_startup_status_checking_emulators) {
-                runBuiltinEmulatorMigration()
-                libretroMigrationUseCase.cleanupRemovedCores()
-            }
-        )
     }
+
+    private fun steps(): List<Step> = listOf(
+        Step(
+            key = "integrity",
+            label = R.string.ui_startup_status_scanning_roms,
+            isDue = { isWeeklyIntegrityCheckDue() }
+        ) {
+            val validated = gameRepository.validateLocalFiles()
+            val discovered = gameRepository.discoverLocalFiles()
+            if (validated != null && discovered != null) {
+                preferencesRepository.setLastIntegrityCheckTime(System.currentTimeMillis())
+            }
+        },
+        Step(
+            key = "collections",
+            label = R.string.ui_startup_status_syncing_collections,
+            isDue = { romMRepository.isConnected() }
+        ) {
+            romMRepository.syncCollections()
+        },
+        Step(
+            key = "emulators",
+            label = R.string.ui_startup_status_checking_emulators
+        ) {
+            runBuiltinEmulatorMigration()
+            libretroMigrationUseCase.cleanupRemovedCores()
+        }
+    )
 
     private suspend fun isWeeklyIntegrityCheckDue(): Boolean {
         val prefs = preferencesRepository.userPreferences.first()

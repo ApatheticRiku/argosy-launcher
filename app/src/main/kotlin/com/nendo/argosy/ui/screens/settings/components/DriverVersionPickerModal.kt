@@ -40,6 +40,7 @@ import com.nendo.argosy.ui.screens.settings.DriverDownloadState
 import com.nendo.argosy.ui.screens.settings.DriverGroupUi
 import com.nendo.argosy.ui.screens.settings.DriverReleaseUi
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -58,6 +59,7 @@ fun DriverVersionPickerModal(
     val listState = rememberLazyListState()
     FocusedScroll(listState = listState, focusedIndex = focusIndex)
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
     val terminal = download != null && (download.isComplete || download.error != null)

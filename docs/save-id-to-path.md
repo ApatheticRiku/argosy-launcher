@@ -133,7 +133,8 @@ Comparison is on a normalized form with `-` and `_` stripped, uppercased.
 PCSX2 (`FolderMemoryCard::LoadMemoryCardData`) reads the full 0x2000-byte
 superblock and indexes the card only when byte 0x16 is `0x6F`; anything shorter,
 including an empty file, is an unformatted card whose folders the game never
-sees. Every restore door (`extractDownload` and `placeArchive`) therefore ends
+sees. Every restore door (`extractDownload`, `placeArchive`, and the cache restore in
+`SaveCacheManager.restoreSave`, which unpacks prefix-platform archives itself) therefore ends
 with the card holding a formatted superblock: an existing formatted one is left
 byte-for-byte, and a missing, short or unformatted one is replaced with the
 standard 8 MB layout from `pcsx2/Reference/PS2-MemoryCardFileSystem.htm`

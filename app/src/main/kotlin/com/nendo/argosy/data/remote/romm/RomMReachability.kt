@@ -4,8 +4,11 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.SystemClock
+import com.nendo.argosy.data.remote.ssl.UserCertStore
+import com.nendo.argosy.data.remote.ssl.UserCertTrustManager.withUserCertTrust
 import com.nendo.argosy.util.Logger
 import dagger.hilt.android.qualifiers.ApplicationContext
+import okhttp3.Call
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -15,6 +18,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.net.ssl.X509TrustManager
 
 private const val TAG = "RomMReachability"
 private const val REACHABLE_FRESH_MS = 30_000L
@@ -24,20 +28,37 @@ private const val HEARTBEAT_PATH = "api/heartbeat"
 
 class RomMUnreachableException(message: String) : IOException(message)
 
+internal fun heartbeatGotAnyResponse(callFactory: Call.Factory, root: String): Boolean = try {
+    callFactory.newCall(Request.Builder().url(root + HEARTBEAT_PATH).build()).execute().use { true }
+} catch (_: Exception) {
+    false
+}
+
 @Singleton
 class RomMReachability @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val userCertStore: UserCertStore
 ) {
     private val lock = Any()
     private val lastReachableAt = mutableMapOf<String, Long>()
     private val lastUnreachableAt = mutableMapOf<String, Long>()
 
-    private val probeClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
+    private var cachedProbeClient: OkHttpClient? = null
+    private var probeClientTrust: X509TrustManager? = null
+
+    private fun probeClient(): OkHttpClient {
+        val trust = userCertStore.trustManager()
+        cachedProbeClient?.takeIf { probeClientTrust === trust }?.let { return it }
+        return OkHttpClient.Builder()
             .connectTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .readTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
             .callTimeout(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .withUserCertTrust(userCertStore)
             .build()
+            .also {
+                cachedProbeClient = it
+                probeClientTrust = trust
+            }
     }
 
     val interceptor: Interceptor = Interceptor { chain ->
@@ -74,7 +95,7 @@ class RomMReachability @Inject constructor(
             val now = SystemClock.elapsedRealtime()
             lastReachableAt[root]?.let { if (now - it < REACHABLE_FRESH_MS) return true }
             lastUnreachableAt[root]?.let { if (now - it < UNREACHABLE_FRESH_MS) return false }
-            val reachable = probe(root)
+            val reachable = heartbeatGotAnyResponse(probeClient(), root)
             if (reachable) {
                 lastReachableAt[root] = SystemClock.elapsedRealtime()
                 lastUnreachableAt.remove(root)
@@ -84,13 +105,6 @@ class RomMReachability @Inject constructor(
             }
             return reachable
         }
-    }
-
-    private fun probe(root: String): Boolean = try {
-        probeClient.newCall(Request.Builder().url(root + HEARTBEAT_PATH).build()).execute()
-            .use { it.isSuccessful }
-    } catch (_: Exception) {
-        false
     }
 
     private fun proceedRecording(chain: Interceptor.Chain, request: Request, root: String): Response =

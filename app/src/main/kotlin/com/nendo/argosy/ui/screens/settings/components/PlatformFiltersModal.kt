@@ -34,6 +34,7 @@ import com.nendo.argosy.ui.components.PlatformFilterHeader
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.platformFilterHints
 import com.nendo.argosy.ui.screens.settings.PlatformFilterItem
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.util.PlatformFilterLogic
@@ -61,6 +62,7 @@ fun PlatformFiltersModal(
     onDismiss: () -> Unit
 ) {
     val listState = rememberLazyListState()
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

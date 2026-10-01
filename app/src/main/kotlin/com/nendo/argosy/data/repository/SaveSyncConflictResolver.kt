@@ -68,6 +68,7 @@ class SaveSyncConflictResolver @Inject constructor(
                 HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL -> {
                     Logger.info(TAG, "[SaveSync] RESOLVE gameId=${resolution.gameId} | DOWNGRADE_TO_CASUAL | Applying server save")
 
+                    fal.prepareSaveAccess(resolution.targetPath)
                     val targetFile = File(resolution.targetPath)
                     if (resolution.isFolderBased) {
                         val game = gameDao.getById(resolution.gameId)

@@ -875,6 +875,7 @@ class SaveDownloader @Inject constructor(
                                 val resolvedPath = GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, gciFilename)
                                 val parentDir = File(resolvedPath).parent
                                 if (parentDir != null) fal.mkdirs(parentDir)
+                                fal.prepareSaveAccess(resolvedPath)
                                 if (fal.copyFile(tempGciFile.absolutePath, resolvedPath)) {
                                     Logger.debug(TAG, "downloadSaveById: GCI single file written | path=$resolvedPath")
                                 } else {
@@ -908,6 +909,7 @@ class SaveDownloader @Inject constructor(
                     targetPath
                 }
 
+                fal.prepareSaveAccess(resolvedTargetPath)
                 val targetFolder = File(resolvedTargetPath)
                 targetFolder.mkdirs()
 
@@ -922,6 +924,7 @@ class SaveDownloader @Inject constructor(
                     return@withContext false
                 }
             } else {
+                fal.prepareSaveAccess(targetPath)
                 val targetFile = File(targetPath)
                 targetFile.parentFile?.mkdirs()
 

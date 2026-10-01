@@ -132,6 +132,31 @@ class ImageCacheManagerTest {
     }
 
     @Test
+    fun `server art older than the cached file keeps the file`() {
+        assertEquals(CachedArtDecision.KEEP_AND_RENAME, cachedArtDecision(2_000L, 1_000L))
+    }
+
+    @Test
+    fun `server art as old as the cached file keeps the file`() {
+        assertEquals(CachedArtDecision.KEEP_AND_RENAME, cachedArtDecision(2_000L, 2_000L))
+    }
+
+    @Test
+    fun `server art newer than the cached file replaces it`() {
+        assertEquals(CachedArtDecision.REPLACE, cachedArtDecision(2_000L, 3_000L))
+    }
+
+    @Test
+    fun `a server without Last-Modified replaces the cached file once`() {
+        assertEquals(CachedArtDecision.REPLACE, cachedArtDecision(2_000L, 0L))
+    }
+
+    @Test
+    fun `no answering candidate leaves the cached file alone`() {
+        assertEquals(CachedArtDecision.SKIP, cachedArtDecision(2_000L, null))
+    }
+
+    @Test
     fun `getCustomCachePath returns null by default`() {
         assertNull(imageCacheManager.getCustomCachePath())
     }

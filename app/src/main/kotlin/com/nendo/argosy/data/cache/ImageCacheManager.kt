@@ -113,6 +113,15 @@ data class CacheValidationResult(
     val clearedPaths: Int
 )
 
+internal enum class CachedArtDecision { KEEP_AND_RENAME, REPLACE, SKIP }
+
+internal fun cachedArtDecision(cachedModifiedAt: Long, serverModifiedAt: Long?): CachedArtDecision = when {
+    serverModifiedAt == null -> CachedArtDecision.SKIP
+    serverModifiedAt <= 0L -> CachedArtDecision.REPLACE
+    serverModifiedAt > cachedModifiedAt -> CachedArtDecision.REPLACE
+    else -> CachedArtDecision.KEEP_AND_RENAME
+}
+
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @Singleton
 class ImageCacheManager @Inject constructor(
@@ -1375,20 +1384,32 @@ class ImageCacheManager @Inject constructor(
         store: suspend (String) -> Unit,
         replace: suspend () -> Unit
     ) {
-        val url = request.urls.first()
         if (!cached.exists()) {
             replace()
             return
         }
-        val serverModified = serverLastModified(url) ?: return
-        if (serverModified > cached.lastModified()) {
-            replace()
-            return
+        val answer = firstAnsweringCandidate(request.urls)
+        when (cachedArtDecision(cached.lastModified(), answer?.second)) {
+            CachedArtDecision.SKIP ->
+                Logger.info(TAG, "No art candidate answered for ${request.id}, keeping ${cached.name}")
+            CachedArtDecision.REPLACE -> replace()
+            CachedArtDecision.KEEP_AND_RENAME -> {
+                val url = answer?.first ?: return
+                val renamed = File(dir, "${prefix}_${url.md5Hash()}.${cached.extension}")
+                val kept = if (renamed.exists() || cached.renameTo(renamed)) renamed else cached
+                store(kept.absolutePath)
+                pruneReplacedArt(dir, prefix, kept, kept.absolutePath)
+            }
         }
-        val renamed = File(dir, "${prefix}_${url.md5Hash()}.${cached.extension}")
-        val kept = if (renamed.exists() || cached.renameTo(renamed)) renamed else cached
-        store(kept.absolutePath)
-        pruneReplacedArt(dir, prefix, kept, kept.absolutePath)
+    }
+
+    private fun firstAnsweringCandidate(urls: List<String>): Pair<String, Long>? {
+        for (url in urls) {
+            if (missingArt.isKnownMissing(url)) continue
+            val modified = serverLastModified(url) ?: continue
+            return url to modified
+        }
+        return null
     }
 
     private fun serverLastModified(url: String): Long? = try {
@@ -1397,7 +1418,15 @@ class ImageCacheManager @Inject constructor(
             connection.requestMethod = "HEAD"
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
-            if (connection.responseCode in 200..299) connection.lastModified else null
+            when (val status = connection.responseCode) {
+                in 200..299 -> connection.lastModified
+                java.net.HttpURLConnection.HTTP_NOT_FOUND, java.net.HttpURLConnection.HTTP_GONE -> {
+                    missingArt.markMissing(url)
+                    Logger.warn(TAG, "Image not on the server ($status), skipping it for a while: $url")
+                    null
+                }
+                else -> null
+            }
         } finally {
             connection.disconnect()
         }

@@ -248,8 +248,12 @@ open class FolderSaveHandler(
     protected open fun folderMatches(folderName: String, saveId: String): Boolean =
         folderName.equals(saveId, ignoreCase = true)
 
-    /** Hook after the restore target dir is created; PS2 marks a fresh folder card as formatted. */
-    protected open fun ensureContainerPrepared(targetFolder: File) {}
+    /**
+     * Makes the container around a restored save usable by its emulator. PS2 writes a formatted
+     * superblock into a folder card that lacks one. Every restore door calls it after placing the
+     * save, including restores that unpack the archive themselves.
+     */
+    open fun ensureContainerPrepared(targetFolder: File) {}
 
     /**
      * Newest mtime anywhere under [folderPath]. Layouts that discover an intermediate level pick

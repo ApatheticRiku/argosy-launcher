@@ -45,6 +45,7 @@ import com.nendo.argosy.ui.components.dragReorderContainer
 import com.nendo.argosy.ui.components.dragReorderItem
 import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.components.rememberDragReorderState
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
@@ -201,6 +202,7 @@ internal fun RegionPopupFrame(
     onDismiss: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 

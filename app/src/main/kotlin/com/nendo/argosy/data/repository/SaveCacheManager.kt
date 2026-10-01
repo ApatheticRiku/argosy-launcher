@@ -574,7 +574,9 @@ class SaveCacheManager @Inject constructor(
                 val folderHandler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
                 Log.d(TAG, "[RESTORE] cache=$cacheId zip=${cacheFile.name} size=${cacheFile.length()} target=$targetPath transformed=${targetFile.absolutePath} exists=${targetFile.exists()} dir=${targetFile.isDirectory} preserveRoots=$preserveRoots platform=${game?.platformSlug}")
                 val ok = when {
-                    preserveRoots -> saveArchiver.unzipToFolder(cacheFile, targetFile)
+                    preserveRoots -> saveArchiver.unzipToFolder(cacheFile, targetFile).also { placed ->
+                        if (placed) folderHandler?.ensureContainerPrepared(targetFile)
+                    }
                     folderHandler != null -> folderHandler.placeArchive(cacheFile, targetFile, game?.saveId ?: game?.titleId)
                     else -> saveArchiver.unzipSingleFolder(cacheFile, targetFile)
                 }

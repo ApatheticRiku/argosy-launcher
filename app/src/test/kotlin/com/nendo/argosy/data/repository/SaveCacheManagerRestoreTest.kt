@@ -97,6 +97,34 @@ class SaveCacheManagerRestoreTest {
         cacheFile.delete()
     }
 
+    @Test
+    fun `a ps2 cache restore prepares the folder card after unpacking`() = runTest {
+        val cacheFile = File(cacheBaseDir, "card.zip").apply { writeBytes(byteArrayOf(0x50, 0x4B, 0x03, 0x04)) }
+        coEvery { saveCacheDao.getById(3L) } returns entity(cachePath = "card.zip").copy(emulatorId = "nethersx2")
+        coEvery { gameDao.getById(any()) } returns com.nendo.argosy.data.local.entity.GameEntity(
+            id = 100L,
+            title = "Game",
+            sortTitle = "game",
+            platformId = 1L,
+            platformSlug = "ps2",
+            rommId = 7L,
+            igdbId = null,
+            localPath = null,
+            source = com.nendo.argosy.data.model.GameSource.ROMM_SYNCED
+        )
+        val folderHandler = mockk<com.nendo.argosy.data.sync.platform.FolderSaveHandler>(relaxed = true)
+        every { saveHandlerRegistry.getFolderHandler("ps2") } returns folderHandler
+        every { fal.mkdirs(any()) } returns true
+        every { fal.getTransformedFile(any()) } answers { File(firstArg<String>()) }
+        every { saveArchiver.unzipToFolder(any(), any()) } returns true
+        val target = File(tempDir, "memcards/Shared.ps2")
+
+        manager.restoreSave(cacheId = 3L, targetPath = target.absolutePath)
+
+        io.mockk.verify(exactly = 1) { folderHandler.ensureContainerPrepared(target) }
+        cacheFile.delete()
+    }
+
     private fun entity(cachePath: String): SaveCacheEntity = SaveCacheEntity(
         id = 0,
         gameId = 100L,

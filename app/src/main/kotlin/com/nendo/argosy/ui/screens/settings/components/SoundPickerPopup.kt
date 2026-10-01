@@ -35,6 +35,7 @@ import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
+import com.nendo.argosy.ui.input.ModalPresenceEffect
 import com.nendo.argosy.ui.input.SoundPreset
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.theme.Dimens
@@ -58,6 +59,7 @@ fun SoundPickerPopup(
         focusedIndex = focusIndex
     )
 
+    ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
     val overlayColor = if (isDarkTheme) Color.Black.copy(alpha = 0.7f) else Color.White.copy(alpha = 0.5f)
 
