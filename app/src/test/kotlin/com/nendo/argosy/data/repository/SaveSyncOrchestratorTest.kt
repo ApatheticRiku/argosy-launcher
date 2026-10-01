@@ -3,6 +3,7 @@ package com.nendo.argosy.data.repository
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
+import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
@@ -14,15 +15,25 @@ import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMSave
+import com.nendo.argosy.data.sync.SaveClaim
+import com.nendo.argosy.data.sync.SaveLookup
+import com.nendo.argosy.data.sync.SaveOwnershipTracker
 import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.SyncQueueManager
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import java.io.File
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -38,6 +49,9 @@ class SaveSyncOrchestratorTest {
     private lateinit var syncQueueManager: SyncQueueManager
     private lateinit var mockApiClient: SaveSyncApiClient
     private lateinit var apiClient: dagger.Lazy<SaveSyncApiClient>
+    private lateinit var saveCacheDao: SaveCacheDao
+    private lateinit var saveCacheManager: SaveCacheManager
+    private lateinit var saveOwnershipTracker: SaveOwnershipTracker
     private lateinit var orchestrator: SaveSyncOrchestrator
 
     private val testGame = GameEntity(
@@ -64,6 +78,9 @@ class SaveSyncOrchestratorTest {
         syncQueueManager = SyncQueueManager()
         mockApiClient = mockk(relaxed = true)
         apiClient = dagger.Lazy { mockApiClient }
+        saveCacheDao = mockk(relaxed = true)
+        saveCacheManager = mockk(relaxed = true)
+        saveOwnershipTracker = mockk(relaxed = true)
 
         val prefs = UserPreferences(saveSyncEnabled = true)
         every { userPreferencesRepository.preferences } returns MutableStateFlow(prefs)
@@ -72,8 +89,8 @@ class SaveSyncOrchestratorTest {
 
         orchestrator = SaveSyncOrchestrator(
             saveSyncDao = saveSyncDao,
-            saveCacheDao = mockk(relaxed = true),
-            saveCacheManager = dagger.Lazy { mockk(relaxed = true) },
+            saveCacheDao = saveCacheDao,
+            saveCacheManager = dagger.Lazy { saveCacheManager },
             activeSaveRepository = mockk(relaxed = true),
             pendingSyncQueueDao = pendingSyncQueueDao,
             gameDao = gameDao,
@@ -86,9 +103,41 @@ class SaveSyncOrchestratorTest {
             payloadCodec = com.nendo.argosy.data.sync.SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             saveHandlerRegistry = mockk(relaxed = true),
             saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
-            saveOwnershipTracker = mockk(relaxed = true),
+            saveOwnershipTracker = saveOwnershipTracker,
             accountSwitchMarkerStore = mockk(relaxed = true)
         )
+    }
+
+    @Test
+    fun `refreshCacheFromSystem finishes the cache write when its caller is cancelled`() = runTest {
+        val saveFile = File.createTempFile("refresh", ".srm").apply {
+            writeText("save")
+            deleteOnExit()
+        }
+        coEvery {
+            savePathResolver.discoverSavePathChecked(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns SaveLookup.Found(saveFile.path)
+        coEvery { saveOwnershipTracker.claim(any(), any()) } returns SaveClaim.Unowned
+        coEvery { saveCacheDao.getMostRecent(any(), any()) } returns null
+        coEvery { saveCacheDao.getMostRecentInChannel(any(), any(), any()) } returns null
+        val writeStarted = CompletableDeferred<Unit>()
+        var writeFinished = false
+        coEvery {
+            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            writeStarted.complete(Unit)
+            delay(50)
+            writeFinished = true
+            SaveCacheManager.CacheResult.Created(0L)
+        }
+
+        val refresh = launch(Dispatchers.IO) {
+            orchestrator.refreshCacheFromSystem(1L, "retroarch", null, null)
+        }
+        writeStarted.await()
+        refresh.cancelAndJoin()
+
+        assertTrue(writeFinished)
     }
 
     // --- syncSavesForNewDownload ---

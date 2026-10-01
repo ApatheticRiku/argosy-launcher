@@ -28,6 +28,7 @@ import com.nendo.argosy.data.sync.SyncQueueManager
 import com.nendo.argosy.data.sync.SyncStatus
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -321,7 +322,7 @@ class SaveSyncOrchestrator @Inject constructor(
         emulatorId: String,
         savePath: String,
         channelName: String?
-    ): Boolean {
+    ): Boolean = withContext(NonCancellable + Dispatchers.IO) {
         val result = saveCacheManager.get().cacheCurrentSave(
             gameId = gameId,
             emulatorId = emulatorId,
@@ -329,7 +330,7 @@ class SaveSyncOrchestrator @Inject constructor(
             channelName = channelName,
             needsRemoteSync = true
         )
-        return result is SaveCacheManager.CacheResult.Created
+        result is SaveCacheManager.CacheResult.Created
     }
 
     suspend fun downloadPendingServerSaves(): Int = withContext(Dispatchers.IO) {
