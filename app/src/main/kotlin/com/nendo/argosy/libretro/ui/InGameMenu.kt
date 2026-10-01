@@ -55,6 +55,7 @@ import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.theme.generated.DimensionTokens
 import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.verticalEdgeFade
 import androidx.annotation.StringRes
 
 sealed class InGameMenuAction {
@@ -488,7 +489,8 @@ private fun InGameMenuList(
             state = menuGridState,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f, fill = false),
+                .weight(1f, fill = false)
+                .verticalEdgeFade(menuGridState, fadeHeight = Dimens.spacingLg),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
