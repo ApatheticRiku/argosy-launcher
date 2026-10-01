@@ -344,6 +344,7 @@ class ImageCacheManager @Inject constructor(
             if (cachedFile.exists()) {
                 if (isValidImageFile(cachedFile)) {
                     updateGameBackgroundForRequest(request, cachedFile.absolutePath)
+                    pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request) { it.backgroundPath })
                     return
                 }
                 cachedFile.delete()
@@ -369,6 +370,7 @@ class ImageCacheManager @Inject constructor(
 
             Log.d(TAG, "Cached background for $idLabel: ${cachedFile.length() / 1024}KB")
             updateGameBackgroundForRequest(request, cachedFile.absolutePath)
+            pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request) { it.backgroundPath })
             return
         }
 
@@ -1228,6 +1230,7 @@ class ImageCacheManager @Inject constructor(
             if (existingFile != null) {
                 if (isValidImageFile(existingFile)) {
                     applyCachedCover(request, existingFile.absolutePath)
+                    pruneReplacedArt(coverDir, prefix, existingFile, storedArtPath(request) { it.coverPath })
                     return
                 }
                 existingFile.delete()
@@ -1248,6 +1251,7 @@ class ImageCacheManager @Inject constructor(
 
             Log.d(TAG, "Cached cover for $idLabel: ${cachedFile.length() / 1024}KB")
             applyCachedCover(request, cachedFile.absolutePath)
+            pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request) { it.coverPath })
             return
         }
 
@@ -1260,6 +1264,7 @@ class ImageCacheManager @Inject constructor(
             if (cachedFile != null) {
                 Log.d(TAG, "Cached steam fallback cover for $idLabel: ${cachedFile.length() / 1024}KB")
                 applyCachedCover(request, cachedFile.absolutePath)
+                pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request) { it.coverPath })
                 return
             }
         }
@@ -1523,6 +1528,28 @@ class ImageCacheManager @Inject constructor(
             return null
         }
         return target
+    }
+
+    private suspend fun storedArtPath(
+        request: ImageCacheRequest,
+        path: (com.nendo.argosy.data.local.entity.GameEntity) -> String?
+    ): String? {
+        val game = when {
+            request.gameId != null -> gameDao.getById(request.gameId)
+            request.isSteam -> gameDao.getBySteamAppId(request.id)
+            else -> gameDao.getByRommId(request.id)
+        }
+        return game?.let(path)
+    }
+
+    private fun pruneReplacedArt(dir: File, prefix: String, kept: File, storedPath: String?) {
+        val keep = setOfNotNull(kept.absolutePath, storedPath)
+        dir.listFiles { file -> file.name.startsWith("${prefix}_") && file.absolutePath !in keep }
+            ?.forEach { stale ->
+                if (!stale.delete() && stale.exists()) {
+                    Logger.warn(TAG, "Could not delete replaced cached art: ${stale.absolutePath}")
+                }
+            }
     }
 
     private fun deleteOverrideFile(path: String) {
