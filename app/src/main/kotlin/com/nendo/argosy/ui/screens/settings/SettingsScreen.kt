@@ -779,10 +779,12 @@ fun SettingsScreen(
             onDismiss = { viewModel.closeChangelog() }
         )
 
-        uiState.systemizeResult?.let { result ->
-            com.nendo.argosy.ui.screens.settings.dialogs.SystemizeResultDialog(
-                result = result,
-                onDismiss = { viewModel.dismissSystemizeDialog() }
+        uiState.rootScriptDialog?.let { dialog ->
+            com.nendo.argosy.ui.screens.settings.dialogs.RootScriptDialog(
+                state = dialog,
+                onMoveFocus = viewModel::moveRootScriptFocus,
+                onReboot = viewModel::rebootAfterRootScript,
+                onDismiss = viewModel::dismissRootScriptDialog
             )
         }
         if (uiState.bios.showDistributeResultModal) {

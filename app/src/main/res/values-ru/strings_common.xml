@@ -639,6 +639,7 @@
     <string name="ui_drawer_tab_navigation">Меню</string>
     <string name="ui_drawer_tab_friends">Друзья</string>
     <string name="ui_drawer_footer_favorite">Избранное</string>
+    <string name="ui_drawer_footer_unfavorite">Убрать из избранного</string>
     <string name="ui_drawer_footer_options">Параметры</string>
     <string name="ui_drawer_footer_join">Присоединиться</string>
     <string name="ui_drawer_friends_empty">Пока нет друзей</string>

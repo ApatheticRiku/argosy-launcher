@@ -340,6 +340,28 @@
     <string name="settings_navigation_section_feedback">Feedback</string>
     <!-- Heading over the rows about moving through lists. Noun, plural. -->
     <string name="settings_navigation_section_menus">Menus</string>
+    <!-- Heading over the row that configures the floating bar of page icons at the bottom of the screen. Noun phrase. -->
+    <string name="settings_navigation_section_nav_bar">Nav Bar</string>
+    <!-- Row title: opens a list of app pages (Home, Library, Settings and so on) to show in the floating nav bar. Noun phrase. -->
+    <string name="settings_navigation_nav_bar_pages_title">Nav Bar Pages</string>
+    <!-- Second line of that row. "Shoulder buttons" are the LB and RB buttons on the top edge of the controller. -->
+    <string name="settings_navigation_nav_bar_pages_subtitle">Choose and order the pages the nav bar and shoulder buttons cycle through</string>
+    <!-- Value of that row: pages turned on, then total pages. %1$d and %2$d are whole numbers, shown as "7 / 11". -->
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <!-- Title of the dialog listing every page with an on/off state and an order. Noun phrase. -->
+    <string name="settings_nav_ring_modal_title">Nav Bar Pages</string>
+    <!-- Second line of that dialog. "Pages" are app screens. -->
+    <string name="settings_nav_ring_modal_subtitle">Turn pages on or off and set their order</string>
+    <!-- Marker on pages that cannot be turned off. Adjective phrase. -->
+    <string name="settings_nav_ring_pinned">Always on</string>
+    <!-- Footer hint beside a button: starts moving the selected page up or down the order. Verb. -->
+    <string name="settings_nav_ring_hint_reorder">Reorder</string>
+    <!-- Footer hint beside the up/down arrows while a page is picked up. Verb. -->
+    <string name="settings_nav_ring_hint_move">Move</string>
+    <!-- Footer hint beside a button: puts the picked-up page at its new position. Verb. -->
+    <string name="settings_nav_ring_hint_drop">Place</string>
+    <!-- Footer hint beside a button: puts the picked-up page back where it was. Verb. -->
+    <string name="settings_nav_ring_hint_cancel">Cancel</string>
 
     <!-- Row title. Noun phrase: which set of button letters the controller is printed with. -->
     <string name="settings_navigation_controller_layout_title">Controller Layout</string>
@@ -1116,7 +1138,13 @@
     <string name="settings_about_systemize_title">Stop Crashes on Heavy Emulators</string>
     <!-- Second line of that row. "Rooted" describes a device whose owner has full system access.
          "RAM" is the device's working memory. -->
-    <string name="settings_about_systemize_subtitle">Argosy can be force-closed when a demanding emulator uses most of the RAM. On a rooted device, this writes a script that makes Argosy a system app so it is no longer killed.</string>
+    <string name="settings_about_systemize_subtitle">Argosy can be force-closed when a demanding emulator uses most of the RAM. This makes Argosy a system app so it is no longer killed. Needs root.</string>
+    <!-- Row that gives Argosy access to the save folders emulators keep under Android/data. Verb
+         phrase naming what it is for. -->
+    <string name="settings_about_android_data_title">Open Emulator Save Folders</string>
+    <!-- Second line of that row. "Android/data" is a literal folder path, never translated.
+         "SELinux" is the name of an Android security system, never translated. -->
+    <string name="settings_about_android_data_subtitle">Lets Argosy read the saves emulators keep in Android/data. Needs root and SELinux set to permissive. Run it again after installing a new emulator.</string>
     <!-- Row that closes and reopens the app. Verb. -->
     <string name="settings_about_restart_title">Restart Argosy</string>
     <!-- Second line of that row. -->
@@ -2915,6 +2943,12 @@
     <!-- Entry for the active group in the list beside the pane. Noun, plural. -->
     <string name="settings_emulators_rail_platforms">Platforms</string>
 
+    <!-- Toggle row. "Session" is one play session of a game; the emulator is the external emulator app, not Argosy's built-in one. -->
+    <string name="settings_emulators_close_on_session_end_title">Close Emulator on Session End</string>
+    <!-- Second line of that row while it is on. "Synced" is save sync to the server. -->
+    <string name="settings_emulators_close_on_session_end_subtitle_on">The emulator app is closed once its save has been read and synced</string>
+    <!-- Second line of that row while it is off. -->
+    <string name="settings_emulators_close_on_session_end_subtitle_off">The emulator app stays open in the background</string>
     <!-- Row that asks whether newer emulator apps exist. Verb phrase. -->
     <string name="settings_emulators_check_updates_title">Check for Updates</string>
     <!-- Second line of that row before it runs. -->
@@ -4326,7 +4360,7 @@
     <!-- Button label. Dismiss the dialog. -->
     <string name="settings_licenses_dialog_close_button">Close</string>
 
-    <!-- ===== Systemize result dialog (Settings > dialogs > SystemizeResultDialog) =====
+    <!-- ===== Systemize result dialog (Settings > dialogs > RootScriptDialog) =====
          Shown after writing a root script that keeps Argosy from being force-closed
          ("systemizing" the app). "Magisk" is the rooting framework's name, never translated. -->
 
@@ -4348,6 +4382,41 @@
     <string name="settings_systemize_dialog_error_title">Couldn\'t Save Script</string>
     <!-- Suggested fix shown under the error detail. -->
     <string name="settings_systemize_dialog_error_hint">Storage access may be missing. Grant all-files access in setup and try again.</string>
+
+    <!-- ===== Root script runs (Settings > dialogs > RootScriptDialog) =====
+         On devices with a built-in root script runner, Argosy runs the script itself and shows
+         what it printed. -->
+
+    <!-- Fallback error detail when the script file could not be written. -->
+    <string name="settings_root_script_write_failed">Could not write the script</string>
+    <!-- Fallback error detail when the device's root runner did not run the script. -->
+    <string name="settings_root_script_run_failed">The device did not run the script</string>
+    <!-- Shown while the script runs. -->
+    <string name="settings_root_script_dialog_running">Running as root...</string>
+    <!-- Title when the script finished everything it set out to do. -->
+    <string name="settings_root_script_dialog_ok_title">Done</string>
+    <!-- Title when the script finished some of its work; the output below says what is missing. -->
+    <string name="settings_root_script_dialog_partial_title">Partly Done</string>
+    <!-- Title when the script stopped before finishing; the output below says why. -->
+    <string name="settings_root_script_dialog_failed_title">Didn\'t Finish</string>
+    <!-- Heading over the lines the script printed. Those lines are script output in English and
+         are not translated. -->
+    <string name="settings_root_script_dialog_output_heading">Script output</string>
+    <!-- Note under a successful run that still needs a restart of the device. -->
+    <string name="settings_root_script_dialog_reboot_hint">Reboot to finish, then set Argosy as your default launcher.</string>
+    <!-- Button label. Restarts the device now. -->
+    <string name="settings_root_script_dialog_reboot_button">Reboot Now</string>
+    <!-- Manual setup steps when the script has to be run by hand. Menu paths are the device
+         vendor's own wording; keep the ">" separators. -->
+    <string name="settings_root_script_step_open_retroid">Open Settings > Advanced > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayn">Open Settings > Advanced Settings > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayaneo">Open Settings > Optimization Assistant > Root Script</string>
+    <string name="settings_root_script_step_open_generic">Open your device\'s \"run script as root\" setting</string>
+    <!-- %1$s is the script file name, a literal that is never translated. -->
+    <string name="settings_root_script_step_select">Select \"%1$s\" from internal storage</string>
+    <string name="settings_root_script_step_run_reboot">Run it, then reboot when it finishes</string>
+    <string name="settings_root_script_step_run">Run it</string>
+    <string name="settings_root_script_step_default_launcher">Set Argosy as your default launcher</string>
 
     <!-- ===== LibretroSettingItem / LibretroSettingsAccessor ===== -->
 

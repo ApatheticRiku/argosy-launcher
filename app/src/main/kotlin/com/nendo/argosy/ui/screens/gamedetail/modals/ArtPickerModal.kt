@@ -49,6 +49,7 @@ import com.nendo.argosy.ui.screens.gamedetail.ArtCandidate
 import com.nendo.argosy.ui.screens.gamedetail.ArtPickerConfig
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 import com.nendo.argosy.ui.screens.gamedetail.pickerConfig
+import com.nendo.argosy.ui.screens.gamedetail.stepped
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
@@ -100,6 +101,7 @@ fun ArtPickerModal(
             when (button) {
                 InputButton.X -> onSearch()
                 InputButton.Y -> onChooseFile()
+                InputButton.LB_RB -> onSelectSlot(slot.stepped(1))
                 else -> {}
             }
         }
@@ -115,6 +117,7 @@ fun ArtPickerModal(
                 onQueryChange = onQueryChange,
                 placeholder = stringResource(R.string.gamedetail_art_picker_search_placeholder),
                 autoFocus = false,
+                onSearch = onSearch,
                 modifier = Modifier.padding(bottom = Dimens.spacingSm)
             )
         }

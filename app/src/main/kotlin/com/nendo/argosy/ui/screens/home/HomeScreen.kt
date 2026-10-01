@@ -1268,7 +1268,11 @@ fun HomeScreen(
             }.orEmpty()
         }
         val canSwapRoles = com.nendo.argosy.ui.dualscreen.selectSwapModeState() != null
-        if (hasPresentationScreen && uiState.homeApps.isNotEmpty()) {
+        val presentationShowsHints by (
+            dsmForFocus?.presentationShowsHints
+                ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+            ).collectAsState()
+        if (presentationShowsHints && uiState.homeApps.isNotEmpty()) {
             com.nendo.argosy.ui.components.CompanionAppBar(
                 apps = uiState.homeApps,
                 onAppClick = { viewModel.launchTileApp(it) },

@@ -340,6 +340,11 @@ internal fun routeForceCheckEmulatorUpdates(vm: SettingsViewModel) {
     vm.emulatorDelegate.forceCheckEmulatorUpdates()
 }
 
+internal fun routeSetCloseEmulatorOnSessionEnd(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(emulators = it.emulators.copy(closeEmulatorOnSessionEnd = enabled)) }
+    vm.viewModelScope.launch { vm.preferencesRepository.setCloseEmulatorOnSessionEnd(enabled) }
+}
+
 internal fun routeSetPlatformEmulator(vm: SettingsViewModel, platformId: Long, platformSlug: String, emulator: InstalledEmulator?) {
     vm.viewModelScope.launch {
         vm.configureEmulatorUseCase.setForPlatform(platformId, platformSlug, emulator)

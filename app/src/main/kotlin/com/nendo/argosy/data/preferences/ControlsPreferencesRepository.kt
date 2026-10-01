@@ -35,7 +35,8 @@ data class ControlsPreferences(
     val menuWrapMode: MenuWrapMode = MenuWrapMode.HARD_STOP,
     val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
     val openNavigationKey: Int = DEFAULT_OPEN_NAVIGATION_KEY,
-    val openQuickPanelKey: Int = DEFAULT_OPEN_QUICK_PANEL_KEY
+    val openQuickPanelKey: Int = DEFAULT_OPEN_QUICK_PANEL_KEY,
+    val navRingRoutes: List<String>? = null
 ) {
     companion object {
         const val DEFAULT_OPEN_NAVIGATION_KEY = KeyEvent.KEYCODE_BUTTON_C
@@ -68,6 +69,7 @@ class ControlsPreferencesRepository @Inject constructor(
         val SELECT_SWAP_MODE = stringPreferencesKey("select_swap_mode")
         val OPEN_NAVIGATION_KEY = intPreferencesKey("open_navigation_key")
         val OPEN_QUICK_PANEL_KEY = intPreferencesKey("open_quick_panel_key")
+        val NAV_RING_ROUTES = stringPreferencesKey("nav_ring_routes")
     }
 
     val preferences: Flow<ControlsPreferences> = dataStore.data.map { prefs ->
@@ -92,7 +94,11 @@ class ControlsPreferencesRepository @Inject constructor(
             openNavigationKey = prefs[Keys.OPEN_NAVIGATION_KEY]
                 ?: ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
             openQuickPanelKey = prefs[Keys.OPEN_QUICK_PANEL_KEY]
-                ?: ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY
+                ?: ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
+            navRingRoutes = prefs[Keys.NAV_RING_ROUTES]
+                ?.split(',')
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
         )
     }.flowOn(Dispatchers.Default)
 
@@ -216,6 +222,16 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setOpenQuickPanelKey(keyCode: Int) {
         dataStore.edit { it[Keys.OPEN_QUICK_PANEL_KEY] = keyCode }
+    }
+
+    suspend fun setNavRingRoutes(routes: List<String>?) {
+        dataStore.edit { prefs ->
+            if (routes == null) {
+                prefs.remove(Keys.NAV_RING_ROUTES)
+            } else {
+                prefs[Keys.NAV_RING_ROUTES] = routes.joinToString(",")
+            }
+        }
     }
 
     private fun parseSoundConfigs(raw: String?): Map<SoundType, SoundConfig> {

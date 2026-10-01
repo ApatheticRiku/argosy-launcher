@@ -119,6 +119,17 @@
     <string name="settings_navigation_section_controller">कंट्रोलर</string>
     <string name="settings_navigation_section_feedback">फ़ीडबैक</string>
     <string name="settings_navigation_section_menus">मेनू</string>
+    <string name="settings_navigation_section_nav_bar">नेविगेशन बार</string>
+    <string name="settings_navigation_nav_bar_pages_title">नेविगेशन बार पेज</string>
+    <string name="settings_navigation_nav_bar_pages_subtitle">चुनें और क्रम तय करें कि नेविगेशन बार और शोल्डर बटन किन पेजों के बीच बदलें</string>
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <string name="settings_nav_ring_modal_title">नेविगेशन बार पेज</string>
+    <string name="settings_nav_ring_modal_subtitle">पेज चालू या बंद करें और उनका क्रम तय करें</string>
+    <string name="settings_nav_ring_pinned">हमेशा चालू</string>
+    <string name="settings_nav_ring_hint_reorder">क्रम बदलें</string>
+    <string name="settings_nav_ring_hint_move">खिसकाएँ</string>
+    <string name="settings_nav_ring_hint_drop">रखें</string>
+    <string name="settings_nav_ring_hint_cancel">रद्द करें</string>
     <string name="settings_shell_header_installers">प्रबंधित इंस्टॉलर</string>
     <string name="settings_installers_add_title">रिपॉज़िटरी जोड़ें</string>
     <string name="settings_installers_add_subtitle">GitHub रिपॉज़िटरी लिंक पेस्ट करें</string>
@@ -571,7 +582,9 @@
     <string name="settings_about_import_subtitle">बैकअप फ़ाइल से सेटिंग्स लागू करें</string>
 
     <string name="settings_about_systemize_title">भारी एमुलेटर पर क्रैश रोकें</string>
-    <string name="settings_about_systemize_subtitle">जब कोई भारी एमुलेटर ज़्यादातर RAM का उपयोग करता है तो Argosy फ़ोर्स-क्लोज़ हो सकता है। रूटेड डिवाइस पर, यह एक स्क्रिप्ट लिखता है जो Argosy को सिस्टम ऐप बना देता है ताकि इसे अब बंद न किया जाए।</string>
+    <string name="settings_about_systemize_subtitle">जब कोई भारी एमुलेटर ज़्यादातर RAM का उपयोग करता है तो Argosy फ़ोर्स-क्लोज़ हो सकता है। यह Argosy को सिस्टम ऐप बना देता है ताकि इसे अब बंद न किया जाए। रूट चाहिए।</string>
+    <string name="settings_about_android_data_title">एमुलेटर सेव फ़ोल्डर खोलें</string>
+    <string name="settings_about_android_data_subtitle">Argosy को वे सेव पढ़ने देता है जो एमुलेटर Android/data में रखते हैं। रूट और permissive पर सेट SELinux चाहिए। नया एमुलेटर इंस्टॉल करने के बाद इसे फिर से चलाएँ।</string>
     <string name="settings_about_restart_title">Argosy रीस्टार्ट करें</string>
     <string name="settings_about_restart_subtitle">लॉन्चर बंद करके फिर से खोलें</string>
 
@@ -1532,6 +1545,9 @@
     <string name="settings_emulators_section_disabled">बंद किए गए प्लेटफ़ॉर्म</string>
     <string name="settings_emulators_rail_platforms">प्लेटफ़ॉर्म</string>
 
+    <string name="settings_emulators_close_on_session_end_title">सत्र समाप्त होने पर एमुलेटर बंद करें</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">सेव पढ़े और सिंक होने के बाद एमुलेटर ऐप बंद कर दिया जाता है</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_off">एमुलेटर ऐप बैकग्राउंड में खुला रहता है</string>
     <string name="settings_emulators_check_updates_title">अपडेट जाँचें</string>
     <string name="settings_emulators_check_updates_subtitle">एमुलेटर अपडेट जाँचें</string>
     <plurals name="settings_emulators_check_updates_available">
@@ -2255,7 +2271,7 @@
     <string name="settings_licenses_dialog_cores_body">कोर libretro buildbot से डाउनलोड होते हैं। कोर लाइसेंस के लिए docs.libretro.com/development/licenses देखें।</string>
     <string name="settings_licenses_dialog_close_button">बंद करें</string>
 
-    <!-- ===== Systemize result dialog (Settings > dialogs > SystemizeResultDialog) ===== -->
+    <!-- ===== Systemize result dialog (Settings > dialogs > RootScriptDialog) ===== -->
 
     <string name="settings_systemize_dialog_close_button">बंद करें</string>
     <string name="settings_systemize_dialog_success_title">स्क्रिप्ट सेव हुई</string>
@@ -2265,6 +2281,26 @@
     <string name="settings_systemize_dialog_success_footnote">रूटेड डिवाइस चाहिए। यह बदलाव पूर्ववत किया जा सकता है: \"Argosy Systemize\" नाम का Magisk मॉड्यूल हटाएँ और रीबूट करें। अगर आपके मेनू में शब्द अलग हैं, तो भी स्क्रिप्ट फ़ाइल सही है - बस अपने run-as-root विकल्प को उसी पर सेट करें।</string>
     <string name="settings_systemize_dialog_error_title">स्क्रिप्ट सेव नहीं हो सकी</string>
     <string name="settings_systemize_dialog_error_hint">स्टोरेज एक्सेस गुम हो सकता है। सेटअप में सभी फ़ाइलों तक एक्सेस दें और फिर से कोशिश करें।</string>
+
+    <!-- ===== Root script runs (Settings > dialogs > RootScriptDialog) ===== -->
+
+    <string name="settings_root_script_write_failed">स्क्रिप्ट नहीं लिखी जा सकी</string>
+    <string name="settings_root_script_run_failed">डिवाइस ने स्क्रिप्ट नहीं चलाई</string>
+    <string name="settings_root_script_dialog_running">रूट के रूप में चल रहा है...</string>
+    <string name="settings_root_script_dialog_ok_title">हो गया</string>
+    <string name="settings_root_script_dialog_partial_title">आंशिक रूप से पूरा</string>
+    <string name="settings_root_script_dialog_failed_title">पूरा नहीं हुआ</string>
+    <string name="settings_root_script_dialog_output_heading">स्क्रिप्ट आउटपुट</string>
+    <string name="settings_root_script_dialog_reboot_hint">पूरा करने के लिए रीबूट करें, फिर Argosy को अपना डिफ़ॉल्ट लॉन्चर सेट करें।</string>
+    <string name="settings_root_script_dialog_reboot_button">अभी रीबूट करें</string>
+    <string name="settings_root_script_step_open_retroid">Settings > Advanced > Run script as Root खोलें</string>
+    <string name="settings_root_script_step_open_ayn">Settings > Advanced Settings > Run script as Root खोलें</string>
+    <string name="settings_root_script_step_open_ayaneo">Settings > Optimization Assistant > Root Script खोलें</string>
+    <string name="settings_root_script_step_open_generic">अपने डिवाइस की \"run script as root\" सेटिंग खोलें</string>
+    <string name="settings_root_script_step_select">इंटरनल स्टोरेज से \"%1$s\" चुनें</string>
+    <string name="settings_root_script_step_run_reboot">इसे चलाएँ, फिर पूरा होने पर रीबूट करें</string>
+    <string name="settings_root_script_step_run">इसे चलाएँ</string>
+    <string name="settings_root_script_step_default_launcher">Argosy को अपना डिफ़ॉल्ट लॉन्चर सेट करें</string>
 
     <!-- ===== LibretroSettingItem / LibretroSettingsAccessor ===== -->
 

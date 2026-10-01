@@ -1031,6 +1031,10 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.requestEnumPicker(NavigationItem.SelectSwap.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        NavigationItem.NavBarPages -> {
+            vm.showNavRingModal()
+            return InputResult.handled(SoundType.OPEN_MODAL)
+        }
         NavigationItem.OpenNavigationShortcut -> {
             vm.startShortcutCapture(UiShortcut.OPEN_NAVIGATION)
             return InputResult.handled(SoundType.OPEN_MODAL)
@@ -1066,6 +1070,10 @@ private fun routeLibraryViewConfirm(vm: SettingsViewModel, state: SettingsUiStat
 private fun routeEmulatorsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val info = createEmulatorsLayoutInfo(state.emulators.platforms)
     when (val item = emulatorsItemAtFocusIndex(state.focusedIndex, info)) {
+        EmulatorsItem.CloseOnSessionEnd -> {
+            vm.setCloseEmulatorOnSessionEnd(!state.emulators.closeEmulatorOnSessionEnd)
+            return InputResult.handled(SoundType.TOGGLE)
+        }
         EmulatorsItem.CheckForUpdates -> vm.forceCheckEmulatorUpdates()
         is EmulatorsItem.PlatformItem -> vm.navigateToPlatformDetail(item.index)
         else -> {}
@@ -1172,7 +1180,8 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             vm.requestImportSettings()
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        AboutItem.SystemizeHelper -> vm.writeSystemizeScript()
+        AboutItem.SystemizeHelper -> vm.applyRootScript(com.nendo.argosy.data.model.RootScript.SYSTEMIZE)
+        AboutItem.AndroidDataHelper -> vm.applyRootScript(com.nendo.argosy.data.model.RootScript.ANDROID_DATA)
         AboutItem.RestartApp -> vm.restartApp()
         else -> {}
     }
@@ -1220,7 +1229,7 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
     return when {
         state.playTime.engagedFigure != null -> { vm.setPlayTimeEngagedFigure(null); true }
         state.changelog.visible -> { vm.closeChangelog(); true }
-        state.systemizeResult != null -> { vm.dismissSystemizeDialog(); true }
+        state.rootScriptDialog != null -> { vm.dismissRootScriptDialog(); true }
         state.storagePlatformGames.deleteConfirm != null -> { vm.dismissStoragePlatformGameDelete(); true }
         state.storagePlatformGames.categoryDeleteConfirm != null -> { vm.dismissStoragePlatformCategoryDelete(); true }
         state.emulators.showSavePathModal -> { vm.dismissSavePathModal(); true }
@@ -1240,6 +1249,7 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
         state.builtinControls.showInputMappingModal -> { vm.hideInputMappingModal(); true }
         state.builtinControls.showHotkeysModal -> { vm.hideHotkeysModal(); true }
         state.controls.shortcutCaptureTarget != null -> { vm.cancelShortcutCapture(); true }
+        state.controls.showNavRingModal -> { vm.backNavRing(); true }
         state.accounts.pairing.active -> { vm.cancelAddAccount(); true }
         state.accounts.switchInProgress -> true
         state.server.rommAddressVerifyPrompt != null -> { vm.cancelUnverifiedRommAddress(); true }
@@ -1260,6 +1270,9 @@ private fun routeDismissTopOverlay(vm: SettingsViewModel): Boolean {
 }
 
 internal fun routeMoveFocus(vm: SettingsViewModel, delta: Int): Boolean {
+    if (vm._uiState.value.controls.showNavRingModal) {
+        vm.moveNavRingFocus(delta); return true
+    }
     if (vm._uiState.value.emulators.showSavePathModal) {
         vm.emulatorDelegate.moveSavePathModalFocus(delta); return true
     }

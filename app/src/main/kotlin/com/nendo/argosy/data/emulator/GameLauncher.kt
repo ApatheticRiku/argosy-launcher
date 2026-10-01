@@ -46,6 +46,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "GameLauncher"
+private val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+$")
 private const val EXTRA_ALREADY_LAUNCHED = "argosy.already_launched"
 private val DISC_TAG_REGEX = Regex("\\(Disc \\d+\\)", RegexOption.IGNORE_CASE)
 private val DISC_NUMBER_REGEX = Regex("\\d+")
@@ -1316,6 +1317,14 @@ class GameLauncher @Inject constructor(
     }
 
     suspend fun forceStopEmulator(packageName: String) = withContext(Dispatchers.IO) {
+        if (PACKAGE_NAME.matches(packageName) && com.nendo.argosy.util.PServerExecutor.isAvailable) {
+            val result = com.nendo.argosy.util.PServerExecutor.execute("am force-stop $packageName")
+            if (result.isSuccess) {
+                Logger.debug(TAG, "force-stop via root daemon: $packageName")
+                return@withContext
+            }
+            Logger.warn(TAG, "Root force-stop failed for $packageName, falling back", result.exceptionOrNull())
+        }
         try {
             val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
             am.killBackgroundProcesses(packageName)

@@ -88,6 +88,7 @@ import com.nendo.argosy.ui.input.UiShortcut
 import com.nendo.argosy.ui.input.UiShortcutGate
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.NavGraph
+import com.nendo.argosy.ui.navigation.NavRing
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.screens.player.PlayerActivity
 import com.nendo.argosy.ui.screens.player.PlayerArgs
@@ -340,9 +341,8 @@ fun ArgosyApp(
         )
     }
 
-    val hasPresentationScreen by dsm?.hasPresentationScreen?.collectAsState()
+    val presentationShowsHints by dsm?.presentationShowsHints?.collectAsState()
         ?: remember { mutableStateOf(false) }
-    val presentationShowsHints = hasPresentationScreen && companionActive
 
     val footerHostController = remember { FooterHostController() }
 
@@ -754,7 +754,7 @@ fun ArgosyApp(
         viewModel.gamepadInputHandler.homeEventEnabled = !isHome
     }
 
-    LaunchedEffect(currentRoute, uiState.isFirstRun) {
+    LaunchedEffect(currentRoute, uiState.isFirstRun, navRingState.destinations.isEmpty()) {
         if (!uiState.isFirstRun && viewModel.isNavRingRoute(currentRoute)) {
             viewModel.showNavBar()
         } else {
@@ -1142,6 +1142,7 @@ fun ArgosyApp(
                             scope.launch { drawerState.close() }
                             viewModel.joinFriendNetplaySession(friend)
                         },
+                        onShowFriendOptions = { friend -> viewModel.showFriendOptionsModal(friend.id) },
                         onSelectTab = { tab ->
                             when (tab) {
                                 DrawerTab.NAVIGATION -> viewModel.switchToNavTab()
@@ -1185,9 +1186,9 @@ fun ArgosyApp(
                 )
                 val contentBlur = maxOf(drawerBlur, quickMenuBlur)
 
-                val onRingDestination = navRingState.destinations.any { it.route == currentRoute }
+                val onRingDestination = navRingState.destinations.any { NavRing.routeMatches(it.route, currentRoute) }
                 val homeAppBarOwnsBottom = currentRoute == Screen.Home.route &&
-                    hasPresentationScreen && navRingState.homeAppBarConfigured
+                    presentationShowsHints && navRingState.homeAppBarConfigured
                 val appPromptShowing = saveConflictInfo != null ||
                     backgroundConflictInfo != null ||
                     coreCrashPrompt != null ||

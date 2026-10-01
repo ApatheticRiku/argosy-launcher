@@ -90,6 +90,7 @@ fun MainDrawer(
     onRegenerateFriendCode: () -> Unit,
     onAddFriendByCode: (String) -> Unit,
     onJoinFriendSession: (Friend) -> Unit,
+    onShowFriendOptions: (Friend) -> Unit,
     onSelectTab: (DrawerTab) -> Unit,
     onHintClick: ((InputButton) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -138,8 +139,10 @@ fun MainDrawer(
                 DrawerTab.FRIENDS -> {
                     FriendsContent(
                         friends = drawerState.friends,
+                        onlineCount = drawerState.onlineFriendCount,
                         focusedIndex = drawerState.friendsFocusIndex,
                         onJoinSession = onJoinFriendSession,
+                        onShowOptions = onShowFriendOptions,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -154,13 +157,19 @@ fun MainDrawer(
     if (isOpen) {
         val focusedFriend = drawerState.friends.getOrNull(drawerState.friendsFocusIndex)
         val focusedIsJoinable = focusedFriend?.currentGame?.netplaySession?.joinable == true
-        val favoriteHint = stringResource(R.string.ui_drawer_footer_favorite)
+        val favoriteHint = stringResource(
+            if (focusedFriend?.isFavorite == true) {
+                R.string.ui_drawer_footer_unfavorite
+            } else {
+                R.string.ui_drawer_footer_favorite
+            }
+        )
         val optionsHint = stringResource(R.string.ui_drawer_footer_options)
         val joinHint = stringResource(R.string.ui_drawer_footer_join)
         FooterHints(
             hints = if (drawerState.currentTab == DrawerTab.FRIENDS) {
                 buildList {
-                    add(InputButton.Y to favoriteHint)
+                    if (focusedFriend != null) add(InputButton.Y to favoriteHint)
                     add(InputButton.X to optionsHint)
                     if (focusedIsJoinable) add(InputButton.A to joinHint)
                 }
@@ -339,7 +348,7 @@ private fun NavigationContent(
                     icon = getIconForRoute(item.route),
                     label = stringResource(item.labelRes),
                     isFocused = index == focusedIndex,
-                    isSelected = currentRoute?.substringBefore("?") == item.route,
+                    isSelected = com.nendo.argosy.ui.navigation.NavRing.routeMatches(item.route, currentRoute),
                     onClick = {
                         android.util.Log.d("MainDrawer", "Menu item clicked: ${item.route}")
                         onNavigate(item.route)
@@ -357,8 +366,10 @@ private fun NavigationContent(
 @Composable
 private fun FriendsContent(
     friends: List<Friend>,
+    onlineCount: Int,
     focusedIndex: Int,
     onJoinSession: (Friend) -> Unit,
+    onShowOptions: (Friend) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
@@ -397,47 +408,30 @@ private fun FriendsContent(
             }
         }
     } else {
-        val onlineFriends = friends.filter {
-            it.presence == PresenceStatus.ONLINE ||
-                it.presence == PresenceStatus.IN_GAME ||
-                it.presence == PresenceStatus.WATCHING
-        }
-        val offlineFriends = friends.filter {
-            it.presence == null || it.presence == PresenceStatus.OFFLINE || it.presence == PresenceStatus.AWAY
-        }
+        val offlineCount = friends.size - onlineCount
 
         LazyColumn(
             state = listState,
             modifier = modifier,
             contentPadding = PaddingValues(vertical = Dimens.spacingSm)
         ) {
-            if (onlineFriends.isNotEmpty()) {
-                item {
-                    SectionLabel(
-                        stringResource(R.string.ui_drawer_friends_online, onlineFriends.size)
-                    )
-                }
-                itemsIndexed(onlineFriends, key = { _, f -> f.id }) { index, friend ->
+            itemsIndexed(friends, key = { _, f -> f.id }) { index, friend ->
+                Column {
+                    if (index == 0 && onlineCount > 0) {
+                        SectionLabel(
+                            stringResource(R.string.ui_drawer_friends_online, onlineCount)
+                        )
+                    }
+                    if (index == onlineCount && offlineCount > 0) {
+                        SectionLabel(
+                            stringResource(R.string.ui_drawer_friends_offline, offlineCount)
+                        )
+                    }
                     FriendItem(
                         friend = friend,
                         isFocused = index == focusedIndex,
-                        onJoinSession = onJoinSession
-                    )
-                }
-            }
-
-            if (offlineFriends.isNotEmpty()) {
-                item {
-                    SectionLabel(
-                        stringResource(R.string.ui_drawer_friends_offline, offlineFriends.size)
-                    )
-                }
-                itemsIndexed(offlineFriends, key = { _, f -> f.id }) { index, friend ->
-                    val globalIndex = onlineFriends.size + index
-                    FriendItem(
-                        friend = friend,
-                        isFocused = globalIndex == focusedIndex,
-                        onJoinSession = onJoinSession
+                        onJoinSession = onJoinSession,
+                        onShowOptions = onShowOptions
                     )
                 }
             }
@@ -459,7 +453,8 @@ private fun SectionLabel(text: String) {
 private fun FriendItem(
     friend: Friend,
     isFocused: Boolean,
-    onJoinSession: (Friend) -> Unit
+    onJoinSession: (Friend) -> Unit,
+    onShowOptions: (Friend) -> Unit
 ) {
     val backgroundColor = if (isFocused) {
         LocalArgosyTheme.current.focusAccent.copy(alpha = 0.15f)
@@ -473,9 +468,7 @@ private fun FriendItem(
         MaterialTheme.colorScheme.primary
     }
 
-    val isOnline = friend.presence == PresenceStatus.ONLINE ||
-        friend.presence == PresenceStatus.IN_GAME ||
-        friend.presence == PresenceStatus.WATCHING
+    val isOnline = friend.isOnlineNow
     val isInGame = friend.presence == PresenceStatus.IN_GAME
     val isJoinable = friend.currentGame?.netplaySession?.joinable == true
 
@@ -485,9 +478,9 @@ private fun FriendItem(
             .padding(horizontal = Dimens.spacingMd, vertical = 2.dp)
             .clip(RoundedCornerShape(Dimens.radiusMd))
             .background(backgroundColor)
-            .then(
-                if (isJoinable) Modifier.clickableNoFocus { onJoinSession(friend) }
-                else Modifier
+            .clickableNoFocus(
+                onClick = { if (isJoinable) onJoinSession(friend) else onShowOptions(friend) },
+                onLongClick = { onShowOptions(friend) }
             )
             .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingSm),
         verticalAlignment = Alignment.CenterVertically

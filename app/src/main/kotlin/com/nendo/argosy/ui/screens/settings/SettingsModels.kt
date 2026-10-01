@@ -353,7 +353,12 @@ data class ControlsState(
     val selectSwapMode: com.nendo.argosy.data.preferences.SelectSwapMode = com.nendo.argosy.data.preferences.SelectSwapMode.HOLD,
     val openNavigationKey: Int = com.nendo.argosy.data.preferences.ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
     val openQuickPanelKey: Int = com.nendo.argosy.data.preferences.ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
-    val shortcutCaptureTarget: com.nendo.argosy.ui.input.UiShortcut? = null
+    val shortcutCaptureTarget: com.nendo.argosy.ui.input.UiShortcut? = null,
+    val navRingRoutes: List<String> = com.nendo.argosy.ui.navigation.NavRing.DEFAULT_TOKENS,
+    val showNavRingModal: Boolean = false,
+    val navRingFocusIndex: Int = 0,
+    val navRingHeld: String? = null,
+    val navRingBackup: List<String>? = null
 )
 
 fun ControlsState.shortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut): Int = when (shortcut) {
@@ -486,6 +491,7 @@ data class EmulatorState(
     val totalCoreCount: Int = 0,
     val coreUpdatesAvailable: Int = 0,
     val builtinLibretroEnabled: Boolean = true,
+    val closeEmulatorOnSessionEnd: Boolean = true,
     val architectureDisplay: String = "",
     val ingameMenuTwoColumn: Boolean = false,
     val hudEnabled: Boolean = false,
@@ -548,6 +554,19 @@ data class LaunchArgsModalState(
     val extraBindingLocked: Boolean = false,
     val showCustomExtrasInput: Boolean = false
 )
+
+sealed interface RootScriptDialogState {
+    data class Running(val script: com.nendo.argosy.data.model.RootScript) : RootScriptDialogState
+    data class Finished(
+        val result: com.nendo.argosy.data.model.RootScriptResult,
+        val focusIndex: Int = 0
+    ) : RootScriptDialogState {
+        val offersReboot: Boolean
+            get() = result is com.nendo.argosy.data.model.RootScriptResult.Ran &&
+                result.script.needsReboot &&
+                result.outcome == com.nendo.argosy.data.model.RootScriptOutcome.OK
+    }
+}
 
 sealed class UpdateModalState {
     data object Fetching : UpdateModalState()
@@ -1727,7 +1746,7 @@ data class SettingsUiState(
     val backStack: List<SettingsNavEntry> = emptyList(),
     val enumPickerKey: String? = null,
     val enumPickerToken: Int = 0,
-    val systemizeResult: com.nendo.argosy.util.SystemizeWriteResult? = null,
+    val rootScriptDialog: RootScriptDialogState? = null,
     val colorFocusIndex: Int = 0,
     val display: DisplayState = DisplayState(),
     val controls: ControlsState = ControlsState(),

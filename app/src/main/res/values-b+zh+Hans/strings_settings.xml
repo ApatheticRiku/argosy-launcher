@@ -117,6 +117,17 @@
     <string name="settings_navigation_section_controller">手柄</string>
     <string name="settings_navigation_section_feedback">反馈</string>
     <string name="settings_navigation_section_menus">菜单</string>
+    <string name="settings_navigation_section_nav_bar">导航栏</string>
+    <string name="settings_navigation_nav_bar_pages_title">导航栏页面</string>
+    <string name="settings_navigation_nav_bar_pages_subtitle">选择并排列导航栏和肩键切换的页面</string>
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <string name="settings_nav_ring_modal_title">导航栏页面</string>
+    <string name="settings_nav_ring_modal_subtitle">开启或关闭页面并设置顺序</string>
+    <string name="settings_nav_ring_pinned">始终开启</string>
+    <string name="settings_nav_ring_hint_reorder">重新排序</string>
+    <string name="settings_nav_ring_hint_move">移动</string>
+    <string name="settings_nav_ring_hint_drop">放下</string>
+    <string name="settings_nav_ring_hint_cancel">取消</string>
     <string name="settings_shell_header_installers">托管安装器</string>
     <string name="settings_installers_add_title">添加仓库</string>
     <string name="settings_installers_add_subtitle">粘贴 GitHub 仓库链接</string>
@@ -559,7 +570,9 @@
     <string name="settings_about_import_subtitle">从备份文件应用设置</string>
 
     <string name="settings_about_systemize_title">防止高负载模拟器崩溃</string>
-    <string name="settings_about_systemize_subtitle">当高负载模拟器占用大部分内存时，Argosy可能会被强制关闭。在已root的设备上，此功能会写入一个脚本，使Argosy成为系统应用，从而不再被系统杀死。</string>
+    <string name="settings_about_systemize_subtitle">当高负载模拟器占用大部分内存时，Argosy可能会被强制关闭。此功能会使Argosy成为系统应用，从而不再被系统杀死。需要root。</string>
+    <string name="settings_about_android_data_title">打开模拟器存档文件夹</string>
+    <string name="settings_about_android_data_subtitle">让Argosy读取模拟器保存在Android/data中的存档。需要root，并将SELinux设为宽容模式（permissive）。安装新模拟器后请再次运行。</string>
     <string name="settings_about_restart_title">重启Argosy</string>
     <string name="settings_about_restart_subtitle">关闭并重新打开启动器</string>
 
@@ -1496,6 +1509,9 @@
     <string name="settings_emulators_section_disabled">已禁用的平台</string>
     <string name="settings_emulators_rail_platforms">平台</string>
 
+    <string name="settings_emulators_close_on_session_end_title">会话结束时关闭模拟器</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">存档读取并同步完成后，模拟器应用将被关闭</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_off">模拟器应用将继续在后台运行</string>
     <string name="settings_emulators_check_updates_title">检查更新</string>
     <string name="settings_emulators_check_updates_subtitle">检查模拟器更新</string>
     <plurals name="settings_emulators_check_updates_available">
@@ -2210,9 +2226,29 @@
     <string name="settings_systemize_dialog_detected_device">检测到的设备：%1$s</string>
     <string name="settings_systemize_dialog_next_steps_heading">后续步骤</string>
     <string name="settings_systemize_dialog_step_format">%1$d. %2$s</string>
-    <string name="settings_systemize_dialog_success_footnote">需要已root的设备。此更改可撤销：移除名为"Argosy Systemize"的Magisk模块并重启即可。如果你的菜单措辞不同，脚本文件依然正确 - 只需将以root权限运行的选项指向它即可。</string>
+    <string name="settings_systemize_dialog_success_footnote">需要已root的设备。此更改可撤销：移除名为\"Argosy Systemize\"的Magisk模块并重启即可。如果你的菜单措辞不同，脚本文件依然正确 - 只需将以root权限运行的选项指向它即可。</string>
     <string name="settings_systemize_dialog_error_title">无法保存脚本</string>
     <string name="settings_systemize_dialog_error_hint">可能缺少存储访问权限。请在设置中授予所有文件访问权限后重试。</string>
+
+    <!-- ===== Root script runs (Settings > dialogs > RootScriptDialog) ===== -->
+
+    <string name="settings_root_script_write_failed">无法写入脚本</string>
+    <string name="settings_root_script_run_failed">设备未运行该脚本</string>
+    <string name="settings_root_script_dialog_running">正在以root权限运行...</string>
+    <string name="settings_root_script_dialog_ok_title">完成</string>
+    <string name="settings_root_script_dialog_partial_title">部分完成</string>
+    <string name="settings_root_script_dialog_failed_title">未完成</string>
+    <string name="settings_root_script_dialog_output_heading">脚本输出</string>
+    <string name="settings_root_script_dialog_reboot_hint">重启以完成设置，然后将Argosy设为默认启动器。</string>
+    <string name="settings_root_script_dialog_reboot_button">立即重启</string>
+    <string name="settings_root_script_step_open_retroid">打开 Settings > Advanced > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayn">打开 Settings > Advanced Settings > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayaneo">打开 Settings > Optimization Assistant > Root Script</string>
+    <string name="settings_root_script_step_open_generic">打开设备的\"run script as root\"设置</string>
+    <string name="settings_root_script_step_select">从内部存储中选择\"%1$s\"</string>
+    <string name="settings_root_script_step_run_reboot">运行它，完成后重启</string>
+    <string name="settings_root_script_step_run">运行它</string>
+    <string name="settings_root_script_step_default_launcher">将Argosy设为默认启动器</string>
 
     <!-- ===== LibretroSettingItem / LibretroSettingsAccessor ===== -->
 

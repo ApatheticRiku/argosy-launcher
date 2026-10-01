@@ -18,6 +18,7 @@ import javax.inject.Singleton
 data class AppPreferences(
     val firstRunComplete: Boolean = false,
     val betaUpdatesEnabled: Boolean = false,
+    val closeEmulatorOnSessionEnd: Boolean = true,
     val hiddenApps: Set<String> = emptySet(),
     val secondaryHomeApps: Set<String> = emptySet(),
     val visibleSystemApps: Set<String> = emptySet(),
@@ -42,6 +43,7 @@ class AppPreferencesRepository @Inject constructor(
     private object Keys {
         val FIRST_RUN_COMPLETE = booleanPreferencesKey("first_run_complete")
         val BETA_UPDATES_ENABLED = booleanPreferencesKey("beta_updates_enabled")
+        val CLOSE_EMULATOR_ON_SESSION_END = booleanPreferencesKey("close_emulator_on_session_end")
         val HIDDEN_APPS = stringPreferencesKey("hidden_apps")
         val SECONDARY_HOME_APPS = stringPreferencesKey("secondary_home_apps")
         val VISIBLE_SYSTEM_APPS = stringPreferencesKey("visible_system_apps")
@@ -67,6 +69,7 @@ class AppPreferencesRepository @Inject constructor(
         AppPreferences(
             firstRunComplete = prefs[Keys.FIRST_RUN_COMPLETE] ?: false,
             betaUpdatesEnabled = prefs[Keys.BETA_UPDATES_ENABLED] ?: false,
+            closeEmulatorOnSessionEnd = prefs[Keys.CLOSE_EMULATOR_ON_SESSION_END] ?: true,
             hiddenApps = prefs[Keys.HIDDEN_APPS]
                 ?.split(",")
                 ?.filter { it.isNotBlank() }
@@ -113,6 +116,10 @@ class AppPreferencesRepository @Inject constructor(
 
     suspend fun setBetaUpdatesEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.BETA_UPDATES_ENABLED] = enabled }
+    }
+
+    suspend fun setCloseEmulatorOnSessionEnd(enabled: Boolean) {
+        dataStore.edit { it[Keys.CLOSE_EMULATOR_ON_SESSION_END] = enabled }
     }
 
     suspend fun setHiddenApps(apps: Set<String>) {

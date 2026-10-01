@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.ActionPreference
+import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.PlatformEmulatorConfig
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -36,6 +37,8 @@ internal sealed class EmulatorsItem(
     val section: String,
     open val isFocusable: Boolean = true
 ) {
+    data object CloseOnSessionEnd : EmulatorsItem("close_on_session_end", "platforms")
+
     data object CheckForUpdates : EmulatorsItem("check_updates", "platforms")
 
     class SectionHeader(key: String, section: String, val titleRes: Int) : EmulatorsItem(
@@ -53,6 +56,7 @@ internal sealed class EmulatorsItem(
             val disabled = platforms.filter { !it.platform.syncEnabled }
             return buildList {
                 add(SectionHeader("header_active", "platforms", R.string.settings_emulators_section_active))
+                add(CloseOnSessionEnd)
                 add(CheckForUpdates)
                 active.forEach { config ->
                     add(PlatformItem(config, platforms.indexOf(config)))
@@ -152,6 +156,18 @@ fun EmulatorsSection(
                         com.nendo.argosy.ui.screens.settings.components.SectionHeader(
                             stringResource(item.titleRes)
                         )
+
+                    EmulatorsItem.CloseOnSessionEnd -> SwitchPreference(
+                        title = stringResource(R.string.settings_emulators_close_on_session_end_title),
+                        subtitle = if (emulators.closeEmulatorOnSessionEnd) {
+                            stringResource(R.string.settings_emulators_close_on_session_end_subtitle_on)
+                        } else {
+                            stringResource(R.string.settings_emulators_close_on_session_end_subtitle_off)
+                        },
+                        isEnabled = emulators.closeEmulatorOnSessionEnd,
+                        isFocused = isFocused(item),
+                        onToggle = { viewModel.setCloseEmulatorOnSessionEnd(it) }
+                    )
 
                     EmulatorsItem.CheckForUpdates -> ActionPreference(
                         title = stringResource(R.string.settings_emulators_check_updates_title),

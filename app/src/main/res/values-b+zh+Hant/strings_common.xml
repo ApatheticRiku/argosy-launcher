@@ -609,6 +609,7 @@
     <string name="ui_drawer_tab_navigation">導覽</string>
     <string name="ui_drawer_tab_friends">好友</string>
     <string name="ui_drawer_footer_favorite">最愛</string>
+    <string name="ui_drawer_footer_unfavorite">取消最愛</string>
     <string name="ui_drawer_footer_options">選項</string>
     <string name="ui_drawer_footer_join">加入</string>
     <string name="ui_drawer_friends_empty">尚無好友</string>

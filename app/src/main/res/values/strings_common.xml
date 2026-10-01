@@ -1276,6 +1276,9 @@
     <!-- Footer hint on the friends tab. Verb: marks the friend under the cursor as a
          favourite. -->
     <string name="ui_drawer_footer_favorite">Favorite</string>
+    <!-- Footer hint on the friends tab. Verb: removes the friend under the cursor from the
+         favourites. -->
+    <string name="ui_drawer_footer_unfavorite">Unfavorite</string>
     <!-- Footer hint on the friends tab. Noun, plural: opens the menu for that friend. -->
     <string name="ui_drawer_footer_options">Options</string>
     <!-- Footer hint on the friends tab, when that friend is hosting a game. Verb. -->

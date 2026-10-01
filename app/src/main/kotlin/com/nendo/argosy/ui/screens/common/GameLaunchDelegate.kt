@@ -35,6 +35,7 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.showError
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -185,10 +186,14 @@ class GameLaunchDelegate @Inject constructor(
 
     private val sessionEndScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Ends the session off the UI critical path (save/play-time/sync on the process scope, emulator killed if required) so the caller can return Home immediately. */
+    /**
+     * Ends the session off the UI critical path. The emulator is stopped only after the save
+     * sync job completes.
+     */
     fun endSessionInBackground() {
-        playSessionTracker.activeSession.value?.let { forceStopIfVita3K(sessionEndScope, it) }
-        playSessionTracker.endSessionInBackground()
+        val session = playSessionTracker.activeSession.value
+        val ended = playSessionTracker.endSessionInBackground()
+        session?.let { stopEmulatorAfterSession(it, ended) }
     }
 
     private var _onLaunchFailed: (() -> Unit)? = null
@@ -519,11 +524,26 @@ class GameLaunchDelegate @Inject constructor(
 
     suspend fun stopBackgroundEmulator(packageName: String) = gameLauncher.forceStopEmulator(packageName)
 
-    private fun forceStopIfVita3K(scope: CoroutineScope, session: ActiveSession) {
-        val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage) ?: return
-        val emulatorDef = EmulatorRegistry.getById(emulatorId) ?: return
-        if (emulatorDef.launchConfig.requiresEmulatorKill) {
-            scope.launch {
+    /**
+     * Whether an external emulator is stopped when its session ends: the emulator requires it, or
+     * the user closes emulators on session end. Never true for the built-in emulator or Argosy.
+     */
+    suspend fun shouldStopAfterSession(emulatorPackage: String): Boolean {
+        if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) return false
+        if (emulatorPackage == application.packageName) return false
+        val emulator = emulatorResolver.resolveEmulatorId(emulatorPackage)
+            ?.let { EmulatorRegistry.getById(it) }
+            ?: return false
+        return emulator.launchConfig.requiresEmulatorKill ||
+            preferencesRepository.preferences.first().closeEmulatorOnSessionEnd
+    }
+
+    private fun stopEmulatorAfterSession(session: ActiveSession, afterJob: Job? = null) {
+        sessionEndScope.launch {
+            afterJob?.join()
+            val current = playSessionTracker.activeSession.value
+            if (current?.emulatorPackage == session.emulatorPackage) return@launch
+            if (shouldStopAfterSession(session.emulatorPackage)) {
                 gameLauncher.forceStopEmulator(session.emulatorPackage)
             }
         }
@@ -550,6 +570,7 @@ class GameLaunchDelegate @Inject constructor(
         if (sessionDuration != null && sessionDuration.seconds < 30 && !sawSave) {
             android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: short session (${sessionDuration.seconds}s), cancelling without backup")
             playSessionTracker.cancelSession()
+            stopEmulatorAfterSession(session)
             onSyncComplete()
             return
         }
@@ -562,8 +583,10 @@ class GameLaunchDelegate @Inject constructor(
         val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
         if (emulatorId == null) {
             android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: cannot resolve emulatorId, ending session without sync")
-            scope.launch { playSessionTracker.endSession() }
-            forceStopIfVita3K(scope, session)
+            scope.launch {
+                playSessionTracker.endSession()
+                stopEmulatorAfterSession(session)
+            }
             onSyncComplete()
             return
         }
@@ -577,6 +600,7 @@ class GameLaunchDelegate @Inject constructor(
                     )
                 ) {
                     playSessionTracker.endSession()
+                    stopEmulatorAfterSession(session)
                     onSyncComplete()
                     return@launch
                 }
@@ -591,6 +615,7 @@ class GameLaunchDelegate @Inject constructor(
                         showBlockedOverlay(
                             gameTitle = gameTitle,
                             progress = SyncProgress.BlockedReason.PermissionRequired(emulatorName),
+                            session = session,
                             scope = scope,
                             onSyncComplete = onSyncComplete
                         )
@@ -604,6 +629,7 @@ class GameLaunchDelegate @Inject constructor(
                                 validationResult.path,
                                 platformSlug = game?.platformSlug
                             ),
+                            session = session,
                             scope = scope,
                             onSyncComplete = onSyncComplete
                         )
@@ -638,7 +664,7 @@ class GameLaunchDelegate @Inject constructor(
                         _syncOverlayState.value = null
                     }
                     is SessionEndResult.SaveUnreadable -> {
-                        forceStopIfVita3K(scope, session)
+                        stopEmulatorAfterSession(session)
                         showBlockedOverlay(
                             gameTitle = gameTitle,
                             progress = SyncProgress.BlockedReason.AccessDenied(
@@ -646,6 +672,7 @@ class GameLaunchDelegate @Inject constructor(
                                 result.dirPath,
                                 platformSlug = game?.platformSlug
                             ),
+                            session = null,
                             scope = scope,
                             onSyncComplete = onSyncComplete
                         )
@@ -659,12 +686,13 @@ class GameLaunchDelegate @Inject constructor(
                     }
                 }
 
-                forceStopIfVita3K(scope, session)
+                stopEmulatorAfterSession(session)
                 onSyncComplete()
             } catch (e: Exception) {
                 android.util.Log.e("GameLaunchDelegate", "handleSessionEnd failed", e)
                 _syncOverlayState.value = null
-                playSessionTracker.endSessionInBackground()
+                val ended = playSessionTracker.endSessionInBackground()
+                stopEmulatorAfterSession(session, ended)
                 onSyncComplete()
             }
         }
@@ -673,6 +701,7 @@ class GameLaunchDelegate @Inject constructor(
     private fun showBlockedOverlay(
         gameTitle: String,
         progress: SyncProgress.BlockedReason,
+        session: ActiveSession?,
         scope: CoroutineScope,
         onSyncComplete: () -> Unit
     ) {
@@ -684,28 +713,33 @@ class GameLaunchDelegate @Inject constructor(
             syncProgress = progress,
             onGrantPermission = {
                 openAllFilesAccessSettings()
-                dismissBlockedOverlay(scope, onSyncComplete)
+                dismissBlockedOverlay(session, scope, onSyncComplete)
             },
             onOpenSettings = if (isSwitchAccessDenied) {
-                { dismissBlockedOverlay(scope, onSyncComplete) }
+                { dismissBlockedOverlay(session, scope, onSyncComplete) }
             } else null,
             onDisableSync = {
                 scope.launch {
                     preferencesRepository.setSaveSyncEnabled(false)
                 }
-                dismissBlockedOverlay(scope, onSyncComplete)
+                dismissBlockedOverlay(session, scope, onSyncComplete)
             },
             onSkip = {
-                dismissBlockedOverlay(scope, onSyncComplete)
+                dismissBlockedOverlay(session, scope, onSyncComplete)
             }
         )
     }
 
-    private fun dismissBlockedOverlay(scope: CoroutineScope, onSyncComplete: () -> Unit) {
+    private fun dismissBlockedOverlay(
+        session: ActiveSession?,
+        scope: CoroutineScope,
+        onSyncComplete: () -> Unit
+    ) {
         _syncOverlayState.value = null
         scope.launch {
             try {
                 playSessionTracker.endSession()
+                session?.let { stopEmulatorAfterSession(it) }
             } finally {
                 onSyncComplete()
             }

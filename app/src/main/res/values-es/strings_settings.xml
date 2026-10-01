@@ -131,6 +131,17 @@
     <string name="settings_navigation_section_controller">Mando</string>
     <string name="settings_navigation_section_feedback">Respuesta</string>
     <string name="settings_navigation_section_menus">Menús</string>
+    <string name="settings_navigation_section_nav_bar">Barra de navegación</string>
+    <string name="settings_navigation_nav_bar_pages_title">Páginas de la barra de navegación</string>
+    <string name="settings_navigation_nav_bar_pages_subtitle">Elige y ordena las páginas que recorren la barra de navegación y los botones superiores</string>
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <string name="settings_nav_ring_modal_title">Páginas de la barra de navegación</string>
+    <string name="settings_nav_ring_modal_subtitle">Activa o desactiva páginas y define su orden</string>
+    <string name="settings_nav_ring_pinned">Siempre activa</string>
+    <string name="settings_nav_ring_hint_reorder">Reordenar</string>
+    <string name="settings_nav_ring_hint_move">Mover</string>
+    <string name="settings_nav_ring_hint_drop">Soltar</string>
+    <string name="settings_nav_ring_hint_cancel">Cancelar</string>
     <string name="settings_shell_header_installers">INSTALADORES GESTIONADOS</string>
     <string name="settings_installers_add_title">Añadir repositorio</string>
     <string name="settings_installers_add_subtitle">Pega un enlace de repositorio de GitHub</string>
@@ -593,7 +604,9 @@
     <string name="settings_about_import_subtitle">Aplicar ajustes desde un archivo de copia de seguridad</string>
 
     <string name="settings_about_systemize_title">Evitar cierres con emuladores exigentes</string>
-    <string name="settings_about_systemize_subtitle">Argosy puede cerrarse a la fuerza cuando un emulador exigente usa la mayor parte de la RAM. En un dispositivo con root, esto escribe un script que convierte a Argosy en una aplicación del sistema para que ya no se cierre.</string>
+    <string name="settings_about_systemize_subtitle">Argosy puede cerrarse a la fuerza cuando un emulador exigente usa la mayor parte de la RAM. Esto convierte a Argosy en una aplicación del sistema para que ya no se cierre. Necesita root.</string>
+    <string name="settings_about_android_data_title">Abrir carpetas de guardado de emuladores</string>
+    <string name="settings_about_android_data_subtitle">Permite a Argosy leer las partidas guardadas que los emuladores mantienen en Android/data. Necesita root y SELinux en modo permisivo. Vuelve a ejecutarlo después de instalar un emulador nuevo.</string>
     <string name="settings_about_restart_title">Reiniciar Argosy</string>
     <string name="settings_about_restart_subtitle">Cerrar y volver a abrir el lanzador</string>
 
@@ -1583,6 +1596,9 @@
     <string name="settings_emulators_section_disabled">Plataformas desactivadas</string>
     <string name="settings_emulators_rail_platforms">Plataformas</string>
 
+    <string name="settings_emulators_close_on_session_end_title">Cerrar el emulador al terminar la sesión</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">La app del emulador se cierra cuando su partida guardada se ha leído y sincronizado</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_off">La app del emulador sigue abierta en segundo plano</string>
     <string name="settings_emulators_check_updates_title">Buscar actualizaciones</string>
     <string name="settings_emulators_check_updates_subtitle">Buscar actualizaciones de emuladores</string>
     <plurals name="settings_emulators_check_updates_available">
@@ -2320,7 +2336,7 @@
     <string name="settings_licenses_dialog_cores_body">Los cores se descargan del buildbot de libretro. Consulta docs.libretro.com/development/licenses para ver las licencias de los cores.</string>
     <string name="settings_licenses_dialog_close_button">Cerrar</string>
 
-    <!-- ===== Systemize result dialog (Settings > dialogs > SystemizeResultDialog) ===== -->
+    <!-- ===== Systemize result dialog (Settings > dialogs > RootScriptDialog) ===== -->
 
     <string name="settings_systemize_dialog_close_button">Cerrar</string>
     <string name="settings_systemize_dialog_success_title">Script guardado</string>
@@ -2330,6 +2346,26 @@
     <string name="settings_systemize_dialog_success_footnote">Necesita un dispositivo con root. El cambio es reversible: elimina el módulo de Magisk llamado \"Argosy Systemize\" y reinicia. Si el texto de tu menú es distinto, el archivo del script sigue siendo correcto; solo apunta tu opción de ejecutar como root hacia él.</string>
     <string name="settings_systemize_dialog_error_title">No se pudo guardar el script</string>
     <string name="settings_systemize_dialog_error_hint">Puede faltar el acceso al almacenamiento. Concede el acceso a todos los archivos en la configuración e inténtalo de nuevo.</string>
+
+    <!-- ===== Root script runs (Settings > dialogs > RootScriptDialog) ===== -->
+
+    <string name="settings_root_script_write_failed">No se pudo escribir el script</string>
+    <string name="settings_root_script_run_failed">El dispositivo no ejecutó el script</string>
+    <string name="settings_root_script_dialog_running">Ejecutando como root...</string>
+    <string name="settings_root_script_dialog_ok_title">Listo</string>
+    <string name="settings_root_script_dialog_partial_title">Completado en parte</string>
+    <string name="settings_root_script_dialog_failed_title">No se completó</string>
+    <string name="settings_root_script_dialog_output_heading">Salida del script</string>
+    <string name="settings_root_script_dialog_reboot_hint">Reinicia para terminar y luego establece Argosy como tu lanzador predeterminado.</string>
+    <string name="settings_root_script_dialog_reboot_button">Reiniciar ahora</string>
+    <string name="settings_root_script_step_open_retroid">Abre Settings > Advanced > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayn">Abre Settings > Advanced Settings > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayaneo">Abre Settings > Optimization Assistant > Root Script</string>
+    <string name="settings_root_script_step_open_generic">Abre la opción \"run script as root\" de tu dispositivo</string>
+    <string name="settings_root_script_step_select">Selecciona \"%1$s\" en el almacenamiento interno</string>
+    <string name="settings_root_script_step_run_reboot">Ejecútalo y reinicia cuando termine</string>
+    <string name="settings_root_script_step_run">Ejecútalo</string>
+    <string name="settings_root_script_step_default_launcher">Establece Argosy como tu lanzador predeterminado</string>
 
     <!-- ===== LibretroSettingItem / LibretroSettingsAccessor ===== -->
 

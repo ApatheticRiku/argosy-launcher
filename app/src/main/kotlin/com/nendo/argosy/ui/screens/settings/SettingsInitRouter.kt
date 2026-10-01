@@ -623,7 +623,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             menuWrapMode = prefs.menuWrapMode,
             selectSwapMode = prefs.selectSwapMode,
             openNavigationKey = prefs.openNavigationKey,
-            openQuickPanelKey = prefs.openQuickPanelKey
+            openQuickPanelKey = prefs.openQuickPanelKey,
+            navRingRoutes = com.nendo.argosy.ui.navigation.NavRing.resolve(prefs.navRingRoutes)
         ))
         vm.controlsDelegate.refreshUsageStatsPermission()
 
@@ -660,6 +661,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             installedEmulators = installedEmulators,
             platformSubFocusIndex = currentEmulatorState.platformSubFocusIndex,
             builtinLibretroEnabled = prefs.builtinLibretroEnabled,
+            closeEmulatorOnSessionEnd = prefs.closeEmulatorOnSessionEnd,
             architectureDisplay = architectureAbiToDisplay(archOverride),
             ingameMenuTwoColumn = builtinSettings.ingameMenuTwoColumn,
             hudEnabled = builtinSettings.hudEnabled,

@@ -23,9 +23,11 @@ import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.input.UiShortcut
 import com.nendo.argosy.ui.input.UiShortcutKeys
+import com.nendo.argosy.ui.navigation.NavRing
 import com.nendo.argosy.ui.screens.settings.ControlsState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
+import com.nendo.argosy.ui.screens.settings.components.NavRingPopup
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
 import com.nendo.argosy.ui.screens.settings.components.ShortcutCaptureModal
 import com.nendo.argosy.ui.screens.settings.delegates.ControlsSettingsDelegate
@@ -73,6 +75,8 @@ internal sealed class NavigationItem(
         visibleWhen = { it.hasSecondaryDisplay }
     )
 
+    data object NavBarPages : NavigationItem("navBarPages", "navbar")
+
     data object OpenNavigationShortcut : NavigationItem("openNavigationKey", "shortcuts")
     data object OpenQuickPanelShortcut : NavigationItem("openQuickPanelKey", "shortcuts")
 
@@ -90,6 +94,9 @@ internal sealed class NavigationItem(
             Header("feedbackHeader", "feedback", R.string.settings_navigation_section_feedback)
         private val MenusSpacer = SectionSpacer("menusSpacer", "menus")
         private val MenusHeader = Header("menusHeader", "menus", R.string.settings_navigation_section_menus)
+        private val NavBarSpacer = SectionSpacer("navBarSpacer", "navbar")
+        private val NavBarHeader =
+            Header("navBarHeader", "navbar", R.string.settings_navigation_section_nav_bar)
         private val ShortcutsSpacer = SectionSpacer("shortcutsSpacer", "shortcuts")
         private val ShortcutsHeader =
             Header("shortcutsHeader", "shortcuts", R.string.settings_navigation_section_shortcuts)
@@ -101,6 +108,8 @@ internal sealed class NavigationItem(
                 HapticFeedback, VibrationStrength,
                 MenusSpacer, MenusHeader,
                 MenuWrap, SelectLCombo, SelectRCombo, SelectSwap,
+                NavBarSpacer, NavBarHeader,
+                NavBarPages,
                 ShortcutsSpacer, ShortcutsHeader,
                 OpenNavigationShortcut, OpenQuickPanelShortcut
             )
@@ -117,6 +126,7 @@ private val navigationLayout = SettingsLayout<NavigationItem, ControlsState>(
             "controller" -> R.string.settings_navigation_section_controller
             "feedback" -> R.string.settings_navigation_section_feedback
             "menus" -> R.string.settings_navigation_section_menus
+            "navbar" -> R.string.settings_navigation_section_nav_bar
             "shortcuts" -> R.string.settings_navigation_section_shortcuts
             else -> null
         }
@@ -304,6 +314,18 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 pickerRequestToken = pickerToken(item)
             )
 
+            NavigationItem.NavBarPages -> ActionPreference(
+                title = stringResource(R.string.settings_navigation_nav_bar_pages_title),
+                subtitle = stringResource(R.string.settings_navigation_nav_bar_pages_subtitle),
+                isFocused = isFocused(item),
+                trailingText = stringResource(
+                    R.string.settings_navigation_nav_bar_pages_count,
+                    controls.navRingRoutes.size,
+                    NavRing.PAGES.size
+                ),
+                onClick = { viewModel.showNavRingModal() }
+            )
+
             NavigationItem.OpenNavigationShortcut -> ShortcutKeyPreference(
                 title = stringResource(R.string.settings_navigation_open_navigation_title),
                 subtitle = stringResource(R.string.settings_navigation_open_navigation_subtitle),
@@ -320,6 +342,21 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 onClick = { viewModel.startShortcutCapture(UiShortcut.OPEN_QUICK_PANEL) }
             )
         }
+    }
+
+    if (controls.showNavRingModal) {
+        NavRingPopup(
+            enabled = controls.navRingRoutes,
+            focusIndex = controls.navRingFocusIndex,
+            heldToken = controls.navRingHeld,
+            onFocus = { viewModel.focusNavRing(it) },
+            onToggle = { viewModel.toggleNavRing(it) },
+            onLift = { viewModel.liftNavRing() },
+            onLiftAt = { viewModel.liftNavRingAt(it) },
+            onMoveTo = { token, index -> viewModel.moveNavRingTo(token, index) },
+            onDrop = { viewModel.dropNavRing() },
+            onBack = { viewModel.backNavRing() }
+        )
     }
 
     controls.shortcutCaptureTarget?.let { target ->

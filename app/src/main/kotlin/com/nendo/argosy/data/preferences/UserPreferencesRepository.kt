@@ -100,6 +100,7 @@ class UserPreferencesRepository @Inject constructor(
             selectSwapMode = controls.selectSwapMode,
             openNavigationKey = controls.openNavigationKey,
             openQuickPanelKey = controls.openQuickPanelKey,
+            navRingRoutes = controls.navRingRoutes,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -141,6 +142,7 @@ class UserPreferencesRepository @Inject constructor(
             libraryDefaultPlayers = display.libraryDefaultPlayers,
             soundConfigs = controls.soundConfigs,
             betaUpdatesEnabled = app.betaUpdatesEnabled,
+            closeEmulatorOnSessionEnd = app.closeEmulatorOnSessionEnd,
             appLanguage = app.appLanguage,
             saveSyncEnabled = sync.saveSyncEnabled,
             secureSaves = sync.secureSaves,
@@ -463,6 +465,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setSelectSwapMode(mode: SelectSwapMode) = controlsPrefs.setSelectSwapMode(mode)
     suspend fun setOpenNavigationKey(keyCode: Int) = controlsPrefs.setOpenNavigationKey(keyCode)
     suspend fun setOpenQuickPanelKey(keyCode: Int) = controlsPrefs.setOpenQuickPanelKey(keyCode)
+    suspend fun setNavRingRoutes(routes: List<String>?) = controlsPrefs.setNavRingRoutes(routes)
 
 
     // --- Storage delegates ---
@@ -505,6 +508,7 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setFirstRunComplete() = appPrefs.setFirstRunComplete()
     suspend fun setBetaUpdatesEnabled(enabled: Boolean) = appPrefs.setBetaUpdatesEnabled(enabled)
+    suspend fun setCloseEmulatorOnSessionEnd(enabled: Boolean) = appPrefs.setCloseEmulatorOnSessionEnd(enabled)
     suspend fun setHiddenApps(apps: Set<String>) = appPrefs.setHiddenApps(apps)
     suspend fun setSecondaryHomeApps(apps: Set<String>) = appPrefs.setSecondaryHomeApps(apps)
     suspend fun setVisibleSystemApps(apps: Set<String>) = appPrefs.setVisibleSystemApps(apps)
@@ -775,6 +779,7 @@ data class UserPreferences(
     val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
     val openNavigationKey: Int = ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
     val openQuickPanelKey: Int = ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
+    val navRingRoutes: List<String>? = null,
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,
@@ -805,6 +810,7 @@ data class UserPreferences(
     val libraryDefaultPlayers: com.nendo.argosy.domain.model.PlayerCountBucket? = null,
     val soundConfigs: Map<SoundType, SoundConfig> = emptyMap(),
     val betaUpdatesEnabled: Boolean = false,
+    val closeEmulatorOnSessionEnd: Boolean = true,
     val appLanguage: AppLanguage = AppLanguage.SYSTEM,
     val saveSyncEnabled: Boolean = false,
     val secureSaves: Boolean = true,

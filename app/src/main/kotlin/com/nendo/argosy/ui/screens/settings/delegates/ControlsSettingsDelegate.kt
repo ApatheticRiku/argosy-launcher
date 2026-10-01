@@ -13,6 +13,7 @@ import com.nendo.argosy.ui.input.HapticFeedbackManager
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.UiShortcut
 import com.nendo.argosy.ui.input.UiShortcutKeys
+import com.nendo.argosy.ui.navigation.NavRing
 import com.nendo.argosy.ui.screens.settings.ControlsState
 import com.nendo.argosy.ui.screens.settings.shortcutKey
 import com.nendo.argosy.util.PermissionHelper
@@ -186,6 +187,145 @@ class ControlsSettingsDelegate @Inject constructor(
     fun cycleSelectSwapMode(scope: CoroutineScope, direction: Int = 1) {
         val current = _state.value.selectSwapMode
         setSelectSwapMode(scope, SelectSwapMode.entries[(current.ordinal + direction).mod(SelectSwapMode.entries.size)])
+    }
+
+    fun showNavRingModal() {
+        _state.update {
+            it.copy(
+                showNavRingModal = true,
+                navRingFocusIndex = 0,
+                navRingHeld = null,
+                navRingBackup = null
+            )
+        }
+    }
+
+    fun dismissNavRingModal() {
+        _state.update { state ->
+            state.copy(
+                navRingRoutes = state.navRingBackup ?: state.navRingRoutes,
+                showNavRingModal = false,
+                navRingFocusIndex = 0,
+                navRingHeld = null,
+                navRingBackup = null
+            )
+        }
+    }
+
+    fun backNavRing() {
+        if (_state.value.navRingHeld != null) cancelNavRingHold() else dismissNavRingModal()
+    }
+
+    fun focusNavRing(index: Int) {
+        _state.update { state ->
+            if (state.navRingHeld != null || index !in NavRing.rows(state.navRingRoutes).indices) {
+                state
+            } else {
+                state.copy(navRingFocusIndex = index)
+            }
+        }
+    }
+
+    fun moveNavRingFocus(delta: Int) {
+        _state.update { state ->
+            val held = state.navRingHeld
+            if (held != null) {
+                reorderNavRing(state, held, state.navRingRoutes.indexOf(held) + delta)
+            } else {
+                val rowCount = NavRing.rows(state.navRingRoutes).size
+                state.copy(navRingFocusIndex = (state.navRingFocusIndex + delta).mod(rowCount))
+            }
+        }
+    }
+
+    fun confirmNavRing(scope: CoroutineScope) {
+        val state = _state.value
+        if (state.navRingHeld != null) {
+            dropNavRing(scope)
+            return
+        }
+        NavRing.rows(state.navRingRoutes).getOrNull(state.navRingFocusIndex)?.let { toggleNavRing(scope, it) }
+    }
+
+    fun toggleNavRing(scope: CoroutineScope, token: String) {
+        var committed: List<String>? = null
+        _state.update { state ->
+            if (state.navRingHeld != null) return@update state
+            val updated = NavRing.toggle(state.navRingRoutes, token)
+            if (updated == state.navRingRoutes) return@update state
+            committed = updated
+            state.copy(
+                navRingRoutes = updated,
+                navRingFocusIndex = NavRing.rows(updated).indexOf(token).coerceAtLeast(0)
+            )
+        }
+        committed?.let { order -> scope.launch { preferencesRepository.setNavRingRoutes(order) } }
+    }
+
+    fun toggleNavRingLift(scope: CoroutineScope) {
+        if (_state.value.navRingHeld != null) dropNavRing(scope) else liftNavRing()
+    }
+
+    fun liftNavRing() {
+        _state.update { state ->
+            if (state.navRingHeld != null) return@update state
+            val token = NavRing.rows(state.navRingRoutes).getOrNull(state.navRingFocusIndex)
+                ?: return@update state
+            if (token !in state.navRingRoutes) return@update state
+            state.copy(navRingHeld = token, navRingBackup = state.navRingRoutes)
+        }
+    }
+
+    fun liftNavRingAt(token: String) {
+        _state.update { state ->
+            val index = state.navRingRoutes.indexOf(token)
+            if (index == -1) return@update state
+            state.copy(
+                navRingHeld = token,
+                navRingBackup = state.navRingBackup ?: state.navRingRoutes,
+                navRingFocusIndex = index
+            )
+        }
+    }
+
+    fun moveNavRingTo(token: String, targetIndex: Int) {
+        _state.update { state ->
+            if (state.navRingHeld != token) state else reorderNavRing(state, token, targetIndex)
+        }
+    }
+
+    fun dropNavRing(scope: CoroutineScope) {
+        var committed: List<String>? = null
+        _state.update { state ->
+            if (state.navRingHeld == null) {
+                committed = null
+                state
+            } else {
+                committed = state.navRingRoutes.takeIf { it != state.navRingBackup }
+                state.copy(navRingHeld = null, navRingBackup = null)
+            }
+        }
+        committed?.let { order -> scope.launch { preferencesRepository.setNavRingRoutes(order) } }
+    }
+
+    fun cancelNavRingHold() {
+        _state.update { state ->
+            val backup = state.navRingBackup ?: state.navRingRoutes
+            val held = state.navRingHeld
+            state.copy(
+                navRingRoutes = backup,
+                navRingHeld = null,
+                navRingBackup = null,
+                navRingFocusIndex = held?.let { backup.indexOf(it) }?.takeIf { it >= 0 }
+                    ?: state.navRingFocusIndex
+            )
+        }
+    }
+
+    private fun reorderNavRing(state: ControlsState, token: String, targetIndex: Int): ControlsState {
+        val updated = NavRing.move(state.navRingRoutes, token, targetIndex)
+        if (updated == state.navRingRoutes) return state
+        return state.copy(navRingRoutes = updated, navRingFocusIndex = updated.indexOf(token))
     }
 
     fun startShortcutCapture(shortcut: UiShortcut) {

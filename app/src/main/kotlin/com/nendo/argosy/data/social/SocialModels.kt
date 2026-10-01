@@ -208,6 +208,10 @@ data class Friend(
         get() = FriendshipStatus.fromValue(status)
 
     val isAccepted: Boolean get() = friendshipStatus == FriendshipStatus.ACCEPTED
+    val isOnlineNow: Boolean
+        get() = presence == PresenceStatus.ONLINE ||
+            presence == PresenceStatus.IN_GAME ||
+            presence == PresenceStatus.WATCHING
     val isIncomingRequest: Boolean get() = requestReceived
     val isOutgoingRequest: Boolean get() = requestSent
 }

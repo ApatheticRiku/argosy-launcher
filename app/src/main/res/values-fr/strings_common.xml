@@ -648,6 +648,7 @@
     <string name="ui_drawer_tab_navigation">Nav</string>
     <string name="ui_drawer_tab_friends">Amis</string>
     <string name="ui_drawer_footer_favorite">Favori</string>
+    <string name="ui_drawer_footer_unfavorite">Retirer des favoris</string>
     <string name="ui_drawer_footer_options">Options</string>
     <string name="ui_drawer_footer_join">Rejoindre</string>
     <string name="ui_drawer_friends_empty">Aucun ami pour l\'instant</string>

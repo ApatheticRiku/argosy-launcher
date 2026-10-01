@@ -72,6 +72,7 @@ import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.buttonGlyphSwaps
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.ui.navigation.NavRing
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.core.notification.DownloadNotificationObserver
 import com.nendo.argosy.core.notification.NotificationManager
@@ -143,6 +144,7 @@ data class DrawerState(
     val navFocusIndex: Int = 0,
     val friendsFocusIndex: Int = 0,
     val friends: List<Friend> = emptyList(),
+    val onlineFriendCount: Int = 0,
     val friendCode: String? = null,
     val friendCodeUrl: String? = null,
     val modal: DrawerModal = DrawerModal.None
@@ -184,18 +186,9 @@ data class DrawerItem(
 
 data class NavRingState(
     val destinations: List<DrawerItem> = emptyList(),
+    val pages: List<DrawerItem> = emptyList(),
     val homeAppBarConfigured: Boolean = false,
     val isBarVisible: Boolean = false
-)
-
-private val NAV_RING_ROUTES = listOf(
-    Screen.Home.route,
-    Screen.Library.route,
-    Screen.Collections.route,
-    Screen.Social.route,
-    Screen.MediaLibrary.route,
-    Screen.Downloads.route,
-    Screen.Settings.route
 )
 
 private const val NAV_BAR_AUTO_HIDE_MS = 5_000L
@@ -597,9 +590,11 @@ class ArgosyViewModel @Inject constructor(
             (if (steamActive) 1 else 0) + steamQueued +
             (if (mediaActiveDownload != null) 1 else 0) + mediaQueue.size
         val sortedFriends = friends
-            .filter { it.friendshipStatus.value == "accepted" }
+            .filter { it.isAccepted }
+            .distinctBy { it.id }
             .sortedWith(
-                compareByDescending<Friend> { it.isFavorite }
+                compareByDescending<Friend> { it.isOnlineNow }
+                    .thenByDescending { it.isFavorite }
                     .thenByDescending { it.presence == PresenceStatus.IN_GAME }
                     .thenByDescending { it.presence == PresenceStatus.WATCHING }
                     .thenByDescending { it.presence == PresenceStatus.ONLINE }
@@ -620,6 +615,7 @@ class ArgosyViewModel @Inject constructor(
             navFocusIndex = navIndex,
             friendsFocusIndex = friendsIndex,
             friends = sortedFriends,
+            onlineFriendCount = sortedFriends.count { it.isOnlineNow },
             friendCode = friendCodeData?.code,
             friendCodeUrl = friendCodeData?.url,
             modal = modal
@@ -630,19 +626,7 @@ class ArgosyViewModel @Inject constructor(
         initialValue = DrawerState()
     )
 
-    private val allDrawerItems = listOf(
-        DrawerItem(Screen.Home.route, R.string.ui_drawer_nav_home),
-        DrawerItem(Screen.Social.route, R.string.ui_drawer_nav_social),
-        DrawerItem(Screen.QuayPass.route, R.string.ui_drawer_nav_quaypass),
-        DrawerItem(Screen.Collections.route, R.string.ui_drawer_nav_collections),
-        DrawerItem(Screen.Library.route, R.string.ui_drawer_nav_library),
-        DrawerItem(Screen.MediaLibrary.route, R.string.ui_drawer_nav_media),
-        DrawerItem(Screen.Downloads.route, R.string.ui_drawer_nav_downloads),
-        DrawerItem(Screen.SyncMonitor.route, R.string.syncmonitor_drawer_title),
-        DrawerItem(Screen.SaveSync.route, R.string.ui_drawer_nav_save_sync),
-        DrawerItem(Screen.Apps.route, R.string.ui_drawer_nav_apps),
-        DrawerItem(Screen.Settings.route, R.string.ui_drawer_nav_settings)
-    )
+    private val allDrawerItems = NavRing.PAGES
 
     private var _isDualScreenMode = false
 
@@ -654,10 +638,6 @@ class ArgosyViewModel @Inject constructor(
             return allDrawerItems.filter { isNavRouteAvailable(it.route, socialConnected, _isMediaSignedIn) }
         }
 
-    private val navRingItems: List<DrawerItem> = NAV_RING_ROUTES.mapNotNull { route ->
-        allDrawerItems.firstOrNull { it.route == route }
-    }
-
     private val _navBarVisible = MutableStateFlow(false)
     private var navBarHideJob: kotlinx.coroutines.Job? = null
 
@@ -667,10 +647,15 @@ class ArgosyViewModel @Inject constructor(
         _navBarVisible
     ) { social, prefs, barVisible ->
         val socialConnected = social is SocialConnectionState.Connected
+        val pages = allDrawerItems.filter {
+            isNavRouteAvailable(it.route, socialConnected, prefs.isJellyfinSignedIn)
+        }
+        val ring = NavRing.resolve(prefs.navRingRoutes).mapNotNull { token ->
+            pages.firstOrNull { NavRing.token(it.route) == token }
+        }
         NavRingState(
-            destinations = navRingItems.filter {
-                isNavRouteAvailable(it.route, socialConnected, prefs.isJellyfinSignedIn)
-            },
+            destinations = ring,
+            pages = pages,
             homeAppBarConfigured = prefs.secondaryHomeApps.isNotEmpty(),
             isBarVisible = barVisible
         )
@@ -680,17 +665,12 @@ class ArgosyViewModel @Inject constructor(
         initialValue = NavRingState()
     )
 
-    fun isNavRingRoute(route: String?): Boolean {
-        val visible = drawerItems
-        return navRingItems.any { it.route == route && it in visible }
-    }
+    fun isNavRingRoute(route: String?): Boolean =
+        navRingState.value.destinations.any { NavRing.routeMatches(it.route, route) }
 
     fun navRingRouteFrom(currentRoute: String?, delta: Int): String? {
-        val visible = drawerItems
-        val ring = navRingItems.filter { it in visible }
-        val index = ring.indexOfFirst { it.route == currentRoute }
-        if (index < 0 || ring.size < 2) return null
-        return ring[(index + delta).mod(ring.size)].route
+        val state = navRingState.value
+        return NavRing.routeFrom(state.destinations, state.pages, currentRoute, delta)
     }
 
     fun showNavBar() {
@@ -739,10 +719,9 @@ class ArgosyViewModel @Inject constructor(
     private val drawerNavLastIndex: Int get() = drawerItems.size
 
     fun initDrawerFocus(currentRoute: String?, parentRoute: String? = null) {
-        val activeRoute = currentRoute?.substringBefore("?")
-        var index = drawerItems.indexOfFirst { it.route == activeRoute }
+        var index = drawerItems.indexOfFirst { NavRing.routeMatches(it.route, currentRoute) }
         if (index < 0 && parentRoute != null) {
-            index = drawerItems.indexOfFirst { it.route == parentRoute }
+            index = drawerItems.indexOfFirst { NavRing.routeMatches(it.route, parentRoute) }
         }
         if (index < 0) {
             index = drawerItems.indexOfFirst { it.route == Screen.Home.route }

@@ -966,6 +966,11 @@ class DualScreenManager(
             dualScreen && companionActive && !swapped
         }.stateIn(activityIndependentScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
 
+    val presentationShowsHints: StateFlow<Boolean> =
+        kotlinx.coroutines.flow.combine(_hasPresentationScreen, _isCompanionActive) { presentation, companion ->
+            presentation && companion
+        }.stateIn(activityIndependentScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, false)
+
     private val _presentationSlots =
         MutableStateFlow<List<Pair<com.nendo.argosy.ui.dualscreen.SlotOwner, com.nendo.argosy.ui.dualscreen.PresentationSlot>>>(
             emptyList()
@@ -1711,6 +1716,14 @@ class DualScreenManager(
 
         override fun onDisplayChanged(displayId: Int) {
             syncDockedState()
+            if (displayId != android.view.Display.DEFAULT_DISPLAY &&
+                !_isCompanionActive.value &&
+                companionLaunchJob?.isActive != true &&
+                displayAffinityHelper.isPhysicalDisplay(displayId) &&
+                displayAffinityHelper.hasSecondaryDisplay
+            ) {
+                onDisplayAdded(displayId)
+            }
         }
     }
 
@@ -1801,7 +1814,9 @@ class DualScreenManager(
     /**
      * Ends the session whose emulator [emulatorLeftScreen] reported gone. On a dual-screen device it
      * then kills the stopped emulator along with any presentation window it left on the other
-     * display, retrying until the process is cached or a new session starts.
+     * display, retrying until the process is cached or a new session starts. On any other device
+     * the emulator is stopped once, after the session end completes, when
+     * [GameLaunchDelegate.shouldStopAfterSession] allows it.
      */
     fun endSessionAfterEmulatorLeft() {
         val emulatorPackage = sessionStateStore.getEmulatorPackage()
@@ -1809,10 +1824,17 @@ class DualScreenManager(
         sessionStateStore.clearSession()
         val sessionEnd = playSessionTracker.endSessionInBackground()
         broadcastSessionCleared()
-        if (emulatorPackage == null || !_isDualScreenDevice.value) return
+        if (emulatorPackage == null) return
         if (emulatorPackage == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE) return
         scope.launch {
             sessionEnd.join()
+            if (!_isDualScreenDevice.value) {
+                if (sessionStateStore.hasActiveSession()) return@launch
+                if (gameLaunchDelegate.shouldStopAfterSession(emulatorPackage)) {
+                    gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
+                }
+                return@launch
+            }
             repeat(EMULATOR_RELEASE_ATTEMPTS) {
                 if (sessionStateStore.hasActiveSession()) return@launch
                 gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
@@ -2429,18 +2451,32 @@ class DualScreenManager(
     }
 
     fun ensureCompanionLaunched(allowDuringSession: Boolean = false) {
+        Log.d(
+            TAG,
+            "ensureCompanionLaunched: secondary=${displayAffinityHelper.hasSecondaryDisplay} " +
+                "(enabled=${displayAffinityHelper.dualScreenEnabled} usable=${displayAffinityHelper.secondaryDisplayUsable} " +
+                "physical=${displayAffinityHelper.hasPhysicalSecondaryDisplay} docked=${displayAffinityHelper.isDockedDark}) " +
+                "companionActive=${_isCompanionActive.value} session=${sessionStateStore.hasActiveSession()} " +
+                "foreground=${sessionStateStore.isArgosyForeground()}"
+        )
         if (!displayAffinityHelper.hasSecondaryDisplay) return
         if (sessionStateStore.isDualScreenEnabled() || displayAffinityHelper.isDockedDark) {
             setSecondaryHomeComponentEnabled(true)
         }
         if (_isCompanionActive.value) return
-        if (!allowDuringSession && sessionStateStore.hasActiveSession()) return
+        val sessionInTheWay = !allowDuringSession && sessionStateStore.hasActiveSession()
+        if (sessionInTheWay && !sessionStateStore.isArgosyForeground()) return
         if (sessionStateStore.isForeignAppOnSecondary()) return
 
         CompanionGuardService.start(appContext)
         companionLaunchJob?.cancel()
         companionLaunchJob = scope.launch {
             delay(COMPANION_LAUNCH_WAIT_MS)
+            if (sessionInTheWay) {
+                withTimeoutOrNull(SESSION_CLOSE_WAIT_MS) {
+                    while (sessionStateStore.hasActiveSession()) delay(SESSION_CLOSE_POLL_MS)
+                }
+            }
             if (_isCompanionActive.value) return@launch
             if (!allowDuringSession && sessionStateStore.hasActiveSession()) return@launch
             launchCompanionOnSecondaryDisplay()
@@ -2517,6 +2553,8 @@ class DualScreenManager(
         const val OVERLAY_QUICK_SETTINGS = "com.nendo.argosy.OVERLAY_QUICK_SETTINGS"
         private const val COMPANION_WATCHDOG_TIMEOUT_MS = 5000L
         private const val COMPANION_LAUNCH_WAIT_MS = 500L
+        private const val SESSION_CLOSE_WAIT_MS = 60_000L
+        private const val SESSION_CLOSE_POLL_MS = 500L
         private const val DOCKED_RESYNC_DELAY_MS = 2000L
         private const val COMPANION_LAUNCH_VERIFY_MS = 8000L
         private const val MAX_COMPANION_LAUNCH_ATTEMPTS = 3

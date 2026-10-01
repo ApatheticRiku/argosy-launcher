@@ -106,6 +106,17 @@
     <string name="settings_navigation_section_controller">控制器</string>
     <string name="settings_navigation_section_feedback">回饋</string>
     <string name="settings_navigation_section_menus">選單</string>
+    <string name="settings_navigation_section_nav_bar">導覽列</string>
+    <string name="settings_navigation_nav_bar_pages_title">導覽列頁面</string>
+    <string name="settings_navigation_nav_bar_pages_subtitle">選擇並排列導覽列與肩鍵切換的頁面</string>
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <string name="settings_nav_ring_modal_title">導覽列頁面</string>
+    <string name="settings_nav_ring_modal_subtitle">開啟或關閉頁面並設定順序</string>
+    <string name="settings_nav_ring_pinned">永遠開啟</string>
+    <string name="settings_nav_ring_hint_reorder">重新排序</string>
+    <string name="settings_nav_ring_hint_move">移動</string>
+    <string name="settings_nav_ring_hint_drop">放下</string>
+    <string name="settings_nav_ring_hint_cancel">取消</string>
     <string name="settings_shell_header_installers">受管安裝程式</string>
     <string name="settings_installers_add_title">新增儲存庫</string>
     <string name="settings_installers_add_subtitle">貼上 GitHub 儲存庫連結</string>
@@ -528,7 +539,9 @@
     <string name="settings_about_import_subtitle">從備份檔案套用設定</string>
 
     <string name="settings_about_systemize_title">防止高負載模擬器當機</string>
-    <string name="settings_about_systemize_subtitle">當高負載模擬器占用大部分記憶體時，Argosy可能會被強制關閉。在已取得root權限的裝置上，這會寫入指令碼將Argosy設為系統應用程式，使其不再被關閉。</string>
+    <string name="settings_about_systemize_subtitle">當高負載模擬器占用大部分記憶體時，Argosy可能會被強制關閉。這會將Argosy設為系統應用程式，使其不再被關閉。需要root權限。</string>
+    <string name="settings_about_android_data_title">開啟模擬器存檔資料夾</string>
+    <string name="settings_about_android_data_subtitle">讓Argosy讀取模擬器存放在Android/data中的存檔。需要root權限，並將SELinux設為寬鬆模式（permissive）。安裝新模擬器後請再次執行。</string>
     <string name="settings_about_restart_title">重新啟動Argosy</string>
     <string name="settings_about_restart_subtitle">關閉並重新開啟啟動器</string>
 
@@ -1423,6 +1436,9 @@
     <string name="settings_emulators_section_disabled">已停用的平台</string>
     <string name="settings_emulators_rail_platforms">平台</string>
 
+    <string name="settings_emulators_close_on_session_end_title">工作階段結束時關閉模擬器</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">存檔讀取並同步完成後，模擬器應用程式將被關閉</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_off">模擬器應用程式將繼續在背景執行</string>
     <string name="settings_emulators_check_updates_title">檢查更新</string>
     <string name="settings_emulators_check_updates_subtitle">檢查模擬器更新</string>
     <plurals name="settings_emulators_check_updates_available">
@@ -2067,6 +2083,24 @@
     <string name="settings_systemize_dialog_success_footnote">需要已取得root權限的裝置。此變更可以復原：移除名為「Argosy Systemize」的Magisk模組並重新開機即可。若您的選單文字不同，指令碼檔案仍然正確，只需將您的root執行選項指向該檔案即可。</string>
     <string name="settings_systemize_dialog_error_title">無法儲存指令碼</string>
     <string name="settings_systemize_dialog_error_hint">可能缺少儲存空間存取權限。請在設定中授予所有檔案存取權限後再試一次。</string>
+
+    <string name="settings_root_script_write_failed">無法寫入指令碼</string>
+    <string name="settings_root_script_run_failed">裝置未執行該指令碼</string>
+    <string name="settings_root_script_dialog_running">正在以root權限執行...</string>
+    <string name="settings_root_script_dialog_ok_title">完成</string>
+    <string name="settings_root_script_dialog_partial_title">部分完成</string>
+    <string name="settings_root_script_dialog_failed_title">未完成</string>
+    <string name="settings_root_script_dialog_output_heading">指令碼輸出</string>
+    <string name="settings_root_script_dialog_reboot_hint">重新開機以完成設定，然後將Argosy設為預設啟動器。</string>
+    <string name="settings_root_script_dialog_reboot_button">立即重新開機</string>
+    <string name="settings_root_script_step_open_retroid">開啟 Settings > Advanced > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayn">開啟 Settings > Advanced Settings > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayaneo">開啟 Settings > Optimization Assistant > Root Script</string>
+    <string name="settings_root_script_step_open_generic">開啟裝置的「run script as root」設定</string>
+    <string name="settings_root_script_step_select">從內部儲存空間選擇「%1$s」</string>
+    <string name="settings_root_script_step_run_reboot">執行它，完成後重新開機</string>
+    <string name="settings_root_script_step_run">執行它</string>
+    <string name="settings_root_script_step_default_launcher">將Argosy設為預設啟動器</string>
 
     <string name="settings_libretro_shell_configure_shader_chain_title">設定著色器鏈</string>
     <string name="settings_libretro_shell_frame_value_auto">自動</string>

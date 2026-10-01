@@ -927,6 +927,7 @@ class SettingsViewModel @Inject constructor(
     fun resetMemcardSelection(emulatorId: String) =
         emulatorDelegate.clearMemcardSelection(viewModelScope, emulatorId) { loadSettings() }
     fun forceCheckEmulatorUpdates() = routeForceCheckEmulatorUpdates(this)
+    fun setCloseEmulatorOnSessionEnd(enabled: Boolean) = routeSetCloseEmulatorOnSessionEnd(this, enabled)
     fun triggerEmulatorUpdate(emulatorId: String) = emulatorDelegate.triggerUpdateForEmulator(emulatorId, viewModelScope)
     fun selectUpdateModalVariant() = emulatorDelegate.selectUpdateModalVariant()
     fun moveUpdateModalFocus(delta: Int) = emulatorDelegate.moveUpdateModalFocus(delta)
@@ -1443,6 +1444,17 @@ class SettingsViewModel @Inject constructor(
     fun setSelectSwapMode(mode: com.nendo.argosy.data.preferences.SelectSwapMode) = controlsDelegate.setSelectSwapMode(viewModelScope, mode)
     fun startShortcutCapture(shortcut: com.nendo.argosy.ui.input.UiShortcut) = controlsDelegate.startShortcutCapture(shortcut)
     fun cancelShortcutCapture() = controlsDelegate.cancelShortcutCapture()
+    fun showNavRingModal() = controlsDelegate.showNavRingModal()
+    fun backNavRing() = controlsDelegate.backNavRing()
+    fun focusNavRing(index: Int) = controlsDelegate.focusNavRing(index)
+    fun moveNavRingFocus(delta: Int) = controlsDelegate.moveNavRingFocus(delta)
+    fun confirmNavRing() = controlsDelegate.confirmNavRing(viewModelScope)
+    fun toggleNavRing(token: String) = controlsDelegate.toggleNavRing(viewModelScope, token)
+    fun toggleNavRingLift() = controlsDelegate.toggleNavRingLift(viewModelScope)
+    fun liftNavRing() = controlsDelegate.liftNavRing()
+    fun liftNavRingAt(token: String) = controlsDelegate.liftNavRingAt(token)
+    fun moveNavRingTo(token: String, index: Int) = controlsDelegate.moveNavRingTo(token, index)
+    fun dropNavRing() = controlsDelegate.dropNavRing(viewModelScope)
     fun assignShortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut, keyCode: Int) =
         controlsDelegate.assignShortcutKey(viewModelScope, shortcut, keyCode)
     fun clearShortcutKey(shortcut: com.nendo.argosy.ui.input.UiShortcut) =
@@ -1851,8 +1863,30 @@ class SettingsViewModel @Inject constructor(
     fun cancelImportSettings() = routeCancelImportSettings(this)
     fun importSettingsFrom(path: String) = routeImportSettingsFrom(this, path)
 
-    fun writeSystemizeScript() {
-        _uiState.update { it.copy(systemizeResult = com.nendo.argosy.util.SystemizeScript.write(context)) }
+    fun applyRootScript(script: com.nendo.argosy.data.model.RootScript) {
+        if (_uiState.value.rootScriptDialog is RootScriptDialogState.Running) return
+        val runner = com.nendo.argosy.util.RootScriptRunner
+        if (!runner.canRunDirectly) {
+            _uiState.update { it.copy(rootScriptDialog = RootScriptDialogState.Finished(runner.write(context, script))) }
+            return
+        }
+        _uiState.update { it.copy(rootScriptDialog = RootScriptDialogState.Running(script)) }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val result = runner.run(context, script)
+            _uiState.update { it.copy(rootScriptDialog = RootScriptDialogState.Finished(result)) }
+        }
+    }
+
+    fun moveRootScriptFocus(direction: Int) {
+        _uiState.update { state ->
+            val dialog = state.rootScriptDialog as? RootScriptDialogState.Finished ?: return@update state
+            if (!dialog.offersReboot) return@update state
+            state.copy(rootScriptDialog = dialog.copy(focusIndex = (dialog.focusIndex + direction).coerceIn(0, 1)))
+        }
+    }
+
+    fun rebootAfterRootScript() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { com.nendo.argosy.util.RootScriptRunner.reboot() }
     }
 
     /**
@@ -1868,8 +1902,9 @@ class SettingsViewModel @Inject constructor(
         Runtime.getRuntime().exit(0)
     }
 
-    fun dismissSystemizeDialog() {
-        _uiState.update { it.copy(systemizeResult = null) }
+    fun dismissRootScriptDialog() {
+        if (_uiState.value.rootScriptDialog is RootScriptDialogState.Running) return
+        _uiState.update { it.copy(rootScriptDialog = null) }
     }
 
     fun startRommConfig() = routeStartRommConfig(this)

@@ -20,6 +20,7 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
             state.controls.shortcutCaptureTarget != null
         ) return null
 
+        interceptNavRingModal(state, method)?.let { return it }
         interceptGpuDriverPrompt(state, method)?.let { return it }
         interceptDriverPicker(state, method)?.let { return it }
         interceptDriverDownload(state, method)?.let { return it }
@@ -49,6 +50,28 @@ internal class ModalInputRouter(private val viewModel: SettingsViewModel) {
         interceptInstallerAddModal(state, method)?.let { return it }
 
         return null
+    }
+
+    private fun interceptNavRingModal(state: SettingsUiState, method: InputMethod): InputResult? {
+        if (!state.controls.showNavRingModal) return null
+        val holding = state.controls.navRingHeld != null
+        return when (method) {
+            InputMethod.UP -> { viewModel.moveNavRingFocus(-1); InputResult.HANDLED }
+            InputMethod.DOWN -> { viewModel.moveNavRingFocus(1); InputResult.HANDLED }
+            InputMethod.SECONDARY_ACTION -> {
+                viewModel.toggleNavRingLift()
+                InputResult.handled(SoundType.SELECT)
+            }
+            InputMethod.CONFIRM -> {
+                viewModel.confirmNavRing()
+                InputResult.handled(if (holding) SoundType.SELECT else SoundType.TOGGLE)
+            }
+            InputMethod.BACK -> {
+                viewModel.backNavRing()
+                InputResult.handled(if (holding) SoundType.SILENT else SoundType.CLOSE_MODAL)
+            }
+            else -> InputResult.HANDLED
+        }
     }
 
     private fun interceptInstallerVariantPicker(state: SettingsUiState, method: InputMethod): InputResult? {

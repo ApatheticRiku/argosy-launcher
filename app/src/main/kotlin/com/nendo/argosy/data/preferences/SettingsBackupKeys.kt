@@ -170,6 +170,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("select_swap_mode", SettingsBackupType.STRING),
         SettingsBackupKey("open_navigation_key", SettingsBackupType.INT),
         SettingsBackupKey("open_quick_panel_key", SettingsBackupType.INT),
+        SettingsBackupKey("nav_ring_routes", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("grip_reserve_mode", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_percent", SettingsBackupType.INT)
@@ -301,11 +302,15 @@ object SettingsBackupKeys {
         SettingsBackupKey("beta_updates_enabled", SettingsBackupType.BOOLEAN)
     )
 
+    private val SESSIONS = listOf(
+        SettingsBackupKey("close_emulator_on_session_end", SettingsBackupType.BOOLEAN)
+    )
+
     val EXPORTED: List<SettingsBackupKey> =
         APPEARANCE + BACKDROP + BOX_ART + BACKGROUND + HOME_AND_LIBRARY + APP_SHELVES +
             FEEDBACK + NAVIGATION + BUILTIN_GENERAL + BUILTIN_VIDEO + BUILTIN_AUDIO +
             BUILTIN_MOTION + BUILTIN_INPUT + BUILTIN_TOUCH + BUILTIN_HUD + BUILTIN_SPEEDRUN +
-            DOWNLOADS_AND_CACHES + SYNC_FILTERS + MEDIA_PLAYBACK + UPDATES
+            DOWNLOADS_AND_CACHES + SYNC_FILTERS + MEDIA_PLAYBACK + UPDATES + SESSIONS
 
     val BY_NAME: Map<String, SettingsBackupKey> = EXPORTED.associateBy { it.name }
 }

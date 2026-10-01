@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -25,6 +27,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -39,7 +42,8 @@ fun ModalSearchField(
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = stringResource(R.string.ui_modal_search_placeholder),
-    autoFocus: Boolean = true
+    autoFocus: Boolean = true,
+    onSearch: (() -> Unit)? = null
 ) {
     val theme = LocalArgosyTheme.current
     val focusRequester = remember { FocusRequester() }
@@ -74,6 +78,10 @@ fun ModalSearchField(
             ),
             cursorBrush = SolidColor(theme.focusAccent),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(
+                imeAction = if (onSearch != null) ImeAction.Search else ImeAction.Default
+            ),
+            keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }),
             decorationBox = { innerTextField ->
                 Box {
                     if (query.isEmpty()) {

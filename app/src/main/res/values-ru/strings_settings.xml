@@ -122,6 +122,17 @@
     <string name="settings_navigation_section_controller">Контроллер</string>
     <string name="settings_navigation_section_feedback">Отклик</string>
     <string name="settings_navigation_section_menus">Меню</string>
+    <string name="settings_navigation_section_nav_bar">Панель навигации</string>
+    <string name="settings_navigation_nav_bar_pages_title">Страницы панели навигации</string>
+    <string name="settings_navigation_nav_bar_pages_subtitle">Выберите и упорядочите страницы, между которыми переключают панель навигации и плечевые кнопки</string>
+    <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
+    <string name="settings_nav_ring_modal_title">Страницы панели навигации</string>
+    <string name="settings_nav_ring_modal_subtitle">Включайте и отключайте страницы и задавайте их порядок</string>
+    <string name="settings_nav_ring_pinned">Всегда включена</string>
+    <string name="settings_nav_ring_hint_reorder">Порядок</string>
+    <string name="settings_nav_ring_hint_move">Переместить</string>
+    <string name="settings_nav_ring_hint_drop">Поставить</string>
+    <string name="settings_nav_ring_hint_cancel">Отмена</string>
     <string name="settings_shell_header_installers">УПРАВЛЯЕМЫЕ УСТАНОВЩИКИ</string>
     <string name="settings_installers_add_title">Добавить репозиторий</string>
     <string name="settings_installers_add_subtitle">Вставьте ссылку на репозиторий GitHub</string>
@@ -594,7 +605,9 @@
     <string name="settings_about_import_subtitle">Применить настройки из файла резервной копии</string>
 
     <string name="settings_about_systemize_title">Остановить сбои на тяжёлых эмуляторах</string>
-    <string name="settings_about_systemize_subtitle">Argosy может быть принудительно закрыт, когда требовательный эмулятор занимает большую часть RAM. На устройстве с root-доступом это записывает скрипт, делающий Argosy системным приложением, чтобы его больше не завершали.</string>
+    <string name="settings_about_systemize_subtitle">Argosy может быть принудительно закрыт, когда требовательный эмулятор занимает большую часть RAM. Это делает Argosy системным приложением, чтобы его больше не завершали. Требуется root.</string>
+    <string name="settings_about_android_data_title">Открыть папки сохранений эмуляторов</string>
+    <string name="settings_about_android_data_subtitle">Позволяет Argosy читать сохранения, которые эмуляторы хранят в Android/data. Требуется root и SELinux в режиме permissive. Запустите снова после установки нового эмулятора.</string>
     <string name="settings_about_restart_title">Перезапустить Argosy</string>
     <string name="settings_about_restart_subtitle">Закрыть и снова открыть лаунчер</string>
 
@@ -1611,6 +1624,9 @@
     <string name="settings_emulators_section_disabled">Отключённые платформы</string>
     <string name="settings_emulators_rail_platforms">Платформы</string>
 
+    <string name="settings_emulators_close_on_session_end_title">Закрывать эмулятор после сессии</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_on">Приложение эмулятора закрывается после того, как его сохранение прочитано и синхронизировано</string>
+    <string name="settings_emulators_close_on_session_end_subtitle_off">Приложение эмулятора остаётся открытым в фоне</string>
     <string name="settings_emulators_check_updates_title">Проверить обновления</string>
     <string name="settings_emulators_check_updates_subtitle">Проверить обновления эмуляторов</string>
     <plurals name="settings_emulators_check_updates_available">
@@ -2371,6 +2387,26 @@
     <string name="settings_systemize_dialog_success_footnote">Требуется устройство с root-доступом. Изменение обратимо: удалите модуль Magisk с именем \"Argosy Systemize\" и перезагрузитесь. Если формулировка в вашем меню отличается, файл скрипта всё равно корректен - просто укажите на него в опции запуска от root.</string>
     <string name="settings_systemize_dialog_error_title">Не удалось сохранить скрипт</string>
     <string name="settings_systemize_dialog_error_hint">Возможно, отсутствует доступ к хранилищу. Предоставьте полный доступ к файлам в настройках и повторите попытку.</string>
+
+    <!-- ===== Root script runs (Settings > dialogs > RootScriptDialog) ===== -->
+
+    <string name="settings_root_script_write_failed">Не удалось записать скрипт</string>
+    <string name="settings_root_script_run_failed">Устройство не запустило скрипт</string>
+    <string name="settings_root_script_dialog_running">Выполнение от root...</string>
+    <string name="settings_root_script_dialog_ok_title">Готово</string>
+    <string name="settings_root_script_dialog_partial_title">Выполнено частично</string>
+    <string name="settings_root_script_dialog_failed_title">Не завершено</string>
+    <string name="settings_root_script_dialog_output_heading">Вывод скрипта</string>
+    <string name="settings_root_script_dialog_reboot_hint">Перезагрузите устройство, чтобы завершить, затем установите Argosy лаунчером по умолчанию.</string>
+    <string name="settings_root_script_dialog_reboot_button">Перезагрузить сейчас</string>
+    <string name="settings_root_script_step_open_retroid">Откройте Settings > Advanced > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayn">Откройте Settings > Advanced Settings > Run script as Root</string>
+    <string name="settings_root_script_step_open_ayaneo">Откройте Settings > Optimization Assistant > Root Script</string>
+    <string name="settings_root_script_step_open_generic">Откройте на устройстве параметр \"run script as root\"</string>
+    <string name="settings_root_script_step_select">Выберите \"%1$s\" во внутренней памяти</string>
+    <string name="settings_root_script_step_run_reboot">Запустите его, затем перезагрузите устройство после завершения</string>
+    <string name="settings_root_script_step_run">Запустите его</string>
+    <string name="settings_root_script_step_default_launcher">Установите Argosy лаунчером по умолчанию</string>
 
     <!-- ===== LibretroSettingItem / LibretroSettingsAccessor ===== -->
 

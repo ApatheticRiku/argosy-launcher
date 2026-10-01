@@ -863,7 +863,7 @@ class HomeViewModel @Inject constructor(
 
     private fun appBarIsDrawn(): Boolean =
         _uiState.value.homeApps.isNotEmpty() &&
-            DualScreenManagerHolder.instance?.hasPresentationScreen?.value == true
+            DualScreenManagerHolder.instance?.presentationShowsHints?.value == true
 
     override fun focusAppBar(): Boolean {
         if (!appBarIsDrawn()) return false

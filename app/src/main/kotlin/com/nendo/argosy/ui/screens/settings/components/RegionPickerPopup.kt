@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.settings.components
 
 import androidx.compose.foundation.background
 import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.util.verticalEdgeFade
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -70,7 +71,8 @@ fun RegionPickerPopup(
         LazyColumn(
             state = listState,
             modifier = Modifier
-                .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm),
+                .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm)
+                .verticalEdgeFade(listState, fadeHeight = Dimens.spacingLg),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             itemsIndexed(regions, key = { _, region -> region }) { index, region ->
@@ -141,6 +143,7 @@ fun RegionPriorityPopup(
             state = listState,
             modifier = Modifier
                 .heightIn(max = Dimens.headerHeightLg + Dimens.headerHeightLg + Dimens.iconSm)
+                .verticalEdgeFade(listState, fadeHeight = Dimens.spacingLg)
                 .dragReorderContainer(dragState),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
@@ -192,7 +195,7 @@ fun RegionPriorityPopup(
 }
 
 @Composable
-private fun RegionPopupFrame(
+internal fun RegionPopupFrame(
     title: String,
     subtitle: String,
     onDismiss: () -> Unit,
@@ -238,13 +241,14 @@ private fun RegionPopupFrame(
 }
 
 @Composable
-private fun RegionPickerItem(
+internal fun RegionPickerItem(
     name: String,
     rank: Int?,
     isFocused: Boolean,
     isSelected: Boolean,
     isHeld: Boolean,
     modifier: Modifier = Modifier,
+    trailingLabel: String? = null,
     onClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
@@ -286,6 +290,11 @@ private fun RegionPickerItem(
             color = if (emphasized) emphasisColor else MaterialTheme.colorScheme.onSurface
         )
         when {
+            trailingLabel != null -> Text(
+                text = trailingLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (emphasized) emphasisColor else MaterialTheme.colorScheme.onSurfaceVariant
+            )
             rank != null -> Text(
                 text = "${rank + 1}",
                 style = MaterialTheme.typography.labelLarge,

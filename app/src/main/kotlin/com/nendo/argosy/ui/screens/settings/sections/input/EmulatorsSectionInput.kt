@@ -36,6 +36,20 @@ internal class EmulatorsSectionInput(
         return InputResult.HANDLED
     }
 
+    override fun onLeft(): InputResult = handleLeftRight(-1)
+    override fun onRight(): InputResult = handleLeftRight(1)
+
+    private fun handleLeftRight(direction: Int): InputResult {
+        val state = viewModel.uiState.value
+        val info = createEmulatorsLayoutInfo(state.emulators.platforms)
+        if (emulatorsItemAtFocusIndex(state.focusedIndex, info) != EmulatorsItem.CloseOnSessionEnd) {
+            return InputResult.UNHANDLED
+        }
+        return toggleLeftRight(direction, state.emulators.closeEmulatorOnSessionEnd) {
+            viewModel.setCloseEmulatorOnSessionEnd(it)
+        }
+    }
+
     override fun onUp(): InputResult {
         val state = viewModel.uiState.value
         if (state.focusedIndex != 0) return InputResult.UNHANDLED

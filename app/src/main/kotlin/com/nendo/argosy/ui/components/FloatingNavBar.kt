@@ -32,6 +32,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import com.nendo.argosy.ui.DrawerItem
+import com.nendo.argosy.ui.navigation.NavRing
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
@@ -74,7 +75,7 @@ fun FloatingNavBar(
                 key(item.route) {
                     NavBarDestination(
                         item = item,
-                        isCurrent = item.route == currentRoute,
+                        isCurrent = NavRing.routeMatches(item.route, currentRoute),
                         onClick = { onNavigate(item.route) }
                     )
                 }
