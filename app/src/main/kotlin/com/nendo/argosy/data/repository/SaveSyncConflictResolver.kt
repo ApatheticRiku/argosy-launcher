@@ -101,9 +101,10 @@ class SaveSyncConflictResolver @Inject constructor(
                         isHardcore = false
                     )
 
-                    val syncEntity = saveSyncDao.getByGameAndEmulator(
+                    val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
                         resolution.gameId,
                         resolution.emulatorId,
+                        SaveSyncApiClient.syncKeyOf(resolution.channelName),
                         syncPreferencesRepository.getRommUserId()
                     )
                     if (syncEntity != null) {
@@ -143,16 +144,9 @@ class SaveSyncConflictResolver @Inject constructor(
         } else emulatorId
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val syncEntity = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, resolvedEmulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulatorWithDefault(
-                gameId,
-                resolvedEmulatorId,
-                SaveSyncApiClient.DEFAULT_SAVE_NAME,
-                ownerUserId
-            )
-        }
+        val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, resolvedEmulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId
+        )
 
         val cachedPath = syncEntity?.localSavePath?.takeIf { path ->
             saveHandlerRegistry.isValidCachedSavePath(game.platformSlug, path) && fal.exists(path)
@@ -269,16 +263,9 @@ class SaveSyncConflictResolver @Inject constructor(
         val localModified = Instant.ofEpochMilli(localFile.lastModified())
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val syncEntity = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulatorWithDefault(
-                gameId,
-                emulatorId,
-                SaveSyncApiClient.DEFAULT_SAVE_NAME,
-                ownerUserId
-            )
-        }
+        val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId
+        )
 
         val localHash = saveCacheManager.get().calculateLocalSaveHash(localPath, gameId, emulatorId)
         val localMatchesAnchor = syncEntity?.localContentHash != null

@@ -195,7 +195,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.ManagedInstallerEntity::class,
         com.nendo.argosy.data.local.entity.GameGroupPickEntity::class
     ],
-    version = 200,
+    version = 201,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

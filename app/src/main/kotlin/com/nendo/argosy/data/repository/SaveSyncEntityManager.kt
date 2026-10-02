@@ -44,9 +44,11 @@ class SaveSyncEntityManager @Inject constructor(
     suspend fun clearDirtyFlags(gameId: Long) =
         saveCacheDao.clearAllDirtyFlags(gameId, syncPreferencesRepository.getRommUserId())
 
-    suspend fun getSyncStatus(gameId: Long, emulatorId: String): SaveSyncEntity? {
-        return saveSyncDao.getByGameAndEmulator(gameId, emulatorId, syncPreferencesRepository.getRommUserId())
-    }
+    private suspend fun syncRow(gameId: Long, emulatorId: String, channelName: String?, ownerUserId: Long?) =
+        saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId)
+
+    suspend fun getSyncStatus(gameId: Long, emulatorId: String): SaveSyncEntity? =
+        syncRow(gameId, emulatorId, null, syncPreferencesRepository.getRommUserId())
 
     suspend fun updateSyncEntity(
         gameId: Long,
@@ -55,7 +57,7 @@ class SaveSyncEntityManager @Inject constructor(
         localUpdatedAt: Instant?
     ) {
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val existing = saveSyncDao.getByGameAndEmulator(gameId, emulatorId, ownerUserId)
+        val existing = syncRow(gameId, emulatorId, null, ownerUserId)
         if (existing != null) {
             saveSyncDao.upsert(
                 existing.copy(
@@ -77,12 +79,7 @@ class SaveSyncEntityManager @Inject constructor(
         contentHash: String? = null
     ) {
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val existing = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)
-                ?: saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(gameId, emulatorId, ownerUserId)
-        }
+        val existing = syncRow(gameId, emulatorId, channelName, ownerUserId)
         val now = Instant.now()
         saveSyncDao.upsert(
             SaveSyncEntity(
@@ -90,7 +87,7 @@ class SaveSyncEntityManager @Inject constructor(
                 gameId = gameId,
                 rommId = rommId,
                 emulatorId = emulatorId,
-                channelName = channelName,
+                channelName = SaveSyncApiClient.syncKeyOf(channelName),
                 rommSaveId = rommSaveId ?: existing?.rommSaveId,
                 localSavePath = localPath,
                 localUpdatedAt = now,
@@ -107,13 +104,7 @@ class SaveSyncEntityManager @Inject constructor(
     }
 
     suspend fun markUserSelectedRestorePoint(gameId: Long, emulatorId: String, channelName: String?) {
-        val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val row = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)
-                ?: saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(gameId, emulatorId, ownerUserId)
-        }
+        val row = syncRow(gameId, emulatorId, channelName, syncPreferencesRepository.getRommUserId())
         if (row != null) {
             saveSyncDao.setUserSelectedRestorePoint(row.id, Instant.now().toEpochMilli())
         }
@@ -132,22 +123,13 @@ class SaveSyncEntityManager @Inject constructor(
         channelName: String? = null
     ): SaveSyncEntity {
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val existing = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulatorWithDefault(
-                gameId,
-                emulatorId,
-                SaveSyncApiClient.DEFAULT_SAVE_NAME,
-                ownerUserId
-            )
-        }
+        val existing = syncRow(gameId, emulatorId, channelName, ownerUserId)
         val entity = SaveSyncEntity(
             id = existing?.id ?: 0,
             gameId = gameId,
             rommId = rommId,
             emulatorId = emulatorId,
-            channelName = channelName,
+            channelName = SaveSyncApiClient.syncKeyOf(channelName),
             rommSaveId = existing?.rommSaveId,
             localSavePath = localPath ?: existing?.localSavePath,
             localUpdatedAt = localUpdatedAt ?: existing?.localUpdatedAt,

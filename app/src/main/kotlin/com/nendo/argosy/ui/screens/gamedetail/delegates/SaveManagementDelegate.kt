@@ -53,11 +53,9 @@ class SaveManagementDelegate @Inject constructor(
         val namedChannel = com.nendo.argosy.data.repository.SaveSyncApiClient
             .namedChannelOrNull(activeChannel)
 
-        val syncEntity = if (namedChannel != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, namedChannel, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(gameId, emulatorId, ownerUserId)
-        }
+        val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, emulatorId, com.nendo.argosy.data.repository.SaveSyncApiClient.syncKeyOf(namedChannel), ownerUserId
+        )
 
         val cacheTimestamp = if (namedChannel != null) {
             saveCacheManager.getMostRecentInChannel(gameId, namedChannel)?.cachedAt

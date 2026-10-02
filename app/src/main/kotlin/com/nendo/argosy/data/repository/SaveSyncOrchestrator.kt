@@ -167,7 +167,9 @@ class SaveSyncOrchestrator @Inject constructor(
                 Instant.ofEpochMilli(localFile.lastModified())
             }
 
-            val syncEntity = saveSyncDao.getByGameAndEmulator(game.id, emulatorId, ownerUserId)
+            val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+                game.id, emulatorId, SaveSyncApiClient.syncKeyOf(activeChannel), ownerUserId
+            )
             val lastSynced = syncEntity?.lastSyncedAt
 
             if (lastSynced == null || localModified.isAfter(lastSynced)) {
@@ -272,7 +274,7 @@ class SaveSyncOrchestrator @Inject constructor(
             return@withContext if (cacheSystemSave(game.id, emulatorId, savePath, channelName)) RefreshOutcome.Dirtied else RefreshOutcome.Unchanged
         }
 
-        val anchor = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, channel, ownerUserId)
+        val anchor = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, SaveSyncApiClient.syncKeyOf(channel), ownerUserId)
             ?.localUpdatedAt ?: latest.cachedAt
         val anchorMillis = anchor.toEpochMilli()
         val dirty = if (localFile.isDirectory) {
@@ -433,11 +435,8 @@ class SaveSyncOrchestrator @Inject constructor(
             val channelName = SaveSyncApiClient.resolveServerChannelName(serverSave, romBaseName)
             val serverTime = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
 
-            val existing = if (channelName != null) {
-                saveSyncDao.getByGameEmulatorAndChannel(gameId, canonicalEmulatorId, channelName, ownerUserId)
-            } else {
-                saveSyncDao.getByGameEmulatorAndNullChannel(gameId, canonicalEmulatorId, ownerUserId)
-            }
+            val syncKey = SaveSyncApiClient.syncKeyOf(channelName)
+            val existing = saveSyncDao.getByGameEmulatorAndChannel(gameId, canonicalEmulatorId, syncKey, ownerUserId)
 
             saveSyncDao.upsert(
                 SaveSyncEntity(
@@ -445,7 +444,7 @@ class SaveSyncOrchestrator @Inject constructor(
                     gameId = gameId,
                     rommId = rommId,
                     emulatorId = canonicalEmulatorId,
-                    channelName = channelName,
+                    channelName = syncKey,
                     rommSaveId = serverSave.id,
                     localSavePath = existing?.localSavePath,
                     localUpdatedAt = existing?.localUpdatedAt,
@@ -456,6 +455,8 @@ class SaveSyncOrchestrator @Inject constructor(
                     localContentHash = existing?.localContentHash,
                     lastSyncDeviceId = existing?.lastSyncDeviceId,
                     lastSyncDeviceName = existing?.lastSyncDeviceName,
+                    userSelectedRestorePoint = existing?.userSelectedRestorePoint ?: false,
+                    userSelectedRestorePointAt = existing?.userSelectedRestorePointAt,
                     ownerUserId = existing?.ownerUserId ?: ownerUserId
                 )
             )
@@ -512,11 +513,8 @@ class SaveSyncOrchestrator @Inject constructor(
 
             for (latest in latestPerChannel) {
                 val channelName = SaveSyncApiClient.resolveServerChannelName(latest, romBaseName)
-                val existing = if (channelName != null) {
-                    saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, channelName, ownerUserId)
-                } else {
-                    saveSyncDao.getByGameEmulatorAndNullChannel(game.id, emulatorId, ownerUserId)
-                }
+                val syncKey = SaveSyncApiClient.syncKeyOf(channelName)
+                val existing = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, syncKey, ownerUserId)
                 val serverTime = SaveSyncApiClient.parseTimestamp(latest.updatedAt)
                 val localPresent = existing?.localSavePath?.let { File(it).exists() } == true
                 if (existing != null && localPresent) {
@@ -552,7 +550,7 @@ class SaveSyncOrchestrator @Inject constructor(
                         gameId = game.id,
                         rommId = rommId,
                         emulatorId = emulatorId,
-                        channelName = channelName,
+                        channelName = syncKey,
                         rommSaveId = latest.id,
                         localSavePath = existing?.localSavePath,
                         localUpdatedAt = existing?.localUpdatedAt,
@@ -563,6 +561,8 @@ class SaveSyncOrchestrator @Inject constructor(
                         localContentHash = existing?.localContentHash,
                         lastSyncDeviceId = existing?.lastSyncDeviceId,
                         lastSyncDeviceName = existing?.lastSyncDeviceName,
+                        userSelectedRestorePoint = existing?.userSelectedRestorePoint ?: false,
+                        userSelectedRestorePointAt = existing?.userSelectedRestorePointAt,
                         ownerUserId = existing?.ownerUserId ?: ownerUserId
                     )
                 )

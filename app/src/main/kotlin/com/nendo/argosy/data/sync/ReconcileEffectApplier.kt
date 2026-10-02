@@ -11,6 +11,7 @@ import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.local.entity.SyncPriority
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
+import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.sync.strategy.ConflictAutoResolver
 import com.nendo.argosy.data.sync.strategy.ReconcileAction
@@ -65,12 +66,9 @@ class ReconcileEffectApplier @Inject constructor(
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         val game = gameDao.getByRommId(op.romId)
         val existing = game?.id?.let { gid ->
-            val emu = op.emulator ?: ""
-            if (op.slot != null) {
-                saveSyncDao.getByGameEmulatorAndChannel(gid, emu, op.slot, ownerUserId)
-            } else {
-                saveSyncDao.getByGameAndEmulator(gid, emu, ownerUserId)
-            }
+            saveSyncDao.getByGameEmulatorAndChannel(
+                gid, op.emulator ?: "", SaveSyncApiClient.syncKeyOf(op.slot), ownerUserId
+            )
         }
         val clientHash = existing?.localSavePath?.let {
             saveCacheManager.get().calculateLocalSaveHash(it, existing.gameId, existing.emulatorId)
@@ -168,11 +166,8 @@ class ReconcileEffectApplier @Inject constructor(
             return false
         }
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val existing = if (op.slot != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, op.slot, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(game.id, emulatorId, ownerUserId)
-        }
+        val syncKey = SaveSyncApiClient.syncKeyOf(op.slot)
+        val existing = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, syncKey, ownerUserId)
         val serverTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
         saveSyncDao.upsert(
             SaveSyncEntity(
@@ -180,7 +175,7 @@ class ReconcileEffectApplier @Inject constructor(
                 gameId = game.id,
                 rommId = op.romId,
                 emulatorId = emulatorId,
-                channelName = op.slot,
+                channelName = syncKey,
                 rommSaveId = op.saveId,
                 localSavePath = existing?.localSavePath,
                 localUpdatedAt = existing?.localUpdatedAt,
@@ -191,6 +186,8 @@ class ReconcileEffectApplier @Inject constructor(
                 localContentHash = existing?.localContentHash,
                 lastSyncDeviceId = existing?.lastSyncDeviceId,
                 lastSyncDeviceName = existing?.lastSyncDeviceName,
+                userSelectedRestorePoint = existing?.userSelectedRestorePoint ?: false,
+                userSelectedRestorePointAt = existing?.userSelectedRestorePointAt,
                 ownerUserId = existing?.ownerUserId ?: ownerUserId
             )
         )

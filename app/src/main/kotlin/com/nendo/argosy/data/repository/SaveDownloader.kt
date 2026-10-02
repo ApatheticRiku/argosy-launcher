@@ -151,22 +151,15 @@ class SaveDownloader @Inject constructor(
             Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Canonical emulator=$resolvedEmulatorId (original=$emulatorId)")
         }
 
-        val syncEntity = (if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, resolvedEmulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulatorWithDefault(
-                gameId,
-                resolvedEmulatorId,
-                SaveSyncApiClient.DEFAULT_SAVE_NAME,
-                ownerUserId
-            )
-        }) ?: knownServerSaveId?.let { serverId ->
+        val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, resolvedEmulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId
+        ) ?: knownServerSaveId?.let { serverId ->
             Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | No sync entity in DB; synthesizing from knownServerSaveId=$serverId")
             SaveSyncEntity(
                 gameId = gameId,
                 rommId = game.rommId ?: 0,
                 emulatorId = resolvedEmulatorId,
-                channelName = channelName,
+                channelName = SaveSyncApiClient.syncKeyOf(channelName),
                 rommSaveId = serverId,
                 syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
                 ownerUserId = ownerUserId

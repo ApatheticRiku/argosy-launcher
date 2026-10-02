@@ -261,7 +261,7 @@ class SaveSyncApiClient @Inject constructor(
 
             if (channelName == null) continue
 
-            val existing = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, channelName, ownerUserId)
+            val existing = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, syncKeyOf(channelName), ownerUserId)
 
             val serverTime = parseTimestamp(serverSave.updatedAt)
 
@@ -275,7 +275,7 @@ class SaveSyncApiClient @Inject constructor(
                     gameId = game.id,
                     rommId = game.rommId!!,
                     emulatorId = emulatorId,
-                    channelName = channelName,
+                    channelName = syncKeyOf(channelName),
                     rommSaveId = serverSave.id,
                     localSavePath = existing?.localSavePath,
                     localUpdatedAt = existing?.localUpdatedAt,
@@ -581,6 +581,13 @@ class SaveSyncApiClient @Inject constructor(
          */
         fun isAutosaveChannel(channelName: String?): Boolean =
             channelName == null || channelName.equals(AUTOSAVE_SLOT_NAME, ignoreCase = true)
+
+        fun syncKeyOf(channelName: String?): String = when {
+            channelName == null -> AUTOSAVE_SLOT_NAME
+            channelName.equals(AUTOSAVE_SLOT_NAME, ignoreCase = true) -> AUTOSAVE_SLOT_NAME
+            channelName.equals(DEFAULT_SAVE_NAME, ignoreCase = true) -> AUTOSAVE_SLOT_NAME
+            else -> channelName
+        }
 
         /**
          * The named channel this coordinate refers to, or null for the autosave/latest bucket -- so

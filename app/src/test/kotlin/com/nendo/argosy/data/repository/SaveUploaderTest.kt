@@ -145,7 +145,7 @@ class SaveUploaderTest {
             localContentHash = "deadbeef"
         )
         coEvery {
-            saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, SaveSyncApiClient.DEFAULT_SAVE_NAME, any())
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, any())
         } returns syncEntity
         every { saveArchiver.calculateContentHash(any()) } returns "deadbeef"
         coEvery { saveCacheDao.getByGameAndHash(any(), any(), any()) } returns null
@@ -493,7 +493,7 @@ class SaveUploaderTest {
     @Test
     fun `hardcore upload with null channelName threads through without misbehavior (coverage gap)`() = runTest {
         coEvery {
-            saveSyncDao.getByGameAndEmulatorWithDefault(gameId, emulatorId, SaveSyncApiClient.DEFAULT_SAVE_NAME, any())
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, any())
         } returns SaveSyncEntity(
             id = 1L,
             gameId = gameId,

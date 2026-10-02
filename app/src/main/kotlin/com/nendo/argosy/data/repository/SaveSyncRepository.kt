@@ -359,7 +359,7 @@ class SaveSyncRepository @Inject constructor(
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | No deviceId (pre-4.7 server or sync disabled) | decision=NoConnection")
             return@withContext PreLaunchSyncResult.NoConnection
         }
-        val effectiveChannel = channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME
+        val effectiveChannel = SaveSyncApiClient.syncKeyOf(channelName)
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         val existing = saveSyncDao.getByGameEmulatorAndChannel(

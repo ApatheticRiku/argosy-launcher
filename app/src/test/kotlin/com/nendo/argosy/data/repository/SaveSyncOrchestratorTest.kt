@@ -143,7 +143,7 @@ class SaveSyncOrchestratorTest {
     // --- syncSavesForNewDownload ---
 
     @Test
-    fun `syncSavesForNewDownload accented latest save creates entity with null channelName`() = runTest {
+    fun `syncSavesForNewDownload accented latest save creates the autosave entity`() = runTest {
         val serverSave = makeServerSave(
             id = 1L,
             fileName = "Pok\u00e9mon Violet.srm",
@@ -154,7 +154,7 @@ class SaveSyncOrchestratorTest {
 
         orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
 
-        coVerify { saveSyncDao.upsert(match { it.channelName == null && it.gameId == 1L }) }
+        coVerify { saveSyncDao.upsert(match { it.channelName == "autosave" && it.gameId == 1L }) }
     }
 
     @Test
@@ -173,7 +173,7 @@ class SaveSyncOrchestratorTest {
     }
 
     @Test
-    fun `syncSavesForNewDownload accented filename with timestamp tag creates null channelName`() = runTest {
+    fun `syncSavesForNewDownload accented filename with timestamp tag creates the autosave entity`() = runTest {
         val serverSave = makeServerSave(
             id = 1L,
             fileName = "Pok\u00e9mon Violet [2024-01-15 12-00-00].srm",
@@ -184,7 +184,7 @@ class SaveSyncOrchestratorTest {
 
         orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
 
-        coVerify { saveSyncDao.upsert(match { it.channelName == null }) }
+        coVerify { saveSyncDao.upsert(match { it.channelName == "autosave" }) }
     }
 
     @Test

@@ -250,11 +250,9 @@ class SyncCoordinator @Inject constructor(
     ): Instant? {
         val emu = emulatorId ?: return fallback
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val existing = if (slot != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emu, slot, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(gameId, emu, ownerUserId)
-        }
+        val existing = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, emu, SaveSyncApiClient.syncKeyOf(slot), ownerUserId
+        )
         return resolveLocalTimeFromEntity(existing, fallback)
     }
 

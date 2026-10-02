@@ -94,16 +94,9 @@ class SaveUploader @Inject constructor(
         }
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val syncEntity = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, resolvedEmulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulatorWithDefault(
-                gameId,
-                resolvedEmulatorId,
-                SaveSyncApiClient.DEFAULT_SAVE_NAME,
-                ownerUserId
-            )
-        }
+        val syncEntity = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, resolvedEmulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId
+        )
 
         val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
         val preferredCore = client.resolveCoreForGame(game, resolvedEmulatorId)
@@ -373,7 +366,7 @@ class SaveUploader @Inject constructor(
                         gameId = gameId,
                         rommId = rommId,
                         emulatorId = resolvedEmulatorId,
-                        channelName = channelName,
+                        channelName = SaveSyncApiClient.syncKeyOf(channelName),
                         rommSaveId = serverSave.id,
                         localSavePath = localPath,
                         localUpdatedAt = serverTimestamp,
@@ -493,7 +486,7 @@ class SaveUploader @Inject constructor(
                     .filter { it.slot != null && SaveSyncApiClient.equalsNormalized(it.slot, channelName) }
                     .maxByOrNull { SaveSyncApiClient.parseTimestamp(it.updatedAt) }
                 val serverTime = latestForSlot?.let { SaveSyncApiClient.parseTimestamp(it.updatedAt) } ?: Instant.now()
-                val preSyncTime = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)?.lastSyncedAt
+                val preSyncTime = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId)?.lastSyncedAt
                     ?: Instant.ofEpochMilli(cacheFile.lastModified())
                 Logger.warn(TAG, "[SaveSync] UPLOAD_CACHE gameId=$gameId | Session started on older save -- conflict for channel=$channelName | preSyncTime=$preSyncTime, server=$serverTime")
                 return@withContext SaveSyncResult.Conflict(
@@ -543,7 +536,7 @@ class SaveUploader @Inject constructor(
                     .filter { it.slot != null && SaveSyncApiClient.equalsNormalized(it.slot, channelName) }
                     .maxByOrNull { SaveSyncApiClient.parseTimestamp(it.updatedAt) }
                 val serverTime = conflictSlotSave?.let { SaveSyncApiClient.parseTimestamp(it.updatedAt) } ?: Instant.now()
-                val conflictLocalTime = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)?.lastSyncedAt
+                val conflictLocalTime = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId)?.lastSyncedAt
                     ?: Instant.ofEpochMilli(cacheFile.lastModified())
                 Logger.debug(TAG, "[SaveSync] UPLOAD_CACHE gameId=$gameId | Server returned 409 (device out of sync for slot=$channelName) | preSyncTime=$conflictLocalTime, server=$serverTime")
                 return@withContext SaveSyncResult.Conflict(
@@ -569,7 +562,7 @@ class SaveUploader @Inject constructor(
                     uploadedCacheId = uploadedCacheId,
                     serverSave = serverSave
                 )
-                saveSyncDao.getByGameEmulatorAndChannel(gameId, resolvedEmulatorId, channelName, ownerUserId)?.let { row ->
+                saveSyncDao.getByGameEmulatorAndChannel(gameId, resolvedEmulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId)?.let { row ->
                     saveSyncDao.updateLocalContentHash(row.id, saveArchiver.calculateContentHash(cacheFile))
                     serverSave.contentHash?.takeIf { client.getCapabilities().trustsServerHash }?.let {
                         saveSyncDao.updateLastUploadedHash(row.id, it)
@@ -638,11 +631,9 @@ class SaveUploader @Inject constructor(
         channelName: String?,
         ownerUserId: Long?
     ) {
-        val row = if (channelName != null) {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, channelName, ownerUserId)
-        } else {
-            saveSyncDao.getByGameAndEmulator(gameId, emulatorId, ownerUserId)
-        }
+        val row = saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId
+        )
         if (row?.userSelectedRestorePoint == true) {
             saveSyncDao.clearUserSelectedRestorePoint(row.id)
         }

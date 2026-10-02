@@ -18,15 +18,6 @@ interface SaveSyncDao {
 
     @Query("""
         SELECT * FROM save_sync
-        WHERE gameId = :gameId AND emulatorId = :emulatorId AND channelName IS NULL
-          AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
-        ORDER BY (ownerUserId IS NULL) ASC, id DESC
-        LIMIT 1
-    """)
-    suspend fun getByGameAndEmulator(gameId: Long, emulatorId: String, ownerUserId: Long?): SaveSyncEntity?
-
-    @Query("""
-        SELECT * FROM save_sync
         WHERE gameId = :gameId AND emulatorId = :emulatorId AND channelName = :channelName
           AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
         ORDER BY (ownerUserId IS NULL) ASC, id DESC
@@ -40,15 +31,6 @@ interface SaveSyncDao {
     ): SaveSyncEntity?
 
     @Query("""
-        SELECT * FROM save_sync
-        WHERE gameId = :gameId AND emulatorId = :emulatorId AND channelName IS NULL
-          AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
-        ORDER BY (ownerUserId IS NULL) ASC, id DESC
-        LIMIT 1
-    """)
-    suspend fun getByGameEmulatorAndNullChannel(gameId: Long, emulatorId: String, ownerUserId: Long?): SaveSyncEntity?
-
-    @Query("""
         DELETE FROM save_sync
         WHERE id NOT IN (
             SELECT MAX(id) FROM save_sync
@@ -56,21 +38,6 @@ interface SaveSyncDao {
         )
     """)
     suspend fun deleteDuplicateRows(): Int
-
-    @Query("""
-        SELECT * FROM save_sync
-        WHERE gameId = :gameId AND emulatorId = :emulatorId
-          AND (channelName IS NULL OR channelName = :defaultChannelName)
-          AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
-        ORDER BY (ownerUserId IS NULL) ASC, id DESC
-        LIMIT 1
-    """)
-    suspend fun getByGameAndEmulatorWithDefault(
-        gameId: Long,
-        emulatorId: String,
-        defaultChannelName: String,
-        ownerUserId: Long?
-    ): SaveSyncEntity?
 
     @Query("""
         SELECT * FROM save_sync

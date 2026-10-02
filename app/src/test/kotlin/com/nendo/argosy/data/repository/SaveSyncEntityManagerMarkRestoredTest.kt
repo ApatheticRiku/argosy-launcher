@@ -26,9 +26,7 @@ class SaveSyncEntityManagerMarkRestoredTest {
 
     @Test
     fun `markRestored creates a fresh SYNCED row when none exists`() = runTest {
-        coEvery { saveSyncDao.getByGameAndEmulator(any(), any(), any()) } returns null
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns null
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any(), any()) } returns null
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
 
@@ -131,11 +129,11 @@ class SaveSyncEntityManagerMarkRestoredTest {
             gameId = 7L,
             rommId = 100L,
             emulatorId = "mgba",
-            channelName = null,
+            channelName = "autosave",
             rommSaveId = 999L,
             syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER
         )
-        coEvery { saveSyncDao.getByGameAndEmulator(7L, "mgba", any()) } returns existing
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "autosave", any()) } returns existing
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
 
@@ -153,21 +151,10 @@ class SaveSyncEntityManagerMarkRestoredTest {
     }
 
     @Test
-    fun `markRestored falls back to channel-default lookup when channelName has no exact row`() = runTest {
-        val existing = SaveSyncEntity(
-            id = 42L,
-            gameId = 7L,
-            rommId = 100L,
-            emulatorId = "mgba",
-            channelName = null,
-            syncStatus = SaveSyncEntity.STATUS_LOCAL_NEWER
-        )
-        coEvery {
-            saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "slot1", any())
-        } returns null
-        coEvery {
-            saveSyncDao.getByGameAndEmulatorWithDefault(7L, "mgba", "slot1", any())
-        } returns existing
+    fun `a named restore with no row of its own never takes over the autosave row`() = runTest {
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "slot1", any()) } returns null
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "autosave", any()) } returns
+            SaveSyncEntity(id = 42L, gameId = 7L, rommId = 100L, emulatorId = "mgba", channelName = "autosave", syncStatus = SaveSyncEntity.STATUS_SYNCED)
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
 
@@ -181,8 +168,40 @@ class SaveSyncEntityManagerMarkRestoredTest {
             serverTimestamp = null
         )
 
-        assertEquals(42L, captured.captured.id)
+        assertEquals(0L, captured.captured.id)
         assertEquals("slot1", captured.captured.channelName)
-        assertEquals(SaveSyncEntity.STATUS_SYNCED, captured.captured.syncStatus)
+    }
+
+    @Test
+    fun `every spelling of the latest slot restores into the autosave row`() = runTest {
+        for (spelling in listOf(null, "autosave", "AutoSave", "argosy-latest")) {
+            val existing = SaveSyncEntity(id = 42L, gameId = 7L, rommId = 100L, emulatorId = "mgba", channelName = "autosave", syncStatus = SaveSyncEntity.STATUS_SYNCED)
+            coEvery { saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "autosave", any()) } returns existing
+            val captured = slot<SaveSyncEntity>()
+            coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
+
+            manager.markRestored(
+                gameId = 7L,
+                rommId = 100L,
+                emulatorId = "mgba",
+                channelName = spelling,
+                localPath = "/storage/saves/g.srm",
+                rommSaveId = 555L,
+                serverTimestamp = null
+            )
+
+            assertEquals("spelling=$spelling", 42L, captured.captured.id)
+            assertEquals("spelling=$spelling", "autosave", captured.captured.channelName)
+        }
+    }
+
+    @Test
+    fun `a restore point on the latest slot lands on the row the restore wrote`() = runTest {
+        val restored = SaveSyncEntity(id = 42L, gameId = 7L, rommId = 100L, emulatorId = "mgba", channelName = "autosave", syncStatus = SaveSyncEntity.STATUS_SYNCED)
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(7L, "mgba", "autosave", any()) } returns restored
+
+        manager.markUserSelectedRestorePoint(gameId = 7L, emulatorId = "mgba", channelName = null)
+
+        coVerify { saveSyncDao.setUserSelectedRestorePoint(42L, any()) }
     }
 }

@@ -13,6 +13,7 @@ import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
+import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -324,7 +325,7 @@ class SiblingSplitRepair @Inject constructor(
                 )
                 continue
             }
-            if (saveSyncDao.moveToGame(row.id, owner.id, channel) == 0) {
+            if (saveSyncDao.moveToGame(row.id, owner.id, SaveSyncApiClient.syncKeyOf(channel)) == 0) {
                 Logger.warn(TAG, "saveSync: row ${row.id} not moved to game ${owner.id}, unique key collision")
                 continue
             }
@@ -341,12 +342,9 @@ class SiblingSplitRepair @Inject constructor(
     }
 
     private suspend fun destinationTaken(row: SaveSyncEntity, gameId: Long, channel: String?): Boolean {
-        val existing = if (channel == null) {
-            saveSyncDao.getByGameEmulatorAndNullChannel(gameId, row.emulatorId, row.ownerUserId)
-        } else {
-            saveSyncDao.getByGameEmulatorAndChannel(gameId, row.emulatorId, channel, row.ownerUserId)
-        }
-        return existing != null
+        return saveSyncDao.getByGameEmulatorAndChannel(
+            gameId, row.emulatorId, SaveSyncApiClient.syncKeyOf(channel), row.ownerUserId
+        ) != null
     }
 
     private suspend fun carryOverVariantSaves(formerSelections: Map<Long, Set<Long>>): Int {

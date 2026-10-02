@@ -33,7 +33,6 @@ class SaveSyncEntityManagerTest {
     @Test
     fun `createOrUpdateSyncEntity inserts PENDING_UPLOAD when no row exists`() = runTest {
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns null
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any(), any()) } returns null
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
 
@@ -54,12 +53,12 @@ class SaveSyncEntityManagerTest {
     fun `createOrUpdateSyncEntity preserves existing status (does not downgrade SYNCED)`() = runTest {
         val existing = SaveSyncEntity(
             id = 42L, gameId = 1L, rommId = 100L, emulatorId = "eden",
-            channelName = null, rommSaveId = 5L,
+            channelName = "autosave", rommSaveId = 5L,
             localSavePath = "/old", localUpdatedAt = Instant.ofEpochMilli(500),
             serverUpdatedAt = Instant.ofEpochMilli(600), lastSyncedAt = Instant.ofEpochMilli(700),
             syncStatus = SaveSyncEntity.STATUS_SYNCED,
         )
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(1L, "eden", any(), any()) } returns existing
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns existing
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 42L
 
@@ -80,11 +79,11 @@ class SaveSyncEntityManagerTest {
     fun `createOrUpdateSyncEntity keeps existing localPath when caller passes null`() = runTest {
         val existing = SaveSyncEntity(
             id = 7L, gameId = 1L, rommId = 100L, emulatorId = "eden",
-            channelName = null, localSavePath = "/preserve_me",
+            channelName = "autosave", localSavePath = "/preserve_me",
             localUpdatedAt = Instant.ofEpochMilli(1_000),
             syncStatus = SaveSyncEntity.STATUS_LOCAL_NEWER,
         )
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any(), any()) } returns existing
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns existing
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 7L
 
@@ -138,12 +137,12 @@ class SaveSyncEntityManagerTest {
         )
 
         coVerify(exactly = 1) { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "manual", any()) }
-        coVerify(exactly = 0) { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) }
     }
 
     @Test
     fun `markRestored writes SYNCED with new path and timestamps`() = runTest {
-        coEvery { saveSyncDao.getByGameAndEmulator(1L, "eden", any()) } returns null
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns null
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 1L
 
@@ -174,28 +173,13 @@ class SaveSyncEntityManagerTest {
     }
 
     @Test
-    fun `markUserSelectedRestorePoint falls back to default-channel lookup`() = runTest {
-        val existing = SaveSyncEntity(
-            id = 9L, gameId = 1L, rommId = 100L, emulatorId = "eden",
-            channelName = null,
-            syncStatus = SaveSyncEntity.STATUS_SYNCED,
-        )
-        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns null
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(1L, "eden", "autosave", any()) } returns existing
-
-        manager.markUserSelectedRestorePoint(1L, "eden", "autosave")
-
-        coVerify { saveSyncDao.setUserSelectedRestorePoint(9L, any()) }
-    }
-
-    @Test
-    fun `markUserSelectedRestorePoint with null channel uses default-emulator lookup`() = runTest {
+    fun `markUserSelectedRestorePoint with null channel marks the autosave row`() = runTest {
         val existing = SaveSyncEntity(
             id = 7L, gameId = 1L, rommId = 100L, emulatorId = "eden",
-            channelName = null,
+            channelName = "autosave",
             syncStatus = SaveSyncEntity.STATUS_SYNCED,
         )
-        coEvery { saveSyncDao.getByGameAndEmulator(1L, "eden", any()) } returns existing
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns existing
 
         manager.markUserSelectedRestorePoint(1L, "eden", null)
 
@@ -205,7 +189,6 @@ class SaveSyncEntityManagerTest {
     @Test
     fun `markUserSelectedRestorePoint is a no-op when no row exists`() = runTest {
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns null
-        coEvery { saveSyncDao.getByGameAndEmulatorWithDefault(any(), any(), any(), any()) } returns null
 
         manager.markUserSelectedRestorePoint(1L, "eden", "autosave")
 
@@ -223,11 +206,11 @@ class SaveSyncEntityManagerTest {
     fun `markRestored preserves existing rommSaveId when caller passes null`() = runTest {
         val existing = SaveSyncEntity(
             id = 3L, gameId = 1L, rommId = 100L, emulatorId = "eden",
-            channelName = null, rommSaveId = 77L,
+            channelName = "autosave", rommSaveId = 77L,
             localSavePath = "/old", localUpdatedAt = Instant.ofEpochMilli(1_000),
             syncStatus = SaveSyncEntity.STATUS_LOCAL_NEWER,
         )
-        coEvery { saveSyncDao.getByGameAndEmulator(1L, "eden", any()) } returns existing
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(1L, "eden", "autosave", any()) } returns existing
         val captured = slot<SaveSyncEntity>()
         coEvery { saveSyncDao.upsert(capture(captured)) } returns 3L
 

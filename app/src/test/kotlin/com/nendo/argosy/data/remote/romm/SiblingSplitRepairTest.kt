@@ -85,7 +85,6 @@ class SiblingSplitRepairTest {
         coEvery { gameFileDao.getVersionGroupedFiles() } returns emptyList()
         coEvery { gameFileDao.getById(any()) } returns null
         coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns emptyList()
-        coEvery { saveSyncDao.getByGameEmulatorAndNullChannel(any(), any(), any()) } returns null
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns null
         coEvery { saveSyncDao.moveToGame(any(), any(), any()) } returns 1
         coEvery { carryOver.carryOver(any(), any(), any()) } returns 0
@@ -234,7 +233,7 @@ class SiblingSplitRepairTest {
 
         assertEquals(2, outcome.saveSyncRowsMoved)
         coVerify { saveSyncDao.moveToGame(5L, 2L, "Slot 1") }
-        coVerify { saveSyncDao.moveToGame(6L, 2L, null) }
+        coVerify { saveSyncDao.moveToGame(6L, 2L, "autosave") }
     }
 
     @Test
@@ -242,7 +241,7 @@ class SiblingSplitRepairTest {
         coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns
             listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany"))
         coEvery { gameDao.getByRommId(200L) } returns sibling
-        coEvery { saveSyncDao.getByGameEmulatorAndNullChannel(2L, "argosy", 7L) } returns
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(2L, "argosy", "autosave", 7L) } returns
             saveSync(id = 9L, gameId = 2L, rommId = 200L, channel = null)
 
         val outcome = repair.repair()
@@ -318,7 +317,7 @@ class SiblingSplitRepairTest {
         coVerifyOrder {
             overlayDao.movePlayTotals(fromGameId = 1L, toGameId = 2L)
             playSessionDao.moveToGame(1L, 2L)
-            saveSyncDao.moveToGame(5L, 2L, null)
+            saveSyncDao.moveToGame(5L, 2L, "autosave")
         }
     }
 
@@ -334,7 +333,7 @@ class SiblingSplitRepairTest {
         assertEquals(0, outcome.historyMoved)
         coVerify(exactly = 0) { overlayDao.movePlayTotals(any(), any()) }
         coVerify(exactly = 0) { playSessionDao.moveToGame(any(), any()) }
-        coVerify { saveSyncDao.moveToGame(5L, 2L, null) }
+        coVerify { saveSyncDao.moveToGame(5L, 2L, "autosave") }
     }
 
     @Test
@@ -360,7 +359,7 @@ class SiblingSplitRepairTest {
             listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany"))
         coEvery { gameDao.getByRommId(200L) } returns sibling
         coEvery { saveSyncDao.countForGame(1L) } returns 1
-        coEvery { saveSyncDao.getByGameEmulatorAndNullChannel(2L, "argosy", 7L) } returns
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(2L, "argosy", "autosave", 7L) } returns
             saveSync(id = 9L, gameId = 2L, rommId = 200L, channel = null)
 
         val outcome = repair.repair()
@@ -382,7 +381,7 @@ class SiblingSplitRepairTest {
 
         assertEquals(0, outcome.historyMoved)
         coVerify(exactly = 0) { overlayDao.movePlayTotals(any(), any()) }
-        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, null) }
+        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, "autosave") }
         coVerify(exactly = 0) { saveSyncDao.moveToGame(6L, any(), any()) }
     }
 
@@ -439,7 +438,7 @@ class SiblingSplitRepairTest {
         repair.runOnce()
 
         coVerify(exactly = 2) { overlayDao.movePlayTotals(1L, 2L) }
-        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, null) }
+        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, "autosave") }
         coVerify { syncPreferences.setSiblingSplitRepairDone() }
     }
 
@@ -449,14 +448,14 @@ class SiblingSplitRepairTest {
         coEvery { saveSyncDao.getRowsKeyedToAnotherRom() } returns
             listOf(saveSync(id = 5L, gameId = 1L, rommId = 200L, channel = "Germany"))
         coEvery { gameDao.getByRommId(200L) } returns sibling
-        coEvery { saveSyncDao.getByGameEmulatorAndNullChannel(2L, "argosy", 7L) } returns
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(2L, "argosy", "autosave", 7L) } returns
             saveSync(id = 9L, gameId = 2L, rommId = 200L, channel = null) andThen null
 
         assertEquals(0, repair.retryBlockedSaveSyncMoves())
         coVerify(exactly = 0) { saveSyncDao.moveToGame(any(), any(), any()) }
 
         assertEquals(1, repair.retryBlockedSaveSyncMoves())
-        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, null) }
+        coVerify(exactly = 1) { saveSyncDao.moveToGame(5L, 2L, "autosave") }
         coVerify(exactly = 0) { overlayDao.movePlayTotals(any(), any()) }
     }
 

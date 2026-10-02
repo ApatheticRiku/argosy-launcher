@@ -5,6 +5,7 @@ import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SyncType
+import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.util.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -45,8 +46,7 @@ class ConflictAutoResolver @Inject constructor(
 
         val syncRow = gameId?.let { gid ->
             operation.emulator?.takeIf { it.isNotBlank() }?.let { emu ->
-                operation.slot?.let { saveSyncDao.getByGameEmulatorAndChannel(gid, emu, it, ownerUserId) }
-                    ?: saveSyncDao.getByGameAndEmulator(gid, emu, ownerUserId)
+                saveSyncDao.getByGameEmulatorAndChannel(gid, emu, SaveSyncApiClient.syncKeyOf(operation.slot), ownerUserId)
             }
         }
         val localAnchor = syncRow?.localContentHash

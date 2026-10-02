@@ -3968,3 +3968,28 @@ object Migration_199_200 : Migration(199, 200) {
         db.execSQL("PRAGMA foreign_keys=ON")
     }
 }
+
+/**
+ * Folds every latest-save `save_sync` row (null channel, `argosy-latest`, any case of
+ * `autosave`) into one `autosave` row per game, emulator and owner. The kept row is the one
+ * carrying a restore point, then the most recently synced, then the newest.
+ */
+object Migration_200_201 : Migration(200, 201) {
+    private const val LATEST =
+        "(`channelName` IS NULL OR LOWER(`channelName`) IN ('autosave', 'argosy-latest'))"
+
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "DELETE FROM `save_sync` WHERE ${LATEST.replace("`channelName`", "`save_sync`.`channelName`")} " +
+                "AND `id` != (" +
+                "SELECT k.`id` FROM `save_sync` k " +
+                "WHERE k.`gameId` = `save_sync`.`gameId` " +
+                "AND k.`emulatorId` = `save_sync`.`emulatorId` " +
+                "AND IFNULL(k.`ownerUserId`, -1) = IFNULL(`save_sync`.`ownerUserId`, -1) " +
+                "AND ${LATEST.replace("`channelName`", "k.`channelName`")} " +
+                "ORDER BY k.`userSelectedRestorePoint` DESC, IFNULL(k.`lastSyncedAt`, 0) DESC, k.`id` DESC " +
+                "LIMIT 1)"
+        )
+        db.execSQL("UPDATE `save_sync` SET `channelName` = 'autosave' WHERE $LATEST")
+    }
+}
