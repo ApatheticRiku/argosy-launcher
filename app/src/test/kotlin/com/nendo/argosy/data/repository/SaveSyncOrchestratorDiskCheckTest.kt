@@ -90,7 +90,7 @@ class SaveSyncOrchestratorDiskCheckTest {
             savePathResolver.discoverSavePathChecked(any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveLookup.Found(savePath)
         coEvery { saveCacheManager.calculateLocalSaveHash(savePath, gameId, emulatorId) } returns "disk"
-        coEvery { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns true
+        coEvery { saveCacheManager.cacheAsRollback(any(), any(), any()) } returns SaveCacheManager.CacheResult.Created(0L, ROLLBACK_ID)
         coEvery { saveCacheManager.restoreSave(any(), any()) } returns true
         coEvery { apiClient.clearSavesBeforeRestore(any(), any(), any(), any()) } returns true
         coEvery { saveCacheDao.getAllByGameChannelAndHash(any(), any(), any(), any()) } returns emptyList()
@@ -104,7 +104,7 @@ class SaveSyncOrchestratorDiskCheckTest {
     fun `Secure Saves on restores the active version over a differing disk, after protecting the disk`() = runTest {
         assertEquals(SaveSyncOrchestrator.DiskCheck.Restored, check(secureSaves = true))
         coVerifyOrder {
-            saveCacheManager.protectBeforeOverwrite(gameId, emulatorId, savePath)
+            saveCacheManager.cacheAsRollback(gameId, emulatorId, savePath)
             apiClient.clearSavesBeforeRestore(savePath, "snes", any(), any())
             saveCacheManager.restoreSave(active.id, savePath)
         }
@@ -112,10 +112,28 @@ class SaveSyncOrchestratorDiskCheckTest {
 
     @Test
     fun `Secure Saves on never overwrites a disk it could not protect`() = runTest {
-        coEvery { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns false
+        coEvery { saveCacheManager.cacheAsRollback(any(), any(), any()) } returns SaveCacheManager.CacheResult.Failed
 
         assertEquals(SaveSyncOrchestrator.DiskCheck.Failed, check(secureSaves = true))
         coVerify(exactly = 0) { saveCacheManager.restoreSave(any(), any()) }
+        coVerify(exactly = 0) { apiClient.clearSavesBeforeRestore(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a restore that fails after the clear puts the disk save back from its backup`() = runTest {
+        coEvery { saveCacheManager.restoreSave(active.id, savePath) } returns false
+
+        assertEquals(SaveSyncOrchestrator.DiskCheck.Failed, check(secureSaves = true))
+        coVerify { saveCacheManager.restoreSave(ROLLBACK_ID, savePath) }
+    }
+
+    @Test
+    fun `a failed clear puts the disk save back from its backup`() = runTest {
+        coEvery { apiClient.clearSavesBeforeRestore(any(), any(), any(), any()) } returns false
+
+        assertEquals(SaveSyncOrchestrator.DiskCheck.Failed, check(secureSaves = true))
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(active.id, any()) }
+        coVerify { saveCacheManager.restoreSave(ROLLBACK_ID, savePath) }
     }
 
     @Test
@@ -136,7 +154,7 @@ class SaveSyncOrchestratorDiskCheckTest {
 
         assertEquals(SaveSyncOrchestrator.DiskCheck.Matches, check(secureSaves = true))
         coVerify(exactly = 0) { saveCacheManager.restoreSave(any(), any()) }
-        coVerify(exactly = 0) { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) }
+        coVerify(exactly = 0) { saveCacheManager.cacheAsRollback(any(), any(), any()) }
     }
 
     @Test
@@ -168,5 +186,9 @@ class SaveSyncOrchestratorDiskCheckTest {
 
         assertEquals(SaveSyncOrchestrator.DiskCheck.Untouched, check(secureSaves = true))
         coVerify(exactly = 0) { saveCacheManager.restoreSave(any(), any()) }
+    }
+
+    private companion object {
+        const val ROLLBACK_ID = 99L
     }
 }

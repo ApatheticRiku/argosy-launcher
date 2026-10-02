@@ -261,12 +261,28 @@ class ReconcileEffectApplierTest {
             dismissed = true
         )
         coEvery {
-            pendingConflictDao.findByGameSaveAndOwner(game.id, 555L, PendingConflictEntity.UNATTRIBUTED)
+            pendingConflictDao.findByGameSaveAndOwner(game.id, 555L, any(), PendingConflictEntity.UNATTRIBUTED)
         } returns existing
 
         val outcome = applier.apply(op(ReconcileAction.CONFLICT, saveId = 555L), sessionId = null)
 
         assertEquals(0, outcome.conflicts)
         coVerify(exactly = 0) { pendingConflictDao.upsert(any()) }
+    }
+
+    @Test
+    fun `CONFLICT on a slot already parked keeps the stored conflict's id`() = runTest {
+        val existing = PendingConflictEntity(
+            id = 31L, gameId = game.id, rommSaveId = 555L, fileName = "x", slot = null,
+            localUpdatedAt = null, serverUpdatedAt = null, serverHash = "old"
+        )
+        coEvery { conflictAutoResolver.classify(any(), any()) } returns ConflictAutoResolver.Resolution.AsIs
+        coEvery { pendingConflictDao.findByGameSaveAndOwner(game.id, 555L, any(), any()) } returns existing
+        val captured = slot<PendingConflictEntity>()
+        coEvery { pendingConflictDao.upsert(capture(captured)) } returns 31L
+
+        applier.apply(op(ReconcileAction.CONFLICT, saveId = 555L), sessionId = null)
+
+        assertEquals(31L, captured.captured.id)
     }
 }

@@ -137,7 +137,7 @@ class SessionSaveFinalizerTest {
             serverContentHash = "server"
         )
         syncReturns(SyncSaveOnSessionEndUseCase.Result.Conflict(gameId, "retroarch", "autosave", upload))
-        coEvery { pendingConflictDao.findByGameSaveAndOwner(any(), any(), any()) } returns null
+        coEvery { pendingConflictDao.findByGameSaveAndOwner(any(), any(), any(), any()) } returns null
         val stored = slot<PendingConflictEntity>()
         coEvery { pendingConflictDao.upsert(capture(stored)) } returns 12L
 

@@ -105,6 +105,24 @@ class LaunchWithSyncUseCaseTest {
     }
 
     @Test
+    fun `a pre-launch sync past its budget launches with local data without reporting a failed connection`() = runTest {
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } coAnswers {
+            kotlinx.coroutines.delay(60_000)
+            PreLaunchSyncResult.NoServerSave
+        }
+
+        val progress = useCase.invokeWithProgress(gameId).toList()
+
+        assertTrue("Expected Skipped, got $progress", progress.last() is SyncProgress.Skipped)
+        assertTrue(
+            "A timeout is not a connection failure: $progress",
+            progress.none { it is SyncProgress.PreLaunch.Connecting && it.success == false }
+        )
+    }
+
+    @Test
     fun `NoServerSave result emits Launching`() = runTest {
         coEvery {
             saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)

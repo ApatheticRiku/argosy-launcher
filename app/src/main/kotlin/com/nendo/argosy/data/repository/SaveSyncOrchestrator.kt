@@ -424,17 +424,26 @@ class SaveSyncOrchestrator @Inject constructor(
         }
 
         Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | disk differs from active cache id=${active.id}, restoring it (Secure Saves on) | path=$savePath")
-        if (!cacheManager.protectBeforeOverwrite(game.id, emulatorId, savePath)) return@withContext DiskCheck.Failed
-        val roots = cacheManager.archiveRootNames(active.id)
-        if (!client.clearSavesBeforeRestore(savePath, game.platformSlug, game.saveId ?: game.titleId, roots)) {
-            return@withContext DiskCheck.Failed
+        withContext(NonCancellable) {
+            val rollbackId = when (val rollback = cacheManager.cacheAsRollback(game.id, emulatorId, savePath)) {
+                is SaveCacheManager.CacheResult.Created -> rollback.cacheId
+                is SaveCacheManager.CacheResult.Duplicate -> rollback.cacheId
+                SaveCacheManager.CacheResult.Failed -> return@withContext DiskCheck.Failed
+            }
+            val roots = cacheManager.archiveRootNames(active.id)
+            val placed = client.clearSavesBeforeRestore(savePath, game.platformSlug, game.saveId ?: game.titleId, roots) &&
+                cacheManager.restoreSave(active.id, savePath)
+            if (!placed) {
+                val putBack = cacheManager.restoreSave(rollbackId, savePath)
+                Logger.error(TAG, "[SaveSync] DISK gameId=${game.id} | restore of cache id=${active.id} failed; disk save put back from rollback id=$rollbackId ok=$putBack")
+                return@withContext DiskCheck.Failed
+            }
+            val placedHash = cacheManager.calculateLocalSaveHash(savePath, game.id, emulatorId)
+            if (syncRow != null && placedHash != null && syncRow.rommSaveId != null && syncRow.rommSaveId == active.rommSaveId) {
+                saveSyncDao.updateLocalContentHash(syncRow.id, placedHash)
+            }
+            DiskCheck.Restored
         }
-        if (!cacheManager.restoreSave(active.id, savePath)) return@withContext DiskCheck.Failed
-        val placedHash = cacheManager.calculateLocalSaveHash(savePath, game.id, emulatorId)
-        if (syncRow != null && placedHash != null && syncRow.rommSaveId != null && syncRow.rommSaveId == active.rommSaveId) {
-            saveSyncDao.updateLocalContentHash(syncRow.id, placedHash)
-        }
-        DiskCheck.Restored
     }
 
     private suspend fun cacheSystemSave(

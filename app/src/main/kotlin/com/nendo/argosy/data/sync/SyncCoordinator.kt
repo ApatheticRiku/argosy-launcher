@@ -142,8 +142,6 @@ class SyncCoordinator @Inject constructor(
             Logger.debug(TAG, "reconcileAll: negotiate cooldown active (last=$last), skipping")
             return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
         }
-        syncPreferencesRepository.setLastNegotiateAt(now)
-
         if (!secureSaves && prefs.saveSyncEnabled) {
             val refreshed = saveSyncRepository.get().scanAndQueueLocalChanges(secureSaves = false)
             if (refreshed > 0) {
@@ -160,8 +158,12 @@ class SyncCoordinator @Inject constructor(
         }
 
         val inventory = negotiateInventory.build(secureSaves)
-        val plan = strategySelector.current().planReconcile(inventory)
         val games = inventory.map { it.romId }.distinct().size
+        val plan = strategySelector.current().planReconcile(inventory) ?: run {
+            Logger.warn(TAG, "reconcileAll: the server did not answer negotiate; nothing applied")
+            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0, planGames = games, serverAnswered = false)
+        }
+        syncPreferencesRepository.setLastNegotiateAt(now)
         if (plan.operations.isEmpty()) {
             return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0, planGames = games)
         }
@@ -235,7 +237,8 @@ class SyncCoordinator @Inject constructor(
         val queue: ProcessResult,
         val planConflicts: Int,
         val planApplied: Int,
-        val planGames: Int = 0
+        val planGames: Int = 0,
+        val serverAnswered: Boolean = true
     )
 
     suspend fun processQueue(): ProcessResult = withContext(Dispatchers.IO) {

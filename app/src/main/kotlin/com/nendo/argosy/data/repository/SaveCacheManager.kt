@@ -542,10 +542,10 @@ class SaveCacheManager @Inject constructor(
                 isRollback = true,
                 ownerUserId = ownerUserId
             )
-            saveCacheDao.insert(entity)
+            val rollbackId = saveCacheDao.insert(entity)
             Log.d(TAG, "Created rollback save for game $gameId at $cachePath")
 
-            CacheResult.Created(now.toEpochMilli())
+            CacheResult.Created(now.toEpochMilli(), rollbackId)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to cache rollback save", e)
             tempFile?.delete()
@@ -895,7 +895,7 @@ class SaveCacheManager @Inject constructor(
     suspend fun dedupeIdenticalCaches(gameId: Long): Int = withContext(Dispatchers.IO) {
         val all = saveCacheDao.getByGame(gameId)
             .filter { !it.contentHash.isNullOrBlank() }
-        val groups = all.groupBy { Triple(it.contentHash, it.channelName, it.isHardcore) }
+        val groups = all.groupBy { listOf(it.ownerUserId, it.contentHash, it.channelName, it.isHardcore) }
         var deleted = 0
         for ((_, dupes) in groups) {
             if (dupes.size <= 1) continue
@@ -914,7 +914,7 @@ class SaveCacheManager @Inject constructor(
                 if (!keeper.isLocked && dupes.any { it.isLocked }) saveCacheDao.setLocked(keeper.id, true)
             }
             for (entry in dupes) {
-                if (entry.id == keeper.id) continue
+                if (entry.id == keeper.id || entry.isActive) continue
                 val cacheFile = File(cacheBaseDir, entry.cachePath)
                 val parentDir = cacheFile.parentFile
                 cacheFile.delete()

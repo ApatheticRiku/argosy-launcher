@@ -395,6 +395,7 @@ class SaveSyncViewModel @Inject constructor(
 
     private suspend fun scanThroughNegotiate(): com.nendo.argosy.data.repository.SaveSyncOrchestrator.ForceSaveCheckResult {
         val summary = syncCoordinator.reconcileAll(bypassCooldown = true)
+        if (!summary.serverAnswered) throw java.io.IOException()
         val drained = syncCoordinator.processQueue()
         return com.nendo.argosy.data.repository.SaveSyncOrchestrator.ForceSaveCheckResult(
             inspected = summary.planGames,

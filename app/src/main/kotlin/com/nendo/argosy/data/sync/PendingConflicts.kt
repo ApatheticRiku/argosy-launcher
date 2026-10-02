@@ -26,7 +26,6 @@ fun SaveSyncResult.Conflict.toPendingConflict(
 )
 
 suspend fun PendingConflictDao.record(conflict: PendingConflictEntity): Long {
-    val existing = findByGameSaveAndOwner(conflict.gameId, conflict.rommSaveId, conflict.ownerUserId)
-        ?.takeIf { !it.dismissed && it.slot == conflict.slot }
-    return upsert(conflict.copy(id = existing?.id ?: 0L))
+    val existing = findByGameSaveAndOwner(conflict.gameId, conflict.rommSaveId, conflict.slot, conflict.ownerUserId)
+    return upsert(conflict.copy(id = existing?.id ?: 0L, dismissed = false))
 }

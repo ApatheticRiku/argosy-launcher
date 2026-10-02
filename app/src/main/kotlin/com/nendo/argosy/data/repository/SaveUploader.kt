@@ -232,7 +232,7 @@ class SaveUploader @Inject constructor(
             } else null
             val unchangedByIdentity = identityMappedHash != null && identityMappedHash == syncEntity?.localContentHash
 
-            if (syncEntity?.localContentHash == contentHash || unchangedByIdentity) {
+            if (!forceOverwrite && (syncEntity?.localContentHash == contentHash || unchangedByIdentity)) {
                 Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Skipped - content unchanged (hash=$contentHash, byIdentity=$unchangedByIdentity)")
                 if (prepared.isTemporary) fileToUpload.delete()
                 tempTrailerFile?.delete()

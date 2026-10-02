@@ -139,6 +139,22 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `dedupe never merges two accounts' identical versions`() = runTest {
+        val mine = SaveCacheEntity(
+            id = 10L, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.ofEpochSecond(10),
+            saveSize = 1, cachePath = "a/save.srm", contentHash = "same", channelName = "autosave",
+            isActive = true, ownerUserId = 1L
+        )
+        val theirs = mine.copy(id = 11L, cachePath = "b/save.srm", ownerUserId = 2L, rommSaveId = 88L)
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(mine, theirs)
+
+        manager.dedupeIdenticalCaches(1L)
+
+        coVerify(exactly = 0) { saveCacheDao.deleteById(any()) }
+        coVerify(exactly = 0) { saveCacheDao.updateRommSaveId(any(), any()) }
+    }
+
+    @Test
     fun `copying into a named slot locks the new row`() = runTest {
         val captured = copyToChannelCapturing("speedrun")
 

@@ -11,7 +11,6 @@ import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
 import org.junit.Test
 import retrofit2.Response
 
@@ -52,7 +51,7 @@ class NegotiatorSaveSyncStrategyTest {
             )
         )
 
-        val plan = strategy.planReconcile(inventory())
+        val plan = strategy.planReconcile(inventory())!!
 
         assertEquals(77L, plan.sessionId)
         assertEquals(5, plan.operations.size)
@@ -65,25 +64,25 @@ class NegotiatorSaveSyncStrategyTest {
     }
 
     @Test
-    fun `returns EMPTY when api is null`() = runTest {
+    fun `returns no plan when api is null`() = runTest {
         every { connectionManager.getApi() } returns null
 
         val plan = strategy.planReconcile(inventory())
 
-        assertSame(ReconcilePlan.EMPTY, plan)
+        org.junit.Assert.assertNull(plan)
     }
 
     @Test
-    fun `returns EMPTY when deviceId is null`() = runTest {
+    fun `returns no plan when deviceId is null`() = runTest {
         every { connectionManager.getDeviceId() } returns null
 
         val plan = strategy.planReconcile(inventory())
 
-        assertSame(ReconcilePlan.EMPTY, plan)
+        org.junit.Assert.assertNull(plan)
     }
 
     @Test
-    fun `returns EMPTY on non-2xx response`() = runTest {
+    fun `returns no plan on non-2xx response`() = runTest {
         coEvery { api.negotiateSync(any()) } returns Response.error(
             500,
             okhttp3.ResponseBody.create(null, "")
@@ -91,16 +90,16 @@ class NegotiatorSaveSyncStrategyTest {
 
         val plan = strategy.planReconcile(inventory())
 
-        assertSame(ReconcilePlan.EMPTY, plan)
+        org.junit.Assert.assertNull(plan)
     }
 
     @Test
-    fun `returns EMPTY on network exception`() = runTest {
+    fun `returns no plan on network exception`() = runTest {
         coEvery { api.negotiateSync(any()) } throws RuntimeException("boom")
 
         val plan = strategy.planReconcile(inventory())
 
-        assertSame(ReconcilePlan.EMPTY, plan)
+        org.junit.Assert.assertNull(plan)
     }
 
     @Test

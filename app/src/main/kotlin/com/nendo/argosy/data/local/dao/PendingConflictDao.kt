@@ -30,12 +30,14 @@ interface PendingConflictDao {
 
     @Query("""
         SELECT * FROM pending_conflicts
-        WHERE gameId = :gameId AND rommSaveId = :rommSaveId AND ownerUserId = :ownerUserId
+        WHERE gameId = :gameId AND rommSaveId IS :rommSaveId AND slot IS :slot AND ownerUserId = :ownerUserId
+        ORDER BY dismissed ASC, discoveredAt DESC
         LIMIT 1
     """)
     suspend fun findByGameSaveAndOwner(
         gameId: Long,
         rommSaveId: Long?,
+        slot: String?,
         ownerUserId: Long
     ): PendingConflictEntity?
 

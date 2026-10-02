@@ -99,7 +99,7 @@ class ReconcileEffectApplier @Inject constructor(
         if (game == null) return ReconcileEffectOutcome.NONE
         val opServerTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
         val ownerUserId = syncPreferencesRepository.getRommUserId() ?: PendingConflictEntity.UNATTRIBUTED
-        val existing = pendingConflictDao.findByGameSaveAndOwner(game.id, op.saveId, ownerUserId)
+        val existing = pendingConflictDao.findByGameSaveAndOwner(game.id, op.saveId, op.slot, ownerUserId)
         val previouslyDismissedUnchanged = existing != null &&
             existing.dismissed &&
             existing.serverUpdatedAt == opServerTime &&
@@ -110,6 +110,7 @@ class ReconcileEffectApplier @Inject constructor(
         }
         pendingConflictDao.upsert(
             PendingConflictEntity(
+                id = existing?.id ?: 0L,
                 gameId = game.id,
                 rommSaveId = op.saveId,
                 fileName = op.fileName,

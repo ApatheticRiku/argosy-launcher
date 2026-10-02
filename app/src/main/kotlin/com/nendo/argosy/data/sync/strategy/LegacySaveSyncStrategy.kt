@@ -5,7 +5,7 @@ import javax.inject.Singleton
 
 @Singleton
 class LegacySaveSyncStrategy @Inject constructor() : SaveSyncStrategy {
-    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan {
+    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan? {
         return ReconcilePlan.EMPTY
     }
 }

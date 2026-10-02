@@ -13,7 +13,9 @@ import com.nendo.argosy.data.sync.strategy.ReconcileOperation
 import com.nendo.argosy.data.sync.strategy.ReconcilePlan
 import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
+import kotlinx.coroutines.async
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -40,13 +42,27 @@ class SaveSyncRepositoryPreLaunchTest {
     private val gameId = 1L
     private val rommId = 100L
     private val emulatorId = "retroarch"
+    private val recoveryGate = com.nendo.argosy.data.sync.SaveRecoveryGate().apply { markComplete() }
+
+    @Test
+    fun `pre-launch does not touch the disk while a session end is still capturing the save`() = runTest {
+        recoveryGate.tryClaimSessionEnd()
+        val launch = async { repo.preLaunchSyncForGame(gameId, rommId, emulatorId, null, secureSaves = true) }
+        kotlinx.coroutines.yield()
+
+        coVerify(exactly = 0) { orchestrator.checkDiskAgainstActive(any<Long>(), any(), any(), any(), any()) }
+
+        recoveryGate.releaseSessionEnd()
+        launch.await()
+        coVerify(exactly = 1) { orchestrator.checkDiskAgainstActive(any<Long>(), any(), any(), any(), any()) }
+    }
 
     @Before
     fun setUp() {
         repo = SaveSyncRepository(
             apiClient, conflictResolver, orchestrator, entityManager,
             stateCacheManager, syncQueueManager, saveSyncDao, saveCacheDao,
-            mockk(relaxed = true), strategySelector, mockk(relaxed = true),
+            mockk(relaxed = true), strategySelector, mockk(relaxed = true), recoveryGate,
         )
         every { strategySelector.current() } returns mockk<LegacySaveSyncStrategy>(relaxed = true)
         every { apiClient.getDeviceId() } returns "device-1"

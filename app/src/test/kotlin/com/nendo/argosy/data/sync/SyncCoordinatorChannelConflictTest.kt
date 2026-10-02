@@ -63,7 +63,7 @@ class SyncCoordinatorChannelConflictTest {
         gameDao = mockk(relaxed = true)
         syncQueueManager = SyncQueueManager()
         pendingConflictDao = mockk(relaxed = true)
-        coEvery { pendingConflictDao.findByGameSaveAndOwner(any(), any(), any()) } returns null
+        coEvery { pendingConflictDao.findByGameSaveAndOwner(any(), any(), any(), any()) } returns null
         coEvery { pendingConflictDao.upsert(any()) } returns STORED_CONFLICT_ID
 
         mockRomM = mockk(relaxed = true)

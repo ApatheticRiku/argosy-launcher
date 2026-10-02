@@ -91,6 +91,10 @@ class SaveSyncWorker @AssistedInject constructor(
                 ?.capabilities?.supportsSyncNegotiate == true
             if (negotiates) {
                 val summary = syncCoordinator.reconcileAll()
+                if (!summary.serverAnswered) {
+                    Logger.warn(TAG, "[SaveSync] WORKER | Server did not answer negotiate, retrying later")
+                    return Result.retry()
+                }
                 Logger.info(TAG, "[SaveSync] WORKER | Reconcile complete | games=${summary.planGames}, handled=${summary.planApplied}, conflicts=${summary.planConflicts}")
                 return Result.success()
             }

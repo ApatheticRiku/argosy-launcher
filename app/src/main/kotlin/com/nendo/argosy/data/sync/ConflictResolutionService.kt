@@ -3,6 +3,8 @@ package com.nendo.argosy.data.sync
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingConflictDao
 import com.nendo.argosy.data.local.entity.PendingConflictEntity
+import com.nendo.argosy.data.repository.SaveCacheManager
+import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.util.Logger
@@ -23,7 +25,8 @@ sealed class ConflictResolutionOutcome {
 class ConflictResolutionService @Inject constructor(
     private val pendingConflictDao: PendingConflictDao,
     private val saveSyncRepository: SaveSyncRepository,
-    private val gameDao: GameDao
+    private val gameDao: GameDao,
+    private val saveCacheManager: dagger.Lazy<SaveCacheManager>
 ) {
     suspend fun resolve(
         conflict: PendingConflictEntity,
@@ -38,12 +41,7 @@ class ConflictResolutionService @Inject constructor(
             ConflictResolution.KEEP_LOCAL -> {
                 val emulatorId = resolveEmulator(conflict)
                     ?: return@withContext ConflictResolutionOutcome.Failed("Cannot resolve emulator for conflict ${conflict.id}")
-                val result = saveSyncRepository.uploadSave(
-                    gameId = conflict.gameId,
-                    emulatorId = emulatorId,
-                    channelName = conflict.slot,
-                    forceOverwrite = true
-                )
+                val result = uploadLocal(conflict, emulatorId)
                 Logger.info(TAG, "[Resolve] KEEP_LOCAL gameId=${conflict.gameId} channel=${conflict.slot} emulator=$emulatorId -> $result")
                 settle(conflict, result)
             }
@@ -60,6 +58,34 @@ class ConflictResolutionService @Inject constructor(
                 settle(conflict, result)
             }
         }
+    }
+
+    private suspend fun uploadLocal(conflict: PendingConflictEntity, emulatorId: String): SaveSyncResult {
+        val slot = SaveSyncApiClient.namedChannelOrNull(conflict.slot)
+            ?: return saveSyncRepository.uploadSave(
+                gameId = conflict.gameId,
+                emulatorId = emulatorId,
+                channelName = conflict.slot,
+                forceOverwrite = true
+            )
+        val owner = conflict.ownerUserId.takeIf { it != PendingConflictEntity.UNATTRIBUTED }
+        val rommId = gameDao.getById(conflict.gameId)?.rommId
+            ?: return SaveSyncResult.Error("Game ${conflict.gameId} is not on the server")
+        val cache = saveCacheManager.get().getCachesForGameOnce(conflict.gameId)
+            .filter { (it.ownerUserId == null || it.ownerUserId == owner) && !it.isRollback }
+            .filter { SaveSyncApiClient.syncKeyOf(it.channelName) == SaveSyncApiClient.syncKeyOf(slot) }
+            .maxByOrNull { it.cachedAt }
+            ?: return SaveSyncResult.Error("Slot $slot holds no cached version")
+        return saveSyncRepository.uploadCacheEntry(
+            gameId = conflict.gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = slot,
+            cacheFile = saveCacheManager.get().getCacheFile(cache),
+            contentHash = cache.contentHash,
+            overwrite = true,
+            uploadedCacheId = cache.id
+        )
     }
 
     private suspend fun settle(conflict: PendingConflictEntity, result: SaveSyncResult): ConflictResolutionOutcome =

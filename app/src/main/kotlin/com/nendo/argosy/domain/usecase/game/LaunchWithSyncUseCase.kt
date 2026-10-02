@@ -87,7 +87,7 @@ class LaunchWithSyncUseCase @Inject constructor(
         val syncResult = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName = null, secureSaves = prefs.secureSaves)
 
         when (syncResult) {
-            is PreLaunchSyncResult.NoConnection -> {
+            is PreLaunchSyncResult.NoConnection, is PreLaunchSyncResult.TimedOut -> {
                 emit(SyncState.Skipped)
             }
             is PreLaunchSyncResult.NoServerSave -> {
@@ -221,12 +221,15 @@ class LaunchWithSyncUseCase @Inject constructor(
             }
         } ?: run {
             Logger.warn(TAG, "Pre-launch sync for gameId=$gameId exceeded ${PRE_LAUNCH_SYNC_BUDGET_MS}ms, launching with local data")
-            PreLaunchSyncResult.NoConnection
+            PreLaunchSyncResult.TimedOut
         }
 
         when (syncResult) {
             is PreLaunchSyncResult.NoConnection -> {
                 emit(SyncProgress.PreLaunch.Connecting(channelName, success = false))
+                emit(SyncProgress.Skipped)
+            }
+            is PreLaunchSyncResult.TimedOut -> {
                 emit(SyncProgress.Skipped)
             }
             is PreLaunchSyncResult.NoServerSave -> {

@@ -1,7 +1,11 @@
 package com.nendo.argosy.data.sync.strategy
 
 interface SaveSyncStrategy {
-    suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan
+    /**
+     * The server's plan for [localInventory], or null when the server could not answer. Null is an
+     * unknown server state, never "nothing to do".
+     */
+    suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan?
 
     suspend fun completeSession(sessionId: Long, operationsCompleted: Int, operationsFailed: Int): CompleteOutcome {
         return CompleteOutcome.ACCEPTED

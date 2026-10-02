@@ -60,6 +60,7 @@ sealed class SaveSyncResult {
 
 sealed class PreLaunchSyncResult {
     data object NoConnection : PreLaunchSyncResult()
+    data object TimedOut : PreLaunchSyncResult()
     data object NoServerSave : PreLaunchSyncResult()
     data object LocalIsNewer : PreLaunchSyncResult()
     data class ServerIsNewer(
@@ -118,7 +119,8 @@ class SaveSyncRepository @Inject constructor(
     private val saveCacheDao: SaveCacheDao,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val strategySelector: SaveSyncStrategySelector,
-    private val negotiateInventory: NegotiateInventory
+    private val negotiateInventory: NegotiateInventory,
+    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate
 ) {
     private val PRE_LAUNCH_TAG = "SaveSyncRepository"
     private val PRE_LAUNCH_ACTION_PRIORITY = listOf(
@@ -359,6 +361,7 @@ class SaveSyncRepository @Inject constructor(
         val effectiveChannel = SaveSyncApiClient.syncKeyOf(channelName)
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
+        saveRecoveryGate.awaitSettled()
         val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, channelName, secureSaves, ownerUserId)
         Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | disk=${disk::class.simpleName}")
         if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable || disk is SaveSyncOrchestrator.DiskCheck.Failed) {

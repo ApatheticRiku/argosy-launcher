@@ -118,7 +118,6 @@ class PlaySessionTracker @Inject constructor(
     }
     private val scope = SafeCoroutineScope(Dispatchers.IO, "PlaySessionTracker")
     private val sessionStateStore by lazy { SessionStateStore(application) }
-    private val endingSession = AtomicBoolean(false)
     private val saveObserved = AtomicBoolean(false)
     private val sessionServiceMutex = Mutex()
     private val sessionServiceStarted = AtomicBoolean(false)
@@ -296,7 +295,7 @@ class PlaySessionTracker @Inject constructor(
     }
 
     suspend fun checkOrphanedSession() {
-        if (!endingSession.compareAndSet(false, true)) {
+        if (!saveRecoveryGate.tryClaimSessionEnd()) {
             Logger.debug(TAG, "[SaveSync] ORPHAN | Skipping orphan check, endSession is handling recovery")
             saveRecoveryGate.markComplete()
             return
@@ -320,7 +319,7 @@ class PlaySessionTracker @Inject constructor(
             recoverOrphanedStates(orphaned)
             releaseSession(keepRecord = !saved.isSettled)
         } finally {
-            endingSession.set(false)
+            saveRecoveryGate.releaseSessionEnd()
             saveRecoveryGate.markComplete()
         }
     }
@@ -664,7 +663,7 @@ class PlaySessionTracker @Inject constructor(
     }
 
     suspend fun endSession(stopService: Boolean = true, skipSaveSync: Boolean = false): SessionEndResult {
-        if (!endingSession.compareAndSet(false, true)) {
+        if (!saveRecoveryGate.tryClaimSessionEnd()) {
             Logger.debug(TAG, "[SaveSync] SESSION | endSession already in progress, skipping")
             return SessionEndResult.Skipped
         }
@@ -782,7 +781,7 @@ class PlaySessionTracker @Inject constructor(
             signalSessionClosed(session)
             return outcome
         } finally {
-            endingSession.set(false)
+            saveRecoveryGate.releaseSessionEnd()
         }
     }
 
@@ -976,7 +975,7 @@ class PlaySessionTracker @Inject constructor(
      */
     fun cancelSession() {
         val session = _activeSession.value ?: return
-        if (!endingSession.compareAndSet(false, true)) {
+        if (!saveRecoveryGate.tryClaimSessionEnd()) {
             Logger.debug(TAG, "[SaveSync] SESSION | cancelSession skipped: endSession already in progress")
             return
         }
@@ -991,7 +990,7 @@ class PlaySessionTracker @Inject constructor(
                 clearSessionAndBroadcast()
                 signalSessionClosed(session)
             } finally {
-                endingSession.set(false)
+                saveRecoveryGate.releaseSessionEnd()
             }
         }
     }

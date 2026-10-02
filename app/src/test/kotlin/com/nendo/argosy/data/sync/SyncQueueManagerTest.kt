@@ -68,11 +68,11 @@ class SyncQueueManagerTest {
     }
 
     @Test
-    fun `withdrawing a conflict removes it without recording an answer`() = runTest {
+    fun `withdrawing a stored conflict removes it without recording an answer`() = runTest {
         val manager = SyncQueueManager()
 
-        manager.addConflict(info(4L))
-        manager.withdrawConflict(4L)
+        manager.addConflict(info(4L).copy(conflictId = 40L))
+        manager.withdrawConflict(40L)
 
         assertEquals(emptyList<ConflictInfo>(), manager.pendingConflicts.value)
         try {
@@ -80,6 +80,23 @@ class SyncQueueManagerTest {
             fail("Withdrawing a conflict recorded an answer")
         } catch (_: Exception) {
         }
+    }
+
+    @Test
+    fun `an awaited conflict queued behind a stored one for the same game still reaches its waiter`() = runTest {
+        val manager = SyncQueueManager()
+
+        manager.addConflict(info(6L).copy(conflictId = 60L))
+        manager.addConflict(info(6L))
+        assertEquals(2, manager.pendingConflicts.value.size)
+
+        manager.withdrawConflict(60L)
+        val waiter = async { manager.awaitResolution(6L) }
+        assertEquals(null, manager.pendingConflicts.value.single().conflictId)
+        manager.resolveConflict(6L, ConflictResolution.KEEP_SERVER)
+
+        assertEquals(ConflictResolution.KEEP_SERVER, waiter.await())
+        assertEquals(emptyList<ConflictInfo>(), manager.pendingConflicts.value)
     }
 
     @Test

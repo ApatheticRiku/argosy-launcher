@@ -14,7 +14,29 @@ import org.junit.Test
 class ConflictResolutionServiceTest {
     private val pendingConflictDao: PendingConflictDao = mockk(relaxed = true)
     private val saveSyncRepository: SaveSyncRepository = mockk(relaxed = true)
-    private val service = ConflictResolutionService(pendingConflictDao, saveSyncRepository, mockk(relaxed = true))
+    private val gameDao: com.nendo.argosy.data.local.dao.GameDao = mockk(relaxed = true)
+    private val saveCacheManager: com.nendo.argosy.data.repository.SaveCacheManager = mockk(relaxed = true)
+    private val service = ConflictResolutionService(pendingConflictDao, saveSyncRepository, gameDao) { saveCacheManager }
+
+    @Test
+    fun `keep local for a named slot uploads that slot's newest cached version, not the disk`() = runTest {
+        val named = conflict.copy(slot = "Before boss")
+        val older = com.nendo.argosy.data.local.entity.SaveCacheEntity(
+            id = 20L, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.parse("2026-10-01T00:00:00Z"),
+            saveSize = 3, cachePath = "1/a/save.srm", channelName = "Before boss", contentHash = "old"
+        )
+        val newest = older.copy(id = 21L, cachedAt = java.time.Instant.parse("2026-10-02T00:00:00Z"), contentHash = "new")
+        val otherSlot = older.copy(id = 22L, cachedAt = java.time.Instant.parse("2026-10-03T00:00:00Z"), channelName = "autosave")
+        coEvery { gameDao.getById(1L) } returns mockk(relaxed = true) { io.mockk.every { rommId } returns 100L }
+        coEvery { saveCacheManager.getCachesForGameOnce(1L) } returns listOf(older, newest, otherSlot)
+        val file = java.io.File("/cache/1/a/save.srm")
+        io.mockk.every { saveCacheManager.getCacheFile(newest) } returns file
+        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success(rommSaveId = 11L)
+
+        assertTrue(service.resolve(named, ConflictResolution.KEEP_LOCAL) is ConflictResolutionOutcome.Resolved)
+        coVerify { saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "Before boss", file, "new", true, 21L, any()) }
+        coVerify(exactly = 0) { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
 
     private val conflict = PendingConflictEntity(
         id = 5L,

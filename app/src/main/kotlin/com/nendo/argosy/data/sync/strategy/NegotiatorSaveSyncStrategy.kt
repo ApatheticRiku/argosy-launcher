@@ -14,8 +14,8 @@ class NegotiatorSaveSyncStrategy @Inject constructor(
     private val connectionManager: RomMConnectionManager
 ) : SaveSyncStrategy {
 
-    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan =
-        negotiate(localInventory, romIds = null) ?: ReconcilePlan.EMPTY
+    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan? =
+        negotiate(localInventory, romIds = null)
 
     /**
      * Negotiate scoped to one game. Null when the server could not answer, which callers read as

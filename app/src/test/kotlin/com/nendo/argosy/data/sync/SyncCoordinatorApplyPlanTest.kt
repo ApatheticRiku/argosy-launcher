@@ -39,6 +39,7 @@ import org.junit.Test
 class SyncCoordinatorApplyPlanTest {
 
     private lateinit var pendingSyncQueueDao: PendingSyncQueueDao
+    private lateinit var syncPrefs: SyncPreferencesRepository
     private lateinit var saveSyncDao: SaveSyncDao
     private lateinit var gameDao: GameDao
     private lateinit var pendingConflictDao: PendingConflictDao
@@ -80,7 +81,7 @@ class SyncCoordinatorApplyPlanTest {
                 )
             )
         }
-        val syncPrefs: SyncPreferencesRepository = mockk(relaxed = true) {
+        syncPrefs = mockk(relaxed = true) {
             every { preferences } returns MutableStateFlow(SyncPreferences(saveSyncEnabled = true))
             coEvery { isSavePathCachePurged() } returns true
             coEvery { getLastNegotiateAt() } returns null
@@ -395,6 +396,17 @@ class SyncCoordinatorApplyPlanTest {
         coordinator.reconcileAll()
 
         coVerify(exactly = 0) { saveSyncDao.rekeyEmulatorForGame(any(), any(), any()) }
+    }
+
+    @Test
+    fun `a negotiate the server did not answer is reported as unanswered and keeps the cooldown open`() = runTest {
+        coEvery { saveSyncDao.getStaleDefaultEmulatorRows() } returns emptyList()
+        coEvery { fakeStrategy.planReconcile(any()) } returns null
+
+        val summary = coordinator.reconcileAll()
+
+        org.junit.Assert.assertFalse(summary.serverAnswered)
+        coVerify(exactly = 0) { syncPrefs.setLastNegotiateAt(any()) }
     }
 
     @Test

@@ -129,18 +129,18 @@ class SyncQueueManager @Inject constructor() {
     fun addConflict(conflict: ConflictInfo) {
         var added = false
         _pendingConflicts.update { conflicts ->
-            if (conflicts.any { it.gameId == conflict.gameId }) {
+            if (conflicts.any { it.gameId == conflict.gameId && it.conflictId == conflict.conflictId }) {
                 conflicts
             } else {
                 added = true
                 conflicts + conflict
             }
         }
-        if (added) conflictResolutions.update { it - conflict.gameId }
+        if (added && conflict.conflictId == null) conflictResolutions.update { it - conflict.gameId }
     }
 
-    fun withdrawConflict(gameId: Long) {
-        _pendingConflicts.update { conflicts -> conflicts.filter { it.gameId != gameId } }
+    fun withdrawConflict(conflictId: Long) {
+        _pendingConflicts.update { conflicts -> conflicts.filter { it.conflictId != conflictId } }
     }
 
     suspend fun awaitResolution(gameId: Long): ConflictResolution {
@@ -151,7 +151,7 @@ class SyncQueueManager @Inject constructor() {
 
     fun resolveConflict(gameId: Long, resolution: ConflictResolution) {
         conflictResolutions.update { it + (gameId to resolution) }
-        _pendingConflicts.update { conflicts -> conflicts.filter { it.gameId != gameId } }
+        _pendingConflicts.update { conflicts -> conflicts.filterNot { it.gameId == gameId && it.conflictId == null } }
     }
 
     fun clearResolutions() {

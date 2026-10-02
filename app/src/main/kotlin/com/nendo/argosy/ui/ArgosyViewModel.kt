@@ -795,7 +795,7 @@ class ArgosyViewModel @Inject constructor(
             syncQueueManager.resolveConflict(info.gameId, resolution)
             return
         }
-        syncQueueManager.withdrawConflict(info.gameId)
+        syncQueueManager.withdrawConflict(conflictId)
         viewModelScope.launch {
             val stored = pendingConflictDao.getById(conflictId) ?: return@launch
             conflictResolutionService.resolve(stored, resolution)
