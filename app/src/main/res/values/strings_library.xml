@@ -158,6 +158,8 @@
     <!-- Button hint under the game list, beside the trigger glyphs. Verb phrase, steps the
          list to the previous or next platform. -->
     <string name="library_footer_hint_switch_platform">Switch Platform</string>
+    <!-- Footer hint: jump the list to the previous or next letter or date section. -->
+    <string name="library_footer_hint_jump_section">Jump Section</string>
     <!-- Button hint while the cursor is on the A-Z rail beside the game list. Verb, moves the
          list to the section under the cursor. -->
     <string name="library_footer_hint_rail_jump">Jump</string>

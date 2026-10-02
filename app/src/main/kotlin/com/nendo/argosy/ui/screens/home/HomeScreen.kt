@@ -188,6 +188,8 @@ fun HomeScreen(
     val gridState = rememberLazyGridState()
     val isAutoGrid = uiState.layoutKind == HomeLayoutKind.AUTO_GRID
     val isCustomGrid = uiState.layoutKind == HomeLayoutKind.CUSTOM_GRID
+    val quickNavigation by viewModel.quickNavigationEnabled.collectAsState()
+    val rowButtons = if (quickNavigation) InputButton.LT_RT else InputButton.LB_RB
     val scope = rememberCoroutineScope()
     var isProgrammaticScroll by remember { mutableStateOf(false) }
     var skipNextProgrammaticScroll by remember { mutableStateOf(false) }
@@ -1013,7 +1015,7 @@ fun HomeScreen(
                                     stringResource(R.string.home_footer_grid_edit_cancel)
                             )
                             else -> buildList {
-                                if (!grid.isScrolling) add(InputButton.LT_RT to gridPageLabel)
+                                if (!grid.isScrolling) add(rowButtons to gridPageLabel)
                                 grid.confirmLabelRes?.let {
                                     add(InputButton.A to stringResource(it))
                                 }
@@ -1060,7 +1062,7 @@ fun HomeScreen(
                     val mediaDetailsLabel = stringResource(R.string.home_footer_media_details)
                     FooterHints(
                         hints = buildList {
-                            if (isAutoGrid) add(InputButton.LT_RT to mediaSectionLabel)
+                            if (isAutoGrid) add(rowButtons to mediaSectionLabel)
                             if (focusedMedia == null) {
                                 add(InputButton.A to mediaRefreshLabel)
                             } else {
@@ -1093,7 +1095,7 @@ fun HomeScreen(
                         FooterHints(
                             hints = listOfNotNull(
                                 if (isAutoGrid) {
-                                    InputButton.LT_RT to
+                                    rowButtons to
                                         stringResource(R.string.home_footer_game_section)
                                 } else {
                                     null
@@ -1133,7 +1135,7 @@ fun HomeScreen(
                             (if (isAutoGrid) InputButton.DPAD else InputButton.DPAD_HORIZONTAL)
                                 to stringResource(R.string.home_footer_viewall_item),
                             if (isAutoGrid) {
-                                InputButton.LT_RT to
+                                rowButtons to
                                     stringResource(R.string.home_footer_viewall_section)
                             } else {
                                 InputButton.DPAD_VERTICAL to

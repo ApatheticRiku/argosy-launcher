@@ -53,6 +53,7 @@ fun MediaLibraryScreen(
     viewModel: MediaLibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val quickNavigation by viewModel.quickNavigationEnabled.collectAsState()
 
     LaunchedEffect(libraryId, uiState.libraries) {
         if (libraryId != null) viewModel.selectLibraryById(libraryId)
@@ -151,7 +152,7 @@ fun MediaLibraryScreen(
 
         Box(modifier = Modifier.align(Alignment.BottomCenter)) {
             FooterHints(
-                hints = buildLibraryHints(uiState),
+                hints = buildLibraryHints(uiState, quickNavigation),
                 onHintClick = { button ->
                     when (button) {
                         InputButton.A -> inputHandler.onConfirm()
@@ -159,6 +160,7 @@ fun MediaLibraryScreen(
                         InputButton.X -> inputHandler.onContextMenu()
                         InputButton.Y -> inputHandler.onSecondaryAction()
                         InputButton.LT_RT -> inputHandler.onNextTrigger()
+                        InputButton.LB_RB -> inputHandler.onNextSection()
                         else -> Unit
                     }
                 }
@@ -199,7 +201,7 @@ fun MediaLibraryScreen(
 }
 
 @Composable
-private fun buildLibraryHints(uiState: MediaLibraryUiState): List<Pair<InputButton, String>> {
+private fun buildLibraryHints(uiState: MediaLibraryUiState, quickNavigation: Boolean): List<Pair<InputButton, String>> {
     val libraryLabel = stringResource(R.string.media_library_footer_library)
     val resumeLabel = stringResource(R.string.media_library_footer_resume)
     val playLabel = stringResource(R.string.media_library_footer_play)
@@ -208,7 +210,9 @@ private fun buildLibraryHints(uiState: MediaLibraryUiState): List<Pair<InputButt
     val openLabel = stringResource(R.string.media_library_footer_open)
     val backLabel = stringResource(R.string.media_library_footer_back)
     return buildList {
-        if (uiState.libraries.size > 1) add(InputButton.LT_RT to libraryLabel)
+        if (uiState.libraries.size > 1) {
+            add((if (quickNavigation) InputButton.LT_RT else InputButton.LB_RB) to libraryLabel)
+        }
         val focused = uiState.focusedItem
         if (focused?.isPlayable == true) {
             add(InputButton.Y to if (focused.hasResumePosition) resumeLabel else playLabel)

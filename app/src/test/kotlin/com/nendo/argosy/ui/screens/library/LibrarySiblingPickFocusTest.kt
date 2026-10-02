@@ -186,6 +186,7 @@ class LibrarySiblingPickFocusTest {
         saveListStatusRepository = mockk(relaxed = true),
         libraryDefaultPlatformMigration = mockk(relaxed = true),
         showcaseSource = mockk(relaxed = true),
-        reorderPlatforms = mockk(relaxed = true)
+        reorderPlatforms = mockk(relaxed = true),
+        quickNavigation = mockk { io.mockk.every { enabled } returns MutableStateFlow(true) }
     )
 }

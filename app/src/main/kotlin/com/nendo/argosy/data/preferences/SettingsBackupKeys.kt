@@ -172,6 +172,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("open_navigation_key", SettingsBackupType.INT),
         SettingsBackupKey("open_quick_panel_key", SettingsBackupType.INT),
         SettingsBackupKey("nav_ring_routes", SettingsBackupType.STRING),
+        SettingsBackupKey("quick_navigation", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("grip_reserve_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("grip_reserve_mode", SettingsBackupType.STRING),
         SettingsBackupKey("grip_reserve_percent", SettingsBackupType.INT)

@@ -36,8 +36,11 @@ class MediaLibraryViewModel @Inject constructor(
     private val availabilityVerifier: MediaAvailabilityVerifier,
     private val downloadDelegate:
         com.nendo.argosy.ui.screens.media.delegates.MediaDownloadDelegate,
-    private val gradientExtractionDelegate: GradientExtractionDelegate
+    private val gradientExtractionDelegate: GradientExtractionDelegate,
+    private val quickNavigation: com.nendo.argosy.data.preferences.QuickNavigationSource
 ) : ViewModel() {
+
+    val quickNavigationEnabled: kotlinx.coroutines.flow.StateFlow<Boolean> get() = quickNavigation.enabled
 
     private val companionOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("media.library", this)
     private var isDescribing = false
@@ -465,13 +468,17 @@ class MediaLibraryViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
-        override fun onPrevTrigger(): InputResult {
-            cycleLibrary(-1)
-            return InputResult.HANDLED
-        }
+        override fun onPrevTrigger(): InputResult = libraryButton(-1, onBumper = false)
 
-        override fun onNextTrigger(): InputResult {
-            cycleLibrary(1)
+        override fun onNextTrigger(): InputResult = libraryButton(1, onBumper = false)
+
+        override fun onPrevSection(): InputResult = libraryButton(-1, onBumper = true)
+
+        override fun onNextSection(): InputResult = libraryButton(1, onBumper = true)
+
+        private fun libraryButton(direction: Int, onBumper: Boolean): InputResult {
+            if (onBumper == quickNavigation.enabled.value) return InputResult.UNHANDLED
+            cycleLibrary(direction)
             return InputResult.HANDLED
         }
 

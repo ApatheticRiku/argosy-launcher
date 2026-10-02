@@ -72,6 +72,7 @@
     <string name="library_filter_hint_close_options">Schließen</string>
 
     <string name="library_footer_hint_switch_platform">Plattform wechseln</string>
+    <string name="library_footer_hint_jump_section">Abschnitt springen</string>
     <string name="library_footer_hint_rail_jump">Springen</string>
     <string name="library_footer_hint_rail_back">Zurück</string>
     <string name="library_footer_hint_details">Details</string>

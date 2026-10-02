@@ -184,7 +184,8 @@ class SocialViewModel @Inject constructor(
     private val launchGameUseCase: LaunchGameUseCase,
     private val emulatorLaunchTargetResolver:
         com.nendo.argosy.ui.screens.common.EmulatorLaunchTargetResolver,
-    val notificationManager: NotificationManager
+    val notificationManager: NotificationManager,
+    private val quickNavigation: com.nendo.argosy.data.preferences.QuickNavigationSource
 ) : ViewModel() {
 
     private val _launchEvents = MutableSharedFlow<SocialLaunchEvent>(extraBufferCapacity = 4)
@@ -1004,20 +1005,18 @@ class SocialViewModel @Inject constructor(
             return InputResult.UNHANDLED
         }
 
-        override fun onPrevTrigger(): InputResult {
+        override fun onPrevTrigger(): InputResult = tabButton(-1, onBumper = false)
+
+        override fun onNextTrigger(): InputResult = tabButton(1, onBumper = false)
+
+        override fun onPrevSection(): InputResult = tabButton(-1, onBumper = true)
+
+        override fun onNextSection(): InputResult = tabButton(1, onBumper = true)
+
+        private fun tabButton(direction: Int, onBumper: Boolean): InputResult {
             if (anyModalShowing()) return InputResult.HANDLED
-            return if (switchTab(-1)) InputResult.HANDLED else InputResult.UNHANDLED
+            if (onBumper == quickNavigation.enabled.value) return InputResult.UNHANDLED
+            return if (switchTab(direction)) InputResult.HANDLED else InputResult.UNHANDLED
         }
-
-        override fun onNextTrigger(): InputResult {
-            if (anyModalShowing()) return InputResult.HANDLED
-            return if (switchTab(1)) InputResult.HANDLED else InputResult.UNHANDLED
-        }
-
-        override fun onPrevSection(): InputResult =
-            if (anyModalShowing()) InputResult.HANDLED else InputResult.UNHANDLED
-
-        override fun onNextSection(): InputResult =
-            if (anyModalShowing()) InputResult.HANDLED else InputResult.UNHANDLED
     }
 }

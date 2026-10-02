@@ -346,6 +346,10 @@
     <string name="settings_navigation_nav_bar_pages_title">Nav Bar Pages</string>
     <!-- Second line of that row. "Shoulder buttons" are the LB and RB buttons on the top edge of the controller. -->
     <string name="settings_navigation_nav_bar_pages_subtitle">Choose and order the pages the nav bar and shoulder buttons cycle through</string>
+    <!-- Switch title. On, the shoulder buttons move between app pages through a floating nav bar. -->
+    <string name="settings_navigation_quick_navigation_title">Quick Navigation</string>
+    <!-- Switch subtitle explaining what the shoulder buttons and triggers do in each state. -->
+    <string name="settings_navigation_quick_navigation_subtitle">Shoulder buttons move between pages with the nav bar. When off, they switch platforms and tabs, and the triggers jump between letters</string>
     <!-- Value of that row: pages turned on, then total pages. %1$d and %2$d are whole numbers, shown as "7 / 11". -->
     <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
     <!-- Title of the dialog listing every page with an on/off state and an order. Noun phrase. -->

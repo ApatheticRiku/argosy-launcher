@@ -39,7 +39,8 @@ data class ControlsPreferences(
     val selectSwapMode: SelectSwapMode = SelectSwapMode.HOLD,
     val openNavigationKey: Int = DEFAULT_OPEN_NAVIGATION_KEY,
     val openQuickPanelKey: Int = DEFAULT_OPEN_QUICK_PANEL_KEY,
-    val navRingRoutes: List<String>? = null
+    val navRingRoutes: List<String>? = null,
+    val quickNavigation: Boolean = true
 ) {
     companion object {
         const val DEFAULT_HAPTIC_STRENGTH = 0.5f
@@ -77,6 +78,7 @@ class ControlsPreferencesRepository @Inject constructor(
         val OPEN_NAVIGATION_KEY = intPreferencesKey("open_navigation_key")
         val OPEN_QUICK_PANEL_KEY = intPreferencesKey("open_quick_panel_key")
         val NAV_RING_ROUTES = stringPreferencesKey("nav_ring_routes")
+        val QUICK_NAVIGATION = booleanPreferencesKey("quick_navigation")
     }
 
     val preferences: Flow<ControlsPreferences> = dataStore.data.map { prefs ->
@@ -106,7 +108,8 @@ class ControlsPreferencesRepository @Inject constructor(
             navRingRoutes = prefs[Keys.NAV_RING_ROUTES]
                 ?.split(',')
                 ?.map { it.trim() }
-                ?.filter { it.isNotEmpty() }
+                ?.filter { it.isNotEmpty() },
+            quickNavigation = prefs[Keys.QUICK_NAVIGATION] ?: true
         )
     }.flowOn(Dispatchers.Default)
 
@@ -249,6 +252,10 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setOpenQuickPanelKey(keyCode: Int) {
         dataStore.edit { it[Keys.OPEN_QUICK_PANEL_KEY] = keyCode }
+    }
+
+    suspend fun setQuickNavigation(enabled: Boolean) {
+        dataStore.edit { it[Keys.QUICK_NAVIGATION] = enabled }
     }
 
     suspend fun setNavRingRoutes(routes: List<String>?) {

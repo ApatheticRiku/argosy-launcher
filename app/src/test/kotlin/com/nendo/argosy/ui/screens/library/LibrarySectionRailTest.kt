@@ -39,6 +39,7 @@ class LibrarySectionRailTest {
         mockk<com.nendo.argosy.ui.screens.common.CollectionModalDelegate>(relaxed = true)
     private val gradientExtractionDelegate =
         mockk<com.nendo.argosy.ui.screens.common.GradientExtractionDelegate>(relaxed = true)
+    private val quickNavigation = MutableStateFlow(true)
 
     @Before
     fun setUp() {
@@ -176,6 +177,26 @@ class LibrarySectionRailTest {
         assertFalse(viewModel.uiState.value.isSectionRailFocused)
     }
 
+    @Test
+    fun `with quick navigation off the triggers jump to the next letter`() = runTest(dispatcher) {
+        quickNavigation.value = false
+        val (viewModel, handler) = loaded(LibraryLayout.LIST)
+
+        assertTrue(handler.onNextTrigger().handled)
+        advanceUntilIdle()
+
+        assertEquals("banana", viewModel.uiState.value.focusedGame?.sortTitle)
+    }
+
+    @Test
+    fun `with quick navigation off the bumpers stay in the library`() = runTest(dispatcher) {
+        quickNavigation.value = false
+        val (_, handler) = loaded(LibraryLayout.LIST)
+
+        assertTrue(handler.onPrevSection().handled)
+        assertTrue(handler.onNextSection().handled)
+    }
+
     private fun game(id: Long, title: String) = GameListItem(
         id = id,
         platformId = 7,
@@ -246,6 +267,7 @@ class LibrarySectionRailTest {
         saveListStatusRepository = mockk(relaxed = true),
         libraryDefaultPlatformMigration = mockk(relaxed = true),
         showcaseSource = mockk(relaxed = true),
-        reorderPlatforms = mockk(relaxed = true)
+        reorderPlatforms = mockk(relaxed = true),
+        quickNavigation = mockk { every { enabled } returns quickNavigation }
     )
 }

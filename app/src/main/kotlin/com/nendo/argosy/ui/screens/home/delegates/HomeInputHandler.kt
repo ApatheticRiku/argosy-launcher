@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 interface HomeInputActions {
     val uiState: StateFlow<HomeUiState>
+    fun quickNavigation(): Boolean
     fun moveCollectionFocusUp()
     fun moveCollectionFocusDown()
     fun confirmCollectionSelection()
@@ -751,24 +752,35 @@ class HomeInputHandler(
         return InputResult.HANDLED
     }
 
-    override fun onPrevTrigger(): InputResult = shiftRowOrPage(-1)
+    override fun onPrevTrigger(): InputResult = trigger(-1)
 
-    override fun onNextTrigger(): InputResult = shiftRowOrPage(1)
+    override fun onNextTrigger(): InputResult = trigger(1)
 
-    override fun onPrevSection(): InputResult = bumperInModal(-1)
+    override fun onPrevSection(): InputResult = bumper(-1)
 
-    override fun onNextSection(): InputResult = bumperInModal(1)
+    override fun onNextSection(): InputResult = bumper(1)
 
-    private fun shiftRowOrPage(delta: Int): InputResult {
+    private fun trigger(delta: Int): InputResult =
+        shiftRowOrPage(delta, movesRows = actions.quickNavigation()) { actions.jumpTilePickerLetter(delta > 0) }
+
+    private fun bumper(delta: Int): InputResult =
+        if (actions.quickNavigation()) {
+            bumperInModal(delta)
+        } else {
+            shiftRowOrPage(delta, movesRows = true) { actions.cycleTilePickerCategory(delta) }
+        }
+
+    private fun shiftRowOrPage(delta: Int, movesRows: Boolean, pickerStep: () -> Unit): InputResult {
         if (appOverlayOpen()) return InputResult.handled(SoundType.BOUNDARY)
         val state = actions.uiState.value
         if (state.showAddToCollectionModal || state.showGameMenu) return InputResult.HANDLED
         if (state.customGrid.mediaSetup != null || state.customGrid.featureSetup != null) return InputResult.HANDLED
         if (state.showTilePicker) {
-            actions.jumpTilePickerLetter(delta > 0)
+            pickerStep()
             return InputResult.handled(SoundType.SECTION_CHANGE)
         }
         if (gridOverlayOpen(state)) return InputResult.HANDLED
+        if (!movesRows) return InputResult.UNHANDLED
         if (isCustomGrid(state)) return customPageTurn(delta)
         if (delta < 0) actions.previousRow() else actions.nextRow()
         return InputResult.handled(SoundType.SECTION_CHANGE)

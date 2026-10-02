@@ -77,7 +77,12 @@ internal sealed class NavigationItem(
         visibleWhen = { it.hasSecondaryDisplay }
     )
 
-    data object NavBarPages : NavigationItem("navBarPages", "navbar")
+    data object QuickNavigation : NavigationItem("quickNavigation", "navbar")
+    data object NavBarPages : NavigationItem(
+        key = "navBarPages",
+        section = "navbar",
+        visibleWhen = { it.quickNavigation }
+    )
 
     data object OpenNavigationShortcut : NavigationItem("openNavigationKey", "shortcuts")
     data object OpenQuickPanelShortcut : NavigationItem("openQuickPanelKey", "shortcuts")
@@ -111,7 +116,7 @@ internal sealed class NavigationItem(
                 MenusSpacer, MenusHeader,
                 MenuWrap, SelectLCombo, SelectRCombo, SelectSwap,
                 NavBarSpacer, NavBarHeader,
-                NavBarPages,
+                QuickNavigation, NavBarPages,
                 ShortcutsSpacer, ShortcutsHeader,
                 OpenNavigationShortcut, OpenQuickPanelShortcut
             )
@@ -153,10 +158,10 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val controls = uiState.controls
     val context = LocalContext.current
 
-    val visibleItems = remember(controls.hapticEnabled, controls.hasSecondaryDisplay) {
+    val visibleItems = remember(controls.hapticEnabled, controls.hasSecondaryDisplay, controls.quickNavigation) {
         navigationLayout.visibleItems(controls)
     }
-    val sections = remember(controls.hapticEnabled, controls.hasSecondaryDisplay, context) {
+    val sections = remember(controls.hapticEnabled, controls.hasSecondaryDisplay, controls.quickNavigation, context) {
         navigationLayout.buildSections(controls, context)
     }
 
@@ -234,6 +239,14 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 isEnabled = controls.swapStartSelect,
                 isFocused = isFocused(item),
                 onToggle = { viewModel.setSwapStartSelect(it) }
+            )
+
+            NavigationItem.QuickNavigation -> SwitchPreference(
+                title = stringResource(R.string.settings_navigation_quick_navigation_title),
+                subtitle = stringResource(R.string.settings_navigation_quick_navigation_subtitle),
+                isEnabled = controls.quickNavigation,
+                isFocused = isFocused(item),
+                onToggle = { viewModel.setQuickNavigation(it) }
             )
 
             NavigationItem.HapticFeedback -> SwitchPreference(

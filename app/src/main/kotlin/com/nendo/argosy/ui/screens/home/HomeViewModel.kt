@@ -136,8 +136,13 @@ class HomeViewModel @Inject constructor(
     private val socialRepository: com.nendo.argosy.data.social.SocialRepository,
     private val romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository,
     private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate,
-    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource
+    private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource,
+    private val quickNavigationSource: com.nendo.argosy.data.preferences.QuickNavigationSource
 ) : ViewModel(), HomeInputActions {
+
+    val quickNavigationEnabled: StateFlow<Boolean> get() = quickNavigationSource.enabled
+
+    override fun quickNavigation(): Boolean = quickNavigationSource.enabled.value
 
     val siblingChoiceState = siblingChoice.state
 

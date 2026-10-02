@@ -1809,7 +1809,7 @@ private fun SettingsFooter(
             add(InputButton.DPAD to navigateHint)
         }
         if (uiState.currentSection == SettingsSection.MAIN) {
-            add(InputButton.LT_RT to mainGroupHint)
+            add((if (uiState.controls.quickNavigation) InputButton.LT_RT else InputButton.LB_RB) to mainGroupHint)
         }
         if (uiState.currentSection == SettingsSection.SHADER_STACK &&
             shaderStack.entries.isNotEmpty() &&

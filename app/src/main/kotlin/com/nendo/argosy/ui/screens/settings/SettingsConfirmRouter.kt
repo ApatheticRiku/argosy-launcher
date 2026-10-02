@@ -1045,6 +1045,11 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.requestEnumPicker(NavigationItem.SelectSwap.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
+        NavigationItem.QuickNavigation -> {
+            val enabled = !state.controls.quickNavigation
+            vm.setQuickNavigation(enabled)
+            return InputResult.toggled(enabled)
+        }
         NavigationItem.NavBarPages -> {
             vm.showNavRingModal()
             return InputResult.handled(SoundType.OPEN_MODAL)

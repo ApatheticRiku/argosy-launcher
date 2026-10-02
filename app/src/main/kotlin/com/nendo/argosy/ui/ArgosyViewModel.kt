@@ -541,8 +541,12 @@ class ArgosyViewModel @Inject constructor(
         val pages = allDrawerItems.filter {
             isNavRouteAvailable(it.route, socialConnected, prefs.isJellyfinSignedIn)
         }
-        val ring = NavRing.resolve(prefs.navRingRoutes).mapNotNull { token ->
-            pages.firstOrNull { NavRing.token(it.route) == token }
+        val ring = if (prefs.quickNavigation) {
+            NavRing.resolve(prefs.navRingRoutes).mapNotNull { token ->
+                pages.firstOrNull { NavRing.token(it.route) == token }
+            }
+        } else {
+            emptyList()
         }
         NavRingState(
             destinations = ring,
@@ -565,6 +569,7 @@ class ArgosyViewModel @Inject constructor(
     }
 
     fun showNavBar() {
+        if (navRingState.value.destinations.isEmpty()) return
         navBarHideJob?.cancel()
         _navBarVisible.update { true }
         navBarHideJob = viewModelScope.launch {

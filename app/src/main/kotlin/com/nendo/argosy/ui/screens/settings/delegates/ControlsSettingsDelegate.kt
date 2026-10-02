@@ -109,6 +109,13 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
+    fun setQuickNavigation(scope: CoroutineScope, enabled: Boolean) {
+        scope.launch {
+            preferencesRepository.setQuickNavigation(enabled)
+            _state.update { it.copy(quickNavigation = enabled) }
+        }
+    }
+
     fun setSwapStartSelect(scope: CoroutineScope, enabled: Boolean) {
         scope.launch {
             preferencesRepository.setSwapStartSelect(enabled)

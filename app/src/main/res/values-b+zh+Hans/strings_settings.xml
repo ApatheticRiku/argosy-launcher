@@ -120,6 +120,8 @@
     <string name="settings_navigation_section_nav_bar">导航栏</string>
     <string name="settings_navigation_nav_bar_pages_title">导航栏页面</string>
     <string name="settings_navigation_nav_bar_pages_subtitle">选择并排列导航栏和肩键切换的页面</string>
+    <string name="settings_navigation_quick_navigation_title">快速导航</string>
+    <string name="settings_navigation_quick_navigation_subtitle">肩键通过导航栏切换页面。关闭时，肩键切换平台和标签页，扳机键在字母之间跳转</string>
     <string name="settings_navigation_nav_bar_pages_count">%1$d / %2$d</string>
     <string name="settings_nav_ring_modal_title">导航栏页面</string>
     <string name="settings_nav_ring_modal_subtitle">开启或关闭页面并设置顺序</string>

@@ -172,6 +172,7 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val quickNavigation by viewModel.quickNavigationEnabled.collectAsState()
     val downloadIndicators = viewModel.downloadIndicators.collectAsState()
     val initialGridIndex = remember { viewModel.gameIndexToGridIndex(uiState.focusedIndex) }
     val gridState = rememberLazyGridState(initialFirstVisibleItemIndex = initialGridIndex)
@@ -561,6 +562,8 @@ fun LibraryScreen(
                         isViewingHidden = isViewingHidden,
                         canSwitchPlatform = uiState.platforms.isNotEmpty(),
                         isSectionRailFocused = uiState.isSectionRailFocused,
+                        quickNavigation = quickNavigation,
+                        canJumpSection = uiState.sectionLabels.size > 1,
                         onHintClick = { button ->
                             when (button) {
                                 InputButton.A -> if (uiState.isSectionRailFocused) {
@@ -1336,6 +1339,8 @@ private fun LibraryFooter(
     isViewingHidden: Boolean = false,
     canSwitchPlatform: Boolean = false,
     isSectionRailFocused: Boolean = false,
+    quickNavigation: Boolean = true,
+    canJumpSection: Boolean = false,
     onHintClick: ((InputButton) -> Unit)? = null
 ) {
     val selectSwapMode = com.nendo.argosy.ui.dualscreen.selectSwapModeState()
@@ -1346,7 +1351,11 @@ private fun LibraryFooter(
     )
     val hints = if (isSectionRailFocused) railHints else buildList {
         if (canSwitchPlatform) {
-            add(InputButton.LT_RT to stringResource(R.string.library_footer_hint_switch_platform))
+            val platformButtons = if (quickNavigation) InputButton.LT_RT else InputButton.LB_RB
+            add(platformButtons to stringResource(R.string.library_footer_hint_switch_platform))
+        }
+        if (!quickNavigation && canJumpSection) {
+            add(InputButton.LT_RT to stringResource(R.string.library_footer_hint_jump_section))
         }
         add(
             InputButton.A to stringResource(

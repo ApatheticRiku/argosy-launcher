@@ -355,6 +355,7 @@ data class ControlsState(
     val openQuickPanelKey: Int = com.nendo.argosy.data.preferences.ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
     val shortcutCaptureTarget: com.nendo.argosy.ui.input.UiShortcut? = null,
     val navRingRoutes: List<String> = com.nendo.argosy.ui.navigation.NavRing.DEFAULT_TOKENS,
+    val quickNavigation: Boolean = true,
     val showNavRingModal: Boolean = false,
     val navRingFocusIndex: Int = 0,
     val navRingReorder: com.nendo.argosy.ui.components.ListReorder<String>? = null

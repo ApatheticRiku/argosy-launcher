@@ -102,6 +102,7 @@ class UserPreferencesRepository @Inject constructor(
             openNavigationKey = controls.openNavigationKey,
             openQuickPanelKey = controls.openQuickPanelKey,
             navRingRoutes = controls.navRingRoutes,
+            quickNavigation = controls.quickNavigation,
             lastRommSync = sync.lastRommSync,
             lastFavoritesSync = sync.lastFavoritesSync,
             lastFavoritesCheck = sync.lastFavoritesCheck,
@@ -469,6 +470,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setOpenNavigationKey(keyCode: Int) = controlsPrefs.setOpenNavigationKey(keyCode)
     suspend fun setOpenQuickPanelKey(keyCode: Int) = controlsPrefs.setOpenQuickPanelKey(keyCode)
     suspend fun setNavRingRoutes(routes: List<String>?) = controlsPrefs.setNavRingRoutes(routes)
+    suspend fun setQuickNavigation(enabled: Boolean) = controlsPrefs.setQuickNavigation(enabled)
 
 
     // --- Storage delegates ---
@@ -787,6 +789,7 @@ data class UserPreferences(
     val openNavigationKey: Int = ControlsPreferences.DEFAULT_OPEN_NAVIGATION_KEY,
     val openQuickPanelKey: Int = ControlsPreferences.DEFAULT_OPEN_QUICK_PANEL_KEY,
     val navRingRoutes: List<String>? = null,
+    val quickNavigation: Boolean = true,
     val lastRommSync: Instant? = null,
     val lastFavoritesSync: Instant? = null,
     val lastFavoritesCheck: Instant? = null,

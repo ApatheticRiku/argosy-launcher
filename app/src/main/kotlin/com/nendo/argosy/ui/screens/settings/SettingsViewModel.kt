@@ -1465,6 +1465,7 @@ class SettingsViewModel @Inject constructor(
     fun setControllerLayout(layout: String) = controlsDelegate.setControllerLayout(viewModelScope, layout)
     fun refreshDetectedLayout() = controlsDelegate.refreshDetectedLayout()
     fun setSwapStartSelect(enabled: Boolean) = controlsDelegate.setSwapStartSelect(viewModelScope, enabled)
+    fun setQuickNavigation(enabled: Boolean) = controlsDelegate.setQuickNavigation(viewModelScope, enabled)
     fun cycleSelectLCombo(direction: Int = 1) = controlsDelegate.cycleSelectLCombo(viewModelScope, direction)
     fun cycleSelectRCombo(direction: Int = 1) = controlsDelegate.cycleSelectRCombo(viewModelScope, direction)
     fun setSelectLCombo(value: String) = controlsDelegate.setSelectLCombo(viewModelScope, value)

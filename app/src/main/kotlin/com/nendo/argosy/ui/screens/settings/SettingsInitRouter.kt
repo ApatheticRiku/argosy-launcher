@@ -623,7 +623,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             selectSwapMode = prefs.selectSwapMode,
             openNavigationKey = prefs.openNavigationKey,
             openQuickPanelKey = prefs.openQuickPanelKey,
-            navRingRoutes = com.nendo.argosy.ui.navigation.NavRing.resolve(prefs.navRingRoutes)
+            navRingRoutes = com.nendo.argosy.ui.navigation.NavRing.resolve(prefs.navRingRoutes),
+            quickNavigation = prefs.quickNavigation
         ))
         vm.controlsDelegate.refreshUsageStatsPermission()
 

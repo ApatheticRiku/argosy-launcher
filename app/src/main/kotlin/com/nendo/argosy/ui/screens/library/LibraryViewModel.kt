@@ -485,7 +485,8 @@ class LibraryViewModel @Inject constructor(
     private val saveListStatusRepository: SaveListStatusRepository,
     private val libraryDefaultPlatformMigration: com.nendo.argosy.data.repository.LibraryDefaultPlatformMigration,
     private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource,
-    private val reorderPlatforms: com.nendo.argosy.domain.usecase.platform.ReorderPlatformsUseCase
+    private val reorderPlatforms: com.nendo.argosy.domain.usecase.platform.ReorderPlatformsUseCase,
+    private val quickNavigation: com.nendo.argosy.data.preferences.QuickNavigationSource
 ) : ViewModel() {
 
     val siblingChoiceState = siblingChoice.state
@@ -1279,6 +1280,17 @@ class LibraryViewModel @Inject constructor(
             kotlinx.coroutines.delay(600)
             _uiState.update { it.copy(showSectionOverlay = false) }
         }
+    }
+
+    val quickNavigationEnabled: StateFlow<Boolean> get() = quickNavigation.enabled
+
+    fun jumpToAdjacentSection(direction: Int) {
+        val state = _uiState.value
+        val labels = state.sectionLabels
+        if (labels.isEmpty()) return
+        val currentIndex = labels.indexOf(state.currentSectionLabel)
+        val target = if (currentIndex < 0) 0 else (currentIndex + direction).mod(labels.size)
+        jumpToSection(labels[target])
     }
 
     fun jumpToSection(sectionLabel: String, showOverlay: Boolean = true) {
@@ -2504,27 +2516,37 @@ class LibraryViewModel @Inject constructor(
             return InputResult.HANDLED
         }
 
-        override fun onPrevSection(): InputResult = bumper(-FILTER_OPTION_PAGE)
+        override fun onPrevSection(): InputResult = bumper(-1)
 
-        override fun onNextSection(): InputResult = bumper(FILTER_OPTION_PAGE)
+        override fun onNextSection(): InputResult = bumper(1)
 
-        override fun onPrevTrigger(): InputResult = trigger { previousPlatform() }
+        override fun onPrevTrigger(): InputResult = trigger(-1)
 
-        override fun onNextTrigger(): InputResult = trigger { nextPlatform() }
+        override fun onNextTrigger(): InputResult = trigger(1)
 
-        private fun bumper(filterPage: Int): InputResult {
+        private fun bumper(direction: Int): InputResult {
             val state = _uiState.value
             return when {
                 isLiftingPlatform -> InputResult.HANDLED
-                state.showFilterMenu -> { moveFilterOptionFocus(filterPage); InputResult.HANDLED }
+                state.showFilterMenu -> { moveFilterOptionFocus(direction * FILTER_OPTION_PAGE); InputResult.HANDLED }
+                !quickNavigation.enabled.value -> switchPlatform(direction)
                 state.hasInternalFocus && !state.isOnPlatformLanding -> InputResult.HANDLED
                 else -> InputResult.UNHANDLED
             }
         }
 
-        private fun trigger(switchPlatform: () -> Unit): InputResult {
+        private fun trigger(direction: Int): InputResult {
+            if (quickNavigation.enabled.value) return switchPlatform(direction)
+            val state = _uiState.value
+            if (state.hasInternalFocus || isLiftingPlatform) return InputResult.HANDLED
+            if (state.sectionLabels.isEmpty()) return InputResult.UNHANDLED
+            jumpToAdjacentSection(direction)
+            return InputResult.handled(SoundType.SECTION_CHANGE)
+        }
+
+        private fun switchPlatform(direction: Int): InputResult {
             if (_uiState.value.hasInternalFocus) return InputResult.HANDLED
-            switchPlatform()
+            if (direction < 0) previousPlatform() else nextPlatform()
             return InputResult.HANDLED
         }
     }

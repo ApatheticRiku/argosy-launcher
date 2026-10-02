@@ -90,9 +90,12 @@ internal class LightSectionsInput(
 
     override fun onNextSection(): InputResult = handleSectionJump(1)
 
-    override fun onPrevTrigger(): InputResult = handleMainGroupJump(-1)
+    override fun onPrevTrigger(): InputResult = mainGroupTrigger(-1)
 
-    override fun onNextTrigger(): InputResult = handleMainGroupJump(1)
+    override fun onNextTrigger(): InputResult = mainGroupTrigger(1)
+
+    private fun mainGroupTrigger(direction: Int): InputResult =
+        if (viewModel.uiState.value.controls.quickNavigation) handleMainGroupJump(direction) else InputResult.UNHANDLED
 
     private fun handleMainGroupJump(direction: Int): InputResult {
         val state = viewModel.uiState.value
@@ -258,6 +261,8 @@ internal class LightSectionsInput(
                 return toggleLeftRight(direction, controls.swapXY) { viewModel.setSwapXY(it) }
             NavigationItem.SwapStartSelect ->
                 return toggleLeftRight(direction, controls.swapStartSelect) { viewModel.setSwapStartSelect(it) }
+            NavigationItem.QuickNavigation ->
+                return toggleLeftRight(direction, controls.quickNavigation) { viewModel.setQuickNavigation(it) }
             NavigationItem.SelectLCombo -> { viewModel.cycleSelectLCombo(direction); return InputResult.HANDLED }
             NavigationItem.SelectRCombo -> { viewModel.cycleSelectRCombo(direction); return InputResult.HANDLED }
             NavigationItem.MenuWrap -> { viewModel.cycleMenuWrapMode(direction); return InputResult.HANDLED }
@@ -383,7 +388,11 @@ internal class LightSectionsInput(
     private fun handleSectionJump(direction: Int): InputResult {
         val state = viewModel.uiState.value
         val sections = when (state.currentSection) {
-            SettingsSection.MAIN -> return InputResult.UNHANDLED
+            SettingsSection.MAIN -> return if (state.controls.quickNavigation) {
+                InputResult.UNHANDLED
+            } else {
+                handleMainGroupJump(direction)
+            }
             SettingsSection.CONTROLLER_GRIP -> controllerGripSections(state.display)
             SettingsSection.HOME_SCREEN -> homeScreenSections(state.display)
             SettingsSection.PRESENTATION -> presentationSections(state.display.presentationStyle)
