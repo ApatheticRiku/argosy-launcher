@@ -67,7 +67,8 @@ class SaveSyncViewModel @Inject constructor(
     private val conflictResolutionService: ConflictResolutionService,
     private val saveSyncRepository: SaveSyncRepository,
     private val saveAccessNotices: SaveAccessNotices,
-    private val gameActivityRepository: GameActivityRepository
+    private val gameActivityRepository: GameActivityRepository,
+    private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator
 ) : ViewModel() {
 
     private val _forceCheckStatus = MutableStateFlow<ForceSaveCheckUiState>(ForceSaveCheckUiState.Idle)
@@ -369,7 +370,11 @@ class SaveSyncViewModel @Inject constructor(
         if (_forceCheckStatus.value is ForceSaveCheckUiState.Running) return
         _forceCheckStatus.value = ForceSaveCheckUiState.Running
         viewModelScope.launch {
-            val result = runCatching { saveSyncRepository.forceSaveCheck() }
+            val negotiates = (romMRepository.connectionState.value as? ConnectionState.Connected)
+                ?.capabilities?.supportsSyncNegotiate == true
+            val result = runCatching {
+                if (negotiates) scanThroughNegotiate() else saveSyncRepository.forceSaveCheck()
+            }
             _forceCheckStatus.value = result.fold(
                 onSuccess = { r ->
                     ForceSaveCheckUiState.Complete(
@@ -386,6 +391,17 @@ class SaveSyncViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    private suspend fun scanThroughNegotiate(): com.nendo.argosy.data.repository.SaveSyncOrchestrator.ForceSaveCheckResult {
+        val summary = syncCoordinator.reconcileAll(bypassCooldown = true)
+        val drained = syncCoordinator.processQueue()
+        return com.nendo.argosy.data.repository.SaveSyncOrchestrator.ForceSaveCheckResult(
+            inspected = summary.planGames,
+            queued = summary.planApplied,
+            message = null,
+            downloaded = (drained as? com.nendo.argosy.data.sync.SyncCoordinator.ProcessResult.Completed)?.processed ?: 0
+        )
     }
 
     fun dismissForceCheckStatus() {

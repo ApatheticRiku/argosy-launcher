@@ -54,7 +54,8 @@ class SaveSyncOrchestrator @Inject constructor(
     private val saveHandlerRegistry: PlatformSaveHandlerRegistry,
     private val saveAccessNotices: SaveAccessNotices,
     private val saveOwnershipTracker: SaveOwnershipTracker,
-    private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore
+    private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
+    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer
 ) {
     sealed interface RefreshOutcome {
         data object Dirtied : RefreshOutcome
@@ -563,10 +564,10 @@ class SaveSyncOrchestrator @Inject constructor(
         emulatorId: String
     ): Boolean {
         val path = existing?.localSavePath ?: return false
-        val uploadedHash = existing.lastUploadedHash ?: return false
-        if (!File(path).exists()) return false
+        val transferredForms = setOfNotNull(existing.lastUploadedHash, existing.localContentHash)
+        if (transferredForms.isEmpty() || !fileAccessLayer.exists(path)) return false
         val liveHash = saveCacheManager.get().calculateLocalSaveHash(path, gameId, emulatorId) ?: return false
-        return liveHash != uploadedHash
+        return liveHash !in transferredForms
     }
 
     suspend fun forceSaveCheck(): ForceSaveCheckResult = withContext(Dispatchers.IO) {
@@ -659,7 +660,6 @@ class SaveSyncOrchestrator @Inject constructor(
             }
         }
         val downloaded = downloadPendingServerSaves()
-        syncPreferencesRepository.setLastNegotiateAt(Instant.now())
         Logger.info(TAG, "forceSaveCheck: inspected=$inspected queued=$queued downloaded=$downloaded")
         ForceSaveCheckResult(inspected = inspected, queued = queued, message = null, downloaded = downloaded)
     }

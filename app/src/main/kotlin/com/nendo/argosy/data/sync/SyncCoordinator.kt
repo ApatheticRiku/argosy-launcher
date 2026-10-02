@@ -119,7 +119,7 @@ class SyncCoordinator @Inject constructor(
         return reconcileAll()
     }
 
-    suspend fun reconcileAll(): ReconcileSummary = withContext(Dispatchers.IO) {
+    suspend fun reconcileAll(bypassCooldown: Boolean = false): ReconcileSummary = withContext(Dispatchers.IO) {
         if (accountSwitchMarkerStore.isSwitching()) {
             Logger.info(TAG, "reconcileAll: account switch in progress, not touching save files")
             return@withContext ReconcileSummary(ProcessResult.NotConnected, planConflicts = 0, planApplied = 0)
@@ -138,7 +138,7 @@ class SyncCoordinator @Inject constructor(
 
         val now = Instant.now()
         val last = syncPreferencesRepository.getLastNegotiateAt()
-        if (last != null && Duration.between(last, now) < NEGOTIATE_COOLDOWN) {
+        if (!bypassCooldown && last != null && Duration.between(last, now) < NEGOTIATE_COOLDOWN) {
             Logger.debug(TAG, "reconcileAll: negotiate cooldown active (last=$last), skipping")
             return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
         }
@@ -161,13 +161,19 @@ class SyncCoordinator @Inject constructor(
 
         val inventory = negotiateInventory.build(secureSaves)
         val plan = strategySelector.current().planReconcile(inventory)
+        val games = inventory.map { it.romId }.distinct().size
         if (plan.operations.isEmpty()) {
-            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
+            return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0, planGames = games)
         }
 
         val (conflicts, applied) = applyPlan(plan)
         Logger.info(TAG, "reconcileAll: plan applied | conflicts=$conflicts handled=$applied sessionId=${plan.sessionId}")
-        ReconcileSummary(queueResult, planConflicts = conflicts, planApplied = applied)
+        ReconcileSummary(
+            queueResult,
+            planConflicts = conflicts,
+            planApplied = applied,
+            planGames = games
+        )
     }
 
     private suspend fun applyPlan(plan: ReconcilePlan): Pair<Int, Int> {
@@ -228,7 +234,8 @@ class SyncCoordinator @Inject constructor(
     data class ReconcileSummary(
         val queue: ProcessResult,
         val planConflicts: Int,
-        val planApplied: Int
+        val planApplied: Int,
+        val planGames: Int = 0
     )
 
     suspend fun processQueue(): ProcessResult = withContext(Dispatchers.IO) {

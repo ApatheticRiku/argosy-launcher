@@ -53,6 +53,7 @@ class SaveSyncOrchestratorTest {
     private lateinit var saveCacheManager: SaveCacheManager
     private lateinit var saveOwnershipTracker: SaveOwnershipTracker
     private lateinit var orchestrator: SaveSyncOrchestrator
+    private val fileAccessLayer = mockk<com.nendo.argosy.data.storage.FileAccessLayer>(relaxed = true)
 
     private val testGame = GameEntity(
         id = 1L,
@@ -104,7 +105,8 @@ class SaveSyncOrchestratorTest {
             saveHandlerRegistry = mockk(relaxed = true),
             saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
             saveOwnershipTracker = saveOwnershipTracker,
-            accountSwitchMarkerStore = mockk(relaxed = true)
+            accountSwitchMarkerStore = mockk(relaxed = true),
+            fileAccessLayer = fileAccessLayer
         )
     }
 
@@ -207,6 +209,41 @@ class SaveSyncOrchestratorTest {
         val result = orchestrator.downloadPendingServerSaves()
 
         assertEquals(2, result)
+    }
+
+    @Test
+    fun `a disk holding the local form of the last transfer is not a local change`() = runTest {
+        val entity = makeSyncEntity(id = 1L, gameId = 1L).copy(
+            localSavePath = "/saves/game.srm",
+            lastUploadedHash = "server-form",
+            localContentHash = "local-form"
+        )
+        coEvery { saveSyncDao.getPendingDownloads(any()) } returns listOf(entity)
+        every { fileAccessLayer.exists("/saves/game.srm") } returns true
+        coEvery { saveCacheManager.calculateLocalSaveHash("/saves/game.srm", 1L, "yuzu") } returns "local-form"
+        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
+
+        val result = orchestrator.downloadPendingServerSaves()
+
+        assertEquals(1, result)
+        coVerify(exactly = 0) { saveSyncDao.upsert(match { it.syncStatus == SaveSyncEntity.STATUS_CONFLICT }) }
+    }
+
+    @Test
+    fun `a disk that moved since the last transfer is left as a conflict`() = runTest {
+        val entity = makeSyncEntity(id = 1L, gameId = 1L).copy(
+            localSavePath = "/saves/game.srm",
+            lastUploadedHash = "server-form",
+            localContentHash = "local-form"
+        )
+        coEvery { saveSyncDao.getPendingDownloads(any()) } returns listOf(entity)
+        every { fileAccessLayer.exists("/saves/game.srm") } returns true
+        coEvery { saveCacheManager.calculateLocalSaveHash("/saves/game.srm", 1L, "yuzu") } returns "new-progress"
+
+        val result = orchestrator.downloadPendingServerSaves()
+
+        assertEquals(0, result)
+        coVerify(exactly = 0) { mockApiClient.downloadSave(any(), any(), any(), any(), any()) }
     }
 
     @Test

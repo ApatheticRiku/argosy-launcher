@@ -87,6 +87,13 @@ class SaveSyncWorker @AssistedInject constructor(
         Logger.info(TAG, "[SaveSync] WORKER | Starting background sync")
 
         return try {
+            val negotiates = (romMRepository.connectionState.value as? ConnectionState.Connected)
+                ?.capabilities?.supportsSyncNegotiate == true
+            if (negotiates) {
+                val summary = syncCoordinator.reconcileAll()
+                Logger.info(TAG, "[SaveSync] WORKER | Reconcile complete | games=${summary.planGames}, handled=${summary.planApplied}, conflicts=${summary.planConflicts}")
+                return Result.success()
+            }
             val checkResult = checkNewSavesUseCase()
             Logger.info(TAG, "[SaveSync] WORKER | Check complete | newSaves=${checkResult.newSavesCount}, platformsChecked=${checkResult.platformsChecked}")
 

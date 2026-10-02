@@ -418,7 +418,8 @@ class SaveSyncViewModelTest {
         conflictResolutionService = conflictResolutionService,
         saveSyncRepository = saveSyncRepository,
         saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
-        gameActivityRepository = mockk(relaxed = true)
+        gameActivityRepository = mockk(relaxed = true),
+        syncCoordinator = mockk(relaxed = true)
     )
 
     private fun makeGame(id: Long, title: String): GameEntity = GameEntity(
