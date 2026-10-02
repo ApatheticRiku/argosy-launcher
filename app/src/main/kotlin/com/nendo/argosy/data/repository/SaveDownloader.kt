@@ -914,7 +914,7 @@ class SaveDownloader @Inject constructor(
             return@withContext null
         }
 
-        val tempFile = File(context.cacheDir, "save_precache_${System.currentTimeMillis()}.tmp")
+        val tempFile = File(context.cacheDir, "save_precache_${serverSaveId}_${System.nanoTime()}.tmp")
         try {
             response.body()?.byteStream()?.use { input ->
                 tempFile.outputStream().use { output ->

@@ -519,9 +519,9 @@ class SaveSyncOrchestrator @Inject constructor(
         val prefs = userPreferencesRepository.preferences.first()
         if (!prefs.saveSyncEnabled) return@withContext
 
-        val ownerUserId = syncPreferencesRepository.getRommUserId()
         val client = apiClient.get()
         val serverSaves = client.checkSavesForGame(gameId, rommId)
+            .filterNot { SaveSyncApiClient.isStateShapedSave(it) }
         if (serverSaves.isEmpty()) return@withContext
 
         val game = gameDao.getById(gameId) ?: return@withContext
@@ -534,40 +534,26 @@ class SaveSyncOrchestrator @Inject constructor(
             }
         } else emulatorId
 
-        for (serverSave in serverSaves) {
-            val channelName = SaveSyncApiClient.resolveServerChannelName(serverSave, romBaseName)
-            val serverTime = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
+        val slotOf = serverSaves.associateWith { save ->
+            SaveSyncApiClient.syncKeyOf(SaveSyncApiClient.resolveServerChannelName(save, romBaseName))
+        }
+        val head = serverSaves
+            .filter { slotOf[it] == SaveSyncApiClient.AUTOSAVE_SLOT_NAME }
+            .maxByOrNull { SaveSyncApiClient.parseTimestamp(it.updatedAt) }
+            ?: serverSaves.maxByOrNull { SaveSyncApiClient.parseTimestamp(it.updatedAt) }
+            ?: return@withContext
 
-            val syncKey = SaveSyncApiClient.syncKeyOf(channelName)
-            val existing = saveSyncDao.getByGameEmulatorAndChannel(gameId, canonicalEmulatorId, syncKey, ownerUserId)
+        var cached = 0
+        for (serverSave in serverSaves.sortedBy { SaveSyncApiClient.parseTimestamp(it.updatedAt) }) {
+            if (serverSave.id == head.id) continue
+            if (client.downloadToCache(serverSave.id, gameId, slotOf[serverSave]) != null) cached++
+        }
 
-            saveSyncDao.upsert(
-                SaveSyncEntity(
-                    id = existing?.id ?: 0,
-                    gameId = gameId,
-                    rommId = rommId,
-                    emulatorId = canonicalEmulatorId,
-                    channelName = syncKey,
-                    rommSaveId = serverSave.id,
-                    localSavePath = existing?.localSavePath,
-                    localUpdatedAt = existing?.localUpdatedAt,
-                    serverUpdatedAt = serverTime,
-                    lastSyncedAt = existing?.lastSyncedAt,
-                    syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER,
-                    lastUploadedHash = existing?.lastUploadedHash,
-                    localContentHash = existing?.localContentHash,
-                    lastSyncDeviceId = existing?.lastSyncDeviceId,
-                    lastSyncDeviceName = existing?.lastSyncDeviceName,
-                    userSelectedRestorePoint = existing?.userSelectedRestorePoint ?: false,
-                    userSelectedRestorePointAt = existing?.userSelectedRestorePointAt,
-                    ownerUserId = existing?.ownerUserId ?: ownerUserId
-                )
-            )
-
-            val result = client.downloadSave(gameId, canonicalEmulatorId, channelName, skipBackup = false, knownServerSaveId = serverSave.id)
-            if (result is SaveSyncResult.Error) {
-                Logger.error(TAG, "syncSavesForNewDownload: failed '${serverSave.fileName}': ${result.message}")
-            }
+        val headSlot = slotOf[head]
+        val result = client.downloadSave(gameId, canonicalEmulatorId, headSlot, skipBackup = false, knownServerSaveId = head.id)
+        Logger.info(TAG, "syncSavesForNewDownload: gameId=$gameId | history cached=$cached of ${serverSaves.size - 1}, head saveId=${head.id} slot=$headSlot placed=${result::class.simpleName}")
+        if (result is SaveSyncResult.Error) {
+            Logger.error(TAG, "syncSavesForNewDownload: failed to place head '${head.fileName}': ${result.message}")
         }
     }
 

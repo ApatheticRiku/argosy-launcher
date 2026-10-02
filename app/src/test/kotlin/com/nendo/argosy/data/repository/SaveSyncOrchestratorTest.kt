@@ -143,76 +143,46 @@ class SaveSyncOrchestratorTest {
     // --- syncSavesForNewDownload ---
 
     @Test
-    fun `syncSavesForNewDownload accented latest save creates the autosave entity`() = runTest {
-        val serverSave = makeServerSave(
-            id = 1L,
-            fileName = "Pok\u00e9mon Violet.srm",
-            updatedAt = "2025-01-15T12:00:00Z"
-        )
+    fun `syncSavesForNewDownload places only the newest autosave and caches the rest as history`() = runTest {
+        val olderAutosave = makeServerSave(id = 1L, fileName = "Pok\u00e9mon Violet [2024-01-15 12-00-00].srm", updatedAt = "2025-01-10T00:00:00Z")
+        val newestAutosave = makeServerSave(id = 2L, fileName = "Pok\u00e9mon Violet.srm", updatedAt = "2025-01-15T00:00:00Z")
+        val checkpoint = makeServerSave(id = 3L, fileName = "checkpoint.srm", updatedAt = "2025-02-01T00:00:00Z")
+        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(olderAutosave, newestAutosave, checkpoint)
+        coEvery { mockApiClient.downloadToCache(any(), any(), any()) } returns 10L
+        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
+
+        orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
+
+        coVerify(exactly = 1) { mockApiClient.downloadSave(1L, "yuzu", "autosave", false, 2L) }
+        coVerify(exactly = 1) { mockApiClient.downloadSave(any(), any(), any(), any(), any()) }
+        coVerify { mockApiClient.downloadToCache(1L, 1L, "autosave") }
+        coVerify { mockApiClient.downloadToCache(3L, 1L, "checkpoint") }
+        coVerify(exactly = 0) { mockApiClient.downloadToCache(2L, any(), any()) }
+        coVerify(exactly = 0) { saveSyncDao.upsert(any()) }
+    }
+
+    @Test
+    fun `syncSavesForNewDownload without an autosave places the newest save in its own slot`() = runTest {
+        val serverSave = makeServerSave(id = 1L, fileName = "Ch\u00e9ckpoint.srm")
         coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(serverSave)
         coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
 
         orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
 
-        coVerify { saveSyncDao.upsert(match { it.channelName == "autosave" && it.gameId == 1L }) }
+        coVerify(exactly = 1) { mockApiClient.downloadSave(1L, "yuzu", "Ch\u00e9ckpoint", false, 1L) }
     }
 
     @Test
-    fun `syncSavesForNewDownload accented channel save preserves accented channelName`() = runTest {
-        val serverSave = makeServerSave(
-            id = 1L,
-            fileName = "Ch\u00e9ckpoint.srm",
-            updatedAt = "2025-01-15T12:00:00Z"
-        )
-        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(serverSave)
-        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
+    fun `syncSavesForNewDownload keeps history even when placing the head fails`() = runTest {
+        val older = makeServerSave(id = 1L, fileName = "Pok\u00e9mon Violet [2024-01-15 12-00-00].srm", updatedAt = "2025-01-10T00:00:00Z")
+        val head = makeServerSave(id = 2L, fileName = "Pok\u00e9mon Violet.srm", updatedAt = "2025-01-15T00:00:00Z")
+        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(older, head)
+        coEvery { mockApiClient.downloadToCache(any(), any(), any()) } returns 10L
+        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Error("network error")
 
         orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
 
-        coVerify { saveSyncDao.upsert(match { it.channelName == "Ch\u00e9ckpoint" }) }
-    }
-
-    @Test
-    fun `syncSavesForNewDownload accented filename with timestamp tag creates the autosave entity`() = runTest {
-        val serverSave = makeServerSave(
-            id = 1L,
-            fileName = "Pok\u00e9mon Violet [2024-01-15 12-00-00].srm",
-            updatedAt = "2025-01-15T12:00:00Z"
-        )
-        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(serverSave)
-        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
-
-        orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
-
-        coVerify { saveSyncDao.upsert(match { it.channelName == "autosave" }) }
-    }
-
-    @Test
-    fun `syncSavesForNewDownload multiple server saves all get sync entities`() = runTest {
-        val latestSave = makeServerSave(id = 1L, fileName = "Pok\u00e9mon Violet.srm")
-        val channel1 = makeServerSave(id = 2L, fileName = "checkpoint.srm")
-        val channel2 = makeServerSave(id = 3L, fileName = "backup.srm")
-        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(latestSave, channel1, channel2)
-        coEvery { mockApiClient.downloadSave(any(), any(), any(), any(), any()) } returns SaveSyncResult.Success()
-
-        orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
-
-        coVerify(exactly = 3) { saveSyncDao.upsert(any()) }
-        coVerify(exactly = 3) { mockApiClient.downloadSave(any(), any(), any(), any(), any()) }
-    }
-
-    @Test
-    fun `syncSavesForNewDownload download failure mid-loop continues to next save`() = runTest {
-        val save1 = makeServerSave(id = 1L, fileName = "Pok\u00e9mon Violet.srm")
-        val save2 = makeServerSave(id = 2L, fileName = "checkpoint.srm")
-        coEvery { mockApiClient.checkSavesForGame(1L, 200L) } returns listOf(save1, save2)
-        coEvery { mockApiClient.downloadSave(1L, "yuzu", null, skipBackup = true, knownServerSaveId = any()) } returns SaveSyncResult.Error("network error")
-        coEvery { mockApiClient.downloadSave(1L, "yuzu", "checkpoint", skipBackup = true, knownServerSaveId = any()) } returns SaveSyncResult.Success()
-
-        orchestrator.syncSavesForNewDownload(1L, 200L, "yuzu")
-
-        coVerify(exactly = 2) { saveSyncDao.upsert(any()) }
-        coVerify(exactly = 2) { mockApiClient.downloadSave(any(), any(), any(), any(), any()) }
+        coVerify { mockApiClient.downloadToCache(1L, 1L, "autosave") }
     }
 
     @Test
