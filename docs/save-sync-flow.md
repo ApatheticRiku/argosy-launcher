@@ -363,11 +363,14 @@ against live data (`GET /api/saves`, negotiate no-op twice) before the next phas
    save folder comes from one rule shared by launch and discovery; server hashes replace local
    ones for held server saves. Done when F-Zero GX's six files cache, hash and upload as one unit
    with equal hashes everywhere.
-3. One writer. Every write of a version to disk goes through one function that caches
-   unprotected local bytes first, prepares access, places by shape through the platform handler,
-   applies the hardcore gate, verifies, activates and confirms. Shape changes never delete server
-   saves. Done when a restore, a download, a hardcore downgrade and an emulator change all leave
-   the same final state.
+3. One writer. Every write of a version to disk caches unprotected local bytes first
+   (`SaveCacheManager.protectBeforeOverwrite`; a failed backup aborts the write), places by shape
+   through the platform handler, applies the hardcore gate, activates and confirms. Built as two
+   entry points behind that contract: `SaveDownloader.downloadSave` for sync pulls (its cache-hit
+   shortcut included) and `SaveCacheManager.restoreSave` for cached versions. A user restore of a
+   server save downloads into the cache first (`downloadToCache`) and then restores that row;
+   `downloadSaveById` is gone. Shape changes never delete server saves. Done when a restore, a
+   download, a hardcore downgrade and an emulator change all leave the same final state.
 4. Durable session end. Dirty state clears only after an upload succeeds or is queued; conflicts
    are stored; orphan recovery matches live session end; the session keeps the emulator it
    started with; cancellation is not swallowed. Done when a kill at any point of session end

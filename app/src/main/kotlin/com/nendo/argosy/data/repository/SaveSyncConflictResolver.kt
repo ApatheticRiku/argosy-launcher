@@ -69,6 +69,9 @@ class SaveSyncConflictResolver @Inject constructor(
                     Logger.info(TAG, "[SaveSync] RESOLVE gameId=${resolution.gameId} | DOWNGRADE_TO_CASUAL | Applying server save")
 
                     fal.prepareSaveAccess(resolution.targetPath)
+                    if (!saveCacheManager.get().protectBeforeOverwrite(resolution.gameId, resolution.emulatorId, resolution.targetPath)) {
+                        return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
+                    }
                     val targetFile = File(resolution.targetPath)
                     if (resolution.isFolderBased) {
                         val game = gameDao.getById(resolution.gameId)

@@ -4,30 +4,32 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
 import com.nendo.argosy.domain.model.UnifiedSaveEntry.Source
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
 import java.time.Instant
 
-/**
- * #18 consistency fix: restoring a SERVER-only save must also create a local cache entry (so the
- * unified view sees it as BOTH afterwards, not SERVER-only) while the layout-aware live restore
- * (downloadSaveById) is preserved.
- */
 class RestoreCachedSaveServerCachingTest {
     private val gameId = 7L
     private val serverSaveId = 42L
+    private val downloadedCacheId = 900L
+    private val localCacheId = 55L
+    private val targetPath = "/saves/test.srm"
 
     private lateinit var saveCacheManager: SaveCacheManager
     private lateinit var saveSyncRepository: SaveSyncRepository
     private lateinit var gameDao: GameDao
+    private lateinit var activeSaveRepository: ActiveSaveRepository
     private lateinit var emulatorResolver: EmulatorResolver
     private lateinit var useCase: RestoreCachedSaveUseCase
 
@@ -50,46 +52,88 @@ class RestoreCachedSaveServerCachingTest {
         source = Source.SERVER
     )
 
+    private fun localEntry() = UnifiedSaveEntry(
+        localCacheId = localCacheId,
+        timestamp = Instant.now(),
+        size = 100,
+        channelName = null,
+        source = Source.LOCAL
+    )
+
     @Before
     fun setup() {
         saveCacheManager = mockk(relaxed = true)
         saveSyncRepository = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
+        activeSaveRepository = mockk(relaxed = true)
         emulatorResolver = mockk(relaxed = true)
         useCase = RestoreCachedSaveUseCase(
             saveCacheManager,
             saveSyncRepository,
             gameDao,
-            mockk(relaxed = true),
+            activeSaveRepository,
             emulatorResolver
         )
 
         coEvery { gameDao.getById(gameId) } returns game
         coEvery {
             saveSyncRepository.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any())
-        } returns "/saves/test.srm"
+        } returns targetPath
         coEvery { saveSyncRepository.clearSavesBeforeRestore(any(), any(), any(), any()) } returns true
+        coEvery { saveSyncRepository.downloadToCache(serverSaveId, gameId, null) } returns downloadedCacheId
+        coEvery { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns true
+        coEvery { saveCacheManager.restoreSave(any(), any()) } returns true
     }
 
     @Test
-    fun `successful server restore also caches the save`() = runTest {
-        coEvery {
-            saveSyncRepository.downloadSaveById(any(), any(), any(), any(), any(), any())
-        } returns true
+    fun `server restore downloads to cache, protects the disk, then writes and activates that cache row`() = runTest {
+        val result = useCase(serverEntry(), gameId, emulatorId = "vbam", syncToServer = false)
 
-        useCase(serverEntry(), gameId, emulatorId = "vbam", syncToServer = false)
-
-        coVerify(exactly = 1) { saveSyncRepository.downloadAndCacheSave(serverSaveId, gameId, null, activate = true) }
+        assertEquals(RestoreCachedSaveUseCase.Result.Restored, result)
+        coVerifyOrder {
+            saveSyncRepository.downloadToCache(serverSaveId, gameId, null)
+            saveCacheManager.protectBeforeOverwrite(gameId, "vbam", targetPath)
+            saveSyncRepository.clearSavesBeforeRestore(targetPath, any(), any(), any())
+            saveCacheManager.restoreSave(downloadedCacheId, targetPath)
+            activeSaveRepository.activateCache(gameId, downloadedCacheId)
+        }
     }
 
     @Test
-    fun `failed server download does not cache`() = runTest {
-        coEvery {
-            saveSyncRepository.downloadSaveById(any(), any(), any(), any(), any(), any())
-        } returns false
+    fun `failed server download leaves the disk untouched`() = runTest {
+        coEvery { saveSyncRepository.downloadToCache(any(), any(), any()) } returns null
 
-        useCase(serverEntry(), gameId, emulatorId = "vbam", syncToServer = false)
+        val result = useCase(serverEntry(), gameId, emulatorId = "vbam", syncToServer = false)
 
-        coVerify(exactly = 0) { saveSyncRepository.downloadAndCacheSave(any(), any(), any(), any()) }
+        assertEquals(
+            RestoreCachedSaveUseCase.Result.Error(RestoreCachedSaveFailureReason.RestoreFailed),
+            result
+        )
+        coVerify(exactly = 0) { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) }
+        coVerify(exactly = 0) { saveSyncRepository.clearSavesBeforeRestore(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(any(), any()) }
+    }
+
+    @Test
+    fun `failed protection stops before the disk is cleared`() = runTest {
+        coEvery { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns false
+
+        val result = useCase(localEntry(), gameId, emulatorId = "vbam", syncToServer = false)
+
+        assertEquals(
+            RestoreCachedSaveUseCase.Result.Error(RestoreCachedSaveFailureReason.ClearExistingSaveFailed),
+            result
+        )
+        coVerify(exactly = 0) { saveSyncRepository.clearSavesBeforeRestore(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(any(), any()) }
+    }
+
+    @Test
+    fun `local restore activates the restored cache row`() = runTest {
+        useCase(localEntry(), gameId, emulatorId = "vbam", syncToServer = false)
+
+        coVerify(exactly = 0) { saveSyncRepository.downloadToCache(any(), any(), any()) }
+        coVerify(exactly = 1) { saveCacheManager.restoreSave(localCacheId, targetPath) }
+        coVerify(exactly = 1) { activeSaveRepository.activateCache(gameId, localCacheId) }
     }
 }

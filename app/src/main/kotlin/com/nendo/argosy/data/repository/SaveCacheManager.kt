@@ -22,6 +22,7 @@ import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.SaveUnitResolver
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.domain.model.SaveSlotClassifier
 import com.nendo.argosy.domain.model.SaveSlotKind
 import com.nendo.argosy.util.SaveDebugLogger
@@ -466,6 +467,14 @@ class SaveCacheManager @Inject constructor(
             ?.takeIf { it.isMulti }
     }
 
+    /**
+     * Caches the save currently at [savePath] as a rollback version before something overwrites
+     * it. True when there is nothing to protect or it is now cached (or already was); false when
+     * the bytes could not be cached, and the caller must not overwrite them.
+     */
+    suspend fun protectBeforeOverwrite(gameId: Long, emulatorId: String, savePath: String): Boolean =
+        !fal.exists(savePath) || cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+
     suspend fun cacheAsRollback(
         gameId: Long,
         emulatorId: String,
@@ -579,6 +588,8 @@ class SaveCacheManager @Inject constructor(
                 val folderHandler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
                 Log.d(TAG, "[RESTORE] cache=$cacheId zip=${cacheFile.name} size=${cacheFile.length()} target=$targetPath transformed=${targetFile.absolutePath} exists=${targetFile.exists()} dir=${targetFile.isDirectory} preserveRoots=$preserveRoots platform=${game?.platformSlug}")
                 val ok = when {
+                    saveArchiver.isJksvFormat(cacheFile) ->
+                        saveArchiver.unzipPreservingStructure(cacheFile, targetFile, SwitchSaveHandler.JKSV_EXCLUDE_FILES)
                     preserveRoots -> saveArchiver.unzipToFolder(cacheFile, targetFile).also { placed ->
                         if (placed) folderHandler?.ensureContainerPrepared(targetFile)
                     }

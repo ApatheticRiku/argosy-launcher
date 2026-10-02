@@ -279,14 +279,8 @@ class SaveSyncRepository @Inject constructor(
         knownServerSaveId: Long? = null
     ): SaveSyncResult = apiClient.downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
-    suspend fun downloadSaveById(
-        serverSaveId: Long,
-        targetPath: String,
-        emulatorId: String,
-        emulatorPackage: String? = null,
-        gameId: Long? = null,
-        romPath: String? = null
-    ): Boolean = apiClient.downloadSaveById(serverSaveId, targetPath, emulatorId, emulatorPackage, gameId, romPath)
+    suspend fun downloadToCache(serverSaveId: Long, gameId: Long, channelName: String?): Long? =
+        apiClient.downloadToCache(serverSaveId, gameId, channelName)
 
     suspend fun downloadSaveAsChannel(
         gameId: Long,

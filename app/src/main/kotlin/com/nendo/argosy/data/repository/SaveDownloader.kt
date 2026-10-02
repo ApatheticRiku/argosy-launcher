@@ -310,16 +310,12 @@ class SaveDownloader @Inject constructor(
 
         if (preDownloadTargetPath != null && serverSave.contentHash != null) {
             val cachedMatch = saveCacheManager.get().findCachedByHash(gameId, serverSave.contentHash)
+                ?.takeIf { it.isHardcore || !saveCacheManager.get().hasHardcoreSave(gameId) }
             if (cachedMatch != null) {
                 Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cache hit (hash=${serverSave.contentHash}), restoring from cacheId=${cachedMatch.id} instead of fetching content")
-                val existingTarget = File(preDownloadTargetPath)
-                if (existingTarget.exists() && !skipBackup) {
-                    try {
-                        saveCacheManager.get().cacheCurrentSave(gameId, resolvedEmulatorId, preDownloadTargetPath)
-                    } catch (e: Exception) {
-                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed before cache-hit restore", e)
-                        return@withContext SaveSyncResult.Error("Failed to backup existing save before restore")
-                    }
+                if (!skipBackup && !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, preDownloadTargetPath)) {
+                    Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed before cache-hit restore")
+                    return@withContext SaveSyncResult.Error("Failed to backup existing save before restore")
                 }
                 val restored = saveCacheManager.get().restoreSave(cachedMatch.id, preDownloadTargetPath)
                 if (!restored) {
@@ -345,6 +341,7 @@ class SaveDownloader @Inject constructor(
                         saveCacheDao.updateCachedAt(cachedMatch.id, serverTimestamp)
                     }
                     activeSaveRepository.activateCache(gameId, cachedMatch.id)
+                    activeSaveRepository.setActiveSaveApplied(gameId, false)
                     confirmOrQueueDeviceSync(gameId, serverSave.id)
                     Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Complete (cache-hit) | path=$preDownloadTargetPath")
                     return@withContext SaveSyncResult.Success(rommSaveId = serverSave.id, serverTimestamp = serverTimestamp)
@@ -473,15 +470,9 @@ class SaveDownloader @Inject constructor(
                     )
                 }
 
-                val existingTarget = File(targetPath)
-                if (existingTarget.exists() && !skipBackup) {
-                    try {
-                        saveCacheManager.get().cacheCurrentSave(gameId, resolvedEmulatorId, targetPath)
-                        Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cached existing save before overwrite")
-                    } catch (e: Exception) {
-                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed, aborting download to prevent data loss", e)
-                        return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
-                    }
+                if (!skipBackup && !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, targetPath)) {
+                    Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed, aborting download to prevent data loss")
+                    return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                 }
 
                 val extractedSize = tempZipFile.length() * 3
@@ -589,6 +580,24 @@ class SaveDownloader @Inject constructor(
                         coreName = preferredCore,
                         basePathOverride = savePathResolver.gciBaseOverride(config, gameId, game.platformSlug)
                     )
+                    val existingMember = syncEntity.localSavePath
+                        ?.takeIf { it.endsWith(".gci", ignoreCase = true) && fal.exists(it) }
+                        ?: savePathResolver.discoverSavePath(
+                            emulatorId = resolvedEmulatorId,
+                            gameTitle = game.title,
+                            platformSlug = game.platformSlug,
+                            romPath = game.localPath,
+                            cachedSaveId = game.saveId ?: game.titleId,
+                            coreName = preferredCore,
+                            emulatorPackage = emulatorPackage,
+                            gameId = gameId
+                        )
+                    if (!skipBackup && existingMember != null &&
+                        !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, existingMember)
+                    ) {
+                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed, aborting GCI download to prevent data loss")
+                        return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
+                    }
                     val result = gciSaveHandler.extractDownload(tempGciFile, saveContext)
                     if (!result.success) {
                         Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | GCI extraction failed | error=${result.error}")
@@ -643,16 +652,9 @@ class SaveDownloader @Inject constructor(
                         )
                     }
 
-                    val existingTarget = File(targetPath)
-                    if (existingTarget.exists() && !skipBackup) {
-                        try {
-                            saveCacheManager.get().cacheCurrentSave(gameId, resolvedEmulatorId, targetPath)
-                            Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cached existing save before overwrite")
-                        } catch (e: Exception) {
-                            Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed, aborting download to prevent data loss", e)
-                            tempSaveFile?.delete()
-                            return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
-                        }
+                    if (!skipBackup && !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, targetPath)) {
+                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Backup failed, aborting download to prevent data loss")
+                        return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                     }
 
                     val bundleResult = unitBundleResult(tempSaveFile!!, targetPath, config, game, resolvedEmulatorId, emulatorPackage, preferredCore)
@@ -772,176 +774,6 @@ class SaveDownloader @Inject constructor(
         }
     }
 
-    suspend fun downloadSaveById(
-        serverSaveId: Long,
-        targetPath: String,
-        emulatorId: String,
-        emulatorPackage: String? = null,
-        gameId: Long? = null,
-        romPath: String? = null
-    ): Boolean = withContext(Dispatchers.IO) {
-        val client = apiClient.get()
-        val api = client.getApi() ?: return@withContext false
-        val deviceId = client.getDeviceId()
-
-        val serverSave = try {
-            (if (deviceId != null) api.getSaveWithDevice(serverSaveId, deviceId) else api.getSave(serverSaveId)).body()
-        } catch (e: Exception) {
-            Logger.error(TAG, "downloadSaveById: getSave failed", e)
-            return@withContext false
-        } ?: return@withContext false
-
-        val game = gameId?.let { gameDao.getById(it) }
-        val platformSlug = game?.platformSlug
-        val config = if (platformSlug != null) {
-            SavePathRegistry.getConfigForPlatform(emulatorId, platformSlug)
-        } else {
-            SavePathRegistry.getConfigIncludingUnsupported(emulatorId)
-        }
-        val isGciFormat = config?.usesGciFormat == true
-        val isFolderBased = config?.usesFolderBasedSaves == true &&
-            serverSave.fileName.endsWith(".zip", ignoreCase = true) && !isGciFormat
-        val isSwitchEmulator = emulatorId in SaveSyncApiClient.SWITCH_EMULATOR_IDS
-
-        var tempZipFile: File? = null
-
-        try {
-            val response = try {
-                val dlPath = serverSave.downloadPath
-                when {
-                    dlPath != null -> api.downloadRaw(dlPath)
-                    deviceId != null -> api.downloadSaveContentWithDevice(serverSaveId, deviceId)
-                    else -> api.downloadSaveContent(serverSaveId)
-                }
-            } catch (e: Exception) {
-                Logger.error(TAG, "downloadSaveById: content download failed", e)
-                return@withContext false
-            }
-            if (!response.isSuccessful) {
-                Logger.error(TAG, "downloadSaveById failed: ${response.code()}")
-                return@withContext false
-            }
-
-            if (isGciFormat && romPath != null && gameId != null) {
-                val tempGciFile = File(context.cacheDir, "temp_gci_${System.currentTimeMillis()}.tmp")
-                try {
-                    val body = response.body() ?: return@withContext false
-                    body.byteStream().use { input ->
-                        tempGciFile.outputStream().use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-
-                    val isZipBundle = tempGciFile.inputStream().use { input ->
-                        val magic = ByteArray(2)
-                        input.read(magic) == 2 && magic[0] == 0x50.toByte() && magic[1] == 0x4B.toByte()
-                    }
-
-                    if (isZipBundle) {
-                        tempZipFile = tempGciFile
-                        val extractedPaths = gciSaveHandler.extractBundle(
-                            tempGciFile, config, romPath, gameId,
-                            savePathResolver.gciBaseOverride(config, gameId, platformSlug)
-                        )
-                        if (extractedPaths.isEmpty()) {
-                            Logger.error(TAG, "downloadSaveById: GCI bundle extraction failed")
-                            return@withContext false
-                        }
-                        Logger.debug(TAG, "downloadSaveById: GCI bundle extracted | paths=${extractedPaths.size}")
-                    } else {
-                        val gciInfo = GameCubeHeaderParser.parseGciHeader(tempGciFile)
-                        val romInfo = GameCubeHeaderParser.parseRomHeader(File(romPath))
-                        if (gciInfo != null && romInfo != null) {
-                            val gciFilename = GameCubeHeaderParser.buildGciFilename(
-                                gciInfo.makerCode, gciInfo.gameId, gciInfo.internalFilename
-                            )
-                            val overrideBase = savePathResolver.gciBaseOverride(config, gameId, platformSlug)
-                            val basePaths = overrideBase?.let { listOf(it) }
-                                ?: SavePathRegistry.resolvePath(
-                                    config,
-                                    "ngc",
-                                    if (config.usesInternalStorage) context.filesDir.absolutePath else null,
-                                    fal.externalStorageRoots()
-                                )
-                            val baseDir = basePaths.firstOrNull { fal.exists(it) && fal.isDirectory(it) } ?: basePaths.firstOrNull()
-                            if (baseDir != null) {
-                                val resolvedPath = GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, gciFilename)
-                                val parentDir = File(resolvedPath).parent
-                                if (parentDir != null) fal.mkdirs(parentDir)
-                                fal.prepareSaveAccess(resolvedPath)
-                                if (fal.copyFile(tempGciFile.absolutePath, resolvedPath)) {
-                                    Logger.debug(TAG, "downloadSaveById: GCI single file written | path=$resolvedPath")
-                                } else {
-                                    Logger.error(TAG, "downloadSaveById: failed to copy GCI file | path=$resolvedPath")
-                                }
-                            }
-                        }
-                        tempGciFile.delete()
-                    }
-                } catch (e: Exception) {
-                    tempGciFile.delete()
-                    throw e
-                }
-                return@withContext true
-            } else if (isFolderBased) {
-                tempZipFile = File(context.cacheDir, serverSave.fileName)
-                val body = response.body()
-                if (body == null) {
-                    Logger.error(TAG, "downloadSaveById: response body is null for folder save")
-                    return@withContext false
-                }
-                body.byteStream().use { input ->
-                    tempZipFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-
-                val resolvedTargetPath = if (isSwitchEmulator && config != null) {
-                    savePathResolver.resolveSwitchSaveTargetPath(tempZipFile, config, emulatorPackage) ?: targetPath
-                } else {
-                    targetPath
-                }
-
-                fal.prepareSaveAccess(resolvedTargetPath)
-                val targetFolder = File(resolvedTargetPath)
-                targetFolder.mkdirs()
-
-                val isJksv = saveArchiver.isJksvFormat(tempZipFile)
-                val folderHandler = platformSlug?.let { client.getHandler(config, it, emulatorId) as? FolderSaveHandler }
-                val unzipSuccess = when {
-                    isJksv -> saveArchiver.unzipPreservingStructure(tempZipFile, targetFolder, SwitchSaveHandler.JKSV_EXCLUDE_FILES)
-                    folderHandler != null -> folderHandler.placeArchive(tempZipFile, targetFolder, game?.saveId ?: game?.titleId)
-                    else -> saveArchiver.unzipSingleFolder(tempZipFile, targetFolder)
-                }
-                if (!unzipSuccess) {
-                    return@withContext false
-                }
-            } else {
-                fal.prepareSaveAccess(targetPath)
-                val targetFile = File(targetPath)
-                targetFile.parentFile?.mkdirs()
-
-                val body = response.body()
-                if (body == null) {
-                    Logger.error(TAG, "downloadSaveById: response body is null for file save")
-                    return@withContext false
-                }
-                body.byteStream().use { input ->
-                    targetFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-
-            true
-        } catch (e: Exception) {
-            Logger.error(TAG, "downloadSaveById exception", e)
-            false
-        } finally {
-            tempZipFile?.delete()
-        }
-    }
-
     suspend fun downloadSaveAsChannel(
         gameId: Long,
         serverSaveId: Long,
@@ -1022,9 +854,20 @@ class SaveDownloader @Inject constructor(
         gameId: Long,
         channelName: String?,
         activate: Boolean
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): Boolean = downloadToCache(serverSaveId, gameId, channelName, activate) != null
+
+    /**
+     * Downloads server save [serverSaveId] into the save cache and returns the cache row's id,
+     * or null when the save could not be fetched or cached. Nothing on disk is touched.
+     */
+    suspend fun downloadToCache(
+        serverSaveId: Long,
+        gameId: Long,
+        channelName: String?,
+        activate: Boolean
+    ): Long? = withContext(Dispatchers.IO) {
         val client = apiClient.get()
-        val api = client.getApi() ?: return@withContext false
+        val api = client.getApi() ?: return@withContext null
         val deviceId = client.getDeviceId()
 
         val serverSave = try {
@@ -1035,9 +878,9 @@ class SaveDownloader @Inject constructor(
             }
             resp.body()
         } catch (e: Exception) {
-            Logger.error(TAG, "downloadAndCacheSave: getSave failed", e)
-            return@withContext false
-        } ?: return@withContext false
+            Logger.error(TAG, "downloadToCache: getSave failed", e)
+            return@withContext null
+        } ?: return@withContext null
 
         val response = try {
             val dlPath = serverSave.downloadPath
@@ -1049,13 +892,13 @@ class SaveDownloader @Inject constructor(
                 api.downloadSaveContent(serverSaveId)
             }
         } catch (e: Exception) {
-            Logger.error(TAG, "downloadAndCacheSave: download failed", e)
-            return@withContext false
+            Logger.error(TAG, "downloadToCache: download failed", e)
+            return@withContext null
         }
 
         if (!response.isSuccessful) {
-            Logger.error(TAG, "downloadAndCacheSave: HTTP ${response.code()}")
-            return@withContext false
+            Logger.error(TAG, "downloadToCache: HTTP ${response.code()}")
+            return@withContext null
         }
 
         val tempFile = File(context.cacheDir, "save_precache_${System.currentTimeMillis()}.tmp")
@@ -1064,9 +907,9 @@ class SaveDownloader @Inject constructor(
                 tempFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
-            } ?: return@withContext false
+            } ?: return@withContext null
 
-            if (tempFile.length() == 0L) return@withContext false
+            if (tempFile.length() == 0L) return@withContext null
 
             val game = gameDao.getById(gameId)
             val resolvedEmulatorId = game?.let {
@@ -1086,8 +929,12 @@ class SaveDownloader @Inject constructor(
                 rommSaveId = serverSaveId
             )
 
-            Logger.debug(TAG, "downloadAndCacheSave: result=$result, saveId=$serverSaveId")
-            result.success
+            Logger.debug(TAG, "downloadToCache: result=$result, saveId=$serverSaveId")
+            when (result) {
+                is SaveCacheManager.CacheResult.Created -> result.cacheId
+                is SaveCacheManager.CacheResult.Duplicate -> result.cacheId
+                SaveCacheManager.CacheResult.Failed -> null
+            }
         } finally {
             tempFile.delete()
         }

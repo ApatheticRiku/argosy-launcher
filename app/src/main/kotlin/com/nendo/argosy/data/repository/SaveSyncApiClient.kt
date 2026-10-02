@@ -340,14 +340,11 @@ class SaveSyncApiClient @Inject constructor(
         knownServerSaveId: Long? = null
     ): SaveSyncResult = saveDownloader.get().downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
-    suspend fun downloadSaveById(
+    suspend fun downloadToCache(
         serverSaveId: Long,
-        targetPath: String,
-        emulatorId: String,
-        emulatorPackage: String? = null,
-        gameId: Long? = null,
-        romPath: String? = null
-    ): Boolean = saveDownloader.get().downloadSaveById(serverSaveId, targetPath, emulatorId, emulatorPackage, gameId, romPath)
+        gameId: Long,
+        channelName: String?
+    ): Long? = saveDownloader.get().downloadToCache(serverSaveId, gameId, channelName, activate = false)
 
     suspend fun downloadSaveAsChannel(
         gameId: Long,

@@ -67,71 +67,37 @@ class RestoreCachedSaveUseCase @Inject constructor(
             folderShaped = entry.serverFileName?.endsWith(".zip", ignoreCase = true)
         ) ?: return Result.Error(RestoreCachedSaveFailureReason.SaveLocationUnresolved)
 
-        val archiveRoots = when (entry.source) {
+        val restoredCacheId = when (entry.source) {
             UnifiedSaveEntry.Source.LOCAL,
-            UnifiedSaveEntry.Source.BOTH -> entry.localCacheId?.let { saveCacheManager.archiveRootNames(it) }
-            UnifiedSaveEntry.Source.SERVER -> null
+            UnifiedSaveEntry.Source.BOTH -> entry.localCacheId
+                ?: return Result.Error(RestoreCachedSaveFailureReason.NoLocalCacheId)
+            UnifiedSaveEntry.Source.SERVER -> {
+                val serverSaveId = entry.serverSaveId
+                    ?: return Result.Error(RestoreCachedSaveFailureReason.NoServerSaveId)
+                saveSyncRepository.downloadToCache(serverSaveId, gameId, entry.channelName)
+                    ?: return Result.Error(RestoreCachedSaveFailureReason.RestoreFailed)
+            }
         }
+
+        if (!saveCacheManager.protectBeforeOverwrite(gameId, emulatorId, targetPath)) {
+            return Result.Error(RestoreCachedSaveFailureReason.ClearExistingSaveFailed)
+        }
+
+        val archiveRoots = saveCacheManager.archiveRootNames(restoredCacheId)
         if (!saveSyncRepository.clearSavesBeforeRestore(targetPath, game.platformSlug, game.saveId ?: game.titleId, archiveRoots)) {
             return Result.Error(RestoreCachedSaveFailureReason.ClearExistingSaveFailed)
         }
 
-        var cachedHash: String? = null
-        val restoreSuccess = when (entry.source) {
-            UnifiedSaveEntry.Source.LOCAL,
-            UnifiedSaveEntry.Source.BOTH -> {
-                val cacheId = entry.localCacheId
-                    ?: return Result.Error(RestoreCachedSaveFailureReason.NoLocalCacheId)
-                cachedHash = saveCacheManager.getCacheById(cacheId)?.contentHash
-                saveCacheManager.restoreSave(cacheId, targetPath)
-            }
-            UnifiedSaveEntry.Source.SERVER -> {
-                val serverSaveId = entry.serverSaveId
-                    ?: return Result.Error(RestoreCachedSaveFailureReason.NoServerSaveId)
-                val downloaded = saveSyncRepository.downloadSaveById(
-                    serverSaveId = serverSaveId,
-                    targetPath = targetPath,
-                    emulatorId = emulatorId,
-                    emulatorPackage = emulatorPackage,
-                    gameId = gameId,
-                    romPath = game.localPath
-                )
-                // Also persist a local cache entry (tagged with rommSaveId) so after the restore the
-                // unified view sees this save as BOTH rather than SERVER-only -- otherwise cache-only
-                // readers and the next active-save resolution misread it. downloadSaveById stays the
-                // live restore because it is layout-aware (GCI/Switch/folder); caching separately
-                // reuses the proven server-download cache path instead of duplicating that layout logic.
-                // Opportunistic, not part of the restore contract: the save is already on disk, so a
-                // failed cache write only degrades the unified view back to server-only until the
-                // next sync. Log and carry on -- reporting Error here would tell the user a restore
-                // that succeeded had failed.
-                if (downloaded &&
-                    !saveSyncRepository.downloadAndCacheSave(serverSaveId, gameId, entry.channelName, activate = true)
-                ) {
-                    Log.w(TAG, "Restored server save $serverSaveId but failed to cache it locally; unified view stays server-only until the next sync")
-                }
-                downloaded
-            }
-        }
-
-        if (!restoreSuccess) {
+        if (!saveCacheManager.restoreSave(restoredCacheId, targetPath)) {
             return Result.Error(RestoreCachedSaveFailureReason.RestoreFailed)
         }
 
-        val restoredContentHash = when (entry.source) {
-            UnifiedSaveEntry.Source.LOCAL,
-            UnifiedSaveEntry.Source.BOTH -> cachedHash ?: saveCacheManager.calculateLocalSaveHash(targetPath, gameId, emulatorId)
-            UnifiedSaveEntry.Source.SERVER -> null
-        }
+        val restoredContentHash = saveCacheManager.getCacheById(restoredCacheId)?.contentHash
+            ?: saveCacheManager.calculateLocalSaveHash(targetPath, gameId, emulatorId)
 
         val targetChannel = entry.channelName
             ?: com.nendo.argosy.data.repository.SaveSyncApiClient.AUTOSAVE_SLOT_NAME
-        val restoredCacheId = entry.localCacheId
-        if (restoredCacheId != null) {
-            activeSaveRepository.activateCache(gameId, restoredCacheId)
-        } else {
-            activeSaveRepository.activateChannel(gameId, entry.channelName)
-        }
+        activeSaveRepository.activateCache(gameId, restoredCacheId)
 
         if (game.rommId != null) {
             saveSyncRepository.markRestored(
