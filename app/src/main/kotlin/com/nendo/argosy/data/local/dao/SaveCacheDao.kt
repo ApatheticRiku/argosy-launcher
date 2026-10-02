@@ -393,6 +393,9 @@ interface SaveCacheDao {
     @Query("UPDATE save_cache SET rommSaveId = :rommSaveId WHERE id = :id")
     suspend fun updateRommSaveId(id: Long, rommSaveId: Long)
 
+    @Query("UPDATE save_cache SET isLocked = :locked WHERE id = :id")
+    suspend fun setLocked(id: Long, locked: Boolean)
+
     @Query("UPDATE save_cache SET contentHash = :contentHash WHERE id = :id")
     suspend fun updateContentHash(id: Long, contentHash: String)
 

@@ -901,12 +901,18 @@ class SaveCacheManager @Inject constructor(
             if (dupes.size <= 1) continue
             val keeper = dupes.maxWithOrNull(
                 compareBy(
+                    { if (it.isActive) 1 else 0 },
                     { if (it.isLocked) 1 else 0 },
                     { if (it.rommSaveId != null) 1 else 0 },
                     { it.cachedAt },
                     { it.id }
                 )
             ) ?: continue
+            if (keeper.isActive) {
+                val serverId = keeper.rommSaveId ?: dupes.firstNotNullOfOrNull { it.rommSaveId }
+                if (serverId != null && keeper.rommSaveId == null) saveCacheDao.updateRommSaveId(keeper.id, serverId)
+                if (!keeper.isLocked && dupes.any { it.isLocked }) saveCacheDao.setLocked(keeper.id, true)
+            }
             for (entry in dupes) {
                 if (entry.id == keeper.id) continue
                 val cacheFile = File(cacheBaseDir, entry.cachePath)

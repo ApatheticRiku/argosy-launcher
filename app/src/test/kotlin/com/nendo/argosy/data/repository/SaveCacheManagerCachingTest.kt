@@ -102,6 +102,23 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `dedupe keeps the active version and moves its twin's server link and lock onto it`() = runTest {
+        val active = SaveCacheEntity(
+            id = 10L, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.ofEpochSecond(10),
+            saveSize = 1, cachePath = "a/save.srm", contentHash = "same", channelName = "autosave", isActive = true
+        )
+        val lockedTwin = active.copy(id = 11L, cachePath = "b/save.srm", isActive = false, isLocked = true, rommSaveId = 77L)
+        coEvery { saveCacheDao.getByGame(1L) } returns listOf(active, lockedTwin)
+
+        manager.dedupeIdenticalCaches(1L)
+
+        coVerify { saveCacheDao.deleteById(11L) }
+        coVerify(exactly = 0) { saveCacheDao.deleteById(10L) }
+        coVerify { saveCacheDao.updateRommSaveId(10L, 77L) }
+        coVerify { saveCacheDao.setLocked(10L, true) }
+    }
+
+    @Test
     fun `copying into a named slot locks the new row`() = runTest {
         val captured = copyToChannelCapturing("speedrun")
 
