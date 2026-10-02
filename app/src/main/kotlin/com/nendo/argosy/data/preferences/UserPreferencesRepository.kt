@@ -613,6 +613,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun clearActiveSession() = sessionPrefs.clearActiveSession()
 
     suspend fun getPersistedSession(): PersistedSession? = sessionPrefs.getPersistedSession()
+
+    suspend fun recordSessionRecoveryAttempt(): Int = sessionPrefs.recordRecoveryAttempt()
 }
 
 data class BuiltinEmulatorSettings(

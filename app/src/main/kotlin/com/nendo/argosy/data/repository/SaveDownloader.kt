@@ -605,6 +605,11 @@ class SaveDownloader @Inject constructor(
                             emulatorPackage = emulatorPackage,
                             gameId = gameId
                         )
+                    val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                    if (hasLocalHardcore && !saveArchiver.hasHardcoreTrailer(tempGciFile)) {
+                        Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | GCI server save has no hardcore trailer over a local hardcore save; refusing")
+                        return@withContext SaveSyncResult.Error("Server save would replace a hardcore save")
+                    }
                     if (!skipBackup && existingMember != null &&
                         !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, existingMember)
                     ) {

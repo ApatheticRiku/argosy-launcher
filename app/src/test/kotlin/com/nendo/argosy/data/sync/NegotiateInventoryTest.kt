@@ -90,6 +90,23 @@ class NegotiateInventoryTest {
     }
 
     @Test
+    fun `a slot a background check moved to a newer server save reports the local version as it is, not the server head`() = runTest {
+        val observed = row.copy(
+            rommSaveId = 12L,
+            lastUploadedHash = "head-hash",
+            serverUpdatedAt = java.time.Instant.parse("2026-10-02T09:00:00Z"),
+            syncStatus = SaveSyncEntity.STATUS_SERVER_NEWER
+        )
+        coEvery { saveSyncDao.getAllWithLocalPath(any()) } returns listOf(observed)
+        coEvery { activeSaveRepository.getActiveRow(gameId) } returns active("local-hash").copy(rommSaveId = 9L)
+
+        val state = inventory.build(secureSaves = true).single()
+
+        assertEquals("local-hash", state.contentHash)
+        assertEquals(cachedStamp.toString(), state.updatedAt)
+    }
+
+    @Test
     fun `a named slot with no cached version is not reported from the disk save that belongs to the slot in play`() = runTest {
         coEvery { saveSyncDao.getAllWithLocalPath(any()) } returns listOf(row.copy(channelName = "main-save"))
         coEvery { activeSaveRepository.getActiveRow(gameId) } returns null

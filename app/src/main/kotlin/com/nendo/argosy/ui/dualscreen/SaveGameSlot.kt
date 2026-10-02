@@ -48,7 +48,6 @@ private const val HOUR_LABEL_STEP = 6
 
 @Composable
 internal fun SaveGameSlot(slot: PresentationSlot.SaveGame, bottomInset: Dp) {
-    val theme = LocalArgosyTheme.current
     Box(modifier = Modifier.fillMaxSize()) {
         slot.backgroundPath?.let { backdrop ->
             AsyncImage(
@@ -117,8 +116,8 @@ internal fun SaveGameSlot(slot: PresentationSlot.SaveGame, bottomInset: Dp) {
                         modifier = Modifier.weight(1f)
                     ) {
                         SegmentedMeterBar(
-                            totalBytes = slot.devices.sumOf { it.activeMs },
-                            segments = slot.devices.map { it.color to it.activeMs },
+                            totalBytes = slot.totalDeviceMs,
+                            segments = slot.deviceSegments,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                         slot.devices.forEach { device -> SaveGameDeviceRow(device) }

@@ -72,7 +72,11 @@ class NegotiateInventory @Inject constructor(
         fileName: String,
         slot: String
     ): LocalSaveState {
-        val transferredForms = setOfNotNull(row.lastUploadedHash, row.localContentHash)
+        val transferredForms = if (row.syncStatus == SaveSyncEntity.STATUS_SYNCED) {
+            setOfNotNull(row.lastUploadedHash, row.localContentHash)
+        } else {
+            emptySet()
+        }
         val isTransferredSave = version.rommSaveId != null && version.rommSaveId == row.rommSaveId
         val unchangedSinceTransfer = isTransferredSave ||
             setOfNotNull(version.contentHash, version.identityHash).any { it in transferredForms }

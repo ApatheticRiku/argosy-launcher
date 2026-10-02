@@ -59,6 +59,8 @@ import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.ui.components.MainDrawer
 import com.nendo.argosy.ui.components.QuickSettingsInputRouter
 import com.nendo.argosy.ui.components.QuickSettingsPage
+import com.nendo.argosy.ui.components.friends.QuickFriendsRow
+import com.nendo.argosy.ui.components.friends.quickFriendsRows
 import com.nendo.argosy.ui.components.QuickSettingsPanel
 import com.nendo.argosy.ui.components.QuickSettingsState
 import com.nendo.argosy.ui.components.quickSettingsEffectivePage
@@ -1293,6 +1295,18 @@ fun ArgosyApp(
                 musicPlayerUiState.browse?.notice ==
                 com.nendo.argosy.ui.components.musicplayer.MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
             val signInHint = stringResource(R.string.ui_quick_settings_music_hint_sign_in)
+            val focusedFriend = if (
+                isQuickSettingsOpen && quickSettingsPage == QuickSettingsPage.FRIENDS && quickFriendsState.socialConnected
+            ) {
+                (quickFriendsRows(quickSettingsUiState.isSocialLinked, quickFriendsState)
+                    .getOrNull(quickFriendsState.focusIndex) as? QuickFriendsRow.Entry)?.friend
+            } else {
+                null
+            }
+            val favoriteHint = stringResource(
+                if (focusedFriend?.isFavorite == true) R.string.ui_quick_settings_friends_hint_unfavorite
+                else R.string.ui_quick_settings_friends_hint_favorite
+            )
             val panelState = QuickSettingsState(
                 themeMode = quickSettingsUiState.themeMode,
                 soundEnabled = quickSettingsUiState.soundEnabled,
@@ -1313,8 +1327,11 @@ fun ArgosyApp(
             )
             QuickSettingsPanel(
                 onHintClick = { button ->
-                    if (button == com.nendo.argosy.ui.components.InputButton.Y && musicNeedsSignIn) {
-                        openRommSignIn()
+                    if (button == com.nendo.argosy.ui.components.InputButton.Y) {
+                        when {
+                            musicNeedsSignIn -> openRommSignIn()
+                            focusedFriend != null -> viewModel.quickFriends.toggleFavorite(focusedFriend.id)
+                        }
                     }
                 },
                 isVisible = isQuickSettingsOpen,
@@ -1345,7 +1362,8 @@ fun ArgosyApp(
                 },
                 onDismiss = closeQuickSettings,
                 footerHints = listOfNotNull(
-                    (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn }
+                    (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn },
+                    (com.nendo.argosy.ui.components.InputButton.Y to favoriteHint).takeIf { focusedFriend != null }
                 )
             )
 

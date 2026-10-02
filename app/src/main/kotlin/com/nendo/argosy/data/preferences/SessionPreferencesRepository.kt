@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.nendo.argosy.data.emulator.LaunchOrigin
 import kotlinx.coroutines.flow.Flow
@@ -39,6 +40,7 @@ class SessionPreferencesRepository @Inject constructor(
         val ACTIVE_SESSION_VARIANT_FILE_ID = stringPreferencesKey("active_session_variant_file_id")
         val ACTIVE_SESSION_LAUNCH_ORIGIN = stringPreferencesKey("active_session_launch_origin")
         val ACTIVE_SESSION_NETPLAY_GUEST = booleanPreferencesKey("active_session_netplay_guest")
+        val ACTIVE_SESSION_RECOVERY_ATTEMPTS = intPreferencesKey("active_session_recovery_attempts")
     }
 
     val activeSessionFlow: Flow<PersistedSession?> = dataStore.data.map { prefs ->
@@ -57,6 +59,7 @@ class SessionPreferencesRepository @Inject constructor(
         isNetplayGuest: Boolean = false
     ) {
         dataStore.edit { prefs ->
+            prefs.remove(Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS)
             prefs[Keys.ACTIVE_SESSION_NETPLAY_GUEST] = isNetplayGuest
             prefs[Keys.ACTIVE_SESSION_GAME_ID] = gameId.toString()
             prefs[Keys.ACTIVE_SESSION_EMULATOR] = emulatorPackage
@@ -83,7 +86,20 @@ class SessionPreferencesRepository @Inject constructor(
             prefs.remove(Keys.ACTIVE_SESSION_VARIANT_FILE_ID)
             prefs.remove(Keys.ACTIVE_SESSION_LAUNCH_ORIGIN)
             prefs.remove(Keys.ACTIVE_SESSION_NETPLAY_GUEST)
+            prefs.remove(Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS)
         }
+    }
+
+    /**
+     * Counts one failed recovery of the persisted session and returns the total so far.
+     */
+    suspend fun recordRecoveryAttempt(): Int {
+        var attempts = 0
+        dataStore.edit { prefs ->
+            attempts = (prefs[Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS] ?: 0) + 1
+            prefs[Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS] = attempts
+        }
+        return attempts
     }
 
     suspend fun getPersistedSession(): PersistedSession? {

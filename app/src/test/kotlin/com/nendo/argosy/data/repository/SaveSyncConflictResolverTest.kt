@@ -3,7 +3,6 @@ package com.nendo.argosy.data.repository
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
@@ -31,7 +30,6 @@ import java.time.Instant
 class SaveSyncConflictResolverTest {
 
     private lateinit var saveSyncDao: SaveSyncDao
-    private lateinit var saveCacheDao: SaveCacheDao
     private lateinit var emulatorConfigDao: EmulatorConfigDao
     private lateinit var emulatorResolver: EmulatorResolver
     private lateinit var gameDao: GameDao
@@ -63,7 +61,6 @@ class SaveSyncConflictResolverTest {
     @Before
     fun setup() {
         saveSyncDao = mockk(relaxed = true)
-        saveCacheDao = mockk(relaxed = true)
         emulatorConfigDao = mockk(relaxed = true)
         emulatorResolver = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
@@ -89,7 +86,6 @@ class SaveSyncConflictResolverTest {
 
         resolver = SaveSyncConflictResolver(
             saveSyncDao = saveSyncDao,
-            saveCacheDao = saveCacheDao,
             emulatorConfigDao = emulatorConfigDao,
             emulatorResolver = emulatorResolver,
             gameDao = gameDao,

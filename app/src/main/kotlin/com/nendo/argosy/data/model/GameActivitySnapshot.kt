@@ -20,7 +20,7 @@ data class GameDevicePlay(
 data class GameActivitySnapshot(
     val gameId: Long,
     val title: String,
-    val platformSlug: String,
+    val platformName: String,
     val coverPath: String?,
     val backgroundPath: String?,
     val days: List<PlayDay>,

@@ -447,10 +447,11 @@ class SaveSyncViewModel @Inject constructor(
         AttentionAction.SKIP -> null
     }
 
-    fun resolveFocusedAttention(action: AttentionAction) {
+    fun resolveFocusedAttention(action: AttentionAction, rowKey: String? = null) {
         val state = uiState.value
-        val row = state.focusedRow as? AttentionRow ?: return
-        val currentIndex = state.focusedIndex
+        val target = rowKey?.let { key -> state.allRows.firstOrNull { it.key == key } } ?: state.focusedRow
+        val row = target as? AttentionRow ?: return
+        val currentIndex = state.allRows.indexOfFirst { it.key == row.key }.coerceAtLeast(0)
         val remaining = state.allRows.filter { it.key != row.key }
         _focusedRowKey.value = when {
             remaining.isEmpty() -> null

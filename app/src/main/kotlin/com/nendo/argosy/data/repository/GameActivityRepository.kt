@@ -21,6 +21,7 @@ import javax.inject.Singleton
 class GameActivityRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
+    private val platformDao: com.nendo.argosy.data.local.dao.PlatformDao,
     private val playSessionDao: PlaySessionDao,
     private val saveCacheDao: SaveCacheDao,
     private val syncPreferencesRepository: SyncPreferencesRepository
@@ -67,7 +68,7 @@ class GameActivityRepository @Inject constructor(
         GameActivitySnapshot(
             gameId = gameId,
             title = game.title,
-            platformSlug = game.platformSlug,
+            platformName = platformDao.getById(game.platformId)?.name ?: game.platformSlug,
             coverPath = game.displayCoverPath,
             backgroundPath = game.displayBackgroundPath,
             days = days,

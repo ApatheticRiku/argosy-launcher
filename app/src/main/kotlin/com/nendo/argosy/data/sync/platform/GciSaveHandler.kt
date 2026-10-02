@@ -267,7 +267,9 @@ class GciSaveHandler @Inject constructor(
         Logger.debug(TAG, "Extracting bundle | zipFile=${zipFile.name}, baseDir=$baseDir, region=${romInfo.region}, gameId=${romInfo.gameId}")
 
         try {
+            val cardDir = File(GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, "x.gci")).parent
             val existingFiles = findGciFilesInPath(baseDir, romInfo.gameId)
+                .filter { File(it).parent == cardDir }
             if (existingFiles.isNotEmpty()) {
                 Logger.debug(TAG, "Deleting ${existingFiles.size} existing GCI file(s) for prefix ${romInfo.gameId}")
                 for (path in existingFiles) {

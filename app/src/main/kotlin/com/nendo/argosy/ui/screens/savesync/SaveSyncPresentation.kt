@@ -1,13 +1,13 @@
 package com.nendo.argosy.ui.screens.savesync
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.R
 import com.nendo.argosy.data.model.GameActivitySnapshot
@@ -29,7 +29,6 @@ import java.util.Locale
 private const val MS_PER_MINUTE = 60_000L
 private const val PERCENT = 100L
 private const val PRESENTED_DEVICES = 6
-private const val SUBTITLE_SEPARATOR = " · "
 
 @Composable
 internal fun SaveSyncPresentation(viewModel: SaveSyncViewModel) {
@@ -45,46 +44,51 @@ internal fun SaveSyncPresentation(viewModel: SaveSyncViewModel) {
 @Composable
 private fun GameActivitySnapshot.toSlot(): PresentationSlot.SaveGame {
     val context = LocalContext.current
-    val theme = LocalArgosyTheme.current
-    val series = remember(theme.isDark) { ChartPalette.series(theme.isDark) }
-    val subtitle = buildList {
-        add(platformSlug)
-        if (sessionCount > 0) {
-            add(pluralStringResource(R.plurals.savesync_presentation_sessions, sessionCount, sessionCount))
-            add(stringResource(R.string.savesync_presentation_average, minutesLabel(totalActiveMs / sessionCount)))
-            add(stringResource(R.string.savesync_presentation_longest, minutesLabel(longestSessionMs)))
+    val isDark = LocalArgosyTheme.current.isDark
+    val configuration = LocalConfiguration.current
+    return remember(this, isDark, configuration) { buildSlot(context, isDark) }
+}
+
+private fun GameActivitySnapshot.buildSlot(context: Context, isDark: Boolean): PresentationSlot.SaveGame {
+    val res = context.resources
+    val series = ChartPalette.series(isDark)
+    val subtitle = context.joined(
+        buildList {
+            add(platformName)
+            if (sessionCount > 0) {
+                add(res.getQuantityString(R.plurals.savesync_presentation_sessions, sessionCount, sessionCount))
+                add(context.getString(R.string.savesync_presentation_average, context.minutesLabel(totalActiveMs / sessionCount)))
+                add(context.getString(R.string.savesync_presentation_longest, context.minutesLabel(longestSessionMs)))
+            }
+            lastPlayed?.let {
+                add(context.getString(R.string.savesync_presentation_last_played, formatRelativeTimeVerbose(context, it)))
+            }
+            if (versionCount > 0) {
+                add(res.getQuantityString(R.plurals.savesync_presentation_versions, versionCount, versionCount))
+            }
         }
-        lastPlayed?.let {
-            add(stringResource(R.string.savesync_presentation_last_played, formatRelativeTimeVerbose(context, it)))
-        }
-        if (versionCount > 0) {
-            add(pluralStringResource(R.plurals.savesync_presentation_versions, versionCount, versionCount))
-        }
-    }.joinToString(SUBTITLE_SEPARATOR)
-    val peak = remember(weekHourMs) { waveformPeak(weekHourMs) }
-    val peakLabel = peak?.let { (row, hour) ->
-        stringResource(
+    )
+    val peakLabel = waveformPeak(weekHourMs)?.let { (row, hour) ->
+        context.getString(
             R.string.savesync_presentation_peak,
             DayOfWeek.of(row + 1).getDisplayName(TextStyle.SHORT, Locale.getDefault()),
             playHourLabel(context, hour)
         )
     }
-    val saveDayIndices = remember(days, saveDates) {
-        days.indices.filter { days[it].date in saveDates }.toSet()
-    }
     val totalMs = devices.sumOf { it.activeMs }.coerceAtLeast(1L)
     val presented = devices.take(PRESENTED_DEVICES).mapIndexed { index, device ->
-        val name = DeviceKind.withoutRepeatedManufacturer(device.deviceName)
         SaveGameDevice(
-            label = name,
+            label = DeviceKind.withoutRepeatedManufacturer(device.deviceName),
             kind = DeviceKind.classify(device.deviceName, "android", null),
             activeMs = device.activeMs,
-            valueLabel = minutesLabel(device.activeMs),
-            shareLabel = stringResource(R.string.savesync_presentation_share_percent, (device.activeMs * PERCENT / totalMs).toInt()),
-            detail = listOf(
-                pluralStringResource(R.plurals.savesync_presentation_device_sessions, device.sessionCount, device.sessionCount),
-                stringResource(R.string.savesync_presentation_device_last_played, formatRelativeTimeVerbose(context, device.lastPlayed))
-            ).joinToString(SUBTITLE_SEPARATOR),
+            valueLabel = context.minutesLabel(device.activeMs),
+            shareLabel = context.getString(R.string.savesync_presentation_share_percent, (device.activeMs * PERCENT / totalMs).toInt()),
+            detail = context.joined(
+                listOf(
+                    res.getQuantityString(R.plurals.savesync_presentation_device_sessions, device.sessionCount, device.sessionCount),
+                    context.getString(R.string.savesync_presentation_device_last_played, formatRelativeTimeVerbose(context, device.lastPlayed))
+                )
+            ),
             color = series[index % series.size],
             isThisDevice = device.isThisDevice
         )
@@ -92,17 +96,21 @@ private fun GameActivitySnapshot.toSlot(): PresentationSlot.SaveGame {
     return PresentationSlot.SaveGame(
         title = title,
         subtitle = subtitle,
-        totalLabel = totalActiveMs.takeIf { it >= MS_PER_MINUTE }?.let { minutesLabel(it) },
+        totalLabel = totalActiveMs.takeIf { it >= MS_PER_MINUTE }?.let { context.minutesLabel(it) },
         coverPath = coverPath,
         backgroundPath = backgroundPath,
         days = days,
-        saveDayIndices = saveDayIndices,
+        saveDayIndices = days.indices.filter { days[it].date in saveDates }.toSet(),
         weekHourMs = weekHourMs,
         peakLabel = peakLabel,
-        devices = presented
+        devices = presented,
+        totalDeviceMs = presented.sumOf { it.activeMs },
+        deviceSegments = presented.map { it.color to it.activeMs }
     )
 }
 
-@Composable
-private fun minutesLabel(ms: Long): String =
-    formatPlayTime(LocalContext.current, (ms / MS_PER_MINUTE).toInt())
+private fun Context.joined(parts: List<String>): String =
+    parts.reduceOrNull { acc, part -> getString(R.string.savesync_presentation_joined, acc, part) }.orEmpty()
+
+private fun Context.minutesLabel(ms: Long): String =
+    formatPlayTime(this, (ms / MS_PER_MINUTE).toInt())

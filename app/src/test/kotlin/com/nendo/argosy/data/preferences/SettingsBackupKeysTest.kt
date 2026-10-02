@@ -54,7 +54,8 @@ class SettingsBackupKeysTest {
     private val liveSessionState = setOf(
         "active_session_channel_name", "active_session_core_name", "active_session_emulator",
         "active_session_game_id", "active_session_is_hardcore", "active_session_start_time",
-        "active_session_variant_file_id", "active_session_launch_origin", "active_session_netplay_guest"
+        "active_session_variant_file_id", "active_session_launch_origin", "active_session_netplay_guest",
+        "active_session_recovery_attempts"
     )
 
     private val saveAndStateSafetyGates = setOf(

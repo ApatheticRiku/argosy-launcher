@@ -559,6 +559,24 @@ class SavePathResolver @Inject constructor(
         return null
     }
 
+    private suspend fun constructGciSavePath(
+        config: SavePathConfig,
+        romPath: String,
+        gameId: Long?,
+        platformSlug: String
+    ): String? {
+        val romInfo = gciSaveHandler.parseRomHeader(romPath) ?: run {
+            Logger.debug(TAG, "constructSavePath: FAILED - unreadable GameCube disc header | romPath=$romPath")
+            return null
+        }
+        val basePaths = gciBaseOverride(config, gameId, platformSlug)?.let { listOf(it) }
+            ?: SavePathRegistry.resolvePath(config, platformSlug, context.filesDir.absolutePath)
+        val baseDir = basePaths.firstOrNull { directoryExists(it) } ?: basePaths.firstOrNull() ?: return null
+        val target = com.nendo.argosy.data.emulator.GameCubeHeaderParser.buildGciPath(baseDir, romInfo.region, "${romInfo.makerCode}-${romInfo.gameId}.gci")
+        File(target).parent?.let { saveArchiver.getFileForPath(it).mkdirs() }
+        return target
+    }
+
     private fun discoverGciSavePath(
         config: SavePathConfig,
         romPath: String,
@@ -835,6 +853,10 @@ class SavePathResolver @Inject constructor(
             }
 
         val saveIdNames = saveIdFileNames(config, platformSlug, romPath, cachedSaveId, null, gameId)
+
+        if (config.usesGciFormat && romPath != null) {
+            return constructGciSavePath(config, romPath, gameId, platformSlug)
+        }
 
         val perGameDir = perGameSaveDir(gameId, config, platformSlug)
         if (perGameDir != null && (directoryExists(perGameDir) || saveArchiver.getFileForPath(perGameDir).mkdirs())) {

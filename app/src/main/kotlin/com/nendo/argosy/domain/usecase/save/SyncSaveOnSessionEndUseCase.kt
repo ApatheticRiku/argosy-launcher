@@ -4,7 +4,6 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.GameEntity
-import com.nendo.argosy.data.preferences.PersistedSession
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.ActiveSaveRepository
@@ -63,16 +62,6 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
     private suspend fun resolveSessionEmulatorId(game: GameEntity, emulatorPackage: String): String? =
         emulatorResolver.resolveSessionEmulator(game.id, game.platformId, game.platformSlug, emulatorPackage)
             ?.emulatorId
-
-    suspend operator fun invoke(session: PersistedSession): Result =
-        invoke(
-            gameId = session.gameId,
-            emulatorPackage = session.emulatorPackage,
-            sessionStartTime = session.startTime.toEpochMilli(),
-            coreName = session.coreName,
-            isHardcore = session.isHardcore,
-            channelName = session.channelName,
-        )
 
     suspend operator fun invoke(
         gameId: Long,

@@ -578,6 +578,8 @@
     <string name="ui_quick_settings_music_notice_no_tracks">此選擇中沒有可播放的內容</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">重新登入 RomM 以查看伺服器播放清單</string>
     <string name="ui_quick_settings_music_hint_sign_in">重新登入</string>
+    <string name="ui_quick_settings_friends_hint_favorite">最愛</string>
+    <string name="ui_quick_settings_friends_hint_unfavorite">移除最愛</string>
     <string name="ui_quick_settings_music_queue_empty">選擇一個播放清單或原聲音樂開始播放</string>
     <string name="ui_quick_settings_music_playlist_owner">建立者：%1$s</string>
     <string name="ui_quick_settings_music_now_playing">正在播放</string>

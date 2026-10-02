@@ -1216,6 +1216,10 @@
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Sign in to RomM again to see your server playlists</string>
     <!-- Footer hint on the playlist list. Verb phrase: opens the RomM sign-in settings. -->
     <string name="ui_quick_settings_music_hint_sign_in">Sign in again</string>
+    <!-- Footer hint on the quick panel's friends page: marks the focused friend as a favorite. -->
+    <string name="ui_quick_settings_friends_hint_favorite">Favorite</string>
+    <!-- Footer hint on the quick panel's friends page: removes the focused friend from favorites. -->
+    <string name="ui_quick_settings_friends_hint_unfavorite">Remove favorite</string>
     <!-- Shown where the track list of the Music page would be when nothing is queued. -->
     <string name="ui_quick_settings_music_queue_empty">Pick a playlist or soundtrack to start</string>
     <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->

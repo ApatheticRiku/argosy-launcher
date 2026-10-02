@@ -80,7 +80,9 @@ sealed interface PresentationSlot {
         val saveDayIndices: Set<Int>,
         val weekHourMs: List<List<Long>>,
         val peakLabel: String?,
-        val devices: List<SaveGameDevice>
+        val devices: List<SaveGameDevice>,
+        val totalDeviceMs: Long,
+        val deviceSegments: List<Pair<androidx.compose.ui.graphics.Color, Long>>
     ) : PresentationSlot
 }
 

@@ -229,6 +229,7 @@
     <string name="savesync_presentation_device_last_played">last played %s</string>
     <!-- A device's share of this game's play time. %d is a whole percentage. -->
     <string name="savesync_presentation_share_percent">%d%%</string>
+    <string name="savesync_presentation_joined" translatable="false">%1$s · %2$s</string>
     <!-- How many play sessions this game has. -->
     <plurals name="savesync_presentation_sessions">
         <item quantity="one">%d session</item>

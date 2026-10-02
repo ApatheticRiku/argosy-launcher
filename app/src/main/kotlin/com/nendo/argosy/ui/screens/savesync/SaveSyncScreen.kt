@@ -157,7 +157,7 @@ fun SaveSyncScreen(
                         selectedAction = uiState.attentionAction,
                         onActionClick = { action ->
                             viewModel.setAttentionAction(action)
-                            viewModel.resolveFocusedAttention(action)
+                            viewModel.resolveFocusedAttention(action, row.key)
                         }
                     )
                 }
@@ -176,10 +176,12 @@ fun SaveSyncScreen(
             if (uiState.gameRows.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.savesync_section_games)) }
                 itemsIndexed(uiState.gameRows, key = { _, row -> row.key }) { _, row ->
-                    GameSaveRowCard(
-                        row = row,
-                        isFocused = row.key == focusedKey
-                    )
+                    Box(modifier = Modifier.clickableNoFocus { viewModel.focusRow(row.key) }) {
+                        GameSaveRowCard(
+                            row = row,
+                            isFocused = row.key == focusedKey
+                        )
+                    }
                 }
             }
 
@@ -423,7 +425,8 @@ private fun OtherDevicesCard(
                 modifier = Modifier.weight(1f)
             )
             if (!expanded) {
-                devices.map { it.kind }.distinct().forEach { kind ->
+                val kinds = remember(devices) { devices.map { it.kind }.distinct() }
+                kinds.forEach { kind ->
                     Icon(
                         painter = kind.icon,
                         contentDescription = null,

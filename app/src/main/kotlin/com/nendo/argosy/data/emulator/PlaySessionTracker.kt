@@ -12,7 +12,6 @@ import android.provider.Settings
 import com.nendo.argosy.R
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
-import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.PlaySessionEntity
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
@@ -95,7 +94,6 @@ class PlaySessionTracker @Inject constructor(
     private val overlayWriter: com.nendo.argosy.data.repository.GameUserOverlayWriter,
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
     private val playSessionDao: PlaySessionDao,
-    private val saveCacheDao: SaveCacheDao,
     private val syncStatesOnSessionEndUseCase: dagger.Lazy<SyncStatesOnSessionEndUseCase>,
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
     private val saveSyncRepository: dagger.Lazy<SaveSyncRepository>,
@@ -115,6 +113,7 @@ class PlaySessionTracker @Inject constructor(
     companion object {
         private const val TAG = "PlaySessionTracker"
         private const val MIN_PLAY_SECONDS_FOR_COMPLETION = 20
+        private const val MAX_SESSION_RECOVERY_ATTEMPTS = 3
     }
     private val scope = SafeCoroutineScope(Dispatchers.IO, "PlaySessionTracker")
     private val sessionStateStore by lazy { SessionStateStore(application) }
@@ -140,7 +139,11 @@ class PlaySessionTracker @Inject constructor(
 
     private suspend fun releaseSession(keepRecord: Boolean) {
         DualScreenManagerHolder.instance?.setEmulatorDisplay(null)
-        if (!keepRecord) preferencesRepository.clearActiveSession()
+        val retry = keepRecord && preferencesRepository.recordSessionRecoveryAttempt() < MAX_SESSION_RECOVERY_ATTEMPTS
+        if (keepRecord && !retry) {
+            Logger.error(TAG, "[SaveSync] SESSION | Save capture failed $MAX_SESSION_RECOVERY_ATTEMPTS times; dropping the session record")
+        }
+        if (!retry) preferencesRepository.clearActiveSession()
         broadcastSessionChanged(null, null, false)
     }
 

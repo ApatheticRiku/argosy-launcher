@@ -703,18 +703,6 @@ class StateCacheManager @Inject constructor(
     }
 
     /**
-     * Removes everything this device remembers about one game's states: the cached files, their
-     * rows, who owned them, and the tombstones that suppressed their server copies.
-     *
-     * All three tables, because a game that is gone leaves nothing for any of them to describe. A
-     * tombstone outliving its game suppresses a server id nothing will ask about again, and an
-     * ownership row outliving its game claims a path no game can produce.
-     *
-     * Every owner's rows, not only the signed-in one. The game leaves the device for all of them,
-     * so scoping this to the current account would leave the next account's states cached against
-     * a game it can no longer see.
-     */
-    /**
      * Deletes the cached states the server also holds and keeps every state that exists only on
      * this device. Returns the number of states kept.
      */

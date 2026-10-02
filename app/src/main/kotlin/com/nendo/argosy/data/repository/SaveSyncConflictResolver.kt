@@ -3,7 +3,6 @@ package com.nendo.argosy.data.repository
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
@@ -22,7 +21,6 @@ import javax.inject.Singleton
 @Singleton
 class SaveSyncConflictResolver @Inject constructor(
     private val saveSyncDao: SaveSyncDao,
-    private val saveCacheDao: SaveCacheDao,
     private val emulatorConfigDao: EmulatorConfigDao,
     private val emulatorResolver: EmulatorResolver,
     private val gameDao: GameDao,
