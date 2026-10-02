@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
@@ -189,7 +188,6 @@ private fun LoopingCovers(
     val offset = remember(coverPaths) { mutableFloatStateOf(0f) }
     val speed = remember { Animatable(0f) }
     LaunchedEffect(scrolls, loopPx) {
-        if (scrolls) delay(ComponentDefaults.CollectionCell.mosaicScrollStartDelayMs.toLong())
         launch {
             speed.animateTo(
                 if (scrolls) 1f else 0f,

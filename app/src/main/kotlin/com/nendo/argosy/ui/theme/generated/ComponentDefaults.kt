@@ -119,7 +119,6 @@ object ComponentDefaults {
         const val mosaicCoverGap = 2
         const val mosaicScrollDpPerSecond = 90
         const val mosaicScrollRampMs = 700
-        const val mosaicScrollStartDelayMs = 600
     }
 
     object VolumeMeter {
