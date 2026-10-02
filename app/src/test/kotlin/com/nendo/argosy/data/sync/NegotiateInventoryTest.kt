@@ -80,6 +80,16 @@ class NegotiateInventoryTest {
     }
 
     @Test
+    fun `the server save this device last transferred is unchanged whatever form its hash is stored in`() = runTest {
+        coEvery { activeSaveRepository.getActiveRow(gameId) } returns active("archive-roots-form").copy(rommSaveId = 9L)
+
+        val state = inventory.build(secureSaves = true).single()
+
+        assertEquals("server-hash", state.contentHash)
+        assertEquals(transferStamp.toString(), state.updatedAt)
+    }
+
+    @Test
     fun `a rollback snapshot is never reported as the version`() = runTest {
         coEvery { activeSaveRepository.getActiveRow(gameId) } returns active("snapshot").copy(isRollback = true)
         coEvery { saveCacheDao.getMostRecentInChannel(gameId, any(), "autosave") } returns active("new-progress")

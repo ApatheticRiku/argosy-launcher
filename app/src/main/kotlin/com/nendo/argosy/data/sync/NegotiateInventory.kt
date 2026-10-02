@@ -71,7 +71,9 @@ class NegotiateInventory @Inject constructor(
         slot: String
     ): LocalSaveState {
         val transferredForms = setOfNotNull(row.lastUploadedHash, row.localContentHash)
-        val unchangedSinceTransfer = setOfNotNull(version.contentHash, version.identityHash).any { it in transferredForms }
+        val isTransferredSave = version.rommSaveId != null && version.rommSaveId == row.rommSaveId
+        val unchangedSinceTransfer = isTransferredSave ||
+            setOfNotNull(version.contentHash, version.identityHash).any { it in transferredForms }
         val reportedHash = if (unchangedSinceTransfer) row.lastUploadedHash ?: version.contentHash else version.contentHash
         val reportedTime = if (unchangedSinceTransfer) row.serverUpdatedAt ?: version.cachedAt else version.cachedAt
         return LocalSaveState(
