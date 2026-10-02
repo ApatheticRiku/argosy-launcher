@@ -136,13 +136,27 @@ class LibraryTileFilterArrivalTest {
     }
 
     @Test
-    fun `the configured default still applies when no tile asked for anything`() = runTest(dispatcher) {
+    fun `the configured default platform opens the library on that platform without filtering`() = runTest(dispatcher) {
         val viewModel = viewModel()
 
         advanceUntilIdle()
 
-        assertEquals(setOf(SNES_NAME), viewModel.platformLabels())
-        assertEquals(setOf(SNES_ID), viewModel.platformIds())
+        val state = viewModel.uiState.value
+        assertEquals(SNES_ID, state.platforms[state.currentPlatformIndex].id)
+        assertEquals(emptySet<Long>(), viewModel.platformIds())
+    }
+
+    @Test
+    fun `switching platforms from the default reaches the other platform's games`() = runTest(dispatcher) {
+        val viewModel = viewModel()
+        advanceUntilIdle()
+
+        viewModel.previousPlatform()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(GAME_BOY_ID, state.platforms[state.currentPlatformIndex].id)
+        assertEquals(emptySet<Long>(), viewModel.platformIds())
     }
 
     @Test
@@ -230,9 +244,6 @@ class LibraryTileFilterArrivalTest {
 
     private fun LibraryViewModel.platformIds(): Set<Long> =
         uiState.value.activeFilters.platforms.map { it.id }.toSet()
-
-    private fun LibraryViewModel.platformLabels(): Set<String> =
-        uiState.value.activeFilters.platforms.map { it.label }.toSet()
 
     private fun platform(id: Long, name: String) = PlatformEntity(
         id = id,

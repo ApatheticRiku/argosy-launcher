@@ -575,13 +575,13 @@ class LibraryViewModel @Inject constructor(
                 ?: SortOption.TITLE
             val source = SourceFilter.entries.firstOrNull { it.name == prefs.libraryDefaultSource }
                 ?: SourceFilter.ALL
-            val platforms = prefs.libraryDefaultPlatformId
+            val defaultPlatformId = prefs.libraryDefaultPlatformId
+                ?.takeIf { !explicitDestinationRequested }
                 ?.let { platformRepository.getById(it) }
-                ?.let { setOf(PlatformRef(it.id, it.getDisplayName())) }
-                ?: emptySet()
+                ?.id
             val landsOnGames = explicitDestinationRequested ||
                 source != SourceFilter.ALL ||
-                platforms.isNotEmpty()
+                defaultPlatformId != null
             _uiState.update {
                 it.copy(
                     view = if (landsOnGames) LibraryView.GAMES else it.view,
@@ -599,13 +599,13 @@ class LibraryViewModel @Inject constructor(
                             } else {
                                 source
                             },
-                            platforms = platforms,
                             regions = prefs.libraryDefaultRegions,
                             players = prefs.libraryDefaultPlayers
                         )
                     }
                 )
             }
+            if (defaultPlatformId != null) openOnPlatform(defaultPlatformId)
             loadGames()
         }
     }
@@ -1412,6 +1412,15 @@ class LibraryViewModel @Inject constructor(
         platformSyncQueue.enqueuePlatform(platform.id, platform.name) {
             viewModelScope.launch { loadGames() }
         }
+    }
+
+    private fun openOnPlatform(platformId: Long) {
+        val index = _uiState.value.platforms.indexOfFirst { it.id == platformId }
+        if (index < 0) {
+            pendingInitialPlatformId = platformId
+            return
+        }
+        _uiState.update { it.copy(currentPlatformIndex = index, canReturnToPlatformGrid = true) }
     }
 
     fun setInitialPlatform(platformId: Long) {
