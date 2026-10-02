@@ -852,14 +852,12 @@ sealed class HomeEvent {
 fun HomeUiState.movedTo(row: HomeRow): HomeUiState =
     if (row == currentRow) this else copy(currentRow = row, focusedGameIndex = 0)
 
-/**
- * Where the cursor belongs once a refresh of [refreshedRow] returns [refreshedIds], judged against
- * this state as it stands when the refresh lands, so a cursor moved while the refresh ran keeps its
- * game. Null when the user left the refreshed row, which leaves the cursor alone.
- */
-fun HomeUiState.indexAfterRefresh(refreshedRow: HomeRow, refreshedIds: List<Long>, anchorGameId: Long?): Int? {
-    if (currentRow != refreshedRow) return null
-    val focusedId = anchorGameId ?: focusedGame?.id ?: return focusedGameIndex
-    return refreshedIds.indexOf(focusedId).takeIf { it >= 0 }
-        ?: focusedGameIndex.coerceAtMost(refreshedIds.lastIndex.coerceAtLeast(0))
+fun HomeUiState.keepingFocusOn(gameId: Long?): HomeUiState {
+    if (layoutKind == com.nendo.argosy.domain.model.HomeLayoutKind.CUSTOM_GRID) return this
+    val items = currentItems
+    if (items.isEmpty()) return this
+    val index = gameId?.let { id -> items.indexOfFirst { (it as? HomeRowItem.Game)?.game?.id == id } }
+        ?.takeIf { it >= 0 }
+        ?: focusedGameIndex.coerceAtMost(items.lastIndex)
+    return if (index == focusedGameIndex) this else copy(focusedGameIndex = index)
 }

@@ -286,6 +286,7 @@ class HomeViewModel @Inject constructor(
                         pinnedGamesLoading = lib.pinnedGamesLoading,
                         repairedCoverPaths = lib.repairedCoverPaths
                     ).clampedToCompletePlatformRow(lib.platformItemsComplete)
+                        .keepingFocusOn(it.focusedGame?.id)
                 }
             }
         }
@@ -425,7 +426,7 @@ class HomeViewModel @Inject constructor(
                 },
                 pinnedGamesLoading = lib.pinnedGamesLoading,
                 repairedCoverPaths = lib.repairedCoverPaths
-            )
+            ).keepingFocusOn(it.focusedGame?.id)
         }
     }
 
@@ -829,21 +830,14 @@ class HomeViewModel @Inject constructor(
             return
         }
         val result = libraryDelegate.refreshCurrentRow(state.currentRow, anchorGameId ?: state.focusedGame?.id)
-        val newIndex = _uiState.value.indexAfterRefresh(state.currentRow, result.gameIds, anchorGameId)
-
         flushLibraryState()
-        if (newIndex == null) return
+        if (_uiState.value.currentRow != state.currentRow) return
 
         if (result.isEmpty && _uiState.value.currentItems.isEmpty()) {
             val newRow = _uiState.value.availableRows.firstOrNull() ?: HomeRow.Continue
             _uiState.update { it.copy(currentRow = newRow, focusedGameIndex = 0) }
-        } else {
-            _uiState.update {
-                it.copy(
-                    focusedGameIndex = newIndex
-                        .coerceIn(0, (it.currentItems.size - 1).coerceAtLeast(0))
-                )
-            }
+        } else if (anchorGameId != null) {
+            _uiState.update { it.keepingFocusOn(anchorGameId) }
         }
     }
 

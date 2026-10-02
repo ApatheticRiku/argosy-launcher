@@ -2,7 +2,6 @@ package com.nendo.argosy.ui.screens.home
 
 import com.nendo.argosy.domain.model.HomeLayoutKind
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class HomeRefreshFocusTest {
@@ -25,44 +24,60 @@ class HomeRefreshFocusTest {
         needsInstall = false
     )
 
-    private fun grid(focusedIndex: Int) = HomeUiState(
+    private fun grid(ids: List<Long>, focusedIndex: Int) = HomeUiState(
         layoutKind = HomeLayoutKind.AUTO_GRID,
         currentRow = HomeRow.Continue,
-        recentGames = (1L..6L).map(::game),
+        recentGames = ids.map(::game),
         focusedGameIndex = focusedIndex
     )
 
+    private fun HomeUiState.relisted(ids: List<Long>, focusedId: Long?) =
+        copy(recentGames = ids.map(::game)).keepingFocusOn(focusedId)
+
     @Test
-    fun `a cursor moved while the refresh ran keeps the game it moved to`() {
-        val afterScrolling = grid(focusedIndex = 4)
+    fun `a download finishing elsewhere in the row leaves the cursor on the highlighted game`() {
+        val state = grid(listOf(1L, 2L, 3L, 4L, 5L), focusedIndex = 2)
 
-        val index = afterScrolling.indexAfterRefresh(HomeRow.Continue, listOf(1L, 2L, 3L, 4L, 5L, 6L), anchorGameId = null)
+        val after = state.relisted(listOf(5L, 1L, 2L, 3L, 4L), state.focusedGame?.id)
 
-        assertEquals(4, index)
+        assertEquals(3L, after.focusedGame?.id)
     }
 
     @Test
-    fun `the focused game is followed when the refresh reorders the row`() {
-        val state = grid(focusedIndex = 4)
+    fun `a download finishing on the highlighted game takes the cursor to the front with it`() {
+        val state = grid(listOf(1L, 2L, 3L, 4L, 5L), focusedIndex = 4)
 
-        val index = state.indexAfterRefresh(HomeRow.Continue, listOf(5L, 1L, 2L, 3L, 4L, 6L), anchorGameId = null)
+        val after = state.relisted(listOf(5L, 1L, 2L, 3L, 4L), state.focusedGame?.id)
 
-        assertEquals(0, index)
+        assertEquals(0, after.focusedGameIndex)
+        assertEquals(5L, after.focusedGame?.id)
     }
 
     @Test
-    fun `an explicit anchor still decides where the cursor lands`() {
-        val state = grid(focusedIndex = 4)
+    fun `a refresh landing after the user scrolled keeps the game they scrolled to`() {
+        val scrolled = grid(listOf(1L, 2L, 3L, 4L, 5L), focusedIndex = 4)
 
-        val index = state.indexAfterRefresh(HomeRow.Continue, listOf(1L, 2L, 3L, 4L, 5L, 6L), anchorGameId = 2L)
+        val after = scrolled.relisted(listOf(1L, 2L, 3L, 4L, 5L), scrolled.focusedGame?.id)
 
-        assertEquals(1, index)
+        assertEquals(4, after.focusedGameIndex)
+        assertEquals(5L, after.focusedGame?.id)
     }
 
     @Test
-    fun `a refresh for a row the user already left leaves the cursor alone`() {
-        val state = grid(focusedIndex = 4).copy(currentRow = HomeRow.Favorites)
+    fun `a highlighted game that left the row keeps the position inside the row`() {
+        val state = grid(listOf(1L, 2L, 3L, 4L, 5L), focusedIndex = 4)
 
-        assertNull(state.indexAfterRefresh(HomeRow.Continue, listOf(1L, 2L, 3L), anchorGameId = null))
+        val after = state.relisted(listOf(1L, 2L, 3L), state.focusedGame?.id)
+
+        assertEquals(2, after.focusedGameIndex)
+    }
+
+    @Test
+    fun `a row with nothing loaded yet leaves the cursor where it is`() {
+        val state = grid(listOf(1L, 2L, 3L), focusedIndex = 2)
+
+        val after = state.relisted(emptyList(), state.focusedGame?.id)
+
+        assertEquals(2, after.focusedGameIndex)
     }
 }
