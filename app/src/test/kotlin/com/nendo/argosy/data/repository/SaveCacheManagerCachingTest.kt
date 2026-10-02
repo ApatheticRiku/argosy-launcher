@@ -81,15 +81,17 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
-    fun `pruning never evicts the active, unsynced or hardcore version`() = runTest {
+    fun `pruning never evicts the active, unsynced, hardcore or server-held version`() = runTest {
         fun row(id: Long, isActive: Boolean = false, dirty: Boolean = false, hardcore: Boolean = false) = SaveCacheEntity(
             id = id, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.ofEpochSecond(id),
             saveSize = 1, cachePath = "x/$id.srm", isActive = isActive, needsRemoteSync = dirty, isHardcore = hardcore
         )
-        val oldest = listOf(row(1, isActive = true), row(2, dirty = true), row(3, hardcore = true), row(4), row(5))
+        val oldest = listOf(
+            row(1, isActive = true), row(2, dirty = true), row(3, hardcore = true),
+            row(6).copy(rommSaveId = 60L), row(4), row(5)
+        )
         every { preferencesRepository.userPreferences } returns flowOf(UserPreferences(saveCacheLimit = 1))
-        coEvery { saveCacheDao.countByGameAndOwner(1L, any()) } returns 7
-        coEvery { saveCacheDao.getByGameAndOwner(1L, any()) } returns oldest
+        coEvery { saveCacheDao.getByGameAndOwner(1L, any()) } returns oldest + row(7) + row(8)
         coEvery { saveCacheDao.getOldestUnlockedForOwnerExcluding(1L, any(), any()) } returns oldest
         val deleted = io.mockk.slot<List<Long>>()
         coEvery { saveCacheDao.deleteByIds(capture(deleted)) } returns Unit

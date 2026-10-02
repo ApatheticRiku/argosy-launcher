@@ -737,6 +737,12 @@ class SaveDownloader @Inject constructor(
                     }
                     activeSaveRepository.setActiveSaveApplied(gameId, false)
                 }
+                val placedCacheId = when (cacheResult) {
+                    is SaveCacheManager.CacheResult.Created -> cacheResult.cacheId
+                    is SaveCacheManager.CacheResult.Duplicate -> cacheResult.cacheId
+                    SaveCacheManager.CacheResult.Failed -> 0L
+                }
+                if (placedCacheId > 0L) saveCacheDao.updateRommSaveId(placedCacheId, serverSave.id)
             } catch (e: Exception) {
                 Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cache creation failed", e)
             }

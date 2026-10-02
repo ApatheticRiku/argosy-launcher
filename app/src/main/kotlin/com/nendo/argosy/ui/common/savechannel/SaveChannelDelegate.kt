@@ -66,6 +66,7 @@ class SaveChannelDelegate @Inject constructor(
 
         scope.launch {
             val activeSaveTimestamp = activeSaveRepository.getActiveTimestamp(gameId)
+            val activeSaveCacheId = activeSaveRepository.getActiveRow(gameId)?.id
             val registeredChannels = activeSaveRepository.registeredChannels(gameId)
             val localEntries = savesDelegate.loadLocalEntries()
             val localSlots = savesDelegate.buildSaveSlots(
@@ -98,6 +99,7 @@ class SaveChannelDelegate @Inject constructor(
                     saveFocusColumn = SaveFocusColumn.SLOTS,
                     focusIndex = 0,
                     activeSaveTimestamp = activeSaveTimestamp,
+                    activeSaveCacheId = activeSaveCacheId,
                     isLoading = false,
                     isLoadingServer = true
                 )

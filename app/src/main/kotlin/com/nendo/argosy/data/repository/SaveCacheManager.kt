@@ -946,10 +946,10 @@ class SaveCacheManager @Inject constructor(
         val prefs = preferencesRepository.userPreferences.first()
         val limit = prefs.saveCacheLimit
 
-        val totalCount = saveCacheDao.countByGameAndOwner(gameId, ownerUserId)
+        val caches = saveCacheDao.getByGameAndOwner(gameId, ownerUserId).filter { it.rommSaveId == null }
+        val totalCount = caches.size
         if (totalCount <= limit) return@withContext
 
-        val caches = saveCacheDao.getByGameAndOwner(gameId, ownerUserId)
         val lockedCount = caches.count { it.isLocked }
         val effectiveLimit = maxOf(limit, lockedCount + MIN_UNLOCKED_SLOTS)
 
@@ -959,7 +959,7 @@ class SaveCacheManager @Inject constructor(
         val pinnedIds = pendingSyncQueueDao.getPinnedCacheIdsForGame(gameId)
         val toDelete = saveCacheDao
             .getOldestUnlockedForOwnerExcluding(gameId, ownerUserId, pinnedIds)
-            .filterNot { it.isActive || it.needsRemoteSync || it.isHardcore }
+            .filterNot { it.rommSaveId != null || it.isActive || it.needsRemoteSync || it.isHardcore }
             .take(toDeleteCount)
         if (toDelete.isEmpty()) return@withContext
 
