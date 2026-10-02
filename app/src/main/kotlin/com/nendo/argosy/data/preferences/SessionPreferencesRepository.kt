@@ -91,15 +91,18 @@ class SessionPreferencesRepository @Inject constructor(
     }
 
     /**
-     * Counts one failed recovery of the persisted session and returns the total so far.
+     * Counts one failed save capture for the persisted session. Keeps the session for another
+     * attempt and returns true until [maxAttempts] failures, then clears it and returns false.
      */
-    suspend fun recordRecoveryAttempt(): Int {
-        var attempts = 0
+    suspend fun keepSessionForRetry(maxAttempts: Int): Boolean {
+        var kept = false
         dataStore.edit { prefs ->
-            attempts = (prefs[Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS] ?: 0) + 1
+            val attempts = (prefs[Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS] ?: 0) + 1
+            kept = attempts < maxAttempts
             prefs[Keys.ACTIVE_SESSION_RECOVERY_ATTEMPTS] = attempts
         }
-        return attempts
+        if (!kept) clearActiveSession()
+        return kept
     }
 
     suspend fun getPersistedSession(): PersistedSession? {

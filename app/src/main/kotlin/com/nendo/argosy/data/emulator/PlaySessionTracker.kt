@@ -139,11 +139,11 @@ class PlaySessionTracker @Inject constructor(
 
     private suspend fun releaseSession(keepRecord: Boolean) {
         DualScreenManagerHolder.instance?.setEmulatorDisplay(null)
-        val retry = keepRecord && preferencesRepository.recordSessionRecoveryAttempt() < MAX_SESSION_RECOVERY_ATTEMPTS
-        if (keepRecord && !retry) {
-            Logger.error(TAG, "[SaveSync] SESSION | Save capture failed $MAX_SESSION_RECOVERY_ATTEMPTS times; dropping the session record")
+        if (!keepRecord) {
+            preferencesRepository.clearActiveSession()
+        } else if (!preferencesRepository.keepSessionForRetry(MAX_SESSION_RECOVERY_ATTEMPTS)) {
+            Logger.error(TAG, "[SaveSync] SESSION | Save capture failed $MAX_SESSION_RECOVERY_ATTEMPTS times; dropped the session record")
         }
-        if (!retry) preferencesRepository.clearActiveSession()
         broadcastSessionChanged(null, null, false)
     }
 

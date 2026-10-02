@@ -28,7 +28,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
@@ -114,6 +116,21 @@ class SavePathResolverDiscoveryTest {
         every { builtinPreferences.getBuiltinEmulatorSettings() } returns
             kotlinx.coroutines.flow.flowOf(builtinSettings)
         coEvery { platformLibretroSettingsDao.getByPlatformId(any()) } returns null
+    }
+
+    @Test
+    fun `a GameCube save with nothing on disk is placed in the region card folder Dolphin reads`() = runTest {
+        stubBuiltinSettings()
+        val rom = File(tempDir, "roms/Zelda.iso").apply { parentFile?.mkdirs(); writeBytes(byteArrayOf(0)) }
+        every { gciSaveHandler.parseRomHeader(rom.absolutePath) } returns
+            com.nendo.argosy.data.emulator.GameCubeGameInfo(gameId = "GZLE", makerCode = "01", region = "USA", gameName = null)
+
+        val path = resolver.constructSavePath(
+            emulatorId = "dolphin", gameTitle = "Zelda", platformSlug = "ngc", romPath = rom.absolutePath, gameId = 1L
+        )
+
+        assertNotNull(path)
+        assertTrue("Expected a USA/Card A target, got $path", path!!.endsWith("/USA/Card A/01-GZLE.gci"))
     }
 
     @Test

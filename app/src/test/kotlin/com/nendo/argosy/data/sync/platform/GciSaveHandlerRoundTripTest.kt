@@ -87,6 +87,43 @@ class GciSaveHandlerRoundTripTest {
         assertEquals(originalB.toList(), restoredB.readBytes().toList())
     }
 
+    @Test
+    fun `a bundle download leaves this game's saves in another card folder alone`() = runTest {
+        val cardA = File(baseDir, "USA/Card A").apply { mkdirs() }
+        val cardB = File(baseDir, "USA/Card B").apply { mkdirs() }
+        val save = SaveFixtures.gciSave(
+            File(cardA, "$makerCode-$gameId-ZELDA_DATA.gci"),
+            gameId = gameId,
+            makerCode = makerCode,
+            internalFilename = "ZELDA_DATA",
+            payload = ByteArray(256) { it.toByte() },
+        )
+        SaveFixtures.gciSave(
+            File(cardA, "$makerCode-$gameId-ZELDA_BACK.gci"),
+            gameId = gameId,
+            makerCode = makerCode,
+            internalFilename = "ZELDA_BACK",
+            payload = ByteArray(128) { (it * 3).toByte() },
+        )
+        val otherCard = SaveFixtures.gciSave(
+            File(cardB, "$makerCode-$gameId-ZELDA_OTHER.gci"),
+            gameId = gameId,
+            makerCode = makerCode,
+            internalFilename = "ZELDA_OTHER",
+            payload = ByteArray(256) { (it * 5).toByte() },
+        )
+        val otherBytes = otherCard.readBytes()
+        val ctx = saveContext()
+        val prepared = handler.prepareForUpload(save.absolutePath, ctx) ?: error("prepareForUpload returned null")
+        val bundle = File(tempDir, "bundle.zip").also { prepared.file.copyTo(it) }
+
+        val result = handler.extractDownload(bundle, ctx)
+
+        assertTrue("Extract reported failure: ${result.error}", result.success)
+        assertTrue("A save in another card folder was deleted", otherCard.exists())
+        assertEquals(otherBytes.toList(), otherCard.readBytes().toList())
+    }
+
     private fun saveContext() = SaveContext(
         config = SavePathConfig(
             emulatorId = "dolphin",

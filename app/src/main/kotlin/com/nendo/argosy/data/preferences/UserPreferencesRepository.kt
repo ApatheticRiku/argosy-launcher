@@ -614,7 +614,7 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun getPersistedSession(): PersistedSession? = sessionPrefs.getPersistedSession()
 
-    suspend fun recordSessionRecoveryAttempt(): Int = sessionPrefs.recordRecoveryAttempt()
+    suspend fun keepSessionForRetry(maxAttempts: Int): Boolean = sessionPrefs.keepSessionForRetry(maxAttempts)
 }
 
 data class BuiltinEmulatorSettings(
