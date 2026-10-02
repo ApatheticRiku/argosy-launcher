@@ -34,6 +34,7 @@ class SaveDownloaderCacheHitTest {
     private val apiClient: SaveSyncApiClient = mockk(relaxed = true)
     private val gameDao: GameDao = mockk(relaxed = true)
     private val saveSyncDao: SaveSyncDao = mockk(relaxed = true)
+    private val saveCacheDao: com.nendo.argosy.data.local.dao.SaveCacheDao = mockk(relaxed = true)
     private val saveCacheManager: SaveCacheManager = mockk(relaxed = true)
     private val activeSaveRepository: ActiveSaveRepository = mockk(relaxed = true)
     private val fal: FileAccessLayer = mockk(relaxed = true)
@@ -42,7 +43,7 @@ class SaveDownloaderCacheHitTest {
     private val downloader = SaveDownloader(
         context = mockk(relaxed = true),
         saveSyncDao = saveSyncDao,
-        saveCacheDao = mockk(relaxed = true),
+        saveCacheDao = saveCacheDao,
         emulatorResolver = mockk(relaxed = true),
         gameDao = gameDao,
         activeSaveRepository = activeSaveRepository,
@@ -137,6 +138,17 @@ class SaveDownloaderCacheHitTest {
         downloader.downloadSave(gameId, "mgba")
 
         coVerify(exactly = 0) { saveCacheManager.restoreSave(cachedId, any()) }
+    }
+
+    @Test
+    fun `caching a server save already held returns its row without fetching it again`() = runTest {
+        coEvery { saveCacheDao.getByGameAndOwner(gameId, any()) } returns listOf(cachedRow(isHardcore = false).copy(rommSaveId = serverSaveId))
+
+        val cacheId = downloader.downloadToCache(serverSaveId, gameId, "autosave", activate = false)
+
+        assertEquals(cachedId, cacheId)
+        coVerify(exactly = 0) { api.getSaveWithDevice(any(), any()) }
+        coVerify(exactly = 0) { saveCacheManager.cacheServerDownload(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test

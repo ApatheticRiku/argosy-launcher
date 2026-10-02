@@ -81,6 +81,25 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `pruning never evicts the active, unsynced or hardcore version`() = runTest {
+        fun row(id: Long, isActive: Boolean = false, dirty: Boolean = false, hardcore: Boolean = false) = SaveCacheEntity(
+            id = id, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.ofEpochSecond(id),
+            saveSize = 1, cachePath = "x/$id.srm", isActive = isActive, needsRemoteSync = dirty, isHardcore = hardcore
+        )
+        val oldest = listOf(row(1, isActive = true), row(2, dirty = true), row(3, hardcore = true), row(4), row(5))
+        every { preferencesRepository.userPreferences } returns flowOf(UserPreferences(saveCacheLimit = 1))
+        coEvery { saveCacheDao.countByGameAndOwner(1L, any()) } returns 7
+        coEvery { saveCacheDao.getByGameAndOwner(1L, any()) } returns oldest
+        coEvery { saveCacheDao.getOldestUnlockedForOwnerExcluding(1L, any(), any()) } returns oldest
+        val deleted = io.mockk.slot<List<Long>>()
+        coEvery { saveCacheDao.deleteByIds(capture(deleted)) } returns Unit
+
+        manager.pruneOldCaches(1L, 3L)
+
+        assertEquals(listOf(4L, 5L), deleted.captured)
+    }
+
+    @Test
     fun `copying into a named slot locks the new row`() = runTest {
         val captured = copyToChannelCapturing("speedrun")
 

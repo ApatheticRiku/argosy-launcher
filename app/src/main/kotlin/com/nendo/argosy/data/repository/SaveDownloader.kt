@@ -878,6 +878,21 @@ class SaveDownloader @Inject constructor(
         gameId: Long,
         channelName: String?,
         activate: Boolean
+    ): Long? = downloadMutexes.computeIfAbsent(gameId) { kotlinx.coroutines.sync.Mutex() }.withLock {
+        val ownerUserId = syncPreferencesRepository.getRommUserId()
+        val held = saveCacheDao.getByGameAndOwner(gameId, ownerUserId).firstOrNull { it.rommSaveId == serverSaveId }
+        if (held != null) {
+            if (activate) activeSaveRepository.activateCache(gameId, held.id)
+            return@withLock held.id
+        }
+        fetchIntoCache(serverSaveId, gameId, channelName, activate)
+    }
+
+    private suspend fun fetchIntoCache(
+        serverSaveId: Long,
+        gameId: Long,
+        channelName: String?,
+        activate: Boolean
     ): Long? = withContext(Dispatchers.IO) {
         val client = apiClient.get()
         val api = client.getApi() ?: return@withContext null

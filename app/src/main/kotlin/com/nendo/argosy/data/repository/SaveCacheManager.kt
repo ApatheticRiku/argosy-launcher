@@ -959,6 +959,7 @@ class SaveCacheManager @Inject constructor(
         val pinnedIds = pendingSyncQueueDao.getPinnedCacheIdsForGame(gameId)
         val toDelete = saveCacheDao
             .getOldestUnlockedForOwnerExcluding(gameId, ownerUserId, pinnedIds)
+            .filterNot { it.isActive || it.needsRemoteSync || it.isHardcore }
             .take(toDeleteCount)
         if (toDelete.isEmpty()) return@withContext
 
