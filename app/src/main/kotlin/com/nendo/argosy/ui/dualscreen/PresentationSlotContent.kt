@@ -101,6 +101,7 @@ fun PresentationSlotContent(
                 )
             }
             is PresentationSlot.PlatformShowcase -> PlatformShowcaseContent(slot)
+            is PresentationSlot.SaveGame -> SaveGameSlot(slot, bottomInset = hintsHeight)
             is PresentationSlot.InGame -> {
                 val manager = com.nendo.argosy.DualScreenManagerHolder.instance ?: return@Box
                 val bar = rememberInGameAppBarState()

@@ -79,12 +79,13 @@
     <!-- Heading of the panel listing the other devices that have uploaded saves to the same
          server. Noun phrase. -->
     <string name="savesync_other_devices_heading">Other devices</string>
-    <!-- Last line of that panel when more devices exist than fit. %d is how many are not
-         listed. -->
-    <plurals name="savesync_other_devices_more">
-        <item quantity="one">+%d more</item>
-        <item quantity="other">+%d more</item>
-    </plurals>
+    <!-- Second line of a row in the other-devices list. %1$s is the app and version that device
+         syncs with (for example "Argosy v2.3"), %2$s is how long ago it last synced. -->
+    <string name="savesync_other_device_meta">%1$s &#183; %2$s</string>
+    <!-- Footer action on the collapsed other-devices row: expands the list. -->
+    <string name="savesync_footer_show_devices">Show devices</string>
+    <!-- Footer action on the expanded other-devices row: collapses the list. -->
+    <string name="savesync_footer_hide_devices">Hide devices</string>
 
     <!-- Warning shown when Argosy cannot read some of the folders emulators keep their save files
          in, so those saves cannot be synced. %d is how many folders. "Save location" is a folder
@@ -204,4 +205,43 @@
          to on its own as the game runs. Noun, singular: the save the game keeps updating without
          being asked. -->
     <string name="savesync_channel_autosave">Autosave</string>
+
+    <!-- Second-screen panel for the game highlighted on Save Sync. Heading over a calendar of
+         the last 12 weeks: each day is shaded by play time and dotted when a save was kept. -->
+    <string name="savesync_presentation_calendar_title">Play and saves, last 12 weeks</string>
+    <!-- Heading over the weekday-by-hour chart of when this game gets played. -->
+    <string name="savesync_presentation_rhythm_title">When you play</string>
+    <!-- Heading over the play time split between the devices this game was played on. -->
+    <string name="savesync_presentation_devices_title">Devices</string>
+    <!-- Legend for the dot drawn on calendar days when a save version was kept. -->
+    <string name="savesync_presentation_save_marker">Save kept that day</string>
+    <!-- Badge beside the device the user is holding. -->
+    <string name="savesync_presentation_this_device">This device</string>
+    <!-- Busiest weekday and hour. %1$s is a short weekday ("Sun"), %2$s a clock time. -->
+    <string name="savesync_presentation_peak">Peak %1$s %2$s</string>
+    <!-- Average play session length. %s is a duration such as "1h 5m". -->
+    <string name="savesync_presentation_average">avg %s</string>
+    <!-- Longest play session. %s is a duration such as "3h 40m". -->
+    <string name="savesync_presentation_longest">longest %s</string>
+    <!-- When the game was last played. %s is a relative time such as "2 hours ago". -->
+    <string name="savesync_presentation_last_played">last played %s</string>
+    <!-- When the game was last played on one device. %s is a relative time. -->
+    <string name="savesync_presentation_device_last_played">last played %s</string>
+    <!-- A device's share of this game's play time. %d is a whole percentage. -->
+    <string name="savesync_presentation_share_percent">%d%%</string>
+    <!-- How many play sessions this game has. -->
+    <plurals name="savesync_presentation_sessions">
+        <item quantity="one">%d session</item>
+        <item quantity="other">%d sessions</item>
+    </plurals>
+    <!-- How many play sessions this game had on one device. -->
+    <plurals name="savesync_presentation_device_sessions">
+        <item quantity="one">%d session</item>
+        <item quantity="other">%d sessions</item>
+    </plurals>
+    <!-- How many save versions Argosy keeps for this game on this device. -->
+    <plurals name="savesync_presentation_versions">
+        <item quantity="one">%d save version kept</item>
+        <item quantity="other">%d save versions kept</item>
+    </plurals>
 </resources>

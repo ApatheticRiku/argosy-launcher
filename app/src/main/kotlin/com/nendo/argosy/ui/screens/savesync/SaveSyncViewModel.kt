@@ -40,12 +40,20 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.mapLatest
+import com.nendo.argosy.data.model.GameActivitySnapshot
+import com.nendo.argosy.data.repository.GameActivityRepository
+import com.nendo.argosy.domain.model.DeviceKind
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 
 private const val JUST_SYNCED_THRESHOLD_MINUTES = 30L
+private const val ACTIVITY_CALENDAR_DAYS = 84
+private const val ACTIVITY_DEBOUNCE_MS = 150L
 
 @HiltViewModel
 class SaveSyncViewModel @Inject constructor(
@@ -58,7 +66,8 @@ class SaveSyncViewModel @Inject constructor(
     private val romMRepository: RomMRepository,
     private val conflictResolutionService: ConflictResolutionService,
     private val saveSyncRepository: SaveSyncRepository,
-    private val saveAccessNotices: SaveAccessNotices
+    private val saveAccessNotices: SaveAccessNotices,
+    private val gameActivityRepository: GameActivityRepository
 ) : ViewModel() {
 
     private val _forceCheckStatus = MutableStateFlow<ForceSaveCheckUiState>(ForceSaveCheckUiState.Idle)
@@ -67,6 +76,7 @@ class SaveSyncViewModel @Inject constructor(
     private val _focusedRowKey = MutableStateFlow<String?>(null)
     private val _attentionAction = MutableStateFlow(AttentionAction.SKIP)
     private val _registeredDevices = MutableStateFlow<List<RomMDevice>>(emptyList())
+    private val _otherDevicesExpanded = MutableStateFlow(false)
     private var emptyFallbackJob: Job? = null
 
     init {
@@ -101,7 +111,8 @@ class SaveSyncViewModel @Inject constructor(
             romMRepository.connectionState,
             ownedDeviceCounts(),
             _registeredDevices,
-            saveAccessNotices.locations
+            saveAccessNotices.locations,
+            _otherDevicesExpanded
         )
     ) { values ->
         @Suppress("UNCHECKED_CAST")
@@ -119,6 +130,7 @@ class SaveSyncViewModel @Inject constructor(
         val registeredDevices = values[8] as List<RomMDevice>
         @Suppress("UNCHECKED_CAST")
         val inaccessibleLocations = values[9] as List<SaveAccessNotices.InaccessibleLocation>
+        val otherDevicesExpanded = values[10] as Boolean
         val gameIds = (saveRows.map { it.gameId } + conflicts.map { it.gameId } + queueState.operations.map { it.gameId })
             .distinct()
         val gameById = if (gameIds.isEmpty()) emptyMap() else gameDao.getByIdsChunked(gameIds).associateBy { it.id }
@@ -130,10 +142,11 @@ class SaveSyncViewModel @Inject constructor(
         val countsById = deviceCounts.associateBy { it.deviceId }
         val currentSaveCount = countsById[currentDeviceId]?.saveCount ?: 0
 
+        val thisDeviceName = currentDevice?.name?.takeIf { it.isNotBlank() } ?: "${Build.MANUFACTURER} ${Build.MODEL}"
         val deviceCard = ThisDeviceCard(
-            deviceName = if (isConnected) (currentDevice?.name ?: Build.MODEL) else null,
+            deviceName = if (isConnected) DeviceKind.withoutRepeatedManufacturer(thisDeviceName) else null,
             deviceIdShort = currentDeviceId?.takeLast(8)?.takeIf { isConnected },
-            platform = currentDevice?.platform,
+            kind = DeviceKind.classify(thisDeviceName, currentDevice?.platform ?: "android", currentDevice?.client),
             client = currentDevice?.client,
             clientVersion = currentDevice?.clientVersion,
             serverVersion = serverVersion,
@@ -151,13 +164,13 @@ class SaveSyncViewModel @Inject constructor(
                         DeviceSummary(
                             deviceId = device.id,
                             deviceName = device.name?.takeIf { it.isNotBlank() }
+                                ?.let(DeviceKind::withoutRepeatedManufacturer)
                                 ?: context.getString(R.string.savesync_device_unnamed),
-                            platform = device.platform,
+                            kind = DeviceKind.classify(device.name, device.platform, device.client),
                             client = device.client,
                             clientVersion = device.clientVersion,
                             saveCount = info.saveCount,
-                            latestSyncAt = info.latestSyncAt,
-                            isWeb = false
+                            latestSyncAt = info.latestSyncAt
                         )
                     )
                 }
@@ -173,12 +186,11 @@ class SaveSyncViewModel @Inject constructor(
                     DeviceSummary(
                         deviceId = null,
                         deviceName = context.getString(R.string.savesync_device_web),
-                        platform = null,
-                        client = "romm",
+                        kind = DeviceKind.WEB,
+                        client = null,
                         clientVersion = null,
                         saveCount = webTotal,
-                        latestSyncAt = listOfNotNull(webInfo?.latestSyncAt, untrackedLatest).maxOrNull(),
-                        isWeb = true
+                        latestSyncAt = listOfNotNull(webInfo?.latestSyncAt, untrackedLatest).maxOrNull()
                     )
                 )
             }
@@ -186,9 +198,6 @@ class SaveSyncViewModel @Inject constructor(
             compareByDescending<DeviceSummary> { it.latestSyncAt ?: Instant.MIN }
                 .thenByDescending { it.saveCount }
         )
-        val otherDevicesLimit = 5
-        val otherDevices = allOtherDevices.take(otherDevicesLimit)
-        val otherDevicesHidden = (allOtherDevices.size - otherDevices.size).coerceAtLeast(0)
 
         val attentionRows = conflicts.mapNotNull { conflict ->
             val game = gameById[conflict.gameId] ?: return@mapNotNull null
@@ -238,7 +247,8 @@ class SaveSyncViewModel @Inject constructor(
             }
             .sortedByDescending { it.lastSyncedAt ?: Instant.MIN }
 
-        val rows = attentionRows + inProgressRows + gameRows
+        val rows = listOfNotNull(OtherDevicesRow.takeIf { allOtherDevices.isNotEmpty() }) +
+            attentionRows + inProgressRows + gameRows
         val resolvedFocus = resolveFocusKey(focusedKey, rows)
 
         val accessNotice = if (inaccessibleLocations.isNotEmpty()) {
@@ -252,8 +262,8 @@ class SaveSyncViewModel @Inject constructor(
 
         SaveSyncUiState(
             deviceCard = deviceCard,
-            otherDevices = otherDevices,
-            otherDevicesHidden = otherDevicesHidden,
+            otherDevices = allOtherDevices,
+            otherDevicesExpanded = otherDevicesExpanded,
             accessNotice = accessNotice,
             attentionRows = attentionRows,
             inProgressRows = inProgressRows,
@@ -268,6 +278,24 @@ class SaveSyncViewModel @Inject constructor(
             SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000, replayExpirationMillis = Long.MAX_VALUE),
             SaveSyncUiState()
         )
+
+    private val _presentationActive = MutableStateFlow(false)
+
+    fun setPresentationActive(active: Boolean) {
+        _presentationActive.value = active
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, kotlinx.coroutines.FlowPreview::class)
+    val gameActivity: StateFlow<GameActivitySnapshot?> = combine(_presentationActive, uiState) { active, state ->
+        if (!active) null else state.presentedGameId?.let { gameId -> gameId to state.focusedSyncStamp() }
+    }
+        .distinctUntilChanged()
+        .debounce(ACTIVITY_DEBOUNCE_MS)
+        .mapLatest { key -> key?.let { (gameId, _) -> gameActivityRepository.load(gameId, ACTIVITY_CALENDAR_DAYS) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000), null)
+
+    private fun SaveSyncUiState.focusedSyncStamp(): Instant? =
+        (focusedRow as? GameSaveRow)?.lastSyncedAt
 
     fun createInputHandler(
         onBack: () -> Unit,
@@ -303,6 +331,7 @@ class SaveSyncViewModel @Inject constructor(
             when (val row = uiState.value.focusedRow) {
                 is AttentionRow -> resolveAttention(row.conflictId, uiState.value.attentionAction.toResolution())
                 is GameSaveRow -> onNavigateToGame(row.gameId)
+                OtherDevicesRow -> toggleOtherDevices()
                 is InProgressRow, null -> Unit
             }
             return InputResult.HANDLED
@@ -321,6 +350,15 @@ class SaveSyncViewModel @Inject constructor(
         if (next == current) return false
         _focusedRowKey.value = rows[next].key
         return true
+    }
+
+    fun toggleOtherDevices() {
+        _focusedRowKey.value = OtherDevicesRow.key
+        _otherDevicesExpanded.update { !it }
+    }
+
+    fun focusRow(key: String) {
+        _focusedRowKey.value = key
     }
 
     fun setAttentionAction(action: AttentionAction) {
@@ -357,7 +395,7 @@ class SaveSyncViewModel @Inject constructor(
     private fun resolveFocusKey(focusedKey: String?, rows: List<SaveSyncRow>): String? {
         if (focusedKey == null) {
             emptyFallbackJob?.cancel()
-            return rows.firstOrNull()?.key
+            return (rows.firstOrNull { it != OtherDevicesRow } ?: rows.firstOrNull())?.key
         }
         if (rows.any { it.key == focusedKey }) {
             emptyFallbackJob?.cancel()

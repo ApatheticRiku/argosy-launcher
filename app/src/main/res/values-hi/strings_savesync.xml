@@ -28,10 +28,9 @@
     </plurals>
 
     <string name="savesync_other_devices_heading">अन्य डिवाइस</string>
-    <plurals name="savesync_other_devices_more">
-        <item quantity="one">+%d और</item>
-        <item quantity="other">+%d और</item>
-    </plurals>
+    <string name="savesync_other_device_meta">%1$s &#183; %2$s</string>
+    <string name="savesync_footer_show_devices">डिवाइस दिखाएँ</string>
+    <string name="savesync_footer_hide_devices">डिवाइस छिपाएँ</string>
 
     <plurals name="savesync_access_notice_title">
         <item quantity="one">%d सेव लोकेशन एक्सेस नहीं हो सकी</item>
@@ -83,4 +82,28 @@
 
     <string name="savesync_channel_archived">आर्काइव्ड</string>
     <string name="savesync_channel_autosave">ऑटोसेव</string>
+
+    <string name="savesync_presentation_calendar_title">खेल और सेव, पिछले 12 सप्ताह</string>
+    <string name="savesync_presentation_rhythm_title">आप कब खेलते हैं</string>
+    <string name="savesync_presentation_devices_title">डिवाइस</string>
+    <string name="savesync_presentation_save_marker">उस दिन सेव रखा गया</string>
+    <string name="savesync_presentation_this_device">यह डिवाइस</string>
+    <string name="savesync_presentation_peak">शिखर %1$s %2$s</string>
+    <string name="savesync_presentation_average">औसत %s</string>
+    <string name="savesync_presentation_longest">सबसे लंबा %s</string>
+    <string name="savesync_presentation_last_played">आखिरी बार खेला %s</string>
+    <string name="savesync_presentation_device_last_played">आखिरी बार खेला %s</string>
+    <string name="savesync_presentation_share_percent">%d%%</string>
+    <plurals name="savesync_presentation_sessions">
+        <item quantity="one">%d सत्र</item>
+        <item quantity="other">%d सत्र</item>
+    </plurals>
+    <plurals name="savesync_presentation_device_sessions">
+        <item quantity="one">%d सत्र</item>
+        <item quantity="other">%d सत्र</item>
+    </plurals>
+    <plurals name="savesync_presentation_versions">
+        <item quantity="one">%d सेव संस्करण रखा गया</item>
+        <item quantity="other">%d सेव संस्करण रखे गए</item>
+    </plurals>
 </resources>

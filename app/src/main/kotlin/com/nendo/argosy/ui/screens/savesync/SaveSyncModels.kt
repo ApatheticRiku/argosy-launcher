@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.savesync
 
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.sync.SyncDirection
+import com.nendo.argosy.domain.model.DeviceKind
 import java.time.Instant
 
 enum class AttentionAction { KEEP_LOCAL, KEEP_SERVER, SKIP }
@@ -26,7 +27,7 @@ data class SaveAccessNoticeUi(
 data class SaveSyncUiState(
     val deviceCard: ThisDeviceCard = ThisDeviceCard(),
     val otherDevices: List<DeviceSummary> = emptyList(),
-    val otherDevicesHidden: Int = 0,
+    val otherDevicesExpanded: Boolean = false,
     val accessNotice: SaveAccessNoticeUi? = null,
     val attentionRows: List<AttentionRow> = emptyList(),
     val inProgressRows: List<InProgressRow> = emptyList(),
@@ -35,14 +36,31 @@ data class SaveSyncUiState(
     val attentionAction: AttentionAction = AttentionAction.SKIP,
     val isLoading: Boolean = true
 ) {
-    val allRows: List<SaveSyncRow>
+    val devicesRow: OtherDevicesRow?
+        get() = if (otherDevices.isEmpty()) null else OtherDevicesRow
+
+    val contentRows: List<SaveSyncRow>
         get() = attentionRows + inProgressRows + gameRows
 
-    val focusedIndex: Int
-        get() = allRows.indexOfFirst { it.key == focusedRowKey }.takeIf { it >= 0 } ?: 0
+    val allRows: List<SaveSyncRow>
+        get() = listOfNotNull(devicesRow) + contentRows
 
     val focusedRow: SaveSyncRow?
-        get() = allRows.find { it.key == focusedRowKey } ?: allRows.firstOrNull()
+        get() = allRows.find { it.key == focusedRowKey } ?: contentRows.firstOrNull() ?: allRows.firstOrNull()
+
+    val focusedIndex: Int
+        get() = focusedRow?.let { row -> allRows.indexOfFirst { it.key == row.key } }?.takeIf { it >= 0 } ?: 0
+
+    val presentedGameId: Long?
+        get() = focusedRow?.rowGameId ?: contentRows.firstOrNull()?.rowGameId
+
+    private val SaveSyncRow.rowGameId: Long?
+        get() = when (this) {
+            is AttentionRow -> gameId
+            is InProgressRow -> gameId
+            is GameSaveRow -> gameId
+            OtherDevicesRow -> null
+        }
 
     val isEmpty: Boolean
         get() = attentionRows.isEmpty() && inProgressRows.isEmpty() && gameRows.isEmpty()
@@ -51,7 +69,7 @@ data class SaveSyncUiState(
 data class ThisDeviceCard(
     val deviceName: String? = null,
     val deviceIdShort: String? = null,
-    val platform: String? = null,
+    val kind: DeviceKind = DeviceKind.UNKNOWN,
     val client: String? = null,
     val clientVersion: String? = null,
     val serverVersion: String? = null,
@@ -62,16 +80,19 @@ data class ThisDeviceCard(
 data class DeviceSummary(
     val deviceId: String?,
     val deviceName: String,
-    val platform: String?,
+    val kind: DeviceKind,
     val client: String?,
     val clientVersion: String?,
     val saveCount: Int,
-    val latestSyncAt: Instant?,
-    val isWeb: Boolean = false
+    val latestSyncAt: Instant?
 )
 
 sealed interface SaveSyncRow {
     val key: String
+}
+
+data object OtherDevicesRow : SaveSyncRow {
+    override val key: String get() = "devices"
 }
 
 data class AttentionRow(

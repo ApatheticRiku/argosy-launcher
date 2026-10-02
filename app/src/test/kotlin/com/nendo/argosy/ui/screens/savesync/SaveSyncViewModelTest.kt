@@ -365,6 +365,48 @@ class SaveSyncViewModelTest {
         assertEquals(5L, navTarget)
     }
 
+    @Test
+    fun `other devices row starts collapsed below the first game and confirm toggles it`() = runTest(testDispatcher) {
+        every { preferencesRepository.preferences } returns flowOf(UserPreferences(rommDeviceId = "this-device"))
+        every { saveSyncDao.observeAll(any()) } returns flowOf(
+            listOf(
+                SaveSyncEntity(
+                    id = 1L, gameId = 5L, rommId = 5L, emulatorId = "e", channelName = null,
+                    syncStatus = SaveSyncEntity.STATUS_SYNCED
+                )
+            )
+        )
+        every { saveSyncDao.observeSaveCountsByDevice(any()) } returns flowOf(
+            listOf(com.nendo.argosy.data.local.dao.SaveCountByDevice("odin", "ayn Odin3", 4, Instant.now()))
+        )
+        coEvery { romMRepository.getRegisteredDevices() } returns listOf(
+            com.nendo.argosy.data.remote.romm.RomMDevice("odin", "ayn Odin3", "android", "argosy", "2.3")
+        )
+        coEvery { gameDao.getByIds(listOf(5L)) } returns listOf(makeGame(5, "X"))
+
+        val vm = build()
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertEquals(com.nendo.argosy.domain.model.DeviceKind.HANDHELD_HORIZONTAL, state.otherDevices.single().kind)
+        assertTrue(state.focusedRow is GameSaveRow)
+        assertEquals(false, state.otherDevicesExpanded)
+
+        val handler = vm.createInputHandler(onBack = {}, onNavigateToGame = {})
+        handler.onUp()
+        advanceUntilIdle()
+        assertEquals(OtherDevicesRow, vm.uiState.value.focusedRow)
+
+        handler.onConfirm()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.otherDevicesExpanded)
+
+        handler.onConfirm()
+        advanceUntilIdle()
+        assertEquals(false, vm.uiState.value.otherDevicesExpanded)
+    }
+
     private fun build(): SaveSyncViewModel = SaveSyncViewModel(
         context = mockk<android.content.Context>(relaxed = true),
         saveSyncDao = saveSyncDao,
@@ -375,7 +417,8 @@ class SaveSyncViewModelTest {
         romMRepository = romMRepository,
         conflictResolutionService = conflictResolutionService,
         saveSyncRepository = saveSyncRepository,
-        saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices()
+        saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
+        gameActivityRepository = mockk(relaxed = true)
     )
 
     private fun makeGame(id: Long, title: String): GameEntity = GameEntity(

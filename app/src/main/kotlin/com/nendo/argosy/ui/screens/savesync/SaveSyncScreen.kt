@@ -24,13 +24,10 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Devices
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +56,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.nendo.argosy.R
+import com.nendo.argosy.ui.common.icon
 import com.nendo.argosy.ui.common.rememberFileImageModel
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.InputButton
@@ -98,6 +96,7 @@ fun SaveSyncScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    val focusedKey = uiState.focusedRow?.key
     val forceCheck by viewModel.forceCheckStatus.collectAsState()
     val listState = rememberLazyListState()
     val topMarginPx = with(LocalDensity.current) { Dimens.spacingLg.roundToPx() }
@@ -119,14 +118,27 @@ fun SaveSyncScreen(
         listState.animateScrollToItem(uiState.lazyIndexForFocused(), -topMarginPx)
     }
 
+    SaveSyncPresentation(viewModel)
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = Dimens.spacingLg, end = Dimens.spacingLg, top = Dimens.spacingLg, bottom = 80.dp),
+            contentPadding = PaddingValues(start = Dimens.spacingLg, end = Dimens.spacingLg, top = Dimens.spacingLg, bottom = Dimens.footerHeight + Dimens.spacingLg),
             verticalArrangement = Arrangement.spacedBy(Dimens.radiusLg)
         ) {
-            item { DeviceHeader(uiState.deviceCard, uiState.otherDevices, uiState.otherDevicesHidden) }
+            item { ThisDeviceRow(uiState.deviceCard) }
+
+            if (uiState.otherDevices.isNotEmpty()) {
+                item {
+                    OtherDevicesCard(
+                        devices = uiState.otherDevices,
+                        expanded = uiState.otherDevicesExpanded,
+                        isFocused = focusedKey == OtherDevicesRow.key,
+                        onToggle = { viewModel.toggleOtherDevices() }
+                    )
+                }
+            }
 
             uiState.accessNotice?.let { notice ->
                 item { AccessNoticeCard(notice) }
@@ -138,10 +150,10 @@ fun SaveSyncScreen(
 
             if (uiState.attentionRows.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.savesync_section_attention)) }
-                itemsIndexed(uiState.attentionRows, key = { _, row -> row.key }) { index, row ->
+                itemsIndexed(uiState.attentionRows, key = { _, row -> row.key }) { _, row ->
                     AttentionRowCard(
                         row = row,
-                        isFocused = index == uiState.focusedIndex,
+                        isFocused = row.key == focusedKey,
                         selectedAction = uiState.attentionAction,
                         onActionClick = { action ->
                             viewModel.setAttentionAction(action)
@@ -153,22 +165,20 @@ fun SaveSyncScreen(
 
             if (uiState.inProgressRows.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.savesync_section_in_progress)) }
-                val offset = uiState.attentionRows.size
-                itemsIndexed(uiState.inProgressRows, key = { _, row -> row.key }) { index, row ->
+                itemsIndexed(uiState.inProgressRows, key = { _, row -> row.key }) { _, row ->
                     InProgressRowCard(
                         row = row,
-                        isFocused = (offset + index) == uiState.focusedIndex
+                        isFocused = row.key == focusedKey
                     )
                 }
             }
 
             if (uiState.gameRows.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.savesync_section_games)) }
-                val offset = uiState.attentionRows.size + uiState.inProgressRows.size
-                itemsIndexed(uiState.gameRows, key = { _, row -> row.key }) { index, row ->
+                itemsIndexed(uiState.gameRows, key = { _, row -> row.key }) { _, row ->
                     GameSaveRowCard(
                         row = row,
-                        isFocused = (offset + index) == uiState.focusedIndex
+                        isFocused = row.key == focusedKey
                     )
                 }
             }
@@ -199,15 +209,18 @@ fun SaveSyncScreen(
 }
 
 private fun SaveSyncUiState.lazyIndexForFocused(): Int {
-    var lazyIndex = if (accessNotice != null) 2 else 1
+    if (focusedRow == OtherDevicesRow) return 1
+    val devicesItems = if (devicesRow != null) 1 else 0
+    val contentIndex = focusedIndex - devicesItems
+    var lazyIndex = 1 + devicesItems + if (accessNotice != null) 1 else 0
     val attn = attentionRows.size
     val prog = inProgressRows.size
-    if (focusedIndex < attn) return lazyIndex + 1 + focusedIndex
+    if (contentIndex < attn) return lazyIndex + 1 + contentIndex
     if (attn > 0) lazyIndex += 1 + attn
-    val progIdx = focusedIndex - attn
+    val progIdx = contentIndex - attn
     if (progIdx < prog) return lazyIndex + 1 + progIdx
     if (prog > 0) lazyIndex += 1 + prog
-    return lazyIndex + 1 + (focusedIndex - attn - prog)
+    return lazyIndex + 1 + (contentIndex - attn - prog)
 }
 
 @Composable
@@ -218,6 +231,9 @@ private fun buildFooterHints(state: SaveSyncUiState): List<Pair<InputButton, Str
     val openGameLabel = stringResource(R.string.savesync_footer_open_game)
     val scanLabel = stringResource(R.string.savesync_footer_scan_server)
     val backLabel = stringResource(R.string.savesync_footer_back)
+    val devicesToggleLabel = stringResource(
+        if (state.otherDevicesExpanded) R.string.savesync_footer_hide_devices else R.string.savesync_footer_show_devices
+    )
     return buildList {
         if (state.allRows.isNotEmpty()) {
             add(InputButton.DPAD_VERTICAL to navigateLabel)
@@ -228,6 +244,7 @@ private fun buildFooterHints(state: SaveSyncUiState): List<Pair<InputButton, Str
                 add(InputButton.A to confirmLabel)
             }
             is GameSaveRow -> add(InputButton.A to openGameLabel)
+            OtherDevicesRow -> add(InputButton.A to devicesToggleLabel)
             else -> Unit
         }
         if (state.deviceCard.isConnected) {
@@ -247,39 +264,39 @@ private fun AttentionAction.confirmLabel(): String = stringResource(
 )
 
 @Composable
-private fun ThisDeviceCardView(card: ThisDeviceCard, modifier: Modifier = Modifier) {
+private fun ThisDeviceRow(card: ThisDeviceCard) {
     val accent = if (card.isConnected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(Dimens.radiusLg),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(Dimens.spacingLg),
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(Dimens.radiusLg))
-                    .background(accent.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = iconForPlatform(card.platform),
-                    contentDescription = null,
-                    tint = accent,
-                    modifier = Modifier.size(36.dp)
-                )
-            }
+            Icon(
+                painter = card.kind.icon,
+                contentDescription = null,
+                tint = accent,
+                modifier = Modifier.size(Dimens.iconLg)
+            )
             Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = card.deviceName ?: stringResource(R.string.savesync_device_not_connected),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.savesync_device_this_label),
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                     card.deviceIdShort?.let { id ->
@@ -287,18 +304,8 @@ private fun ThisDeviceCardView(card: ThisDeviceCard, modifier: Modifier = Modifi
                         DeviceIdPill(id)
                     }
                 }
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                Text(
-                    text = card.deviceName ?: stringResource(R.string.savesync_device_not_connected),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(Dimens.spacingXs))
-                VersionsLine(card.client, card.clientVersion, card.isConnected, card.serverVersion)
             }
+            VersionsColumn(card.client, card.clientVersion, card.isConnected, card.serverVersion)
             if (card.isConnected) {
                 SaveCountChip(card.saveCount)
             }
@@ -307,14 +314,8 @@ private fun ThisDeviceCardView(card: ThisDeviceCard, modifier: Modifier = Modifi
 }
 
 @Composable
-private fun VersionsLine(
-    client: String?,
-    clientVersion: String?,
-    connected: Boolean,
-    serverVersion: String?
-) {
-    val fadedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-    val clientLabel = client?.takeIf { it.isNotBlank() }?.let { name ->
+private fun clientLabel(client: String?, clientVersion: String?): String? =
+    client?.takeIf { it.isNotBlank() }?.let { name ->
         val displayName = name.replaceFirstChar { it.titlecase() }
         val version = clientVersion?.takeIf { it.isNotBlank() }
         if (version == null) {
@@ -323,31 +324,35 @@ private fun VersionsLine(
             stringResource(R.string.savesync_device_client_versioned, displayName, version)
         }
     }
+
+@Composable
+private fun VersionsColumn(
+    client: String?,
+    clientVersion: String?,
+    connected: Boolean,
+    serverVersion: String?
+) {
+    val fadedColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
     val serverLabel = when {
         connected && !serverVersion.isNullOrBlank() ->
             stringResource(R.string.savesync_device_server_versioned, serverVersion)
         connected -> stringResource(R.string.savesync_device_server_connected)
         else -> stringResource(R.string.savesync_device_server_offline)
     }
-    if (clientLabel == null && serverLabel.isBlank()) return
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = clientLabel.orEmpty(),
-            style = MaterialTheme.typography.labelMedium,
-            color = fadedColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+    Column(horizontalAlignment = Alignment.End) {
+        clientLabel(client, clientVersion)?.let { label ->
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = fadedColor,
+                maxLines = 1
+            )
+        }
         Text(
             text = serverLabel,
             style = MaterialTheme.typography.labelMedium,
             color = fadedColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            maxLines = 1
         )
     }
 }
@@ -388,47 +393,68 @@ private fun SaveCountChip(saveCount: Int) {
 }
 
 @Composable
-private fun DeviceHeader(card: ThisDeviceCard, others: List<DeviceSummary>, hiddenCount: Int) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd),
-        verticalAlignment = Alignment.Top
-    ) {
-        ThisDeviceCardView(card, modifier = Modifier.weight(1f))
-        if (others.isNotEmpty()) {
-            OtherDevicesPanel(others, hiddenCount, modifier = Modifier.width(260.dp))
-        }
-    }
-}
-
-@Composable
-private fun OtherDevicesPanel(devices: List<DeviceSummary>, hiddenCount: Int, modifier: Modifier = Modifier) {
+private fun OtherDevicesCard(
+    devices: List<DeviceSummary>,
+    expanded: Boolean,
+    isFocused: Boolean,
+    onToggle: () -> Unit
+) {
+    val borderColor = if (isFocused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
     Card(
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(width = Dimens.borderMedium, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
         shape = RoundedCornerShape(Dimens.radiusLg),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickableNoFocus(onClick = onToggle)
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        ) {
             Text(
                 text = stringResource(R.string.savesync_other_devices_heading),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier.padding(bottom = Dimens.spacingXs)
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
             )
-            devices.forEach { device ->
-                OtherDeviceRow(device)
+            if (!expanded) {
+                devices.map { it.kind }.distinct().forEach { kind ->
+                    Icon(
+                        painter = kind.icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(Dimens.iconSm)
+                    )
+                }
             }
-            if (hiddenCount > 0) {
-                Text(
-                    text = pluralStringResource(
-                        R.plurals.savesync_other_devices_more,
-                        hiddenCount,
-                        hiddenCount
-                    ),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                    modifier = Modifier.padding(top = Dimens.spacingXs)
-                )
+            Text(
+                text = devices.size.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(Dimens.iconMd)
+            )
+        }
+        if (expanded) {
+            Column(
+                modifier = Modifier.padding(
+                    start = Dimens.spacingLg,
+                    end = Dimens.spacingLg,
+                    bottom = Dimens.spacingMd
+                ),
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            ) {
+                devices.forEach { device -> OtherDeviceRow(device) }
             }
         }
     }
@@ -436,45 +462,48 @@ private fun OtherDevicesPanel(devices: List<DeviceSummary>, hiddenCount: Int, mo
 
 @Composable
 private fun OtherDeviceRow(device: DeviceSummary) {
+    val context = LocalContext.current
+    val client = clientLabel(device.client, device.clientVersion)
+    val lastSync = device.latestSyncAt?.let { formatRelativeTimeVerbose(context, it) }
+    val meta = when {
+        client != null && lastSync != null -> stringResource(R.string.savesync_other_device_meta, client, lastSync)
+        else -> client ?: lastSync
+    }
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = Dimens.spacingXs),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
     ) {
         Icon(
-            imageVector = if (device.isWeb) Icons.Default.Language else iconForPlatform(device.platform),
+            painter = device.kind.icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(Dimens.iconMd)
         )
-        Text(
-            text = device.deviceName,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = device.deviceName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            meta?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
         Text(
             text = device.saveCount.toString(),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary
         )
-    }
-}
-
-private fun iconForPlatform(platform: String?): androidx.compose.ui.graphics.vector.ImageVector {
-    val lower = platform?.lowercase()?.trim()
-    return when {
-        lower == null -> Icons.Default.Devices
-        "android" in lower || "tv" in lower -> Icons.Default.PhoneAndroid
-        "ios" in lower || "iphone" in lower || "ipad" in lower -> Icons.Default.Smartphone
-        "linux" in lower || "windows" in lower || "mac" in lower || "darwin" in lower || "deck" in lower -> Icons.Default.Computer
-        "web" in lower || "browser" in lower -> Icons.Default.Language
-        else -> Icons.Default.Devices
     }
 }
 
@@ -571,8 +600,6 @@ private fun EmptyState(isConnected: Boolean) {
     }
 }
 
-private val AttentionCoverSize = 144.dp
-
 @Composable
 private fun AttentionRowCard(
     row: AttentionRow,
@@ -584,7 +611,7 @@ private fun AttentionRowCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(width = 2.dp, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
+            .border(width = Dimens.borderMedium, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
         shape = RoundedCornerShape(Dimens.radiusLg),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -594,7 +621,7 @@ private fun AttentionRowCard(
                 .padding(Dimens.spacingMd),
             verticalAlignment = Alignment.Top
         ) {
-            CoverThumbnail(coverPath = row.coverPath, size = AttentionCoverSize)
+            CoverThumbnail(coverPath = row.coverPath, size = Dimens.saveSyncAttentionCover)
             Spacer(modifier = Modifier.width(Dimens.spacingMd))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -719,7 +746,7 @@ private fun ActionButton(
             .fillMaxWidth()
             .clip(RoundedCornerShape(Dimens.radiusSm))
             .background(containerColor)
-            .border(width = 1.5.dp, color = borderColor, shape = RoundedCornerShape(Dimens.radiusSm))
+            .border(width = Dimens.borderMedium, color = borderColor, shape = RoundedCornerShape(Dimens.radiusSm))
             .clickableNoFocus(onClick = onClick)
             .padding(vertical = Dimens.spacingSm, horizontal = Dimens.spacingMd),
         contentAlignment = Alignment.Center
@@ -739,7 +766,7 @@ private fun InProgressRowCard(row: InProgressRow, isFocused: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(width = 2.dp, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
+            .border(width = Dimens.borderMedium, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
         shape = RoundedCornerShape(Dimens.radiusLg),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -791,7 +818,7 @@ private fun GameSaveRowCard(row: GameSaveRow, isFocused: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(width = 2.dp, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
+            .border(width = Dimens.borderMedium, color = borderColor, shape = RoundedCornerShape(Dimens.radiusLg)),
         shape = RoundedCornerShape(Dimens.radiusLg),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -865,7 +892,7 @@ private fun SaveSlotLines(slot: SaveSlotEntry) {
 }
 
 @Composable
-private fun CoverThumbnail(coverPath: String?, size: androidx.compose.ui.unit.Dp = 56.dp) {
+private fun CoverThumbnail(coverPath: String?, size: androidx.compose.ui.unit.Dp = Dimens.saveSyncRowCover) {
     val model = rememberFileImageModel(coverPath)
     if (model != null) {
         AsyncImage(
@@ -939,7 +966,7 @@ private fun ForceSaveCheckCard(
                 imageVector = Icons.Default.Refresh,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(Dimens.iconLg)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(

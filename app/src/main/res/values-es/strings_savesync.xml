@@ -29,11 +29,9 @@
     </plurals>
 
     <string name="savesync_other_devices_heading">Otros dispositivos</string>
-    <plurals name="savesync_other_devices_more">
-        <item quantity="one">+%d más</item>
-        <item quantity="many">+%d más</item>
-        <item quantity="other">+%d más</item>
-    </plurals>
+    <string name="savesync_other_device_meta">%1$s · %2$s</string>
+    <string name="savesync_footer_show_devices">Mostrar dispositivos</string>
+    <string name="savesync_footer_hide_devices">Ocultar dispositivos</string>
 
     <plurals name="savesync_access_notice_title">
         <item quantity="one">%d ubicación de guardado inaccesible</item>
@@ -88,4 +86,31 @@
 
     <string name="savesync_channel_archived">Archivada</string>
     <string name="savesync_channel_autosave">Guardado automático</string>
+
+    <string name="savesync_presentation_calendar_title">Juego y partidas guardadas, últimas 12 semanas</string>
+    <string name="savesync_presentation_rhythm_title">Cuándo juegas</string>
+    <string name="savesync_presentation_devices_title">Dispositivos</string>
+    <string name="savesync_presentation_save_marker">Partida guardada ese día</string>
+    <string name="savesync_presentation_this_device">Este dispositivo</string>
+    <string name="savesync_presentation_peak">Pico %1$s %2$s</string>
+    <string name="savesync_presentation_average">media %s</string>
+    <string name="savesync_presentation_longest">más larga %s</string>
+    <string name="savesync_presentation_last_played">jugado por última vez %s</string>
+    <string name="savesync_presentation_device_last_played">jugado por última vez %s</string>
+    <string name="savesync_presentation_share_percent">%d %%</string>
+    <plurals name="savesync_presentation_sessions">
+        <item quantity="one">%d sesión</item>
+        <item quantity="many">%d sesiones</item>
+        <item quantity="other">%d sesiones</item>
+    </plurals>
+    <plurals name="savesync_presentation_device_sessions">
+        <item quantity="one">%d sesión</item>
+        <item quantity="many">%d sesiones</item>
+        <item quantity="other">%d sesiones</item>
+    </plurals>
+    <plurals name="savesync_presentation_versions">
+        <item quantity="one">%d versión de partida guardada</item>
+        <item quantity="many">%d versiones de partida guardadas</item>
+        <item quantity="other">%d versiones de partida guardadas</item>
+    </plurals>
 </resources>

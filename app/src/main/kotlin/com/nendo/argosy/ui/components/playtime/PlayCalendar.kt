@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +40,7 @@ import java.util.Locale
 
 private const val DAYS_IN_WEEK = 7
 private const val LABELLED_ROW_STEP = 2
+private const val MARK_FRACTION = 0.4f
 
 data class CalendarGrid(
     val weeks: Int,
@@ -81,7 +83,8 @@ fun PlayCalendar(
     selectedIndex: Int?,
     showSelection: Boolean,
     onCellTap: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    markedIndices: Set<Int> = emptySet()
 ) {
     val theme = LocalArgosyTheme.current
     val s = LocalUiScale.current.scale
@@ -159,8 +162,18 @@ fun PlayCalendar(
                                     )
                                     .then(
                                         if (index != null) Modifier.clickableNoFocus { onCellTap(index) } else Modifier
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (index != null && index in markedIndices) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(cellSize * MARK_FRACTION)
+                                            .clip(CircleShape)
+                                            .background(theme.textPrimary)
                                     )
-                            )
+                                }
+                            }
                         }
                     }
                 }

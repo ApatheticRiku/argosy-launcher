@@ -51,6 +51,7 @@ import com.nendo.argosy.ui.components.playtime.PlayFigureHeader
 import com.nendo.argosy.ui.components.playtime.PlayShareBand
 import com.nendo.argosy.ui.components.playtime.PlayWaveform
 import com.nendo.argosy.ui.components.playtime.ShareSegment
+import com.nendo.argosy.ui.components.playtime.playHourLabel
 import com.nendo.argosy.ui.components.playtime.waveformPeak
 import com.nendo.argosy.ui.screens.settings.PlayTimeEntryUi
 import com.nendo.argosy.ui.screens.settings.PlayTimeScrub
@@ -78,10 +79,6 @@ private const val CARD_FILL_ALPHA = 0.3f
 private fun percentOf(part: Long, whole: Long): Int =
     if (whole <= 0L) 0 else ((part * PERCENT) / whole).toInt()
 
-private fun hourLabel(context: android.content.Context, hour: Int): String {
-    val millis = LocalDate.now().atTime(hour, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    return formatClockTime(context, millis)
-}
 
 private fun weekdayNames(style: TextStyle): List<String> =
     DayOfWeek.entries.map { it.getDisplayName(style, Locale.getDefault()) }
@@ -287,7 +284,7 @@ private fun WindowSummary(state: PlayTimeState) {
                 value = stringResource(
                     R.string.settings_play_time_summary_peak_value,
                     summary.weekday.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
-                    hourLabel(context, summary.hour)
+                    playHourLabel(context,summary.hour)
                 ),
                 detail = null
             )
@@ -521,12 +518,12 @@ internal fun PlayTimeWaveformCard(
     val shortNames = remember { weekdayNames(TextStyle.SHORT) }
     val fullNames = remember { weekdayNames(TextStyle.FULL) }
     val hourLabels = remember(context) {
-        (0 until HOURS_IN_DAY step HOUR_LABEL_STEP).map { hourLabel(context, it) }
+        (0 until HOURS_IN_DAY step HOUR_LABEL_STEP).map { playHourLabel(context,it) }
     }
     PlayFigureCard(isFocused = isFocused, isEngaged = isEngaged, onFocus = onFocus) {
         PlayFigureHeader(
             title = if (weekday != null && hour != null && peak != null) {
-                stringResource(R.string.settings_play_time_wave_header, fullNames[weekday], hourLabel(context, hour))
+                stringResource(R.string.settings_play_time_wave_header, fullNames[weekday], playHourLabel(context,hour))
             } else {
                 stringResource(R.string.settings_play_time_wave_empty)
             },
@@ -537,7 +534,7 @@ internal fun PlayTimeWaveformCard(
             weekdayLabels = shortNames,
             hourLabels = hourLabels,
             peakLabel = peak?.let { (row, col) ->
-                stringResource(R.string.settings_play_time_wave_peak, shortNames[row], hourLabel(context, col))
+                stringResource(R.string.settings_play_time_wave_peak, shortNames[row], playHourLabel(context,col))
             },
             selectedWeekday = weekday.takeIf { peak != null && isEngaged },
             selectedHour = hour.takeIf { peak != null && isEngaged },

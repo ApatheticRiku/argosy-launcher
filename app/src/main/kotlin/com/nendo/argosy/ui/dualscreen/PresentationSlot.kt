@@ -69,7 +69,31 @@ sealed interface PresentationSlot {
         val state: com.nendo.argosy.hardware.CompanionInGameState,
         val achievements: List<com.nendo.argosy.core.game.AchievementUi>
     ) : PresentationSlot
+
+    data class SaveGame(
+        val title: String,
+        val subtitle: String,
+        val totalLabel: String?,
+        val coverPath: String?,
+        val backgroundPath: String?,
+        val days: List<com.nendo.argosy.data.model.PlayDay>,
+        val saveDayIndices: Set<Int>,
+        val weekHourMs: List<List<Long>>,
+        val peakLabel: String?,
+        val devices: List<SaveGameDevice>
+    ) : PresentationSlot
 }
+
+data class SaveGameDevice(
+    val label: String,
+    val kind: com.nendo.argosy.domain.model.DeviceKind,
+    val activeMs: Long,
+    val valueLabel: String,
+    val shareLabel: String,
+    val detail: String,
+    val color: androidx.compose.ui.graphics.Color,
+    val isThisDevice: Boolean
+)
 
 data class BreakdownRow(
     val label: String,

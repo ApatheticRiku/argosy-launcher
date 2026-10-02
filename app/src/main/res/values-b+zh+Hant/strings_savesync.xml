@@ -25,9 +25,9 @@
     </plurals>
 
     <string name="savesync_other_devices_heading">其他裝置</string>
-    <plurals name="savesync_other_devices_more">
-        <item quantity="other">+%d個</item>
-    </plurals>
+    <string name="savesync_other_device_meta">%1$s &#183; %2$s</string>
+    <string name="savesync_footer_show_devices">顯示裝置</string>
+    <string name="savesync_footer_hide_devices">隱藏裝置</string>
 
     <plurals name="savesync_access_notice_title">
         <item quantity="other">%d個存檔位置無法存取</item>
@@ -76,4 +76,25 @@
 
     <string name="savesync_channel_archived">已封存</string>
     <string name="savesync_channel_autosave">自動存檔</string>
+
+    <string name="savesync_presentation_calendar_title">遊玩與存檔，最近 12 週</string>
+    <string name="savesync_presentation_rhythm_title">遊玩時段</string>
+    <string name="savesync_presentation_devices_title">裝置</string>
+    <string name="savesync_presentation_save_marker">當天保留了存檔</string>
+    <string name="savesync_presentation_this_device">本裝置</string>
+    <string name="savesync_presentation_peak">高峰 %1$s %2$s</string>
+    <string name="savesync_presentation_average">平均 %s</string>
+    <string name="savesync_presentation_longest">最長 %s</string>
+    <string name="savesync_presentation_last_played">上次遊玩 %s</string>
+    <string name="savesync_presentation_device_last_played">上次遊玩 %s</string>
+    <string name="savesync_presentation_share_percent">%d%%</string>
+    <plurals name="savesync_presentation_sessions">
+        <item quantity="other">%d 次遊玩</item>
+    </plurals>
+    <plurals name="savesync_presentation_device_sessions">
+        <item quantity="other">%d 次遊玩</item>
+    </plurals>
+    <plurals name="savesync_presentation_versions">
+        <item quantity="other">保留了 %d 個存檔版本</item>
+    </plurals>
 </resources>

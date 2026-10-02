@@ -30,12 +30,9 @@
     </plurals>
 
     <string name="savesync_other_devices_heading">Другие устройства</string>
-    <plurals name="savesync_other_devices_more">
-        <item quantity="one">+%d ещё</item>
-        <item quantity="few">+%d ещё</item>
-        <item quantity="many">+%d ещё</item>
-        <item quantity="other">+%d ещё</item>
-    </plurals>
+    <string name="savesync_other_device_meta">%1$s · %2$s</string>
+    <string name="savesync_footer_show_devices">Показать устройства</string>
+    <string name="savesync_footer_hide_devices">Скрыть устройства</string>
 
     <plurals name="savesync_access_notice_title">
         <item quantity="one">%d расположение сохранений недоступно</item>
@@ -93,4 +90,34 @@
 
     <string name="savesync_channel_archived">В архиве</string>
     <string name="savesync_channel_autosave">Автосохранение</string>
+
+    <string name="savesync_presentation_calendar_title">Игра и сохранения, последние 12 недель</string>
+    <string name="savesync_presentation_rhythm_title">Когда вы играете</string>
+    <string name="savesync_presentation_devices_title">Устройства</string>
+    <string name="savesync_presentation_save_marker">В этот день сохранено</string>
+    <string name="savesync_presentation_this_device">Это устройство</string>
+    <string name="savesync_presentation_peak">Пик %1$s %2$s</string>
+    <string name="savesync_presentation_average">в среднем %s</string>
+    <string name="savesync_presentation_longest">самая долгая %s</string>
+    <string name="savesync_presentation_last_played">последняя игра %s</string>
+    <string name="savesync_presentation_device_last_played">последняя игра %s</string>
+    <string name="savesync_presentation_share_percent">%d%%</string>
+    <plurals name="savesync_presentation_sessions">
+        <item quantity="one">%d сессия</item>
+        <item quantity="few">%d сессии</item>
+        <item quantity="many">%d сессий</item>
+        <item quantity="other">%d сессии</item>
+    </plurals>
+    <plurals name="savesync_presentation_device_sessions">
+        <item quantity="one">%d сессия</item>
+        <item quantity="few">%d сессии</item>
+        <item quantity="many">%d сессий</item>
+        <item quantity="other">%d сессии</item>
+    </plurals>
+    <plurals name="savesync_presentation_versions">
+        <item quantity="one">%d версия сохранения</item>
+        <item quantity="few">%d версии сохранения</item>
+        <item quantity="many">%d версий сохранения</item>
+        <item quantity="other">%d версии сохранения</item>
+    </plurals>
 </resources>

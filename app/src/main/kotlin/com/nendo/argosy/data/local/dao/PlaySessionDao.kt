@@ -160,6 +160,13 @@ interface PlaySessionDao {
     suspend fun getSessionsForOwnerSince(ownerUserId: Long?, since: Instant): List<PlaySessionEntity>
 
     @Query("""
+        SELECT * FROM play_sessions
+        WHERE gameId = :gameId AND ownerUserId IS :ownerUserId
+        ORDER BY startTime ASC
+    """)
+    suspend fun getSessionsForGameAndOwner(gameId: Long, ownerUserId: Long?): List<PlaySessionEntity>
+
+    @Query("""
         SELECT platformSlug, SUM(activePlayMs) AS activeMs, COUNT(*) AS sessionCount,
                MAX(startTime) AS lastPlayed
         FROM play_sessions
