@@ -21,7 +21,8 @@ data class ConflictInfo(
     val serverTimestamp: Instant,
     val isHashConflict: Boolean,
     val serverDeviceName: String? = null,
-    val serverSaveId: Long? = null
+    val serverSaveId: Long? = null,
+    val conflictId: Long? = null
 )
 
 data class SyncOperation(
@@ -126,10 +127,20 @@ class SyncQueueManager @Inject constructor() {
     }
 
     fun addConflict(conflict: ConflictInfo) {
+        var added = false
         _pendingConflicts.update { conflicts ->
-            if (conflicts.any { it.gameId == conflict.gameId }) conflicts
-            else conflicts + conflict
+            if (conflicts.any { it.gameId == conflict.gameId }) {
+                conflicts
+            } else {
+                added = true
+                conflicts + conflict
+            }
         }
+        if (added) conflictResolutions.update { it - conflict.gameId }
+    }
+
+    fun withdrawConflict(gameId: Long) {
+        _pendingConflicts.update { conflicts -> conflicts.filter { it.gameId != gameId } }
     }
 
     suspend fun awaitResolution(gameId: Long): ConflictResolution {

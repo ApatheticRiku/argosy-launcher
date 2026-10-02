@@ -85,6 +85,7 @@ class StateCacheManager @Inject constructor(
         private const val UNKNOWN_CORE_DIR = "unknown"
         private const val MIN_UNLOCKED_SLOTS = 3
         private const val BUFFER_SIZE = 8192
+        private val LOCAL_ONLY_STATUSES = setOf(StateCacheEntity.STATUS_LOCAL_NEWER, StateCacheEntity.STATUS_PENDING_UPLOAD)
         private val UPLOAD_TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")
         private val SLOT_REGEX = Regex("""\.state(\d+)?$""")
         private val UNDERSCORE_SLOT_REGEX = Regex("""_(\d+)\.[^.]+$""")
@@ -713,11 +714,14 @@ class StateCacheManager @Inject constructor(
      * so scoping this to the current account would leave the next account's states cached against
      * a game it can no longer see.
      */
-    suspend fun deleteAllStatesForGame(gameId: Long) = withContext(Dispatchers.IO) {
-        stateOwnershipTracker.clearForGame(gameId)
-        stateTombstoneDao.deleteByGame(gameId)
-        val caches = stateCacheDao.getAllByGameForTeardown(gameId)
-        for (cache in caches) {
+    /**
+     * Deletes the cached states the server also holds and keeps every state that exists only on
+     * this device. Returns the number of states kept.
+     */
+    suspend fun deleteServerHeldStatesForGame(gameId: Long): Int = withContext(Dispatchers.IO) {
+        val (localOnly, serverHeld) = stateCacheDao.getAllByGameForTeardown(gameId)
+            .partition { it.rommSaveId == null || it.syncStatus in LOCAL_ONLY_STATUSES }
+        for (cache in serverHeld) {
             val cacheFile = File(cacheBaseDir, cache.cachePath)
             val parentDir = cacheFile.parentFile
             cacheFile.delete()
@@ -725,14 +729,19 @@ class StateCacheManager @Inject constructor(
                 parentDir.delete()
             }
         }
-        stateCacheDao.deleteByIds(caches.map { it.id })
+        stateCacheDao.deleteByIds(serverHeld.map { it.id })
 
-        val gameDir = File(cacheBaseDir, gameId.toString())
-        if (gameDir.exists() && gameDir.isDirectory) {
-            gameDir.deleteRecursively()
+        if (localOnly.isEmpty()) {
+            stateOwnershipTracker.clearForGame(gameId)
+            stateTombstoneDao.deleteByGame(gameId)
+            val gameDir = File(cacheBaseDir, gameId.toString())
+            if (gameDir.exists() && gameDir.isDirectory) {
+                gameDir.deleteRecursively()
+            }
         }
 
-        Log.d(TAG, "Deleted all ${caches.size} cached states for game $gameId")
+        Log.d(TAG, "Deleted ${serverHeld.size} server-held cached states for game $gameId, kept ${localOnly.size} local-only")
+        localOnly.size
     }
 
     suspend fun buildStateTargetPath(

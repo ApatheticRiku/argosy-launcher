@@ -55,7 +55,7 @@ class ReconcileEffectApplier @Inject constructor(
                 ReconcileEffectOutcome(conflicts = 0, applied = applied)
             }
             ReconcileAction.DOWNLOAD -> {
-                val applied = if (markServerNewerForOp(op)) 1 else 0
+                val applied = if (markServerNewerForOp(op, overridesOpenDecision = false)) 1 else 0
                 ReconcileEffectOutcome(conflicts = 0, applied = applied)
             }
             ReconcileAction.CONFLICT -> dispatchConflict(op, sessionId)
@@ -83,7 +83,7 @@ class ReconcileEffectApplier @Inject constructor(
                 ReconcileEffectOutcome(conflicts = 0, applied = applied)
             }
             is ConflictAutoResolver.Resolution.KeepServer -> {
-                val applied = if (markServerNewerForOp(op)) 1 else 0
+                val applied = if (markServerNewerForOp(op, overridesOpenDecision = true)) 1 else 0
                 Logger.info(TAG, "auto-resolved conflict romId=${op.romId} -> KeepServer (${res.ruleId})")
                 ReconcileEffectOutcome(conflicts = 0, applied = applied)
             }
@@ -167,7 +167,7 @@ class ReconcileEffectApplier @Inject constructor(
         return true
     }
 
-    private suspend fun markServerNewerForOp(op: ReconcileOperation): Boolean {
+    private suspend fun markServerNewerForOp(op: ReconcileOperation, overridesOpenDecision: Boolean): Boolean {
         val game = gameDao.getByRommId(op.romId) ?: run {
             Logger.debug(TAG, "applyPlan DOWNLOAD: no local game for romId=${op.romId}, skipping")
             return false
@@ -183,6 +183,10 @@ class ReconcileEffectApplier @Inject constructor(
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         val syncKey = SaveSyncApiClient.syncKeyOf(op.slot)
         val existing = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, syncKey, ownerUserId)
+        if (!overridesOpenDecision && existing?.syncStatus in AWAITING_DECISION) {
+            Logger.debug(TAG, "applyPlan DOWNLOAD: gameId=${game.id} slot=$syncKey is ${existing?.syncStatus}; leaving it for the user")
+            return false
+        }
         val serverTime = op.serverUpdatedAt?.let { parseInstantOrNull(it) }
         saveSyncDao.upsert(
             SaveSyncEntity(
@@ -235,5 +239,9 @@ class ReconcileEffectApplier @Inject constructor(
 
     companion object {
         private const val TAG = "ReconcileEffectApplier"
+        private val AWAITING_DECISION = setOf(
+            SaveSyncEntity.STATUS_CONFLICT,
+            SaveSyncEntity.STATUS_NEEDS_HARDCORE_RESOLUTION
+        )
     }
 }

@@ -14,7 +14,6 @@ import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.emulator.DiscOption
-import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.preferences.DisplayRoleOverride
 import com.nendo.argosy.data.preferences.SessionStateStore
 import com.nendo.argosy.data.preferences.EmulatorDisplayTarget
@@ -25,20 +24,14 @@ import com.nendo.argosy.util.DisplayRoleResolver
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.domain.model.CompletionStatus
 import com.nendo.argosy.data.remote.ra.RAConsoleIds
-import com.nendo.argosy.domain.model.UnifiedStateEntry
-import com.nendo.argosy.domain.usecase.achievement.FetchAchievementsUseCase
-import com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase
-import com.nendo.argosy.domain.usecase.save.RestoreCachedSaveUseCase
 import com.nendo.argosy.ui.common.displayTitleId
 import com.nendo.argosy.ui.common.reportTitleIdRecheck
 import com.nendo.argosy.ui.common.toNotificationText
 import com.nendo.argosy.data.social.ReviewWriteEvent
 import com.nendo.argosy.ui.input.InputDedupBuffer
 import com.nendo.argosy.ui.input.InputSignature
-import com.nendo.argosy.R
 import com.nendo.argosy.core.game.AchievementUi
 import com.nendo.argosy.core.game.toAchievementUi
-import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
@@ -90,28 +83,6 @@ class DualScreenManager(
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val gameLaunchDelegate: GameLaunchDelegate,
     private val saveCacheManager: SaveCacheManager,
-    private val getUnifiedSavesUseCase: GetUnifiedSavesUseCase,
-    private val getUnifiedStatesUseCase:
-        com.nendo.argosy.domain.usecase.state.GetUnifiedStatesUseCase,
-    private val stateCacheManager: com.nendo.argosy.data.repository.StateCacheManager,
-    private val restoreCachedSaveUseCase: RestoreCachedSaveUseCase,
-    private val activateSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.ActivateSaveChannelUseCase,
-    private val restoreSaveChannelPointUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.RestoreSaveChannelPointUseCase,
-    private val createSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.CreateSaveChannelUseCase,
-    private val copySaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.CopySaveChannelUseCase,
-    private val renameSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.RenameSaveChannelUseCase,
-    private val deleteSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.DeleteSaveChannelUseCase,
-    private val restoreStateUseCase:
-        com.nendo.argosy.domain.usecase.state.RestoreStateUseCase,
-    private val emulatorResolver: EmulatorResolver,
-    private val coreVersionExtractor: com.nendo.argosy.data.emulator.CoreVersionExtractor,
-    private val fetchAchievementsUseCase: FetchAchievementsUseCase,
     internal val raRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
     internal val raTileContentRepository: com.nendo.argosy.data.repository.RaTileContentRepository,
     private val achievementUpdateBus: com.nendo.argosy.core.event.AchievementUpdateBus,
@@ -181,7 +152,6 @@ class DualScreenManager(
         com.nendo.argosy.util.SafeCoroutineScope(Dispatchers.Main, "DualScreenState")
 
     private var activityContext: Context = context
-    private var lastStateEntries: Pair<Long, List<UnifiedStateEntry>>? = null
 
     private val _isRolesSwapped = MutableStateFlow(initialRolesSwapped)
     val isRolesSwapped: StateFlow<Boolean> = _isRolesSwapped
@@ -2047,243 +2017,6 @@ class DualScreenManager(
         _isRolesSwapped.value = resolver.isSwapped
         onRoleSwapped?.invoke(_isRolesSwapped.value)
     }
-
-    // --- Modal Operations ---
-
-    private fun handleSaveSwitchChannel(gameId: Long, channelName: String?) {
-        scope.launch(Dispatchers.IO) {
-            val game = gameDao.getById(gameId) ?: return@launch
-            val emulatorId = emulatorResolver.getEmulatorIdForGame(
-                gameId, game.platformId, game.platformSlug
-            )
-
-            activateSaveChannelUseCase(gameId, channelName)
-
-            if (emulatorId != null) {
-                val entries = getUnifiedSavesUseCase(gameId, expandHistory = true)
-                val latestForChannel = entries
-                    .filter { it.channelName == channelName }
-                    .maxByOrNull { it.timestamp }
-
-                if (latestForChannel != null) {
-                    val result = restoreCachedSaveUseCase(
-                        latestForChannel, gameId, emulatorId, false
-                    )
-                    when (result) {
-                        is RestoreCachedSaveUseCase.Result.Restored,
-                        is RestoreCachedSaveUseCase.Result.RestoredAndSynced -> {
-                            activeSaveRepository.setActiveSaveApplied(gameId, true)
-                        }
-                        is RestoreCachedSaveUseCase.Result.Error -> {
-                            Log.w(TAG, "Channel switch restore failed: ${result.reason}")
-                        }
-                    }
-                } else {
-                    restoreCachedSaveUseCase.clearActiveSave(gameId, emulatorId)
-                }
-            }
-
-            broadcastSaveActionResult("SAVE_SWITCH_DONE", gameId)
-            broadcastUnifiedSaves(gameId)
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun handleSaveSetRestorePoint(
-        gameId: Long,
-        channelName: String?,
-        timestamp: Long
-    ) {
-        scope.launch(Dispatchers.IO) {
-            val game = gameDao.getById(gameId) ?: return@launch
-            val emulatorId = emulatorResolver.getEmulatorIdForGame(
-                gameId, game.platformId, game.platformSlug
-            )
-
-            activeSaveRepository.activateTimestamp(gameId, timestamp)
-
-            if (emulatorId != null) {
-                val entries = getUnifiedSavesUseCase(gameId, expandHistory = true)
-                val targetEntry = entries.find {
-                    it.channelName == channelName &&
-                        it.timestamp.toEpochMilli() == timestamp
-                }
-
-                if (targetEntry != null) {
-                    restoreSaveChannelPointUseCase(
-                        gameId = gameId,
-                        channelName = channelName,
-                        isLatest = targetEntry.isLatest
-                    )
-                    val result = restoreCachedSaveUseCase(
-                        targetEntry, gameId, emulatorId, false
-                    )
-                    when (result) {
-                        is RestoreCachedSaveUseCase.Result.Restored,
-                        is RestoreCachedSaveUseCase.Result.RestoredAndSynced -> {
-                            activeSaveRepository.setActiveSaveApplied(gameId, true)
-                        }
-                        is RestoreCachedSaveUseCase.Result.Error -> {
-                            Log.w(TAG, "Restore point apply failed: ${result.reason}")
-                        }
-                    }
-                }
-            }
-
-            broadcastSaveActionResult("SAVE_RESTORE_DONE", gameId)
-            broadcastUnifiedSaves(gameId)
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun handleCreateSlot(gameId: Long, name: String) {
-        scope.launch(Dispatchers.IO) {
-            createSaveChannelUseCase(gameId, name)
-
-            broadcastSaveActionResult("SAVE_CREATE_DONE", gameId)
-            broadcastUnifiedSaves(gameId)
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun handleLockAsSlot(gameId: Long, cacheId: Long?, name: String) {
-        if (cacheId == null) return
-        scope.launch(Dispatchers.IO) {
-            copySaveChannelUseCase(
-                gameId = gameId,
-                targetChannel = name,
-                localCacheId = cacheId,
-                serverSaveId = null,
-                emulatorId = null
-            )
-
-            broadcastSaveActionResult("SAVE_LOCK_DONE", gameId)
-            broadcastUnifiedSaves(gameId)
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun broadcastSaveActionResult(type: String, gameId: Long) = Unit
-
-    private fun broadcastUnifiedSaves(gameId: Long) = Unit
-
-    /**
-     * Sends the game's states to whichever screen is showing its detail.
-     *
-     * The states tab reads what is delivered here; without it the tab draws its slots over an
-     * empty list however many states are cached or synced.
-     */
-    private fun stateEntriesFor(gameId: Long): List<UnifiedStateEntry> =
-        lastStateEntries?.takeIf { it.first == gameId }?.second ?: emptyList()
-
-    private fun stateSlotLabel(slot: Int): String =
-        if (slot < 0) {
-            appContext.getString(R.string.notif_dualscreen_state_slot_auto)
-        } else {
-            appContext.getString(R.string.notif_dualscreen_state_slot_numbered, slot)
-        }
-
-    /**
-     * A state the companion restores goes through the same use case the handheld uses, so a
-     * version mismatch is refused here too. The companion has nowhere to ask the user to override,
-     * so a mismatch is reported rather than forced: restoring a state a different core wrote is
-     * how a save file gets corrupted.
-     */
-    private fun handleStateRestore(gameId: Long, slotArg: String?) {
-        val slot = slotArg?.toIntOrNull() ?: return
-        scope.launch(Dispatchers.IO) {
-            val entry = stateEntriesFor(gameId).firstOrNull { it.slotNumber == slot } ?: return@launch
-            val cacheId = entry.localCacheId ?: return@launch
-            val game = gameDao.getById(gameId) ?: return@launch
-            val romPath = game.localPath
-            if (romPath == null) {
-                notificationManager.showError(NotificationText.Res(R.string.notif_dualscreen_no_local_path))
-                return@launch
-            }
-            val emulatorId = emulatorResolver.getEmulatorIdForGame(
-                gameId, game.platformId, game.platformSlug
-            ) ?: return@launch
-
-            when (restoreStateUseCase(
-                cacheId = cacheId,
-                emulatorId = emulatorId,
-                platformId = game.platformSlug,
-                romPath = romPath,
-                currentCoreId = coreVersionExtractor.getCoreIdForEmulator(emulatorId, game.platformSlug)
-            )) {
-                is com.nendo.argosy.domain.usecase.state.RestoreStateResult.Success ->
-                    notificationManager.showSuccess(
-                        NotificationText.Res(R.string.notif_dualscreen_state_restored, listOf(stateSlotLabel(slot)))
-                    )
-                is com.nendo.argosy.domain.usecase.state.RestoreStateResult.VersionMismatch ->
-                    notificationManager.showError(
-                        NotificationText.Res(
-                            R.string.notif_dualscreen_state_version_mismatch,
-                            listOf(stateSlotLabel(slot))
-                        )
-                    )
-                else ->
-                    notificationManager.showError(
-                        NotificationText.Res(R.string.notif_dualscreen_state_restore_failed, listOf(stateSlotLabel(slot)))
-                    )
-            }
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun handleStateDelete(gameId: Long, slotArg: String?) {
-        val slot = slotArg?.toIntOrNull() ?: return
-        scope.launch(Dispatchers.IO) {
-            val entry = stateEntriesFor(gameId).firstOrNull { it.slotNumber == slot } ?: return@launch
-            stateCacheManager.purgeState(gameId, entry.localCacheId, entry.serverStateId)
-            notificationManager.showSuccess(
-                NotificationText.Res(R.string.notif_dualscreen_state_deleted, listOf(stateSlotLabel(slot)))
-            )
-            broadcastUnifiedStates(gameId)
-        }
-    }
-
-    private fun handleStateCopy(gameId: Long, slotsArg: String?) {
-        val parts = slotsArg?.split(':') ?: return
-        val sourceSlot = parts.getOrNull(0)?.toIntOrNull() ?: return
-        val targetSlot = parts.getOrNull(1)?.toIntOrNull() ?: return
-        scope.launch(Dispatchers.IO) {
-            val cacheId = stateEntriesFor(gameId)
-                .firstOrNull { it.slotNumber == sourceSlot }?.localCacheId ?: return@launch
-            val copied = stateCacheManager.copyStateToSlot(cacheId, targetSlot)
-            if (copied) {
-                notificationManager.showSuccess(
-                    NotificationText.Res(
-                        R.string.notif_dualscreen_state_copied,
-                        listOf(stateSlotLabel(sourceSlot), stateSlotLabel(targetSlot))
-                    )
-                )
-                broadcastUnifiedStates(gameId)
-            } else {
-                notificationManager.showError(
-                    NotificationText.Res(R.string.notif_dualscreen_state_copy_failed, listOf(stateSlotLabel(sourceSlot)))
-                )
-            }
-        }
-    }
-
-    private fun broadcastUnifiedStates(gameId: Long) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val channelName = activeSaveRepository.getActiveRow(gameId)?.channelName
-                val entries = getUnifiedStatesUseCase(gameId, channelName = channelName)
-                Log.i(
-                    TAG,
-                    "[StateSync] states for gameId=$gameId channel=$channelName | entries=${entries.size}"
-                )
-                lastStateEntries = gameId to entries
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to load states for gameId=$gameId", e)
-            }
-        }
-    }
-
-    private fun deliverSyncingDone(gameId: Long) = Unit
 
     // --- Companion Sync ---
 

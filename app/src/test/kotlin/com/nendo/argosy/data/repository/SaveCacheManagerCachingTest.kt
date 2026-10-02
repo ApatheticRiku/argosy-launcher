@@ -81,6 +81,26 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `deleting a download keeps versions the server does not hold and removes the rest`() = runTest {
+        fun row(id: Long, rommSaveId: Long?, dirty: Boolean) = SaveCacheEntity(
+            id = id, gameId = 7L, emulatorId = "retroarch", cachedAt = Instant.parse("2026-10-01T00:00:00Z"),
+            saveSize = 3, cachePath = "7/v$id/save.srm", rommSaveId = rommSaveId, needsRemoteSync = dirty
+        )
+        val held = row(1L, rommSaveId = 40L, dirty = false)
+        val localOnly = row(2L, rommSaveId = null, dirty = false)
+        val unsent = row(3L, rommSaveId = 41L, dirty = true)
+        val cacheRoot = File(tempDir, "save_cache")
+        listOf(held, localOnly, unsent).forEach { File(cacheRoot, it.cachePath).apply { parentFile?.mkdirs(); writeBytes(byteArrayOf(1, 2, 3)) } }
+        coEvery { saveCacheDao.getByGame(7L) } returns listOf(held, localOnly, unsent)
+
+        assertEquals(2, manager.deleteServerHeldCachesForGame(7L))
+        coVerify { saveCacheDao.deleteByIds(listOf(1L)) }
+        assertFalse(File(cacheRoot, held.cachePath).exists())
+        assertTrue(File(cacheRoot, localOnly.cachePath).exists())
+        assertTrue(File(cacheRoot, unsent.cachePath).exists())
+    }
+
+    @Test
     fun `pruning never evicts the active, unsynced, hardcore or server-held version`() = runTest {
         fun row(id: Long, isActive: Boolean = false, dirty: Boolean = false, hardcore: Boolean = false) = SaveCacheEntity(
             id = id, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.ofEpochSecond(id),

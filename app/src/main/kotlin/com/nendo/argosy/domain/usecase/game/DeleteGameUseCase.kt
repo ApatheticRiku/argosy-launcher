@@ -60,11 +60,14 @@ class DeleteGameUseCase @Inject constructor(
             .filter { File(it).parentFile?.name?.lowercase() == ZipExtractor.EXTCONTENT_FOLDER }
         gameFileDao.clearLocalPathsByGameIdExcludingPrefix(gameId, musicDirPrefix)
 
-        saveCacheManager.deleteAllCachesForGame(gameId)
-        stateCacheManager.deleteAllStatesForGame(gameId)
+        val keptSaves = saveCacheManager.deleteServerHeldCachesForGame(gameId)
+        val keptStates = stateCacheManager.deleteServerHeldStatesForGame(gameId)
         saveSyncDao.deleteByGame(gameId)
         deleteQueuedScreenshotFiles(gameId)
         pendingSyncQueueDao.deleteByGameId(gameId)
+        if (keptSaves + keptStates > 0) {
+            Logger.info(TAG, "Kept $keptSaves saves and $keptStates states with no server copy for game $gameId")
+        }
 
         withContext(Dispatchers.IO) {
             deleteSharedAddons(sharedAddonPaths, platformFolder)
@@ -101,7 +104,7 @@ class DeleteGameUseCase @Inject constructor(
 
         attributionRepository.markDirty(StorageCategory.GAMES)
         attributionRepository.markDirty(StorageCategory.SAVE_STATE_CACHE)
-        Logger.debug(TAG, "Deleted local file, saves and states for game $gameId")
+        Logger.debug(TAG, "Deleted local file and server-held saves and states for game $gameId")
         return true
     }
 

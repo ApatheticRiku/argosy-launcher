@@ -167,6 +167,19 @@ class ReconcileEffectApplierTest {
     }
 
     @Test
+    fun `DOWNLOAD leaves a slot awaiting the user's conflict decision untouched`() = runTest {
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns SaveSyncEntity(
+            id = 3L, gameId = 1L, rommId = 100L, emulatorId = "retroarch", channelName = "autosave",
+            rommSaveId = 5L, syncStatus = SaveSyncEntity.STATUS_CONFLICT
+        )
+
+        val outcome = applier.apply(op(ReconcileAction.DOWNLOAD, saveId = 77L), sessionId = null)
+
+        assertEquals(0, outcome.applied)
+        coVerify(exactly = 0) { saveSyncDao.upsert(any()) }
+    }
+
+    @Test
     fun `DOWNLOAD with no local game returns NONE`() = runTest {
         coEvery { gameDao.getByRommId(999L) } returns null
 

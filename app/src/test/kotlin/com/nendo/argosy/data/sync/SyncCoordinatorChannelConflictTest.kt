@@ -36,6 +36,7 @@ class SyncCoordinatorChannelConflictTest {
     private lateinit var saveCacheManager: dagger.Lazy<SaveCacheManager>
     private lateinit var stateCacheManager: dagger.Lazy<StateCacheManager>
     private lateinit var syncQueueManager: SyncQueueManager
+    private lateinit var pendingConflictDao: com.nendo.argosy.data.local.dao.PendingConflictDao
 
     private lateinit var mockRomM: RomMRepository
     private lateinit var mockSyncRepo: SaveSyncRepository
@@ -61,6 +62,9 @@ class SyncCoordinatorChannelConflictTest {
         saveCacheDao = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
         syncQueueManager = SyncQueueManager()
+        pendingConflictDao = mockk(relaxed = true)
+        coEvery { pendingConflictDao.findByGameSaveAndOwner(any(), any(), any()) } returns null
+        coEvery { pendingConflictDao.upsert(any()) } returns STORED_CONFLICT_ID
 
         mockRomM = mockk(relaxed = true)
         mockSyncRepo = mockk(relaxed = true)
@@ -121,7 +125,7 @@ class SyncCoordinatorChannelConflictTest {
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             savePathResolver = mockk(relaxed = true),
             strategySelector = mockk(relaxed = true),
-            pendingConflictDao = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = mockk(relaxed = true),
             saveRecoveryGate = mockk(relaxed = true),
             screenshotUploader = mockk(relaxed = true),
@@ -139,6 +143,8 @@ class SyncCoordinatorChannelConflictTest {
         coVerify(exactly = 0) {
             mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any())
         }
+        coVerify { pendingConflictDao.upsert(match { it.gameId == 1L && it.slot == "slot1" }) }
+        org.junit.Assert.assertEquals(STORED_CONFLICT_ID, syncQueueManager.pendingConflicts.value.single().conflictId)
 
         cacheFile.delete()
     }
@@ -179,7 +185,7 @@ class SyncCoordinatorChannelConflictTest {
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             savePathResolver = mockk(relaxed = true),
             strategySelector = mockk(relaxed = true),
-            pendingConflictDao = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = mockk(relaxed = true),
             saveRecoveryGate = mockk(relaxed = true),
             screenshotUploader = mockk(relaxed = true),
@@ -247,7 +253,7 @@ class SyncCoordinatorChannelConflictTest {
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             savePathResolver = mockk(relaxed = true),
             strategySelector = mockk(relaxed = true),
-            pendingConflictDao = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = mockk(relaxed = true),
             saveRecoveryGate = mockk(relaxed = true),
             screenshotUploader = mockk(relaxed = true),
@@ -262,6 +268,8 @@ class SyncCoordinatorChannelConflictTest {
         coVerify {
             saveCacheDao.clearDirtyFlagForChannel(1L, any(), "slot1", excludeId = -1)
         }
+        coVerify { pendingConflictDao.upsert(match { it.gameId == 1L && it.slot == "slot1" }) }
+        org.junit.Assert.assertEquals(STORED_CONFLICT_ID, syncQueueManager.pendingConflicts.value.single().conflictId)
 
         cacheFile.delete()
     }
@@ -296,7 +304,7 @@ class SyncCoordinatorChannelConflictTest {
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             savePathResolver = mockk(relaxed = true),
             strategySelector = mockk(relaxed = true),
-            pendingConflictDao = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = mockk(relaxed = true),
             saveRecoveryGate = mockk(relaxed = true),
             screenshotUploader = mockk(relaxed = true),
@@ -372,7 +380,7 @@ class SyncCoordinatorChannelConflictTest {
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             savePathResolver = mockk(relaxed = true),
             strategySelector = mockk(relaxed = true),
-            pendingConflictDao = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
             reconcileEffectApplier = mockk(relaxed = true),
             saveRecoveryGate = mockk(relaxed = true),
             screenshotUploader = mockk(relaxed = true),
@@ -422,4 +430,8 @@ class SyncCoordinatorChannelConflictTest {
         needsRemoteSync = true,
         contentHash = "hash123"
     )
+
+    private companion object {
+        const val STORED_CONFLICT_ID = 77L
+    }
 }

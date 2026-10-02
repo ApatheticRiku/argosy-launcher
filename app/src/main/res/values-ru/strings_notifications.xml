@@ -143,15 +143,6 @@
         <item quantity="many">В очередь добавлено %1$d загрузок</item>
         <item quantity="other">В очередь добавлено %1$d загрузки</item>
     </plurals>
-    <string name="notif_dualscreen_no_local_path">У игры нет локального пути</string>
-    <string name="notif_dualscreen_state_slot_auto">авто-состояние</string>
-    <string name="notif_dualscreen_state_slot_numbered">слот состояния %1$d</string>
-    <string name="notif_dualscreen_state_restored">Восстановлено: %1$s</string>
-    <string name="notif_dualscreen_state_version_mismatch">%1$s создано другой версией ядра</string>
-    <string name="notif_dualscreen_state_restore_failed">Не удалось восстановить %1$s</string>
-    <string name="notif_dualscreen_state_deleted">Удалено: %1$s</string>
-    <string name="notif_dualscreen_state_copied">%1$s скопировано в %2$s</string>
-    <string name="notif_dualscreen_state_copy_failed">Не удалось скопировать %1$s</string>
 
     <string name="notif_gamelaunch_no_emulator">Для этой платформы не установлен эмулятор</string>
     <string name="notif_gamelaunch_no_rom_file">Файл ROM не найден</string>

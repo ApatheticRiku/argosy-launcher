@@ -319,28 +319,6 @@
         <item quantity="one">Queued %1$d download</item>
         <item quantity="other">Queued %1$d downloads</item>
     </plurals>
-    <!-- Error when a save-state action targets a game with no local ROM file. -->
-    <string name="notif_dualscreen_no_local_path">Game has no local path</string>
-    <!-- Label for a save state slot restored automatically rather than by number. -->
-    <string name="notif_dualscreen_state_slot_auto">auto state</string>
-    <!-- Label for a numbered save state slot. %1$d is the slot number. -->
-    <string name="notif_dualscreen_state_slot_numbered">state slot %1$d</string>
-    <!-- Notification after restoring a save state. %1$s is the slot label (state_slot_auto or
-         state_slot_numbered above). -->
-    <string name="notif_dualscreen_state_restored">Restored %1$s</string>
-    <!-- Error when a save state was written by a different emulator core version than the one
-         active now. %1$s is the slot label. "State" here is a save state, not a completion
-         status. -->
-    <string name="notif_dualscreen_state_version_mismatch">%1$s was made by a different core version</string>
-    <!-- Generic error when restoring a save state fails. %1$s is the slot label. -->
-    <string name="notif_dualscreen_state_restore_failed">Could not restore %1$s</string>
-    <!-- Notification after deleting a save state. %1$s is the slot label. -->
-    <string name="notif_dualscreen_state_deleted">Deleted %1$s</string>
-    <!-- Notification after copying a save state to another slot. %1$s is the source slot
-         label, %2$s the destination slot label. -->
-    <string name="notif_dualscreen_state_copied">Copied %1$s to %2$s</string>
-    <!-- Error when copying a save state to another slot fails. %1$s is the source slot label. -->
-    <string name="notif_dualscreen_state_copy_failed">Could not copy %1$s</string>
 
     <!-- Game launch failures (GameLaunchDelegate). -->
 

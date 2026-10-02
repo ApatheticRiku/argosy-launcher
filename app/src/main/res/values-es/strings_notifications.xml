@@ -137,15 +137,6 @@
         <item quantity="many">%1$d descargas puestas en cola</item>
         <item quantity="other">%1$d descargas puestas en cola</item>
     </plurals>
-    <string name="notif_dualscreen_no_local_path">El juego no tiene una ruta local</string>
-    <string name="notif_dualscreen_state_slot_auto">estado automático</string>
-    <string name="notif_dualscreen_state_slot_numbered">ranura de estado %1$d</string>
-    <string name="notif_dualscreen_state_restored">%1$s restaurado</string>
-    <string name="notif_dualscreen_state_version_mismatch">%1$s fue creado por una versión distinta del núcleo</string>
-    <string name="notif_dualscreen_state_restore_failed">No se pudo restaurar %1$s</string>
-    <string name="notif_dualscreen_state_deleted">%1$s eliminado</string>
-    <string name="notif_dualscreen_state_copied">%1$s copiado a %2$s</string>
-    <string name="notif_dualscreen_state_copy_failed">No se pudo copiar %1$s</string>
 
     <string name="notif_gamelaunch_no_emulator">No hay ningún emulador instalado para esta plataforma</string>
     <string name="notif_gamelaunch_no_rom_file">Archivo ROM no encontrado</string>

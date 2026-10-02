@@ -1076,29 +1076,37 @@ class SaveCacheManager @Inject constructor(
         }
     }
 
-    suspend fun deleteAllCachesForGame(gameId: Long) = withContext(Dispatchers.IO) {
-        val caches = saveCacheDao.getByGame(gameId)
-        for (cache in caches) {
+    /**
+     * Deletes the cached versions the server also holds and keeps every version that exists only
+     * on this device. Returns the number of versions kept.
+     */
+    suspend fun deleteServerHeldCachesForGame(gameId: Long): Int = withContext(Dispatchers.IO) {
+        val (localOnly, serverHeld) = saveCacheDao.getByGame(gameId)
+            .partition { it.rommSaveId == null || it.needsRemoteSync }
+        for (cache in serverHeld) {
             val cacheFile = File(cacheBaseDir, cache.cachePath)
             val parentDir = cacheFile.parentFile
-            cacheFile.delete()
+            if (cacheFile.isDirectory) cacheFile.deleteRecursively() else cacheFile.delete()
             if (parentDir?.listFiles()?.isEmpty() == true) {
                 parentDir.delete()
             }
         }
-        saveCacheDao.deleteByGame(gameId)
+        saveCacheDao.deleteByIds(serverHeld.map { it.id })
 
-        val gameDirs = listOf(File(cacheBaseDir, gameId.toString())) +
-            (cacheBaseDir.listFiles { f ->
-                f.isDirectory && com.nendo.argosy.util.AppPaths.isOwnerCacheDir(f.name)
-            }?.map { File(it, gameId.toString()) } ?: emptyList())
-        for (gameDir in gameDirs) {
-            if (gameDir.exists() && gameDir.isDirectory) {
-                gameDir.deleteRecursively()
+        if (localOnly.isEmpty()) {
+            val gameDirs = listOf(File(cacheBaseDir, gameId.toString())) +
+                (cacheBaseDir.listFiles { f ->
+                    f.isDirectory && com.nendo.argosy.util.AppPaths.isOwnerCacheDir(f.name)
+                }?.map { File(it, gameId.toString()) } ?: emptyList())
+            for (gameDir in gameDirs) {
+                if (gameDir.exists() && gameDir.isDirectory) {
+                    gameDir.deleteRecursively()
+                }
             }
         }
 
-        Log.d(TAG, "Deleted all ${caches.size} cached saves for game $gameId")
+        Log.d(TAG, "Deleted ${serverHeld.size} server-held cached saves for game $gameId, kept ${localOnly.size} local-only")
+        localOnly.size
     }
 
     fun getCacheFile(entity: SaveCacheEntity): File = File(cacheBaseDir, entity.cachePath)

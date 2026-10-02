@@ -131,15 +131,6 @@
         <item quantity="one">%1$d Download eingereiht</item>
         <item quantity="other">%1$d Downloads eingereiht</item>
     </plurals>
-    <string name="notif_dualscreen_no_local_path">Spiel hat keinen lokalen Pfad</string>
-    <string name="notif_dualscreen_state_slot_auto">Auto-Savestate</string>
-    <string name="notif_dualscreen_state_slot_numbered">Savestate-Slot %1$d</string>
-    <string name="notif_dualscreen_state_restored">%1$s wiederhergestellt</string>
-    <string name="notif_dualscreen_state_version_mismatch">%1$s wurde mit einer anderen Core-Version erstellt</string>
-    <string name="notif_dualscreen_state_restore_failed">%1$s konnte nicht wiederhergestellt werden</string>
-    <string name="notif_dualscreen_state_deleted">%1$s gelöscht</string>
-    <string name="notif_dualscreen_state_copied">%1$s nach %2$s kopiert</string>
-    <string name="notif_dualscreen_state_copy_failed">%1$s konnte nicht kopiert werden</string>
 
     <string name="notif_gamelaunch_no_emulator">Kein Emulator für diese Plattform installiert</string>
     <string name="notif_gamelaunch_no_rom_file">ROM-Datei nicht gefunden</string>

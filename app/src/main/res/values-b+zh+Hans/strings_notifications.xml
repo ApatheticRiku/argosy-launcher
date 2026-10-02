@@ -125,15 +125,6 @@
     <plurals name="notif_dualscreen_downloads_queued">
         <item quantity="other">已将%1$d个下载加入队列</item>
     </plurals>
-    <string name="notif_dualscreen_no_local_path">游戏没有本地路径</string>
-    <string name="notif_dualscreen_state_slot_auto">自动即时存档</string>
-    <string name="notif_dualscreen_state_slot_numbered">即时存档槽位%1$d</string>
-    <string name="notif_dualscreen_state_restored">已恢复%1$s</string>
-    <string name="notif_dualscreen_state_version_mismatch">%1$s是由不同的核心版本创建的</string>
-    <string name="notif_dualscreen_state_restore_failed">无法恢复%1$s</string>
-    <string name="notif_dualscreen_state_deleted">已删除%1$s</string>
-    <string name="notif_dualscreen_state_copied">已将%1$s复制到%2$s</string>
-    <string name="notif_dualscreen_state_copy_failed">无法复制%1$s</string>
 
     <string name="notif_gamelaunch_no_emulator">此平台未安装模拟器</string>
     <string name="notif_gamelaunch_no_rom_file">未找到ROM文件</string>

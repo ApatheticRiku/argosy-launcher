@@ -790,7 +790,16 @@ class ArgosyViewModel @Inject constructor(
 
     fun resolveBackgroundConflict(resolution: ConflictResolution) {
         val info = _backgroundConflictInfo.value ?: return
-        syncQueueManager.resolveConflict(info.gameId, resolution)
+        val conflictId = info.conflictId
+        if (conflictId == null) {
+            syncQueueManager.resolveConflict(info.gameId, resolution)
+            return
+        }
+        syncQueueManager.withdrawConflict(info.gameId)
+        viewModelScope.launch {
+            val stored = pendingConflictDao.getById(conflictId) ?: return@launch
+            conflictResolutionService.resolve(stored, resolution)
+        }
     }
 
     fun moveBackgroundConflictFocus(direction: Int) {

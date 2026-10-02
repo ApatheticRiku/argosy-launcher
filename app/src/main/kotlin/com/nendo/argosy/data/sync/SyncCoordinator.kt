@@ -821,7 +821,21 @@ class SyncCoordinator @Inject constructor(
                 )
                 if (conflictInfo != null) {
                     saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName!!, excludeId = -1)
-                    syncQueueManager.addConflict(conflictInfo)
+                    val conflictId = pendingConflictDao.record(
+                        PendingConflictEntity(
+                            gameId = cache.gameId,
+                            rommSaveId = conflictInfo.serverSaveId,
+                            fileName = cache.channelName,
+                            slot = cache.channelName,
+                            emulator = cache.emulatorId,
+                            localUpdatedAt = cache.cachedAt,
+                            serverUpdatedAt = conflictInfo.serverTimestamp,
+                            localHash = cache.contentHash,
+                            reason = conflictInfo.serverDeviceName?.let { "Server has newer save from $it" } ?: "Server has newer save",
+                            ownerUserId = cache.ownerUserId ?: PendingConflictEntity.UNATTRIBUTED
+                        )
+                    )
+                    syncQueueManager.addConflict(conflictInfo.copy(conflictId = conflictId))
                     Logger.warn(TAG, "processDirtySaveCaches: Pre-upload conflict for channel cache id=${cache.id}")
                     continue
                 }
@@ -870,6 +884,9 @@ class SyncCoordinator @Inject constructor(
                         parkConflictForOwner(cache, game.title, result, ownerApi.rommUserId)
                         Logger.warn(TAG, "processDirtySaveCaches: Parked conflict for absent owner ${ownerApi.rommUserId} | cacheId=${cache.id} gameId=${cache.gameId} channel=${cache.channelName}")
                     } else {
+                        val conflictId = parkConflictForOwner(
+                            cache, game.title, result, cache.ownerUserId ?: PendingConflictEntity.UNATTRIBUTED
+                        )
                         syncQueueManager.addConflict(ConflictInfo(
                             gameId = cache.gameId,
                             gameName = game.title,
@@ -878,7 +895,8 @@ class SyncCoordinator @Inject constructor(
                             serverTimestamp = result.serverTimestamp,
                             isHashConflict = false,
                             serverDeviceName = result.serverDeviceName,
-                            serverSaveId = result.serverSaveId
+                            serverSaveId = result.serverSaveId,
+                            conflictId = conflictId
                         ))
                         Logger.warn(TAG, "processDirtySaveCaches: Conflict for channel cache id=${cache.id} gameId=${cache.gameId} channel=${cache.channelName} | cleared dirty flag, awaiting resolution")
                     }
@@ -1011,7 +1029,7 @@ class SyncCoordinator @Inject constructor(
         gameTitle: String,
         result: SaveSyncResult.Conflict,
         ownerUserId: Long
-    ) {
+    ): Long =
         pendingConflictDao.record(
             result.toPendingConflict(
                 fileName = cache.channelName ?: gameTitle,
@@ -1021,7 +1039,6 @@ class SyncCoordinator @Inject constructor(
                 ownerUserId = ownerUserId
             ).copy(gameId = cache.gameId, localHash = cache.contentHash)
         )
-    }
 
     suspend fun queueStateUpload(gameId: Long, rommId: Long, stateCacheId: Long, emulatorId: String) {
         val payload = SaveStatePayload(stateCacheId, emulatorId)

@@ -53,6 +53,36 @@ class SyncQueueManagerTest {
     }
 
     @Test
+    fun `an answer nobody awaited does not auto-resolve the next conflict for the same game`() = runTest {
+        val manager = SyncQueueManager()
+
+        manager.addConflict(info(3L))
+        manager.resolveConflict(3L, ConflictResolution.KEEP_LOCAL)
+
+        manager.addConflict(info(3L))
+        try {
+            withTimeout(50) { manager.awaitResolution(3L) }
+            fail("A stale answer resolved a conflict the user has not seen")
+        } catch (_: Exception) {
+        }
+    }
+
+    @Test
+    fun `withdrawing a conflict removes it without recording an answer`() = runTest {
+        val manager = SyncQueueManager()
+
+        manager.addConflict(info(4L))
+        manager.withdrawConflict(4L)
+
+        assertEquals(emptyList<ConflictInfo>(), manager.pendingConflicts.value)
+        try {
+            withTimeout(50) { manager.awaitResolution(4L) }
+            fail("Withdrawing a conflict recorded an answer")
+        } catch (_: Exception) {
+        }
+    }
+
+    @Test
     fun `resolutions for different games are independent`() = runTest {
         val manager = SyncQueueManager()
 

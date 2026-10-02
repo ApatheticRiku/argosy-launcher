@@ -391,6 +391,12 @@ against live data (`GET /api/saves`, negotiate no-op twice) before the next phas
 6. Bulk and user paths. New-ROM download, forced checks, the reconcile applier, the Save Sync
    screen's conflict resolution, background conflict answers and game deletion all run through
    the same decision and writer; dead dual-screen handlers go.
+   Built as: `ConflictResolutionService` dismisses a conflict only after its upload or download
+   succeeds; conflicts the dirty-cache drain parks are stored in `pending_conflicts` and the
+   background dialog answers them by id, so no answer lands in the in-memory map without a
+   waiter; the reconcile applier never marks a slot awaiting a decision as server-newer unless
+   an auto-resolve rule chose the server; Delete Download keeps every cached save and state the
+   server does not hold.
 
 ## Critic defects folded into revision 2
 

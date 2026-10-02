@@ -137,15 +137,6 @@
         <item quantity="many">%1$d téléchargements mis en file</item>
         <item quantity="other">%1$d téléchargements mis en file</item>
     </plurals>
-    <string name="notif_dualscreen_no_local_path">Le jeu n\'a pas de chemin local</string>
-    <string name="notif_dualscreen_state_slot_auto">état automatique</string>
-    <string name="notif_dualscreen_state_slot_numbered">emplacement d\'état %1$d</string>
-    <string name="notif_dualscreen_state_restored">%1$s restauré</string>
-    <string name="notif_dualscreen_state_version_mismatch">%1$s a été créé par une version différente du cœur</string>
-    <string name="notif_dualscreen_state_restore_failed">Impossible de restaurer %1$s</string>
-    <string name="notif_dualscreen_state_deleted">%1$s supprimé</string>
-    <string name="notif_dualscreen_state_copied">%1$s copié vers %2$s</string>
-    <string name="notif_dualscreen_state_copy_failed">Impossible de copier %1$s</string>
 
     <string name="notif_gamelaunch_no_emulator">Aucun émulateur installé pour cette plateforme</string>
     <string name="notif_gamelaunch_no_rom_file">Fichier ROM introuvable</string>

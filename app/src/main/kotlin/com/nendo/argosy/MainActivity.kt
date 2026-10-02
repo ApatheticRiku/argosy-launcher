@@ -24,7 +24,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.nendo.argosy.data.cache.ImageCacheManager
-import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferences
@@ -33,9 +32,6 @@ import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
-import com.nendo.argosy.domain.usecase.achievement.FetchAchievementsUseCase
-import com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase
-import com.nendo.argosy.domain.usecase.save.RestoreCachedSaveUseCase
 import com.nendo.argosy.hardware.AmbientLedContext
 import com.nendo.argosy.hardware.AmbientLedManager
 import com.nendo.argosy.hardware.ScreenCaptureManager
@@ -132,30 +128,8 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var getGamesForPinnedCollectionUseCase: com.nendo.argosy.domain.usecase.collection.GetGamesForPinnedCollectionUseCase
     @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
     @Inject lateinit var saveCacheManager: SaveCacheManager
-    @Inject lateinit var getUnifiedSavesUseCase: GetUnifiedSavesUseCase
-    @Inject lateinit var getUnifiedStatesUseCase:
-        com.nendo.argosy.domain.usecase.state.GetUnifiedStatesUseCase
-    @Inject lateinit var stateCacheManager: com.nendo.argosy.data.repository.StateCacheManager
-    @Inject lateinit var restoreCachedSaveUseCase: RestoreCachedSaveUseCase
-    @Inject lateinit var activateSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.ActivateSaveChannelUseCase
-    @Inject lateinit var restoreSaveChannelPointUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.RestoreSaveChannelPointUseCase
-    @Inject lateinit var createSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.CreateSaveChannelUseCase
-    @Inject lateinit var copySaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.CopySaveChannelUseCase
-    @Inject lateinit var renameSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.RenameSaveChannelUseCase
-    @Inject lateinit var deleteSaveChannelUseCase:
-        com.nendo.argosy.domain.usecase.savechannel.DeleteSaveChannelUseCase
-    @Inject lateinit var restoreStateUseCase:
-        com.nendo.argosy.domain.usecase.state.RestoreStateUseCase
     @Inject lateinit var prefetchGameSaveDataUseCase:
         com.nendo.argosy.domain.usecase.sync.PrefetchGameSaveDataUseCase
-    @Inject lateinit var emulatorResolver: EmulatorResolver
-    @Inject lateinit var coreVersionExtractor: com.nendo.argosy.data.emulator.CoreVersionExtractor
-    @Inject lateinit var fetchAchievementsUseCase: FetchAchievementsUseCase
     @Inject lateinit var raRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository
     @Inject lateinit var raTileContentRepository: com.nendo.argosy.data.repository.RaTileContentRepository
     @Inject lateinit var achievementUpdateBus: com.nendo.argosy.core.event.AchievementUpdateBus
@@ -298,21 +272,7 @@ class MainActivity : ComponentActivity() {
                 platformSyncQueue = platformSyncQueue,
                 gameLaunchDelegate = gameLaunchDelegate,
                 saveCacheManager = saveCacheManager,
-                getUnifiedSavesUseCase = getUnifiedSavesUseCase,
-                getUnifiedStatesUseCase = getUnifiedStatesUseCase,
-                stateCacheManager = stateCacheManager,
-                restoreCachedSaveUseCase = restoreCachedSaveUseCase,
-                activateSaveChannelUseCase = activateSaveChannelUseCase,
-                restoreSaveChannelPointUseCase = restoreSaveChannelPointUseCase,
-                createSaveChannelUseCase = createSaveChannelUseCase,
-                copySaveChannelUseCase = copySaveChannelUseCase,
-                renameSaveChannelUseCase = renameSaveChannelUseCase,
-                deleteSaveChannelUseCase = deleteSaveChannelUseCase,
-                restoreStateUseCase = restoreStateUseCase,
                 prefetchGameSaveDataUseCase = prefetchGameSaveDataUseCase,
-                emulatorResolver = emulatorResolver,
-                coreVersionExtractor = coreVersionExtractor,
-                fetchAchievementsUseCase = fetchAchievementsUseCase,
                 raRepository = raRepository,
                 raTileContentRepository = raTileContentRepository,
                 achievementUpdateBus = achievementUpdateBus,

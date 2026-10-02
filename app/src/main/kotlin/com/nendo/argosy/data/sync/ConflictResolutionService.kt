@@ -38,7 +38,6 @@ class ConflictResolutionService @Inject constructor(
             ConflictResolution.KEEP_LOCAL -> {
                 val emulatorId = resolveEmulator(conflict)
                     ?: return@withContext ConflictResolutionOutcome.Failed("Cannot resolve emulator for conflict ${conflict.id}")
-                pendingConflictDao.dismiss(conflict.id)
                 val result = saveSyncRepository.uploadSave(
                     gameId = conflict.gameId,
                     emulatorId = emulatorId,
@@ -46,12 +45,11 @@ class ConflictResolutionService @Inject constructor(
                     forceOverwrite = true
                 )
                 Logger.info(TAG, "[Resolve] KEEP_LOCAL gameId=${conflict.gameId} channel=${conflict.slot} emulator=$emulatorId -> $result")
-                ConflictResolutionOutcome.Resolved(result)
+                settle(conflict, result)
             }
             ConflictResolution.KEEP_SERVER -> {
                 val emulatorId = resolveEmulator(conflict)
                     ?: return@withContext ConflictResolutionOutcome.Failed("Cannot resolve emulator for conflict ${conflict.id}")
-                pendingConflictDao.dismiss(conflict.id)
                 val result = saveSyncRepository.downloadSave(
                     gameId = conflict.gameId,
                     emulatorId = emulatorId,
@@ -59,10 +57,20 @@ class ConflictResolutionService @Inject constructor(
                     knownServerSaveId = conflict.rommSaveId
                 )
                 Logger.info(TAG, "[Resolve] KEEP_SERVER gameId=${conflict.gameId} channel=${conflict.slot} emulator=$emulatorId -> $result")
-                ConflictResolutionOutcome.Resolved(result)
+                settle(conflict, result)
             }
         }
     }
+
+    private suspend fun settle(conflict: PendingConflictEntity, result: SaveSyncResult): ConflictResolutionOutcome =
+        when (result) {
+            is SaveSyncResult.Success -> {
+                pendingConflictDao.dismiss(conflict.id)
+                ConflictResolutionOutcome.Resolved(result)
+            }
+            is SaveSyncResult.Error -> ConflictResolutionOutcome.Failed(result.message)
+            else -> ConflictResolutionOutcome.Failed("Conflict ${conflict.id} left open: $result")
+        }
 
     private suspend fun resolveEmulator(conflict: PendingConflictEntity): String? {
         conflict.emulator?.let { return it }
