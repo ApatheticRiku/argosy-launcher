@@ -137,6 +137,20 @@ class ReconcileEffectApplier @Inject constructor(
         }
         val payload = SaveFilePayload(emulatorId = emulatorId, channelName = op.slot, source = QueueSource.NEGOTIATE)
         val ownerUserId = syncPreferencesRepository.getRommUserId()
+        val slot = SaveSyncApiClient.syncKeyOf(op.slot)
+        val pinnedCacheId = if (slot == SaveSyncApiClient.AUTOSAVE_SLOT_NAME) {
+            null
+        } else {
+            saveCacheManager.get().getCachesForGameOnce(game.id)
+                .filter { (it.ownerUserId == null || it.ownerUserId == ownerUserId) && !it.isRollback }
+                .filter { SaveSyncApiClient.syncKeyOf(it.channelName) == slot }
+                .maxByOrNull { it.cachedAt }
+                ?.id
+                ?: run {
+                    Logger.debug(TAG, "applyPlan UPLOAD: gameId=${game.id} slot=$slot holds no cached version, skipping")
+                    return false
+                }
+        }
         pendingSyncQueueDao.deleteByGameAndType(game.id, SyncType.SAVE_FILE, ownerUserId)
         pendingSyncQueueDao.insert(
             PendingSyncQueueEntity(
@@ -146,7 +160,8 @@ class ReconcileEffectApplier @Inject constructor(
                 priority = SyncPriority.SAVE_FILE,
                 payloadJson = payloadCodec.encode(payload),
                 sessionId = sessionId,
-                ownerUserId = ownerUserId
+                ownerUserId = ownerUserId,
+                cacheId = pinnedCacheId
             )
         )
         return true

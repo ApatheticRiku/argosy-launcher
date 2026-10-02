@@ -32,6 +32,7 @@ class ReconcileEffectApplierTest {
     private lateinit var conflictAutoResolver: ConflictAutoResolver
     private lateinit var saveSyncRepository: SaveSyncRepository
     private lateinit var applier: ReconcileEffectApplier
+    private val saveCacheManager = mockk<com.nendo.argosy.data.repository.SaveCacheManager>(relaxed = true)
 
     private val game = GameEntity(
         id = 11L,
@@ -63,7 +64,7 @@ class ReconcileEffectApplierTest {
             pendingConflictDao = pendingConflictDao,
             conflictAutoResolver = conflictAutoResolver,
             saveSyncRepository = dagger.Lazy { saveSyncRepository },
-            saveCacheManager = dagger.Lazy { mockk(relaxed = true) },
+            saveCacheManager = dagger.Lazy { saveCacheManager },
             payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
             syncPreferencesRepository = mockk(relaxed = true)
         )
@@ -111,6 +112,35 @@ class ReconcileEffectApplierTest {
         assertEquals(game.id, captured.captured.gameId)
         assertEquals(SyncType.SAVE_FILE, captured.captured.syncType)
         assertEquals(9L, captured.captured.sessionId)
+    }
+
+    @Test
+    fun `UPLOAD for a named slot pins that slot's newest cached version`() = runTest {
+        val captured = slot<PendingSyncQueueEntity>()
+        coEvery { pendingSyncQueueDao.insert(capture(captured)) } returns 1L
+        fun cache(id: Long, channel: String, at: Long, rollback: Boolean = false) =
+            com.nendo.argosy.data.local.entity.SaveCacheEntity(
+                id = id, gameId = game.id, emulatorId = "mgba", cachedAt = java.time.Instant.ofEpochSecond(at),
+                saveSize = 1, cachePath = "x/$id", channelName = channel, isRollback = rollback
+            )
+        coEvery { saveCacheManager.getCachesForGameOnce(game.id) } returns listOf(
+            cache(1L, "main-save", 10), cache(2L, "main-save", 20), cache(3L, "main-save", 30, rollback = true), cache(4L, "autosave", 40)
+        )
+
+        val outcome = applier.apply(op(ReconcileAction.UPLOAD, slot = "main-save"), sessionId = 9L)
+
+        assertEquals(1, outcome.applied)
+        assertEquals(2L, captured.captured.cacheId)
+    }
+
+    @Test
+    fun `UPLOAD for a named slot with no cached version is skipped instead of failing in the queue`() = runTest {
+        coEvery { saveCacheManager.getCachesForGameOnce(game.id) } returns emptyList()
+
+        val outcome = applier.apply(op(ReconcileAction.UPLOAD, slot = "main-save"), sessionId = 9L)
+
+        assertEquals(0, outcome.applied)
+        coVerify(exactly = 0) { pendingSyncQueueDao.insert(any()) }
     }
 
     @Test
