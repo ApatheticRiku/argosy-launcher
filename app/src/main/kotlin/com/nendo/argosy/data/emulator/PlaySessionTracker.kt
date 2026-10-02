@@ -975,24 +975,24 @@ class PlaySessionTracker @Inject constructor(
      * it until some later, longer session for the same game happens to run.
      */
     fun cancelSession() {
-        if (endingSession.get()) {
+        val session = _activeSession.value ?: return
+        if (!endingSession.compareAndSet(false, true)) {
             Logger.debug(TAG, "[SaveSync] SESSION | cancelSession skipped: endSession already in progress")
             return
         }
-        val session = _activeSession.value ?: return
         _activeSession.value = null
         GameSessionService.stop(application)
         Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Cancelled (no save backup)")
         scope.launch {
-            if (session.variantFileId == null && !session.isNetplayGuest) {
-                try {
-                    syncStateData(session.gameId, session.emulatorPackage)
-                } catch (e: Exception) {
-                    Logger.error(TAG, "[StateSync] SESSION gameId=${session.gameId} | State flush on cancel failed", e)
+            try {
+                if (session.variantFileId == null && !session.isNetplayGuest) {
+                    syncStateDataLogged(session.gameId, session.emulatorPackage, "CANCEL")
                 }
+                clearSessionAndBroadcast()
+                signalSessionClosed(session)
+            } finally {
+                endingSession.set(false)
             }
-            clearSessionAndBroadcast()
-            signalSessionClosed(session)
         }
     }
 
