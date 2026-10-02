@@ -9,7 +9,11 @@ import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.sync.ConflictInfo
 import com.nendo.argosy.data.sync.ConflictResolution
+import com.nendo.argosy.data.sync.NegotiateInventory
 import com.nendo.argosy.data.sync.SyncQueueManager
+import com.nendo.argosy.data.sync.strategy.NegotiatorSaveSyncStrategy
+import com.nendo.argosy.data.sync.strategy.ReconcileAction
+import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import com.nendo.argosy.data.sync.SyncQueueState
 import com.nendo.argosy.domain.model.SaveSlotClassifier
 import com.nendo.argosy.util.Logger
@@ -112,9 +116,17 @@ class SaveSyncRepository @Inject constructor(
     private val syncQueueManager: SyncQueueManager,
     private val saveSyncDao: SaveSyncDao,
     private val saveCacheDao: SaveCacheDao,
-    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
+    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
+    private val strategySelector: SaveSyncStrategySelector,
+    private val negotiateInventory: NegotiateInventory
 ) {
     private val PRE_LAUNCH_TAG = "SaveSyncRepository"
+    private val PRE_LAUNCH_ACTION_PRIORITY = listOf(
+        ReconcileAction.CONFLICT,
+        ReconcileAction.DOWNLOAD,
+        ReconcileAction.UPLOAD,
+        ReconcileAction.NO_OP
+    )
 
     val syncQueueState: StateFlow<SyncQueueState> = entityManager.syncQueueState
 
@@ -376,6 +388,11 @@ class SaveSyncRepository @Inject constructor(
 
         apiClient.flushPendingDeviceSync(gameId)
 
+        val negotiator = strategySelector.current() as? NegotiatorSaveSyncStrategy
+        if (negotiator != null) {
+            return@withContext negotiatePreLaunch(negotiator, gameId, rommId, emulatorId, effectiveChannel, secureSaves, existing)
+        }
+
         val serverSaves = try {
             apiClient.checkSavesForGame(gameId, rommId)
                 .filterNot { SaveSyncApiClient.isStateShapedSave(it) }
@@ -420,6 +437,42 @@ class SaveSyncRepository @Inject constructor(
 
         Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | serverIsCurrent=${ourSync?.isCurrent == true} contentMatchesLastSync=$contentMatchesLastSync serverHasNewer=$serverHasNewer localDirty=$localDirty | decision=${decision::class.simpleName} serverSaveId=${active.id}")
         decision
+    }
+
+    private suspend fun negotiatePreLaunch(
+        negotiator: NegotiatorSaveSyncStrategy,
+        gameId: Long,
+        rommId: Long,
+        emulatorId: String,
+        slot: String,
+        secureSaves: Boolean,
+        existing: SaveSyncEntity?
+    ): PreLaunchSyncResult {
+        val inventory = negotiateInventory.build(secureSaves, gameId)
+        val plan = negotiator.planForGame(inventory, rommId) ?: run {
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId slot=$slot | negotiate unavailable | decision=NoConnection")
+            return PreLaunchSyncResult.NoConnection
+        }
+        val op = plan.operations
+            .filter { SaveSyncApiClient.syncKeyOf(it.slot) == slot }
+            .minByOrNull { PRE_LAUNCH_ACTION_PRIORITY.indexOf(it.action) }
+        val serverTimestamp = op?.serverUpdatedAt?.let { SaveSyncApiClient.parseTimestamp(it) } ?: Instant.now()
+        val decision = when (op?.action) {
+            ReconcileAction.DOWNLOAD -> PreLaunchSyncResult.ServerIsNewer(serverTimestamp, slot, op.saveId)
+            ReconcileAction.CONFLICT -> PreLaunchSyncResult.LocalModified(
+                localSavePath = existing?.localSavePath.orEmpty(),
+                serverTimestamp = serverTimestamp,
+                channelName = slot,
+                serverSaveId = op.saveId
+            )
+            ReconcileAction.UPLOAD -> {
+                existing?.localSavePath?.let { orchestrator.queueUpload(gameId, emulatorId, it, slot) }
+                PreLaunchSyncResult.LocalIsNewer
+            }
+            ReconcileAction.NO_OP, null -> PreLaunchSyncResult.LocalIsNewer
+        }
+        Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId slot=$slot | negotiate session=${plan.sessionId} action=${op?.action} reason=${op?.reason} saveId=${op?.saveId} | decision=${decision::class.simpleName}")
+        return decision
     }
 
     suspend fun markUserSelectedRestorePoint(gameId: Long, emulatorId: String, channelName: String?) =

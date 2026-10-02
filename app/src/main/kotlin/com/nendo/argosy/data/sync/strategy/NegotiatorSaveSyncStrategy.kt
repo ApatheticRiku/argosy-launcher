@@ -14,14 +14,25 @@ class NegotiatorSaveSyncStrategy @Inject constructor(
     private val connectionManager: RomMConnectionManager
 ) : SaveSyncStrategy {
 
-    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan {
+    override suspend fun planReconcile(localInventory: List<LocalSaveState>): ReconcilePlan =
+        negotiate(localInventory, romIds = null) ?: ReconcilePlan.EMPTY
+
+    /**
+     * Negotiate scoped to one game. Null when the server could not answer, which callers read as
+     * an unknown server state and never as "no saves".
+     */
+    suspend fun planForGame(localInventory: List<LocalSaveState>, romId: Long): ReconcilePlan? =
+        negotiate(localInventory.filter { it.romId == romId }, romIds = listOf(romId))
+            ?.let { plan -> plan.copy(operations = plan.operations.filter { it.romId == romId }) }
+
+    private suspend fun negotiate(localInventory: List<LocalSaveState>, romIds: List<Long>?): ReconcilePlan? {
         val api = connectionManager.getApi() ?: run {
-            Logger.debug(TAG, "planReconcile: no api, returning empty plan")
-            return ReconcilePlan.EMPTY
+            Logger.debug(TAG, "negotiate: no api")
+            return null
         }
         val deviceId = connectionManager.getDeviceId() ?: run {
-            Logger.debug(TAG, "planReconcile: no deviceId, returning empty plan")
-            return ReconcilePlan.EMPTY
+            Logger.debug(TAG, "negotiate: no deviceId")
+            return null
         }
 
         val payload = RomMSyncNegotiatePayload(
@@ -36,25 +47,28 @@ class NegotiatorSaveSyncStrategy @Inject constructor(
                     updatedAt = it.updatedAt,
                     fileSizeBytes = it.fileSizeBytes
                 )
-            }
+            },
+            romIds = romIds
         )
 
         val response = try {
             api.negotiateSync(payload)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Logger.error(TAG, "planReconcile: negotiate failed", e)
-            return ReconcilePlan.EMPTY
+            Logger.error(TAG, "negotiate failed", e)
+            return null
         }
 
         if (!response.isSuccessful) {
-            Logger.warn(TAG, "planReconcile: server returned ${response.code()}")
-            return ReconcilePlan.EMPTY
+            Logger.warn(TAG, "negotiate: server returned ${response.code()}")
+            return null
         }
-        val body = response.body() ?: return ReconcilePlan.EMPTY
+        val body = response.body() ?: return null
 
         Logger.info(
             TAG,
-            "planReconcile: sessionId=${body.sessionId} upload=${body.totalUpload} download=${body.totalDownload} conflict=${body.totalConflict} no_op=${body.totalNoOp}"
+            "planReconcile: sessionId=${body.sessionId} romIds=$romIds upload=${body.totalUpload} download=${body.totalDownload} conflict=${body.totalConflict} no_op=${body.totalNoOp}"
         )
 
         val plan = ReconcilePlan(

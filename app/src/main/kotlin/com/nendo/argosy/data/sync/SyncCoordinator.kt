@@ -66,7 +66,8 @@ class SyncCoordinator @Inject constructor(
     private val rommApiProvider: RomMApiProvider,
     private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
     private val syncStatesOnSessionEndUseCase:
-        Lazy<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>
+        Lazy<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>,
+    private val negotiateInventory: NegotiateInventory
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -158,7 +159,7 @@ class SyncCoordinator @Inject constructor(
             processQueue()
         }
 
-        val inventory = buildInventory(secureSaves)
+        val inventory = negotiateInventory.build(secureSaves)
         val plan = strategySelector.current().planReconcile(inventory)
         if (plan.operations.isEmpty()) {
             return@withContext ReconcileSummary(queueResult, planConflicts = 0, planApplied = 0)
@@ -167,54 +168,6 @@ class SyncCoordinator @Inject constructor(
         val (conflicts, applied) = applyPlan(plan)
         Logger.info(TAG, "reconcileAll: plan applied | conflicts=$conflicts handled=$applied sessionId=${plan.sessionId}")
         ReconcileSummary(queueResult, planConflicts = conflicts, planApplied = applied)
-    }
-
-    private suspend fun buildInventory(secureSaves: Boolean): List<LocalSaveState> {
-        val rows = saveSyncDao.getAllWithLocalPath(syncPreferencesRepository.getRommUserId())
-        var skippedNoGame = 0
-        var skippedNoRom = 0
-        var skippedStateShaped = 0
-        val result = rows.mapNotNull { row ->
-            val path = row.localSavePath ?: return@mapNotNull null
-            val file = File(path)
-            if (!file.exists()) return@mapNotNull null
-
-            val channel = row.channelName
-            if (channel != null && Regex("""^state_""", RegexOption.IGNORE_CASE).containsMatchIn(channel)) {
-                skippedStateShaped++
-                return@mapNotNull null
-            }
-
-            val game = gameDao.getById(row.gameId) ?: run { skippedNoGame++; return@mapNotNull null }
-            if (game.localPath == null) { skippedNoRom++; return@mapNotNull null }
-
-            val romBaseName = File(game.localPath).nameWithoutExtension
-            val serverFileName = SaveSyncApiClient.computeUploadFileName(
-                localSavePath = path,
-                channelName = row.channelName,
-                romBaseName = romBaseName
-            )
-
-            val reportedTime = if (!secureSaves && file.isDirectory) {
-                val newest = savePathResolver.findNewestFileTime(path)
-                Instant.ofEpochMilli(if (newest > 0) newest else file.lastModified())
-            } else {
-                Instant.ofEpochMilli(file.lastModified())
-            }
-
-            LocalSaveState(
-                romId = row.rommId,
-                fileName = serverFileName,
-                slot = row.channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
-                emulator = row.emulatorId,
-                contentHash = row.lastUploadedHash,
-                updatedAt = reportedTime.toString(),
-                fileSizeBytes = file.length()
-            )
-        }
-        val nullHashCount = result.count { it.contentHash == null }
-        Logger.debug(TAG, "buildInventory: rows=${result.size} nullHash=$nullHashCount skippedNoGame=$skippedNoGame skippedNoRom=$skippedNoRom skippedStateShaped=$skippedStateShaped")
-        return result
     }
 
     private suspend fun applyPlan(plan: ReconcilePlan): Pair<Int, Int> {

@@ -6,6 +6,12 @@ import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.remote.romm.RomMDeviceSync
 import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.sync.SyncQueueManager
+import com.nendo.argosy.data.sync.strategy.LegacySaveSyncStrategy
+import com.nendo.argosy.data.sync.strategy.NegotiatorSaveSyncStrategy
+import com.nendo.argosy.data.sync.strategy.ReconcileAction
+import com.nendo.argosy.data.sync.strategy.ReconcileOperation
+import com.nendo.argosy.data.sync.strategy.ReconcilePlan
+import com.nendo.argosy.data.sync.strategy.SaveSyncStrategySelector
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -26,6 +32,8 @@ class SaveSyncRepositoryPreLaunchTest {
     private val syncQueueManager = mockk<SyncQueueManager>(relaxed = true)
     private val saveSyncDao = mockk<SaveSyncDao>(relaxed = true)
     private val saveCacheDao = mockk<SaveCacheDao>(relaxed = true)
+    private val strategySelector = mockk<SaveSyncStrategySelector>()
+    private val negotiator = mockk<NegotiatorSaveSyncStrategy>()
 
     private lateinit var repo: SaveSyncRepository
 
@@ -38,8 +46,9 @@ class SaveSyncRepositoryPreLaunchTest {
         repo = SaveSyncRepository(
             apiClient, conflictResolver, orchestrator, entityManager,
             stateCacheManager, syncQueueManager, saveSyncDao, saveCacheDao,
-            mockk(relaxed = true),
+            mockk(relaxed = true), strategySelector, mockk(relaxed = true),
         )
+        every { strategySelector.current() } returns mockk<LegacySaveSyncStrategy>(relaxed = true)
         every { apiClient.getDeviceId() } returns "device-1"
         coEvery { apiClient.checkSavesForGame(any(), any()) } returns emptyList()
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns null
@@ -62,6 +71,68 @@ class SaveSyncRepositoryPreLaunchTest {
         fileNameNoExt = "save",
         deviceSyncs = deviceSyncs
     )
+
+    private fun negotiateAnswers(vararg ops: ReconcileOperation) {
+        every { strategySelector.current() } returns negotiator
+        coEvery { negotiator.planForGame(any(), rommId) } returns ReconcilePlan(sessionId = 1L, operations = ops.toList())
+    }
+
+    private fun op(action: ReconcileAction, slot: String, saveId: Long = 70L) = ReconcileOperation(
+        action = action,
+        romId = rommId,
+        saveId = saveId,
+        fileName = "save.srm",
+        slot = slot,
+        serverUpdatedAt = "2026-10-01T00:00:00Z"
+    )
+
+    @Test
+    fun `negotiate download for the launch slot pulls that save`() = runTest {
+        negotiateAnswers(op(ReconcileAction.NO_OP, "slot1", 1L), op(ReconcileAction.DOWNLOAD, "autosave", 70L))
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertEquals(70L, (result as PreLaunchSyncResult.ServerIsNewer).serverSaveId)
+        io.mockk.coVerify(exactly = 0) { apiClient.checkSavesForGame(any(), any()) }
+    }
+
+    @Test
+    fun `negotiate conflict asks the user instead of pulling`() = runTest {
+        negotiateAnswers(op(ReconcileAction.CONFLICT, "autosave", 71L))
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertEquals(71L, (result as PreLaunchSyncResult.LocalModified).serverSaveId)
+    }
+
+    @Test
+    fun `negotiate no-op launches with the local save, whatever the client clocks say`() = runTest {
+        negotiateAnswers(op(ReconcileAction.NO_OP, "autosave"))
+        coEvery { saveCacheDao.hasNeedingRemoteSync(any(), any()) } returns true
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertTrue(result is PreLaunchSyncResult.LocalIsNewer)
+    }
+
+    @Test
+    fun `a download for another slot does not pull over the launch slot`() = runTest {
+        negotiateAnswers(op(ReconcileAction.DOWNLOAD, "slot1"))
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertTrue(result is PreLaunchSyncResult.LocalIsNewer)
+    }
+
+    @Test
+    fun `an unanswered negotiate is unknown server state, never no saves`() = runTest {
+        every { strategySelector.current() } returns negotiator
+        coEvery { negotiator.planForGame(any(), any()) } returns null
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertTrue(result is PreLaunchSyncResult.NoConnection)
+    }
 
     @Test
     fun `no deviceId returns NoConnection without an API call`() = runTest {
