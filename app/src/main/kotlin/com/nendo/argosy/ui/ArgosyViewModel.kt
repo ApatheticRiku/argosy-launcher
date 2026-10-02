@@ -219,6 +219,7 @@ class ArgosyViewModel @Inject constructor(
     private val launchGameUseCase: LaunchGameUseCase,
     private val homeLibraryDelegate: com.nendo.argosy.ui.screens.home.delegates.HomeLibraryDelegate,
     private val pendingConflictDao: com.nendo.argosy.data.local.dao.PendingConflictDao,
+    private val conflictResolutionService: com.nendo.argosy.data.sync.ConflictResolutionService,
     private val deepLinkLaunchCoordinator: com.nendo.argosy.ui.deeplink.DeepLinkLaunchCoordinator,
     private val emulatorLaunchTargetResolver:
         com.nendo.argosy.ui.screens.common.EmulatorLaunchTargetResolver
@@ -330,7 +331,8 @@ class ArgosyViewModel @Inject constructor(
                     channelName = event.channelName,
                     localTimestamp = event.localTimestamp,
                     serverTimestamp = event.serverTimestamp,
-                    serverDeviceName = event.serverDeviceName
+                    serverDeviceName = event.serverDeviceName,
+                    conflictId = event.conflictId
                 )
                 _saveConflictButtonIndex.value = 0
             }
@@ -751,12 +753,27 @@ class ArgosyViewModel @Inject constructor(
     val saveConflictButtonIndex: StateFlow<Int> = _saveConflictButtonIndex.asStateFlow()
 
     fun dismissSaveConflict() {
+        answerSaveConflict(ConflictResolution.SKIP)
+    }
+
+    private fun answerSaveConflict(resolution: ConflictResolution) {
         val info = _saveConflictInfo.value
         _saveConflictInfo.value = null
         _saveConflictButtonIndex.value = 0
         playSessionTracker.clearPendingSessionConflict()
-        if (info != null) {
-            viewModelScope.launch {
+        if (info == null) return
+        viewModelScope.launch {
+            val stored = info.conflictId?.let { pendingConflictDao.getById(it) }
+            if (stored != null) {
+                conflictResolutionService.resolve(stored, resolution)
+            } else if (resolution == ConflictResolution.KEEP_LOCAL) {
+                saveSyncRepository.uploadSave(
+                    gameId = info.gameId,
+                    emulatorId = info.emulatorId,
+                    channelName = info.channelName,
+                    forceOverwrite = true
+                )
+            } else {
                 saveSyncRepository.clearDirtyFlags(info.gameId)
             }
         }
@@ -768,16 +785,7 @@ class ArgosyViewModel @Inject constructor(
     }
 
     fun forceUploadConflictSave() {
-        val info = _saveConflictInfo.value ?: return
-        viewModelScope.launch {
-            saveSyncRepository.uploadSave(
-                gameId = info.gameId,
-                emulatorId = info.emulatorId,
-                channelName = info.channelName,
-                forceOverwrite = true
-            )
-        }
-        dismissSaveConflict()
+        answerSaveConflict(ConflictResolution.KEEP_LOCAL)
     }
 
     fun resolveBackgroundConflict(resolution: ConflictResolution) {

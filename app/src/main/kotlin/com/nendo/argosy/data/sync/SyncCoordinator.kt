@@ -523,18 +523,12 @@ class SyncCoordinator @Inject constructor(
                 val localTime = resolveConflictLocalTime(
                     item.gameId, payload.emulatorId, payload.channelName, result.localTimestamp
                 )
-                pendingConflictDao.upsert(
-                    PendingConflictEntity(
-                        gameId = item.gameId,
-                        rommSaveId = result.serverSaveId,
+                pendingConflictDao.record(
+                    result.toPendingConflict(
                         fileName = payload.channelName ?: game.title,
                         slot = payload.channelName,
-                        emulator = payload.emulatorId,
+                        emulatorId = payload.emulatorId,
                         localUpdatedAt = localTime,
-                        serverUpdatedAt = result.serverTimestamp,
-                        localHash = result.localContentHash,
-                        serverHash = result.serverContentHash,
-                        reason = result.serverDeviceName?.let { "Server has newer save from $it" } ?: "Server has newer save",
                         ownerUserId = item.ownerUserId ?: signedInUserId ?: PendingConflictEntity.UNATTRIBUTED
                     )
                 )
@@ -1058,20 +1052,14 @@ class SyncCoordinator @Inject constructor(
         result: SaveSyncResult.Conflict,
         ownerUserId: Long
     ) {
-        pendingConflictDao.upsert(
-            PendingConflictEntity(
-                gameId = cache.gameId,
-                rommSaveId = result.serverSaveId,
+        pendingConflictDao.record(
+            result.toPendingConflict(
                 fileName = cache.channelName ?: gameTitle,
                 slot = cache.channelName,
-                emulator = cache.emulatorId,
+                emulatorId = cache.emulatorId,
                 localUpdatedAt = cache.cachedAt,
-                serverUpdatedAt = result.serverTimestamp,
-                localHash = cache.contentHash,
-                serverHash = result.serverContentHash,
-                reason = result.serverDeviceName?.let { "Server has newer save from $it" } ?: "Server has newer save",
                 ownerUserId = ownerUserId
-            )
+            ).copy(gameId = cache.gameId, localHash = cache.contentHash)
         )
     }
 

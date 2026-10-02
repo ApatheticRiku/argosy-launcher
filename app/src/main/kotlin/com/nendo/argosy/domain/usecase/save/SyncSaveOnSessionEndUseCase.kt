@@ -10,9 +10,9 @@ import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.flow.first
-import java.io.File
 import java.time.Instant
 import javax.inject.Inject
 
@@ -23,6 +23,7 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
     private val emulatorResolver: EmulatorResolver,
     private val preferencesRepository: UserPreferencesRepository,
     private val romMRepository: RomMRepository,
+    private val fileAccessLayer: FileAccessLayer,
 ) {
     companion object {
         private const val TAG = "SyncSaveOnSessionEnd"
@@ -39,9 +40,7 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
             val gameId: Long,
             val emulatorId: String,
             val channelName: String?,
-            val localTimestamp: Instant,
-            val serverTimestamp: Instant,
-            val serverDeviceName: String? = null
+            val upload: SaveSyncResult.Conflict
         ) : Result()
         data object NoSaveFound : Result()
         data object NotConfigured : Result()
@@ -122,19 +121,17 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
             return Result.NoSaveFound
         }
 
-        val saveFile = File(savePath)
-        if (!saveFile.exists()) {
+        if (!fileAccessLayer.exists(savePath)) {
             Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=NO_SAVE_FOUND | Path exists but file missing | path=$savePath")
             return Result.NoSaveFound
         }
 
-        val saveSize = if (saveFile.isDirectory) saveFile.walkTopDown().filter { it.isFile }.sumOf { it.length() } else saveFile.length()
-        val localModified = if (saveFile.isDirectory) {
-            val newestTime = saveFile.walkTopDown().filter { it.isFile }.maxOfOrNull { it.lastModified() } ?: 0L
-            Instant.ofEpochMilli(newestTime)
-        } else {
-            Instant.ofEpochMilli(saveFile.lastModified())
-        }
+        val isDirectory = fileAccessLayer.isDirectory(savePath)
+        val members = if (isDirectory) fileAccessLayer.walk(savePath).filter { it.isFile }.toList() else emptyList()
+        val saveSize = if (isDirectory) members.sumOf { it.size } else fileAccessLayer.length(savePath)
+        val localModified = Instant.ofEpochMilli(
+            if (isDirectory) members.maxOfOrNull { it.lastModified } ?: 0L else fileAccessLayer.lastModified(savePath)
+        )
         val activeChannel = channelName ?: activeSaveRepository.getActiveChannel(gameId)
             ?: if (isHardcore) null else com.nendo.argosy.data.repository.SaveSyncApiClient.AUTOSAVE_SLOT_NAME
         Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Save ready for upload | path=$savePath, size=${saveSize}bytes, modified=$localModified, channel=$activeChannel")
@@ -172,12 +169,10 @@ class SyncSaveOnSessionEndUseCase @Inject constructor(
             is SaveSyncResult.Conflict -> {
                 Logger.info(TAG, "[SaveSync] SESSION gameId=$gameId | Result=CONFLICT | local=${syncResult.localTimestamp}, server=${syncResult.serverTimestamp}")
                 Result.Conflict(
-                    syncResult.gameId,
-                    emulatorId,
-                    activeChannel,
-                    syncResult.localTimestamp,
-                    syncResult.serverTimestamp,
-                    syncResult.serverDeviceName
+                    gameId = syncResult.gameId,
+                    emulatorId = emulatorId,
+                    channelName = activeChannel,
+                    upload = syncResult
                 )
             }
             is SaveSyncResult.Error -> {

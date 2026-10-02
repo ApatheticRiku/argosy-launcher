@@ -42,7 +42,8 @@ data class SaveConflictInfo(
     val channelName: String?,
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
-    val serverDeviceName: String? = null
+    val serverDeviceName: String? = null,
+    val conflictId: Long? = null
 )
 
 @Composable

@@ -15,6 +15,8 @@ import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
+import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.data.storage.FileAccessLayer
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -36,6 +38,7 @@ class SyncSaveOnSessionEndUseCaseTest {
     private val emulatorConfigDao = mockk<EmulatorConfigDao>(relaxed = true)
     private val preferencesRepository = mockk<UserPreferencesRepository>(relaxed = true)
     private val romMRepository = mockk<RomMRepository>(relaxed = true)
+    private val fileAccessLayer = mockk<FileAccessLayer>(relaxed = true)
 
     private val duckstation = EmulatorRegistry.getById("duckstation")!!
     private val retroarch = EmulatorRegistry.getById("retroarch")!!
@@ -64,7 +67,8 @@ class SyncSaveOnSessionEndUseCaseTest {
             installedAppResolver = mockk(relaxed = true) { every { isAppInstalled(any()) } returns false }
         ),
         preferencesRepository = preferencesRepository,
-        romMRepository = romMRepository
+        romMRepository = romMRepository,
+        fileAccessLayer = fileAccessLayer
     )
 
     @Before
@@ -117,6 +121,23 @@ class SyncSaveOnSessionEndUseCaseTest {
         coVerify(exactly = 1) {
             saveSyncRepository.discoverSavePath("duckstation", any(), any(), any(), any(), any(), any(), any())
         }
+    }
+
+    @Test
+    fun `a save only the file access layer can reach is still uploaded`() = runTest {
+        val restricted = "/storage/emulated/0/Android/data/com.github.stenzek.duckstation/files/memcards/ape.mcd"
+        coEvery {
+            saveSyncRepository.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns restricted
+        every { fileAccessLayer.exists(restricted) } returns true
+        every { fileAccessLayer.isDirectory(restricted) } returns false
+        every { fileAccessLayer.lastModified(restricted) } returns 1_000L
+        coEvery { saveSyncRepository.uploadSave(GAME_ID, any(), any(), any(), any(), any()) } returns
+            SaveSyncResult.Success(rommSaveId = 5L)
+
+        val result = useCase(GAME_ID, duckstation.packageName)
+
+        assertEquals(SyncSaveOnSessionEndUseCase.Result.Uploaded(rommSaveId = 5L), result)
     }
 
     @Test

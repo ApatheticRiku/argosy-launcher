@@ -34,6 +34,7 @@ import com.nendo.argosy.DualScreenManagerHolder
 import com.nendo.argosy.core.event.GameUpdateBus
 import com.nendo.argosy.util.PermissionHelper
 import com.nendo.argosy.util.SafeCoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -84,7 +85,8 @@ data class SaveConflictEvent(
     val channelName: String?,
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
-    val serverDeviceName: String? = null
+    val serverDeviceName: String? = null,
+    val conflictId: Long? = null
 )
 
 @Singleton
@@ -95,8 +97,6 @@ class PlaySessionTracker @Inject constructor(
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
     private val playSessionDao: PlaySessionDao,
     private val saveCacheDao: SaveCacheDao,
-    private val pendingSyncQueueDao: com.nendo.argosy.data.local.dao.PendingSyncQueueDao,
-    private val syncSaveOnSessionEndUseCase: dagger.Lazy<SyncSaveOnSessionEndUseCase>,
     private val syncStatesOnSessionEndUseCase: dagger.Lazy<SyncStatesOnSessionEndUseCase>,
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
     private val saveSyncRepository: dagger.Lazy<SaveSyncRepository>,
@@ -111,7 +111,7 @@ class PlaySessionTracker @Inject constructor(
     private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
     private val reconcileAchievementsOnSessionEndUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.achievement.ReconcileAchievementsOnSessionEndUseCase>,
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
-    private val saveAccessNotices: com.nendo.argosy.data.sync.SaveAccessNotices
+    private val sessionSaveFinalizer: SessionSaveFinalizer
 ) {
     companion object {
         private const val TAG = "PlaySessionTracker"
@@ -121,8 +121,6 @@ class PlaySessionTracker @Inject constructor(
     private val sessionStateStore by lazy { SessionStateStore(application) }
     private val endingSession = AtomicBoolean(false)
     private val saveObserved = AtomicBoolean(false)
-    @Volatile
-    private var unreadableSaveDir: Pair<String, String>? = null
     private val sessionServiceMutex = Mutex()
     private val sessionServiceStarted = AtomicBoolean(false)
 
@@ -140,10 +138,22 @@ class PlaySessionTracker @Inject constructor(
         DualScreenManagerHolder.instance?.onSessionChanged(gameId ?: -1L, isHardcore, channelName)
     }
 
-    private suspend fun clearSessionAndBroadcast() {
+    private suspend fun clearSessionAndBroadcast() = releaseSession(keepRecord = false)
+
+    private suspend fun releaseSession(keepRecord: Boolean) {
         DualScreenManagerHolder.instance?.setEmulatorDisplay(null)
-        preferencesRepository.clearActiveSession()
+        if (!keepRecord) preferencesRepository.clearActiveSession()
         broadcastSessionChanged(null, null, false)
+    }
+
+    private suspend fun syncStateDataLogged(gameId: Long, emulatorPackage: String, phase: String) {
+        try {
+            syncStateData(gameId, emulatorPackage)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Logger.error(TAG, "[StateSync] $phase gameId=$gameId | State sync failed", e)
+        }
     }
 
     private val _activeSession = MutableStateFlow<ActiveSession?>(null)
@@ -260,89 +270,30 @@ class PlaySessionTracker @Inject constructor(
         }
     }
 
-    private suspend fun recoverOrphanedSave(orphaned: PersistedSession) {
-        if (orphaned.variantFileId != null) {
-            Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Variant session, skipping save recovery")
-            return
-        }
-        try {
-            val game = gameDao.getById(orphaned.gameId)
-            if (game == null) {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Game not found, skipping save recovery")
-                return
-            }
-
-            val emulatorId = emulatorResolver.resolveEmulatorId(orphaned.emulatorPackage)
-            if (emulatorId == null) {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Cannot resolve emulator ID | package=${orphaned.emulatorPackage}")
-                return
-            }
-
-            val savePath = saveSyncRepository.get().discoverSavePath(
-                emulatorId = emulatorId,
-                gameTitle = game.title,
-                platformSlug = game.platformSlug,
-                romPath = game.localPath,
-                cachedSaveId = game.saveId ?: game.titleId,
-                coreName = orphaned.coreName,
-                emulatorPackage = orphaned.emulatorPackage,
-                gameId = orphaned.gameId
-            )
-
-            if (savePath == null) {
-                Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | No save path found for recovery")
-                return
-            }
-
-            val activeChannel = if (orphaned.isHardcore) null else orphaned.channelName
-            val cacheResult = saveCacheManager.get().cacheCurrentSave(
-                gameId = orphaned.gameId,
-                emulatorId = emulatorId,
-                savePath = savePath,
-                channelName = activeChannel,
-                isLocked = false,
-                isHardcore = orphaned.isHardcore,
-                skipDuplicateCheck = false
-            )
-            when (cacheResult) {
-                is SaveCacheManager.CacheResult.Created -> {
-                    activeSaveRepository.activateCache(orphaned.gameId, cacheResult.cacheId)
-                    activeSaveRepository.setActiveSaveApplied(orphaned.gameId, false)
-                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery backup created | path=$savePath")
-                }
-                is SaveCacheManager.CacheResult.Duplicate -> {
-                    activeSaveRepository.activateCache(orphaned.gameId, cacheResult.cacheId)
-                    activeSaveRepository.setActiveSaveApplied(orphaned.gameId, false)
-                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Save matches cache id=${cacheResult.cacheId}, now active")
-                }
-                is SaveCacheManager.CacheResult.Failed ->
-                    Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create recovery backup")
-            }
-
-            if (cacheResult !is SaveCacheManager.CacheResult.Failed) {
-                when (val syncResult = syncSaveOnSessionEndUseCase.get()(orphaned)) {
-                    is SyncSaveOnSessionEndUseCase.Result.Uploaded -> {
-                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Synced to RomM")
-                        notificationManager.show(
-                            title = NotificationText.Res(R.string.sync_session_save_uploaded_orphan),
-                            subtitle = NotificationText.Raw(game.title),
-                            type = NotificationType.SUCCESS,
-                            imagePath = game.displayCoverPath,
-                            duration = NotificationDuration.MEDIUM,
-                            key = "sync-${orphaned.gameId}",
-                            immediate = true
-                        )
-                    }
-                    is SyncSaveOnSessionEndUseCase.Result.Queued ->
-                        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Queued for sync")
-                    is SyncSaveOnSessionEndUseCase.Result.Error ->
-                        Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Sync failed: ${syncResult.message}")
-                    else -> {}
-                }
-            }
+    private suspend fun recoverOrphanedSave(orphaned: PersistedSession): SessionSaveOutcome {
+        val outcome = try {
+            finalizeSave(orphaned.toSaveInput())
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery failed", e)
+            Logger.error(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery failed, keeping the session for the next attempt", e)
+            return SessionSaveOutcome.CacheFailed
         }
+        Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery outcome=${outcome::class.simpleName} settled=${outcome.isSettled}")
+        val sync = (outcome as? SessionSaveOutcome.Synced)?.sync
+        if (sync is SyncSaveOnSessionEndUseCase.Result.Uploaded) {
+            val game = gameDao.getById(orphaned.gameId)
+            notificationManager.show(
+                title = NotificationText.Res(R.string.sync_session_save_uploaded_orphan),
+                subtitle = game?.title?.let { NotificationText.Raw(it) },
+                type = NotificationType.SUCCESS,
+                imagePath = game?.displayCoverPath,
+                duration = NotificationDuration.MEDIUM,
+                key = "sync-${orphaned.gameId}",
+                immediate = true
+            )
+        }
+        return outcome
     }
 
     suspend fun checkOrphanedSession() {
@@ -366,9 +317,9 @@ class PlaySessionTracker @Inject constructor(
             } else {
                 Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
             }
-            recoverOrphanedSave(orphaned)
+            val saved = recoverOrphanedSave(orphaned)
             recoverOrphanedStates(orphaned)
-            clearSessionAndBroadcast()
+            releaseSession(keepRecord = !saved.isSettled)
         } finally {
             endingSession.set(false)
             saveRecoveryGate.markComplete()
@@ -416,7 +367,8 @@ class PlaySessionTracker @Inject constructor(
             isHardcore = persisted.isHardcore,
             channelName = persisted.channelName,
             variantFileId = persisted.variantFileId,
-            origin = persisted.origin
+            origin = persisted.origin,
+            isNetplayGuest = persisted.isNetplayGuest
         )
         broadcastSessionChanged(persisted.gameId, persisted.channelName, persisted.isHardcore)
         sessionServiceMutex.withLock {
@@ -431,16 +383,12 @@ class PlaySessionTracker @Inject constructor(
     }
 
     private suspend fun recoverOrphanedStates(orphaned: PersistedSession) {
-        if (orphaned.variantFileId != null) return
-        try {
-            syncStateData(orphaned.gameId, orphaned.emulatorPackage)
-        } catch (e: Exception) {
-            Logger.error(TAG, "[StateSync] ORPHAN gameId=${orphaned.gameId} | State recovery failed", e)
-        }
+        if (orphaned.variantFileId != null || orphaned.isNetplayGuest) return
+        syncStateDataLogged(orphaned.gameId, orphaned.emulatorPackage, "ORPHAN")
     }
 
-    private suspend fun recoverOrphanedPlaySession(stopService: Boolean): Boolean {
-        val orphaned = preferencesRepository.getPersistedSession() ?: return false
+    private suspend fun recoverOrphanedPlaySession(stopService: Boolean): Boolean? {
+        val orphaned = preferencesRepository.getPersistedSession() ?: return null
         val endTime = Instant.now()
         val longEnough = Duration.between(orphaned.startTime, endTime).seconds >= MIN_PLAY_SECONDS_FOR_COMPLETION
 
@@ -450,9 +398,9 @@ class PlaySessionTracker @Inject constructor(
             Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short for play session (${Duration.between(orphaned.startTime, endTime).seconds}s)")
         }
 
-        recoverOrphanedSave(orphaned)
+        val saved = recoverOrphanedSave(orphaned)
         recoverOrphanedStates(orphaned)
-        clearSessionAndBroadcast()
+        releaseSession(keepRecord = !saved.isSettled)
         if (stopService) GameSessionService.stop(application)
         return longEnough
     }
@@ -585,7 +533,8 @@ class PlaySessionTracker @Inject constructor(
                     isHardcore = isHardcore,
                     channelName = channelName,
                     variantFileId = variantFileId,
-                    origin = origin
+                    origin = origin,
+                    isNetplayGuest = isNetplayGuest
                 )
 
                 DualScreenManagerHolder.instance?.assignEmulatorDisplayForSessionStart()
@@ -672,7 +621,8 @@ class PlaySessionTracker @Inject constructor(
                     isHardcore = isHardcore,
                     channelName = channelName,
                     variantFileId = updated.variantFileId,
-                    origin = updated.origin
+                    origin = updated.origin,
+                    isNetplayGuest = updated.isNetplayGuest
                 )
                 sessionStateStore.setActiveSession(
                     gameId,
@@ -762,11 +712,11 @@ class PlaySessionTracker @Inject constructor(
             val session = _activeSession.value ?: run {
                 Logger.debug(TAG, "[SaveSync] SESSION | endSession called but no active session, checking persisted session")
                 val recovered = recoverOrphanedPlaySession(stopService)
-                if (!recovered) {
+                if (recovered == null) {
                     clearSessionAndBroadcast()
                     if (stopService) GameSessionService.stop(application)
                 }
-                return if (recovered) SessionEndResult.Success else SessionEndResult.Skipped
+                return if (recovered == true) SessionEndResult.Success else SessionEndResult.Skipped
             }
             _activeSession.value = null
             if (stopService) GameSessionService.stop(application)
@@ -836,42 +786,38 @@ class PlaySessionTracker @Inject constructor(
 
             val effectiveSkipSaveSync = skipSaveSync || session.isNetplayGuest || session.variantFileId != null
             val outcome = try {
-                val saveOutcome = runCatching {
-                    coroutineScope {
-                        val saveJob = async {
-                            recordPlayTime(session, Duration.ofMillis(activePlayMs))
-                            markGameIncompleteIfNeeded(session, sessionDuration)
-                            if (!effectiveSkipSaveSync) syncAndCacheSave(session) else null
-                        }
-                        saveJob.await()
-                    }
+                val saveOutcome = coroutineScope {
+                    async {
+                        recordPlayTime(session, Duration.ofMillis(activePlayMs))
+                        markGameIncompleteIfNeeded(session, sessionDuration)
+                        if (effectiveSkipSaveSync) SessionSaveOutcome.Exempt else finalizeSave(session.toSaveInput())
+                    }.await()
                 }
 
-                if (!effectiveSkipSaveSync) {
-                    try {
-                        syncStateData(session.gameId, session.emulatorPackage)
-                    } catch (e: Exception) {
-                        Logger.error(TAG, "[StateSync] SESSION gameId=${session.gameId} | State sync failed", e)
-                    }
+                if (!effectiveSkipSaveSync) syncStateDataLogged(session.gameId, session.emulatorPackage, "SESSION")
+
+                if (saveOutcome is SessionSaveOutcome.Synced) {
+                    handleSaveSyncResult(session, gameDao.getById(session.gameId), saveOutcome.sync)
                 }
-
-                val cacheResult = saveOutcome.getOrThrow()
-
                 saveSyncRepository.get().clearSessionOnOlderSave(session.gameId)
-                clearSessionAndBroadcast()
+                releaseSession(keepRecord = !saveOutcome.isSettled)
 
-                when (cacheResult) {
-                    is SaveCacheManager.CacheResult.Created -> SessionEndResult.Success
-                    is SaveCacheManager.CacheResult.Duplicate -> SessionEndResult.Duplicate
-                    is SaveCacheManager.CacheResult.Failed -> SessionEndResult.Error("Failed to cache save")
-                    null -> unreadableSaveDir
-                        ?.let { (dir, emulatorId) -> SessionEndResult.SaveUnreadable(dir, emulatorId) }
-                        ?: SessionEndResult.Skipped
+                when (saveOutcome) {
+                    is SessionSaveOutcome.Synced -> when (saveOutcome.cache) {
+                        is SaveCacheManager.CacheResult.Duplicate -> SessionEndResult.Duplicate
+                        else -> SessionEndResult.Success
+                    }
+                    SessionSaveOutcome.CacheFailed -> SessionEndResult.Error("Failed to cache save")
+                    is SessionSaveOutcome.Unreadable -> SessionEndResult.SaveUnreadable(saveOutcome.dirPath, saveOutcome.emulatorId)
+                    SessionSaveOutcome.Exempt, SessionSaveOutcome.NothingToSave -> SessionEndResult.Skipped
                 }
+            } catch (e: CancellationException) {
+                releaseSession(keepRecord = true)
+                throw e
             } catch (e: Exception) {
-                Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Session end failed", e)
+                Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Session end failed, keeping the session for recovery", e)
                 saveSyncRepository.get().clearSessionOnOlderSave(session.gameId)
-                clearSessionAndBroadcast()
+                releaseSession(keepRecord = true)
                 SessionEndResult.Error(e.message ?: "Unknown error")
             }
             signalSessionClosed(session)
@@ -913,96 +859,26 @@ class PlaySessionTracker @Inject constructor(
         Logger.debug(TAG, "Marked game ${session.gameId} as Incomplete after ${sessionDuration.seconds}s session")
     }
 
-    private suspend fun syncAndCacheSave(session: ActiveSession): SaveCacheManager.CacheResult? {
-        unreadableSaveDir = null
-        saveCacheDao.clearAllDirtyFlags(session.gameId, activeSaveRepository.activeOwnerId())
-
-        val cacheResult = cacheCurrentSave(session)
-
-        if (cacheResult is SaveCacheManager.CacheResult.Failed || cacheResult == null) {
-            return cacheResult
+    private suspend fun finalizeSave(input: SessionSaveInput): SessionSaveOutcome {
+        val outcome = sessionSaveFinalizer.finalize(input)
+        if (outcome is SessionSaveOutcome.Synced) {
+            surfaceConflict(outcome)
         }
-
-        val game = gameDao.getById(session.gameId)
-        val result = syncSaveOnSessionEndUseCase.get()(
-            session.gameId,
-            session.emulatorPackage,
-            session.startTime.toEpochMilli(),
-            session.coreName,
-            session.isHardcore,
-            channelName = session.channelName
-        )
-
-        if (result is SyncSaveOnSessionEndUseCase.Result.Uploaded) {
-            val activeChannel = if (session.isHardcore) null else session.channelName
-            val uploadedCacheId = when (cacheResult) {
-                is SaveCacheManager.CacheResult.Created -> cacheResult.cacheId
-                is SaveCacheManager.CacheResult.Duplicate -> cacheResult.cacheId
-                else -> null
-            }
-            linkCacheToServer(session.gameId, activeChannel, result, uploadedCacheId)
-            pendingSyncQueueDao.deleteActiveByGameAndType(
-                session.gameId,
-                com.nendo.argosy.data.local.entity.SyncType.SAVE_FILE,
-                activeSaveRepository.activeOwnerId()
-            )
-        }
-
-        handleSaveSyncResult(session, game, result)
-        return cacheResult
+        return outcome
     }
 
-    private suspend fun linkCacheToServer(
-        gameId: Long,
-        channelName: String?,
-        uploadResult: SyncSaveOnSessionEndUseCase.Result.Uploaded,
-        uploadedCacheId: Long?
-    ) {
-        val rommSaveId = uploadResult.rommSaveId ?: return
-        val ownerUserId = activeSaveRepository.activeOwnerId()
-
-        val cacheEntry = uploadedCacheId?.let { saveCacheDao.getById(it) }
-            ?: run {
-                Logger.warn(TAG, "[SaveSync] SESSION gameId=$gameId | linkCacheToServer: no uploadedCacheId, skipping metadata link to avoid clobbering an unrelated cache")
-                com.nendo.argosy.util.SaveDebugLogger.logLinkCache(
-                    gameId = gameId,
-                    channel = channelName,
-                    cacheId = null,
-                    rommSaveId = rommSaveId,
-                    serverTimestamp = uploadResult.serverTimestamp,
-                    method = "skipped:noUploadedCacheId"
-                )
-                if (channelName != null) {
-                    saveCacheDao.clearDirtyFlagForChannel(gameId, ownerUserId, channelName, excludeId = -1)
-                } else {
-                    saveCacheDao.clearAllDirtyFlags(gameId, ownerUserId)
-                }
-                return
-            }
-
-        saveCacheDao.updateRommSaveId(cacheEntry.id, rommSaveId)
-
-        val serverTimestamp = uploadResult.serverTimestamp
-        if (serverTimestamp != null) {
-            saveCacheDao.updateCachedAt(cacheEntry.id, serverTimestamp)
-        }
-
-        com.nendo.argosy.util.SaveDebugLogger.logLinkCache(
-            gameId = gameId,
-            channel = channelName,
-            cacheId = cacheEntry.id,
-            rommSaveId = rommSaveId,
-            serverTimestamp = serverTimestamp,
-            method = "byUploadedCacheId"
+    private fun surfaceConflict(outcome: SessionSaveOutcome.Synced) {
+        val conflict = outcome.sync as? SyncSaveOnSessionEndUseCase.Result.Conflict ?: return
+        Logger.debug(TAG, "[SaveSync] SESSION gameId=${conflict.gameId} | Sync result: CONFLICT | conflictId=${outcome.conflictId}, local=${conflict.upload.localTimestamp}, server=${conflict.upload.serverTimestamp}")
+        _pendingSessionConflict.value = SaveConflictEvent(
+            gameId = conflict.gameId,
+            emulatorId = conflict.emulatorId,
+            channelName = conflict.channelName,
+            localTimestamp = conflict.upload.localTimestamp,
+            serverTimestamp = conflict.upload.serverTimestamp,
+            serverDeviceName = conflict.upload.serverDeviceName,
+            conflictId = outcome.conflictId
         )
-
-        if (channelName != null) {
-            saveCacheDao.clearDirtyFlagForChannel(gameId, ownerUserId, channelName, excludeId = -1)
-        } else {
-            saveCacheDao.clearAllDirtyFlags(gameId, ownerUserId)
-        }
-
-        Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Linked cache id=${cacheEntry.id} to rommSaveId=$rommSaveId | channel=$channelName")
     }
 
     private suspend fun handleSaveSyncResult(
@@ -1011,17 +887,7 @@ class PlaySessionTracker @Inject constructor(
         result: SyncSaveOnSessionEndUseCase.Result
     ) {
         when (result) {
-            is SyncSaveOnSessionEndUseCase.Result.Conflict -> {
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Sync result: CONFLICT | local=${result.localTimestamp}, server=${result.serverTimestamp}")
-                _pendingSessionConflict.value = SaveConflictEvent(
-                    gameId = result.gameId,
-                    emulatorId = result.emulatorId,
-                    channelName = result.channelName,
-                    localTimestamp = result.localTimestamp,
-                    serverTimestamp = result.serverTimestamp,
-                    serverDeviceName = result.serverDeviceName
-                )
-            }
+            is SyncSaveOnSessionEndUseCase.Result.Conflict -> Unit
             is SyncSaveOnSessionEndUseCase.Result.Uploaded -> {
                 Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Sync result: UPLOADED")
                 notificationManager.show(
@@ -1193,8 +1059,9 @@ class PlaySessionTracker @Inject constructor(
         val session = _activeSession.value ?: return null
         if (session.variantFileId != null) return null
         val game = gameDao.getById(session.gameId) ?: return null
-        val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
-            ?: return null
+        val emulatorId = emulatorResolver.resolveSessionEmulator(
+            game.id, game.platformId, game.platformSlug, session.emulatorPackage
+        )?.emulatorId ?: return null
         val savePath = saveSyncRepository.get().discoverSavePath(
             emulatorId = emulatorId,
             gameTitle = game.title,
@@ -1220,6 +1087,8 @@ class PlaySessionTracker @Inject constructor(
             ).also { result ->
                 Logger.debug(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache result=${result::class.simpleName}")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Logger.error(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache failed", e)
             SaveCacheManager.CacheResult.Failed
@@ -1265,70 +1134,26 @@ class PlaySessionTracker @Inject constructor(
         return inForeground
     }
 
-    private suspend fun cacheCurrentSave(session: ActiveSession): SaveCacheManager.CacheResult? {
-        try {
-            val game = gameDao.getById(session.gameId) ?: return null
-
-            val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
-            if (emulatorId == null) {
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Cannot resolve emulator ID | package=${session.emulatorPackage}")
-                return null
-            }
-
-            val lookup = saveSyncRepository.get().discoverSavePathChecked(
-                emulatorId = emulatorId,
-                gameTitle = game.title,
-                platformSlug = game.platformSlug,
-                romPath = game.localPath,
-                cachedSaveId = game.saveId ?: game.titleId,
-                coreName = session.coreName,
-                emulatorPackage = session.emulatorPackage,
-                gameId = session.gameId
-            )
-            if (lookup is com.nendo.argosy.data.sync.SaveLookup.Unreadable) {
-                Logger.warn(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Save folder exists but cannot be read | dir=${lookup.dirPath}, emulator=$emulatorId")
-                saveAccessNotices.record(lookup.dirPath, emulatorId)
-                unreadableSaveDir = lookup.dirPath to emulatorId
-                return null
-            }
-            val savePath = (lookup as? com.nendo.argosy.data.sync.SaveLookup.Found)?.path
-
-            if (savePath != null) {
-                val activeChannel = if (session.isHardcore) null else session.channelName
-                val cacheResult = saveCacheManager.get().cacheCurrentSave(
-                    gameId = session.gameId,
-                    emulatorId = emulatorId,
-                    savePath = savePath,
-                    channelName = activeChannel,
-                    isLocked = false,
-                    isHardcore = session.isHardcore,
-                    skipDuplicateCheck = false,
-                    coreName = session.coreName
-                )
-                when (cacheResult) {
-                    is SaveCacheManager.CacheResult.Created -> {
-                        activeSaveRepository.activateCache(session.gameId, cacheResult.cacheId)
-                        activeSaveRepository.setActiveSaveApplied(session.gameId, false)
-                        Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Cached local save | path=$savePath, channel=$activeChannel")
-                    }
-                    is SaveCacheManager.CacheResult.Duplicate -> {
-                        activeSaveRepository.activateCache(session.gameId, cacheResult.cacheId)
-                        activeSaveRepository.setActiveSaveApplied(session.gameId, false)
-                        Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Save matches cache id=${cacheResult.cacheId}, now active | path=$savePath")
-                    }
-                    is SaveCacheManager.CacheResult.Failed -> {
-                        Logger.warn(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Failed to cache save | path=$savePath")
-                    }
-                }
-                return cacheResult
-            } else {
-                Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | No save path found for caching | emulator=$emulatorId")
-                return null
-            }
-        } catch (e: Exception) {
-            Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Failed to cache save", e)
-            return SaveCacheManager.CacheResult.Failed
-        }
-    }
-
 }
+
+private fun ActiveSession.toSaveInput() = SessionSaveInput(
+    gameId = gameId,
+    emulatorPackage = emulatorPackage,
+    coreName = coreName,
+    isHardcore = isHardcore,
+    channelName = channelName,
+    startTime = startTime,
+    variantFileId = variantFileId,
+    isNetplayGuest = isNetplayGuest
+)
+
+private fun PersistedSession.toSaveInput() = SessionSaveInput(
+    gameId = gameId,
+    emulatorPackage = emulatorPackage,
+    coreName = coreName,
+    isHardcore = isHardcore,
+    channelName = channelName,
+    startTime = startTime,
+    variantFileId = variantFileId,
+    isNetplayGuest = isNetplayGuest
+)

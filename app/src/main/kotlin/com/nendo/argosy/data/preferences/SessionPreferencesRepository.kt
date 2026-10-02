@@ -21,7 +21,8 @@ data class PersistedSession(
     val isHardcore: Boolean,
     val channelName: String? = null,
     val variantFileId: Long? = null,
-    val origin: LaunchOrigin = LaunchOrigin.INTERNAL
+    val origin: LaunchOrigin = LaunchOrigin.INTERNAL,
+    val isNetplayGuest: Boolean = false
 )
 
 @Singleton
@@ -37,6 +38,7 @@ class SessionPreferencesRepository @Inject constructor(
         val ACTIVE_SESSION_CHANNEL_NAME = stringPreferencesKey("active_session_channel_name")
         val ACTIVE_SESSION_VARIANT_FILE_ID = stringPreferencesKey("active_session_variant_file_id")
         val ACTIVE_SESSION_LAUNCH_ORIGIN = stringPreferencesKey("active_session_launch_origin")
+        val ACTIVE_SESSION_NETPLAY_GUEST = booleanPreferencesKey("active_session_netplay_guest")
     }
 
     val activeSessionFlow: Flow<PersistedSession?> = dataStore.data.map { prefs ->
@@ -51,9 +53,11 @@ class SessionPreferencesRepository @Inject constructor(
         isHardcore: Boolean,
         channelName: String? = null,
         variantFileId: Long? = null,
-        origin: LaunchOrigin = LaunchOrigin.INTERNAL
+        origin: LaunchOrigin = LaunchOrigin.INTERNAL,
+        isNetplayGuest: Boolean = false
     ) {
         dataStore.edit { prefs ->
+            prefs[Keys.ACTIVE_SESSION_NETPLAY_GUEST] = isNetplayGuest
             prefs[Keys.ACTIVE_SESSION_GAME_ID] = gameId.toString()
             prefs[Keys.ACTIVE_SESSION_EMULATOR] = emulatorPackage
             prefs[Keys.ACTIVE_SESSION_START_TIME] = startTime.toString()
@@ -78,6 +82,7 @@ class SessionPreferencesRepository @Inject constructor(
             prefs.remove(Keys.ACTIVE_SESSION_CHANNEL_NAME)
             prefs.remove(Keys.ACTIVE_SESSION_VARIANT_FILE_ID)
             prefs.remove(Keys.ACTIVE_SESSION_LAUNCH_ORIGIN)
+            prefs.remove(Keys.ACTIVE_SESSION_NETPLAY_GUEST)
         }
     }
 
@@ -99,7 +104,8 @@ class SessionPreferencesRepository @Inject constructor(
             isHardcore = this[Keys.ACTIVE_SESSION_IS_HARDCORE] ?: false,
             channelName = this[Keys.ACTIVE_SESSION_CHANNEL_NAME],
             variantFileId = this[Keys.ACTIVE_SESSION_VARIANT_FILE_ID]?.toLongOrNull(),
-            origin = LaunchOrigin.fromString(this[Keys.ACTIVE_SESSION_LAUNCH_ORIGIN])
+            origin = LaunchOrigin.fromString(this[Keys.ACTIVE_SESSION_LAUNCH_ORIGIN]),
+            isNetplayGuest = this[Keys.ACTIVE_SESSION_NETPLAY_GUEST] ?: false
         )
     }
 }
