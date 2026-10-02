@@ -41,11 +41,12 @@ class RootFileAccessor @Inject constructor(
 
     companion object {
         private const val TAG = "RootFileAccessor"
+        private val LEFT_TO_RIGHT_ISOLATE = Char(0x2066).toString()
         private val EMULATED = Regex("^/storage/emulated/(\\d+)/")
         private val INSIDE_PACKAGE = Regex("^/data/media/\\d+/Android/(data|obb)/[^/]+/.+")
 
         internal fun lowerPath(path: String): String? {
-            val clean = path.replace("⁦", "")
+            val clean = path.replace(LEFT_TO_RIGHT_ISOLATE, "")
             val lower = EMULATED.find(clean)?.let { match ->
                 "/data/media/${match.groupValues[1]}/" + clean.substring(match.range.last + 1)
             } ?: clean.takeIf { it.startsWith("/sdcard/") }?.let { "/data/media/0/" + it.removePrefix("/sdcard/") }
