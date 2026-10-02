@@ -65,7 +65,6 @@ data class ActiveSession(
     val isHardcore: Boolean = false,
     val isNewGame: Boolean = false,
     val channelName: String? = null,
-    val isOnOlderSave: Boolean = false,
     val isNetplayGuest: Boolean = false,
     val variantFileId: Long? = null,
     val origin: LaunchOrigin = LaunchOrigin.INTERNAL
@@ -549,42 +548,6 @@ class PlaySessionTracker @Inject constructor(
                     )
                 }
 
-                val prefs = preferencesRepository.userPreferences.first()
-                if (prefs.saveSyncEnabled && channelName != null) {
-                    val activeSaveTimestamp = activeSave?.cachedAt?.toEpochMilli()
-                    val latestCache = saveCacheDao.getLatestCasualSaveInChannel(gameId, activeSaveRepository.activeOwnerId(), channelName)
-                    val sessionEmuId = if (game != null) emulatorResolver.resolveEmulatorId(emulatorPackage) else null
-                    val usesBundledSave = if (game != null && sessionEmuId != null) {
-                        val cfg = SavePathRegistry.getConfigForPlatform(sessionEmuId, game.platformSlug)
-                        cfg?.usesGciFormat == true || cfg?.usesFolderBasedSaves == true
-                    } else false
-                    val isOnOlderSave = when {
-                        usesBundledSave -> false
-                        activeSaveTimestamp == null || latestCache == null -> false
-                        activeSaveTimestamp >= latestCache.cachedAt.toEpochMilli() -> false
-                        else -> {
-                            val emuId = sessionEmuId
-                            val sessionGame = game
-                            val onDiskPath = if (emuId != null && sessionGame != null) {
-                                saveSyncRepository.get().discoverSavePath(
-                                    emulatorId = emuId,
-                                    gameTitle = sessionGame.title,
-                                    platformSlug = sessionGame.platformSlug,
-                                    romPath = sessionGame.localPath,
-                                    cachedSaveId = sessionGame.saveId ?: sessionGame.titleId,
-                                    coreName = coreName,
-                                    emulatorPackage = emulatorPackage,
-                                    gameId = gameId
-                                )
-                            } else null
-                            val onDiskHash = onDiskPath?.let { saveCacheManager.get().calculateLocalSaveHash(it, gameId, emuId) }
-                            onDiskHash == null || latestCache.contentHash == null || onDiskHash != latestCache.contentHash
-                        }
-                    }
-                    saveSyncRepository.get().setSessionOnOlderSave(gameId, isOnOlderSave)
-                    _activeSession.value = _activeSession.value?.copy(isOnOlderSave = isOnOlderSave)
-                    Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | isOnOlderSave=$isOnOlderSave | channel=$channelName | activeSaveTs=${activeSaveTimestamp} | latestCacheTs=${latestCache?.cachedAt?.toEpochMilli()} | latestCacheId=${latestCache?.id}")
-                }
                 startGameSessionService(gameId, emulatorPackage, coreName, isHardcore, startTime.toEpochMilli())
             }
         }
@@ -606,11 +569,9 @@ class PlaySessionTracker @Inject constructor(
                 val channelName = if (isHardcore || session.variantFileId != null) null else activeSave?.channelName
                 val updated = session.copy(
                     isHardcore = isHardcore,
-                    channelName = channelName,
-                    isOnOlderSave = if (isHardcore) false else session.isOnOlderSave
+                    channelName = channelName
                 )
                 _activeSession.value = updated
-                if (isHardcore) saveSyncRepository.get().setSessionOnOlderSave(gameId, false)
                 Logger.debug(TAG, "[SaveSync] SESSION gameId=$gameId | Hardcore claim updated | hardcore=$isHardcore, channel=$channelName")
 
                 preferencesRepository.persistActiveSession(
@@ -799,7 +760,6 @@ class PlaySessionTracker @Inject constructor(
                 if (saveOutcome is SessionSaveOutcome.Synced) {
                     handleSaveSyncResult(session, gameDao.getById(session.gameId), saveOutcome.sync)
                 }
-                saveSyncRepository.get().clearSessionOnOlderSave(session.gameId)
                 releaseSession(keepRecord = !saveOutcome.isSettled)
 
                 when (saveOutcome) {
@@ -816,7 +776,6 @@ class PlaySessionTracker @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Logger.error(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Session end failed, keeping the session for recovery", e)
-                saveSyncRepository.get().clearSessionOnOlderSave(session.gameId)
                 releaseSession(keepRecord = true)
                 SessionEndResult.Error(e.message ?: "Unknown error")
             }

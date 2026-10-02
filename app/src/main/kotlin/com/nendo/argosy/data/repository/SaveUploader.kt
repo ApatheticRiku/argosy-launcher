@@ -273,14 +273,29 @@ class SaveUploader @Inject constructor(
 
             val latestServerSave = conflictDetector.pickLatestServerSave(serverSaves, channelName, romBaseName, isGciBundle)
 
+            val headHash = latestServerSave?.contentHash?.takeIf { client.getCapabilities().trustsServerHash }
+            if (!forceOverwrite && latestServerSave != null && headHash == contentHash && syncEntity != null) {
+                Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Skipped - bytes match the server's current save id=${latestServerSave.id}")
+                saveSyncDao.upsert(
+                    syncEntity.copy(
+                        rommSaveId = latestServerSave.id,
+                        serverUpdatedAt = SaveSyncApiClient.parseTimestamp(latestServerSave.updatedAt),
+                        lastSyncedAt = Instant.now(),
+                        lastUploadedHash = headHash,
+                        localContentHash = contentHash,
+                        syncStatus = SaveSyncEntity.STATUS_SYNCED
+                    )
+                )
+                return@withContext SaveSyncResult.Success(rommSaveId = latestServerSave.id, noOp = true)
+            }
+
             val conflictDecision = conflictDetector.detectUploadConflict(
                 gameId = gameId,
                 channelName = channelName,
                 forceOverwrite = forceOverwrite,
                 currentDeviceId = deviceId,
                 latestServerSave = latestServerSave,
-                localModified = localModified,
-                preSyncTimeIfSession = syncEntity?.lastSyncedAt
+                localModified = localModified
             )
             if (conflictDecision != null && conflictDecision.isConflict) {
                 return@withContext SaveSyncResult.Conflict(
@@ -457,28 +472,6 @@ class SaveUploader @Inject constructor(
             emulatorId
         }
         val serverEmulator = EmulatorRegistry.toServerEmulator(resolvedEmulatorId, client.resolveCoreForGame(game, resolvedEmulatorId))
-
-        if (!overwrite && deviceId != null) {
-            if (conflictDetector.isSessionOnOlderSave(gameId)) {
-                val serverSaves = serverSavesFor(gameId, rommId, ownerApi)
-                val latestForSlot = serverSaves
-                    .filter { it.slot != null && SaveSyncApiClient.equalsNormalized(it.slot, channelName) }
-                    .maxByOrNull { SaveSyncApiClient.parseTimestamp(it.updatedAt) }
-                val serverTime = latestForSlot?.let { SaveSyncApiClient.parseTimestamp(it.updatedAt) } ?: Instant.now()
-                val preSyncTime = saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.syncKeyOf(channelName), ownerUserId)?.lastSyncedAt
-                    ?: Instant.ofEpochMilli(cacheFile.lastModified())
-                Logger.warn(TAG, "[SaveSync] UPLOAD_CACHE gameId=$gameId | Session started on older save -- conflict for channel=$channelName | preSyncTime=$preSyncTime, server=$serverTime")
-                return@withContext SaveSyncResult.Conflict(
-                    gameId = gameId,
-                    localTimestamp = preSyncTime,
-                    serverTimestamp = serverTime,
-                    serverDeviceName = conflictDetector.extractUploaderDeviceName(latestForSlot, deviceId),
-                    serverSaveId = latestForSlot?.id,
-                    localContentHash = contentHash,
-                    serverContentHash = latestForSlot?.contentHash
-                )
-            }
-        }
 
         try {
             val ext = cacheFile.extension

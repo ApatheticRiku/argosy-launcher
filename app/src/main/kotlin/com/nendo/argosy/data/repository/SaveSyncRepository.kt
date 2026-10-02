@@ -145,15 +145,6 @@ class SaveSyncRepository @Inject constructor(
     suspend fun resolveEmulatorForGame(game: com.nendo.argosy.data.local.entity.GameEntity): String? =
         apiClient.resolveEmulatorForGame(game)
 
-    fun setSessionOnOlderSave(gameId: Long, isOlder: Boolean) =
-        apiClient.setSessionOnOlderSave(gameId, isOlder)
-
-    fun clearSessionOnOlderSave(gameId: Long) =
-        apiClient.clearSessionOnOlderSave(gameId)
-
-    fun isSessionOnOlderSave(gameId: Long): Boolean =
-        apiClient.isSessionOnOlderSave(gameId)
-
     suspend fun deleteServerSaves(saveIds: List<Long>): Boolean =
         apiClient.deleteServerSaves(saveIds)
 

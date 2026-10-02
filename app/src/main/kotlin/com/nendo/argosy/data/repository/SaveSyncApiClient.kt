@@ -556,15 +556,6 @@ class SaveSyncApiClient @Inject constructor(
     internal fun determineSyncStatus(localTime: Instant?, serverTime: Instant): String =
         conflictDetector.determineSyncStatus(localTime, serverTime)
 
-    fun setSessionOnOlderSave(gameId: Long, isOlder: Boolean) =
-        conflictDetector.setSessionOnOlderSave(gameId, isOlder)
-
-    fun clearSessionOnOlderSave(gameId: Long) =
-        conflictDetector.clearSessionOnOlderSave(gameId)
-
-    fun isSessionOnOlderSave(gameId: Long): Boolean =
-        conflictDetector.isSessionOnOlderSave(gameId)
-
     companion object {
         private const val TAG = "SaveSyncApiClient"
         const val DEFAULT_SAVE_NAME = "argosy-latest"

@@ -10,19 +10,6 @@ import javax.inject.Singleton
 @Singleton
 class ConflictDetector @Inject constructor() {
 
-    private val sessionOnOlderSave = mutableMapOf<Long, Boolean>()
-
-    fun setSessionOnOlderSave(gameId: Long, isOlder: Boolean) {
-        sessionOnOlderSave[gameId] = isOlder
-    }
-
-    fun clearSessionOnOlderSave(gameId: Long) {
-        sessionOnOlderSave.remove(gameId)
-    }
-
-    fun isSessionOnOlderSave(gameId: Long): Boolean =
-        sessionOnOlderSave[gameId] ?: false
-
     fun determineSyncStatus(
         localTime: Instant?,
         serverTime: Instant
@@ -84,25 +71,14 @@ class ConflictDetector @Inject constructor() {
         forceOverwrite: Boolean,
         currentDeviceId: String?,
         latestServerSave: RomMSave?,
-        localModified: Instant,
-        preSyncTimeIfSession: Instant?
+        localModified: Instant
     ): UploadConflictDecision? {
         if (forceOverwrite) {
             Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Skipping conflict check (force overwrite)")
             return null
         }
 
-        if (channelName != null && currentDeviceId != null && isSessionOnOlderSave(gameId)) {
-            Logger.warn(TAG, "[SaveSync] UPLOAD gameId=$gameId | Session started on older save -- conflict for channel=$channelName")
-            val serverTime = latestServerSave?.let { SaveSyncApiClient.parseTimestamp(it.updatedAt) } ?: Instant.now()
-            val preSync = preSyncTimeIfSession ?: localModified
-            return UploadConflictDecision(
-                isConflict = true,
-                localTimestamp = preSync,
-                serverTimestamp = serverTime,
-                serverDeviceName = extractUploaderDeviceName(latestServerSave, currentDeviceId)
-            )
-        }
+        if (currentDeviceId != null) return null
 
         if (channelName == null && latestServerSave != null) {
             val serverTime = SaveSyncApiClient.parseTimestamp(latestServerSave.updatedAt)

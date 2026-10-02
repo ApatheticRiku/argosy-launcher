@@ -102,7 +102,7 @@ class SaveUploaderTest {
         )
 
         every { saveHandlerRegistry.isValidCachedSavePath(any(), any()) } returns true
-        every { conflictDetector.detectUploadConflict(any(), any(), any(), any(), any(), any(), any()) } returns null
+        every { conflictDetector.detectUploadConflict(any(), any(), any(), any(), any(), any()) } returns null
         every { conflictDetector.pickLatestServerSave(any(), any(), any(), any()) } returns null
 
         uploader = SaveUploader(
@@ -211,6 +211,37 @@ class SaveUploaderTest {
         coVerify(exactly = 1) { saveCacheManager.deleteCachedSave(20L) }
         coVerify(exactly = 1) { saveCacheDao.updateRommSaveId(10L, 999L) }
         coVerify(exactly = 0) { saveCacheDao.updateRommSaveId(20L, any()) }
+    }
+
+    @Test
+    fun `bytes already matching the server's current save are a no-op, never an upload or a conflict`() = runTest {
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, "autosave", any())
+        } returns SaveSyncEntity(
+            id = 1L,
+            gameId = gameId,
+            rommId = rommId,
+            emulatorId = emulatorId,
+            channelName = "autosave",
+            localSavePath = preparedFile.absolutePath,
+            rommSaveId = 50L,
+            localContentHash = "stale-local-form",
+            syncStatus = SaveSyncEntity.STATUS_SYNCED
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "head-hash"
+        every { apiClient.getCapabilities() } returns com.nendo.argosy.data.remote.romm.RomMCapabilities.from("5.3.1")
+        every { conflictDetector.pickLatestServerSave(any(), any(), any(), any()) } returns
+            serverSaveOf(id = 77L, contentHash = "head-hash")
+
+        val result = uploader.uploadSave(gameId, emulatorId, channelName = "autosave")
+
+        assertTrue("expected a no-op but got $result", result is SaveSyncResult.Success && result.noOp)
+        coVerify(exactly = 0) {
+            romMApi.uploadSaveWithDevice(any(), any(), any(), any(), any(), any(), any(), any<MultipartBody.Part>(), any())
+        }
+        coVerify {
+            saveSyncDao.upsert(match { it.rommSaveId == 77L && it.lastUploadedHash == "head-hash" && it.localContentHash == "head-hash" })
+        }
     }
 
     @Test
