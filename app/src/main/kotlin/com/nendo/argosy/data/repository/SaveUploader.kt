@@ -11,7 +11,6 @@ import com.nendo.argosy.data.local.dao.SaveSyncDao
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.remote.romm.AccountApi
-import com.nendo.argosy.data.remote.romm.RomMDeleteSavesRequest
 import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.remote.romm.originDeviceName
 import com.nendo.argosy.data.storage.FileAccessLayer
@@ -262,8 +261,9 @@ class SaveUploader @Inject constructor(
 
             val isUnitBundle = prepared.isTemporary && !isDirectory && !isGciBundle &&
                 saveArchiver.isZipArchive(fileToUpload)
+            val isGciArchive = isGciBundle && saveArchiver.isZipArchive(fileToUpload)
             val uploadFileName = SaveSyncApiClient.computeUploadFileName(
-                localSavePath = if (isUnitBundle) null else localPath,
+                localSavePath = if (isUnitBundle || isGciArchive) null else localPath,
                 channelName = channelName,
                 romBaseName = romBaseName
             )
@@ -272,7 +272,6 @@ class SaveUploader @Inject constructor(
             Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Server saves found | count=${serverSaves.size}, files=${serverSaves.map { it.fileName }}")
 
             val latestServerSave = conflictDetector.pickLatestServerSave(serverSaves, channelName, romBaseName, isGciBundle)
-            val existingServerSave = conflictDetector.pickExistingServerSave(serverSaves, channelName, romBaseName, isGciBundle)
 
             val conflictDecision = conflictDetector.detectUploadConflict(
                 gameId = gameId,
@@ -293,26 +292,6 @@ class SaveUploader @Inject constructor(
                     localContentHash = contentHash,
                     serverContentHash = latestServerSave?.contentHash
                 )
-            }
-
-            val needsGciMigration = isGciBundle && existingServerSave != null &&
-                !existingServerSave.fileName.endsWith(".gci.zip", ignoreCase = true) &&
-                existingServerSave.fileName.endsWith(".gci", ignoreCase = true)
-            val needsUnitMigration = isUnitBundle && existingServerSave != null &&
-                !existingServerSave.fileName.endsWith(".zip", ignoreCase = true)
-
-            if (needsGciMigration || needsUnitMigration) {
-                Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | GCI migration: deleting old single-file save | saveId=${existingServerSave!!.id}, fileName=${existingServerSave.fileName}")
-                try {
-                    val deleteResponse = api.deleteSaves(RomMDeleteSavesRequest(listOf(existingServerSave.id)))
-                    if (deleteResponse.isSuccessful) {
-                        Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | GCI migration: old save deleted successfully")
-                    } else {
-                        Logger.warn(TAG, "[SaveSync] UPLOAD gameId=$gameId | GCI migration: failed to delete old save | status=${deleteResponse.code()}")
-                    }
-                } catch (e: Exception) {
-                    Logger.warn(TAG, "[SaveSync] UPLOAD gameId=$gameId | GCI migration: failed to delete old save", e)
-                }
             }
 
             val uploadStartTime = System.currentTimeMillis()

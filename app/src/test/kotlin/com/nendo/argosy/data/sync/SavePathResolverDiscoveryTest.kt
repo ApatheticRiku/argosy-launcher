@@ -84,16 +84,19 @@ class SavePathResolverDiscoveryTest {
         every { saveHandlerRegistry.getFolderHandler(any()) } returns null
         coEvery { saveUnitResolver.resolve(any(), any(), any(), any(), any(), any()) } returns null
 
+        val saveConfigRepository = com.nendo.argosy.data.repository.EmulatorSaveConfigRepository(emulatorSaveConfigDao)
+        val libretroSavePaths = com.nendo.argosy.data.emulator.LibretroSavePathResolver(
+            context, platformLibretroSettingsDao, builtinPreferences
+        )
         resolver = SavePathResolver(
             context, realFsFal(), emulatorSaveConfigDao,
-            com.nendo.argosy.data.repository.EmulatorSaveConfigRepository(emulatorSaveConfigDao),
+            saveConfigRepository,
             emulatorConfigDao, gameDao, retroArchConfigParser,
             retroArchPathResolver, titleIdExtractor, titleDbRepository, saveArchiver,
             switchSaveHandler, gciSaveHandler, saveHandlerRegistry,
-            com.nendo.argosy.data.emulator.LibretroSavePathResolver(
-                context, platformLibretroSettingsDao, builtinPreferences
-            ),
+            libretroSavePaths,
             saveUnitResolver,
+            com.nendo.argosy.data.emulator.BuiltinSaveBase(libretroSavePaths, saveConfigRepository, emulatorConfigDao),
         )
     }
 

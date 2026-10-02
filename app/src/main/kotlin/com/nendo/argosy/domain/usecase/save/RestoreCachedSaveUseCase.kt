@@ -120,7 +120,7 @@ class RestoreCachedSaveUseCase @Inject constructor(
 
         val restoredContentHash = when (entry.source) {
             UnifiedSaveEntry.Source.LOCAL,
-            UnifiedSaveEntry.Source.BOTH -> cachedHash ?: saveCacheManager.calculateLocalSaveHash(targetPath)
+            UnifiedSaveEntry.Source.BOTH -> cachedHash ?: saveCacheManager.calculateLocalSaveHash(targetPath, gameId, emulatorId)
             UnifiedSaveEntry.Source.SERVER -> null
         }
 

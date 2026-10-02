@@ -113,7 +113,7 @@ class GameLauncher @Inject constructor(
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
     private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
     private val libretroStatePathResolver: LibretroStatePathResolver,
-    private val libretroSavePathResolver: LibretroSavePathResolver,
+    private val builtinSaveBase: BuiltinSaveBase,
     private val notificationManager: com.nendo.argosy.core.notification.NotificationManager,
     private val attributionRepository: StorageAttributionRepository,
     private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
@@ -709,13 +709,7 @@ class GameLauncher @Inject constructor(
         Logger.info(TAG, "[BuiltIn] Launching: rom=${romFile.name}, core=$coreName, romSize=${romFile.length()}b, coreVars=${coreVariables.size}")
         val builtinSettings = userPreferencesRepository.getBuiltinEmulatorSettings().first()
         val platformLibretroOverride = platformLibretroSettingsDao.getByPlatformId(game.platformId)
-        val builtinBesideRom = emulatorSaveConfigRepository.getByEmulator(EmulatorRegistry.BUILTIN_ID)?.savesBesideRom == true
-        val perGameSavePath = emulatorConfigDao.getSavePathForGame(game.id)?.takeIf { it.isNotBlank() }
-        val effectiveSavePath = perGameSavePath
-            ?: libretroSavePathResolver.liveSaveBaseDir(
-                platformId = game.platformId,
-                besideRomDir = if (builtinBesideRom) romFile.parent else null,
-            ).absolutePath
+        val effectiveSavePath = builtinSaveBase.forGame(game, romFile.absolutePath)
         val effectiveStatePath = libretroStatePathResolver
             .liveStateBaseDir(platformLibretroOverride?.statePath, builtinSettings.customStatePath)
             .absolutePath

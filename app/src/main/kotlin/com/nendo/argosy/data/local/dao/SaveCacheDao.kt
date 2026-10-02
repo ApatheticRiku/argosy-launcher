@@ -215,19 +215,6 @@ interface SaveCacheDao {
     """)
     suspend fun getMostRecent(gameId: Long, ownerUserId: Long?): SaveCacheEntity?
 
-    @Query("""
-        SELECT * FROM save_cache
-        WHERE gameId = :gameId AND saveSize = :size AND cachedAt >= :fileMtime
-          AND (ownerUserId IS NULL OR ownerUserId = :ownerUserId)
-        ORDER BY cachedAt DESC LIMIT 1
-    """)
-    suspend fun findUnchangedSinceMtime(
-        gameId: Long,
-        ownerUserId: Long?,
-        size: Long,
-        fileMtime: Instant
-    ): SaveCacheEntity?
-
     @Query("SELECT * FROM save_cache WHERE gameId = :gameId AND cachedAt = :timestamp LIMIT 1")
     suspend fun getByTimestamp(gameId: Long, timestamp: Long): SaveCacheEntity?
 

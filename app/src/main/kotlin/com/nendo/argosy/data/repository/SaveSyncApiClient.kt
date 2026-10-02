@@ -605,7 +605,6 @@ class SaveSyncApiClient @Inject constructor(
             val ext = localSavePath?.let { java.io.File(it) }?.let { file ->
                 when {
                     file.isDirectory -> "zip"
-                    file.extension.equals("gci", ignoreCase = true) -> "zip"
                     else -> file.extension
                 }
             } ?: "zip"

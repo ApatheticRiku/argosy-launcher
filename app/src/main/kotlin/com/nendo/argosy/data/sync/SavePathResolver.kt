@@ -35,6 +35,7 @@ private const val TAG = "SavePathResolver"
 private const val DUCKSTATION_EMULATOR_ID = "duckstation"
 private const val DUCKSTATION_CARD_SUFFIX = "_1.mcd"
 private const val BUILTIN_ID = EmulatorRegistry.BUILTIN_ID
+private const val BUILTIN_GC_SUBDIR = "User/GC"
 
 sealed interface SaveLookup {
     data class Found(val path: String) : SaveLookup
@@ -59,7 +60,8 @@ class SavePathResolver @Inject constructor(
     private val gciSaveHandler: GciSaveHandler,
     private val saveHandlerRegistry: PlatformSaveHandlerRegistry,
     private val libretroSavePathResolver: com.nendo.argosy.data.emulator.LibretroSavePathResolver,
-    private val saveUnitResolver: SaveUnitResolver
+    private val saveUnitResolver: SaveUnitResolver,
+    private val builtinSaveBase: com.nendo.argosy.data.emulator.BuiltinSaveBase
 ) {
     suspend fun discoverSavePath(
         emulatorId: String,
@@ -313,7 +315,7 @@ class SavePathResolver @Inject constructor(
         }
 
         if (config.usesGciFormat && romPath != null) {
-            val gciSave = discoverGciSavePath(config, romPath)
+            val gciSave = discoverGciSavePath(config, romPath, gciBaseOverride(config, gameId, platformSlug))
             if (gciSave != null) {
                 Logger.debug(TAG, "discoverSavePath: GCI save found at $gciSave")
                 onDecision("gci", selectedMemcardForLog, savePathOverrideForLog)
@@ -726,9 +728,19 @@ class SavePathResolver @Inject constructor(
 
     private suspend fun builtinSavesDir(config: SavePathConfig, gameId: Long?): String? {
         if (config.emulatorId != BUILTIN_ID) return null
-        val platformId = gameId?.let { gameDao.getById(it) }?.platformId
-        return libretroSavePathResolver.liveSaveBaseDir(platformId).absolutePath
+        val game = gameId?.let { gameDao.getById(it) }
+        return game?.let { builtinSaveBase.forGame(it) }
+            ?: libretroSavePathResolver.liveSaveBaseDir(null).absolutePath
     }
+
+    /**
+     * The folder GameCube saves for this game live under: the built-in emulator's launch save
+     * folder, or the folder the user pointed an external emulator at; null for the emulator's
+     * packaged defaults.
+     */
+    suspend fun gciBaseOverride(config: SavePathConfig, gameId: Long?, platformSlug: String? = null): String? =
+        builtinSavesDir(config, gameId)?.let { "$it/$BUILTIN_GC_SUBDIR" }
+            ?: platformSlug?.let { userBaseOverride(config.emulatorId, it) }?.takeIf { it.isNotBlank() }
 
     private suspend fun resolveFolderBasePaths(
         config: SavePathConfig,

@@ -104,7 +104,6 @@ class SaveUploaderTest {
         every { saveHandlerRegistry.isValidCachedSavePath(any(), any()) } returns true
         every { conflictDetector.detectUploadConflict(any(), any(), any(), any(), any(), any(), any()) } returns null
         every { conflictDetector.pickLatestServerSave(any(), any(), any(), any()) } returns null
-        every { conflictDetector.pickExistingServerSave(any(), any(), any(), any()) } returns null
 
         uploader = SaveUploader(
             context = context,

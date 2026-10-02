@@ -438,7 +438,8 @@ class GameSessionService : Service() {
                             activeSaveRepository.activateCache(gameId, result.cacheId)
                         }
                         is SaveCacheManager.CacheResult.Duplicate -> {
-                            Logger.debug(TAG, "Live cache skipped (duplicate) for gameId=$gameId")
+                            Logger.debug(TAG, "Live cache matches cache id=${result.cacheId} for gameId=$gameId, pointing active save at it")
+                            activeSaveRepository.activateCache(gameId, result.cacheId)
                         }
                         is SaveCacheManager.CacheResult.Failed -> {
                             Logger.warn(TAG, "Live cache failed for gameId=$gameId")

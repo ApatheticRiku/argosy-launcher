@@ -7,6 +7,7 @@ import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
+import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import io.mockk.coEvery
 import io.mockk.every
@@ -58,6 +59,7 @@ class SaveCacheManagerRestoreTest {
             saveOwnershipTracker = mockk(relaxed = true),
             saveOwnershipDao = mockk(relaxed = true),
             saveUnitResolver = mockk(relaxed = true),
+            gciSaveHandler = GciSaveHandler(context, fal, saveArchiver),
         )
     }
 

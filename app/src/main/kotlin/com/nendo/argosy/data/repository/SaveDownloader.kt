@@ -587,7 +587,7 @@ class SaveDownloader @Inject constructor(
                         platformSlug = game.platformSlug,
                         emulatorId = resolvedEmulatorId,
                         coreName = preferredCore,
-                        basePathOverride = overrideBaseFor(config, game.platformSlug)
+                        basePathOverride = savePathResolver.gciBaseOverride(config, gameId, game.platformSlug)
                     )
                     val result = gciSaveHandler.extractDownload(tempGciFile, saveContext)
                     if (!result.success) {
@@ -841,7 +841,7 @@ class SaveDownloader @Inject constructor(
                         tempZipFile = tempGciFile
                         val extractedPaths = gciSaveHandler.extractBundle(
                             tempGciFile, config, romPath, gameId,
-                            platformSlug?.let { overrideBaseFor(config, it) }
+                            savePathResolver.gciBaseOverride(config, gameId, platformSlug)
                         )
                         if (extractedPaths.isEmpty()) {
                             Logger.error(TAG, "downloadSaveById: GCI bundle extraction failed")
@@ -855,7 +855,7 @@ class SaveDownloader @Inject constructor(
                             val gciFilename = GameCubeHeaderParser.buildGciFilename(
                                 gciInfo.makerCode, gciInfo.gameId, gciInfo.internalFilename
                             )
-                            val overrideBase = platformSlug?.let { overrideBaseFor(config, it) }
+                            val overrideBase = savePathResolver.gciBaseOverride(config, gameId, platformSlug)
                             val basePaths = overrideBase?.let { listOf(it) }
                                 ?: SavePathRegistry.resolvePath(
                                     config,

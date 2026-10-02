@@ -133,7 +133,7 @@ class GameLauncherTest {
             savePathAuthority = mockk(relaxed = true),
             saveHandlerRegistry = saveHandlerRegistry,
             libretroStatePathResolver = libretroStatePathResolver,
-            libretroSavePathResolver = libretroSavePathResolver,
+            builtinSaveBase = BuiltinSaveBase(libretroSavePathResolver, emulatorSaveConfigRepository, emulatorConfigDao),
             notificationManager = mockk(relaxed = true),
             attributionRepository = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),

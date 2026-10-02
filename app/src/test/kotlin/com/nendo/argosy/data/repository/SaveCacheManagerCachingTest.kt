@@ -9,6 +9,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.storage.AndroidDataAccessor
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.fixtures.realFsFal
+import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -48,7 +49,6 @@ class SaveCacheManagerCachingTest {
         every { context.cacheDir } returns File(tempDir, "cache").apply { mkdirs() }
         every { preferencesRepository.userPreferences } returns flowOf(UserPreferences())
         every { saveHandlerRegistry.getFolderHandler(any()) } returns null
-        coEvery { saveCacheDao.findUnchangedSinceMtime(any(), any(), any(), any()) } returns null
         coEvery { saveCacheDao.getByGameAndHash(any(), any(), any()) } returns null
         coEvery { saveCacheDao.insert(any()) } returns 1L
 
@@ -71,6 +71,7 @@ class SaveCacheManagerCachingTest {
             saveOwnershipTracker = mockk(relaxed = true),
             saveOwnershipDao = mockk(relaxed = true),
             saveUnitResolver = mockk(relaxed = true),
+            gciSaveHandler = GciSaveHandler(context, fal, archiver),
         )
     }
 
@@ -184,33 +185,41 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
-    fun `mtime shortcut returns Duplicate without rehashing for unchanged file save`() = runTest {
-        val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(1024)) }
-        val unchanged = SaveCacheEntity(
-            id = 7L, gameId = 1L, emulatorId = "retroarch",
-            cachedAt = Instant.now(), saveSize = 1024L,
-            cachePath = "1/old/game.srm", contentHash = "cafebabe",
+    fun `new content is cached even when an older row has the same size and a later timestamp`() = runTest {
+        val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(1024) { 7 }) }
+        coEvery { saveCacheDao.getAllByGameChannelAndHash(any(), any(), any(), any()) } returns emptyList()
+        coEvery { saveCacheDao.insert(any()) } returns 8L
+
+        val result = manager.cacheCurrentSave(
+            gameId = 1L, emulatorId = "retroarch", savePath = save.absolutePath,
         )
-        coEvery { saveCacheDao.findUnchangedSinceMtime(1L, any(), 1024L, any()) } returns unchanged
+
+        assertTrue(result is SaveCacheManager.CacheResult.Created)
+        coVerify(exactly = 1) { saveCacheDao.insert(any()) }
+    }
+
+    @Test
+    fun `a duplicate by hash becomes the active row`() = runTest {
+        val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(1024) { 3 }) }
+        coEvery { saveCacheDao.getAllByGameChannelAndHash(1L, any(), "autosave", any()) } returns listOf(
+            SaveCacheEntity(
+                id = 99L, gameId = 1L, emulatorId = "retroarch",
+                cachedAt = Instant.now(), saveSize = 1024L,
+                cachePath = "1/old/game.srm", contentHash = "match",
+            )
+        )
 
         val result = manager.cacheCurrentSave(
             gameId = 1L, emulatorId = "retroarch", savePath = save.absolutePath,
         )
 
         assertTrue(result is SaveCacheManager.CacheResult.Duplicate)
-        assertEquals("cafebabe", (result as SaveCacheManager.CacheResult.Duplicate).contentHash)
-        coVerify(exactly = 0) { saveCacheDao.getAllByGameChannelAndHash(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { saveCacheDao.insert(any()) }
+        coVerify { saveCacheDao.setActiveRow(1L, any(), 99L) }
     }
 
     @Test
-    fun `skipDuplicateCheck bypasses both mtime shortcut and hash lookup`() = runTest {
+    fun `skipDuplicateCheck bypasses the hash lookup`() = runTest {
         val save = File(tempDir, "game.srm").apply { writeBytes(ByteArray(512)) }
-        coEvery { saveCacheDao.findUnchangedSinceMtime(any(), any(), any(), any()) } returns SaveCacheEntity(
-            id = 7L, gameId = 1L, emulatorId = "retroarch",
-            cachedAt = Instant.now(), saveSize = 512L,
-            cachePath = "1/old/game.srm", contentHash = "should-not-short-circuit",
-        )
 
         val result = manager.cacheCurrentSave(
             gameId = 1L, emulatorId = "retroarch", savePath = save.absolutePath,
@@ -335,5 +344,59 @@ class SaveCacheManagerCachingTest {
             "cacheAsRollback must Create a rollback row even when an identical hash sits in another channel (audit Bug A4): got $result",
             result is SaveCacheManager.CacheResult.Created
         )
+    }
+
+    private fun gci(dir: File, name: String, gameCode: String, internal: String, fill: Byte): File =
+        File(dir, name).apply {
+            val bytes = ByteArray(0x2040) { fill }
+            gameCode.toByteArray().copyInto(bytes, 0)
+            "8P".toByteArray().copyInto(bytes, 4)
+            ByteArray(32).also { internal.toByteArray().copyInto(it) }.copyInto(bytes, 8)
+            writeBytes(bytes)
+        }
+
+    @Test
+    fun `a GameCube save of several files caches every member of the game as one archive`() = runTest {
+        val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
+        val first = gci(card, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1)
+        gci(card, "8P-GFZE-f_zero.dat.gci", "GFZE", "f_zero.dat", 2)
+        gci(card, "8P-GFZE-ghost1.dat.gci", "GFZE", "ghost1.dat", 3)
+        gci(card, "01-GZLE-gczelda.gci", "GZLE", "gczelda", 4)
+        val captured = slot<SaveCacheEntity>()
+        coEvery { saveCacheDao.insert(capture(captured)) } returns 1L
+
+        val result = manager.cacheCurrentSave(gameId = 1L, emulatorId = "builtin", savePath = first.absolutePath)
+
+        assertTrue(result is SaveCacheManager.CacheResult.Created)
+        assertTrue(captured.captured.cachePath.endsWith(".zip"))
+        val zip = File(tempDir, "save_cache/${captured.captured.cachePath}")
+        val entries = org.apache.commons.compress.archivers.zip.ZipFile(zip).use { z -> z.entries.toList().map { it.name }.sorted() }
+        assertEquals(listOf("8P-GFZE-f_zero.dat.gci", "8P-GFZE-fzc.dat.gci", "8P-GFZE-ghost1.dat.gci"), entries)
+        assertEquals(captured.captured.contentHash, manager.calculateLocalSaveHash(first.absolutePath, 1L, "builtin"))
+    }
+
+    @Test
+    fun `a GameCube save of one file caches and hashes the raw file`() = runTest {
+        val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
+        val only = gci(card, "01-GZLE-gczelda.gci", "GZLE", "gczelda", 4)
+        val captured = slot<SaveCacheEntity>()
+        coEvery { saveCacheDao.insert(capture(captured)) } returns 1L
+
+        manager.cacheCurrentSave(gameId = 1L, emulatorId = "builtin", savePath = only.absolutePath)
+
+        assertTrue(captured.captured.cachePath.endsWith("01-GZLE-gczelda.gci"))
+        assertEquals(SaveArchiver(mockk(relaxed = true), realFsFal()).calculateFileHash(only), captured.captured.contentHash)
+    }
+
+    @Test
+    fun `a new GameCube file changes the unit hash even when the first file is untouched`() = runTest {
+        val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
+        val first = gci(card, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1)
+        gci(card, "8P-GFZE-f_zero.dat.gci", "GFZE", "f_zero.dat", 2)
+        val before = manager.calculateLocalSaveHash(first.absolutePath, 1L, "builtin")
+
+        gci(card, "8P-GFZE-ghost1.dat.gci", "GFZE", "ghost1.dat", 3)
+
+        assertFalse(before == manager.calculateLocalSaveHash(first.absolutePath, 1L, "builtin"))
     }
 }

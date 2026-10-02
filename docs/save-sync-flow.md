@@ -326,9 +326,10 @@ No upload path deletes server saves. A change of shape is another history entry.
 - Snapshots before a Secure Saves restore use the existing rollback cache (`cacheAsRollback`) as
   is. No extra pruning protection, history marking or notification.
 - Upgrade: no grace period. The first launch after the update runs the normal rules, and any
-  damage from stale legacy rows is accepted. Cache rows are re-hashed with the unit hasher during
-  the migration, because otherwise a restored disk never matches its row's old hash and every
-  launch restores again.
+  damage from stale legacy rows is accepted. No re-hash migration: the unified hasher is the one
+  cache rows were always hashed with (`hashArchiveRoots` for folders), so existing PS2 and folder
+  rows already match; only the comparison side changed. Old single-file GameCube rows remain
+  valid one-file versions.
 - Zip entry names follow the Sigil MULTI contract (members' own names). GameCube restores write
   the file name Dolphin would, so equal bytes hash equal across devices.
 - First sync on a device with no pairing follows negotiate's own answer (newer timestamp wins on
@@ -358,9 +359,10 @@ against live data (`GET /api/saves`, negotiate no-op twice) before the next phas
 2. Save unit and hash. One unit locator (GameCube: every `.gci` with the game code under the
    launch's base directory, one raw or several zipped with their own names; PS2: this game's
    folders) and one hasher used by cache, upload, comparison and verification. The
-   unchanged-since-mtime shortcut goes; a duplicate cache result activates its row; cache rows
-   are re-hashed by migration; server hashes replace local ones for held server saves. Done when
-   F-Zero GX's six files cache, hash and upload as one unit with equal hashes everywhere.
+   unchanged-since-mtime shortcut goes; a duplicate cache result activates its row; the built-in
+   save folder comes from one rule shared by launch and discovery; server hashes replace local
+   ones for held server saves. Done when F-Zero GX's six files cache, hash and upload as one unit
+   with equal hashes everywhere.
 3. One writer. Every write of a version to disk goes through one function that caches
    unprotected local bytes first, prepares access, places by shape through the platform handler,
    applies the hardcore gate, verifies, activates and confirms. Shape changes never delete server

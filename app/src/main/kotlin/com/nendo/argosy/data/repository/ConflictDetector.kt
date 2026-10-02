@@ -70,28 +70,6 @@ class ConflictDetector @Inject constructor() {
         }
     }
 
-    fun pickExistingServerSave(
-        serverSaves: List<RomMSave>,
-        channelName: String?,
-        romBaseName: String?,
-        isGciBundle: Boolean
-    ): RomMSave? {
-        val candidates = serverSaves.filter { serverSave ->
-            val baseName = File(serverSave.fileName).nameWithoutExtension
-            if (channelName != null) {
-                SaveSyncApiClient.equalsNormalized(baseName, channelName)
-            } else {
-                baseName.equals(SaveSyncApiClient.DEFAULT_SAVE_NAME, ignoreCase = true) ||
-                    romBaseName != null && SaveSyncApiClient.equalsNormalized(baseName, romBaseName)
-            }
-        }
-        return if (isGciBundle && candidates.size > 1) {
-            candidates.find { it.fileName.endsWith(".zip", ignoreCase = true) }
-                ?: candidates.firstOrNull()
-        } else {
-            candidates.firstOrNull()
-        }
-    }
 
     data class UploadConflictDecision(
         val isConflict: Boolean,

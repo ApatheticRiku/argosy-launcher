@@ -310,13 +310,16 @@ class PlaySessionTracker @Inject constructor(
                     activeSaveRepository.setActiveSaveApplied(orphaned.gameId, false)
                     Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Recovery backup created | path=$savePath")
                 }
-                is SaveCacheManager.CacheResult.Duplicate ->
-                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Save unchanged (already backed up)")
+                is SaveCacheManager.CacheResult.Duplicate -> {
+                    activeSaveRepository.activateCache(orphaned.gameId, cacheResult.cacheId)
+                    activeSaveRepository.setActiveSaveApplied(orphaned.gameId, false)
+                    Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Save matches cache id=${cacheResult.cacheId}, now active")
+                }
                 is SaveCacheManager.CacheResult.Failed ->
                     Logger.warn(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Failed to create recovery backup")
             }
 
-            if (cacheResult !is SaveCacheManager.CacheResult.Duplicate) {
+            if (cacheResult !is SaveCacheManager.CacheResult.Failed) {
                 when (val syncResult = syncSaveOnSessionEndUseCase.get()(orphaned)) {
                     is SyncSaveOnSessionEndUseCase.Result.Uploaded -> {
                         Logger.info(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Synced to RomM")
@@ -1309,7 +1312,9 @@ class PlaySessionTracker @Inject constructor(
                         Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Cached local save | path=$savePath, channel=$activeChannel")
                     }
                     is SaveCacheManager.CacheResult.Duplicate -> {
-                        Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Save unchanged (duplicate hash), keeping active timestamp | path=$savePath")
+                        activeSaveRepository.activateCache(session.gameId, cacheResult.cacheId)
+                        activeSaveRepository.setActiveSaveApplied(session.gameId, false)
+                        Logger.debug(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Save matches cache id=${cacheResult.cacheId}, now active | path=$savePath")
                     }
                     is SaveCacheManager.CacheResult.Failed -> {
                         Logger.warn(TAG, "[SaveSync] SESSION gameId=${session.gameId} | Failed to cache save | path=$savePath")

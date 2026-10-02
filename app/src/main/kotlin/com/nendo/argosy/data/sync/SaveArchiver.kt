@@ -1007,6 +1007,14 @@ class SaveArchiver @Inject constructor(
         return finalizeHash(entries)
     }
 
+    /**
+     * Equivalent to [zipFiles] + [calculateZipHash] without writing a temp zip.
+     */
+    fun calculateFilesAsZipHash(paths: List<String>): String {
+        val entries = paths.map { File(it).name to calculateFileHashAtPath(it) }.toMutableList()
+        return finalizeHash(entries)
+    }
+
     fun calculateFoldersAsZipHash(folders: List<File>): String =
         calculateNamedFoldersAsZipHash(folders.map { ArchiveRoot(it.name, it) })
 

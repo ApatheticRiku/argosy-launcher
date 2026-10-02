@@ -287,7 +287,7 @@ class AccountSwitchArtifactService @Inject constructor(
         archiveId: Long
     ): Boolean {
         val expected = saveCacheDao.getById(archiveId)?.contentHash
-        val liveHash = saveCacheManager.calculateArtifactHash(game.id, row.savePath)
+        val liveHash = saveCacheManager.calculateLocalSaveHash(row.savePath, game.id, row.emulatorId)
         if (expected == null || liveHash == null || expected != liveHash) {
             Logger.warn(
                 TAG,

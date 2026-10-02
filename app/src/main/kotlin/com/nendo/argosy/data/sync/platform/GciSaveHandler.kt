@@ -29,12 +29,13 @@ class GciSaveHandler @Inject constructor(
 
     override suspend fun prepareForUpload(localPath: String, context: SaveContext): PreparedSave? =
         withContext(Dispatchers.IO) {
-            val romPath = context.romPath ?: return@withContext null
-
-            val gciPaths = discoverAllSavePaths(context.config, romPath, context.basePathOverride)
+            val gciPaths = unitMembers(localPath)
             if (gciPaths.isEmpty()) {
-                Logger.debug(TAG, "prepareForUpload: No GCI files found | romPath=$romPath")
+                Logger.debug(TAG, "prepareForUpload: No GCI files found | localPath=$localPath")
                 return@withContext null
+            }
+            if (gciPaths.size == 1) {
+                return@withContext PreparedSave(fal.getTransformedFile(gciPaths[0]), isTemporary = false, gciPaths)
             }
 
             val outputFile = File(this@GciSaveHandler.context.cacheDir, "gci_bundle_${System.currentTimeMillis()}.zip")
@@ -47,9 +48,67 @@ class GciSaveHandler @Inject constructor(
         }
 
     override suspend fun sourcePathsFor(localPath: String, context: SaveContext): List<String> =
+        withContext(Dispatchers.IO) { unitMembers(localPath).ifEmpty { listOf(localPath) } }
+
+    /**
+     * The save unit [anyMemberPath] belongs to: every `.gci` in its card folder whose header
+     * carries the same game code, one entry per GCI identity, ordered by file name.
+     */
+    fun unitMembers(anyMemberPath: String): List<String> {
+        if (!fal.exists(anyMemberPath)) return emptyList()
+        val gameId = GameCubeHeaderParser.parseGciHeader(fal.getTransformedFile(anyMemberPath))?.gameId
+            ?: return listOf(anyMemberPath)
+        val cardDir = File(anyMemberPath).parent ?: return listOf(anyMemberPath)
+        val seen = mutableSetOf<Triple<String, String, String>>()
+        return fal.listFiles(cardDir).orEmpty()
+            .filter { it.isFile && it.extension.equals("gci", ignoreCase = true) && !it.name.contains(".deleted") }
+            .sortedBy { it.name }
+            .mapNotNull { file ->
+                val header = GameCubeHeaderParser.parseGciHeader(fal.getTransformedFile(file.path))
+                    ?.takeIf { it.gameId.equals(gameId, ignoreCase = true) }
+                    ?: return@mapNotNull null
+                file.path.takeIf { seen.add(Triple(header.makerCode, header.gameId, header.internalFilename)) }
+            }
+            .ifEmpty { listOf(anyMemberPath) }
+    }
+
+    /**
+     * Writes a GameCube unit archive into [cardDir]: the game's existing members are replaced by
+     * exactly the archive's `.gci` entries, under their own names. Returns the written paths, or
+     * an empty list when the archive holds no readable GCI.
+     */
+    suspend fun placeUnitArchive(zipFile: File, cardDir: String): List<String> =
         withContext(Dispatchers.IO) {
-            val romPath = context.romPath ?: return@withContext listOf(localPath)
-            discoverAllSavePaths(context.config, romPath, context.basePathOverride).ifEmpty { listOf(localPath) }
+            val staged = File(this@GciSaveHandler.context.cacheDir, "gci_unit_${System.currentTimeMillis()}")
+            staged.mkdirs()
+            try {
+                val members = ZipFile(zipFile).use { zip ->
+                    zip.entries.toList()
+                        .filter { !it.isDirectory && it.name.endsWith(".gci", ignoreCase = true) }
+                        .map { entry ->
+                            File(staged, File(entry.name).name).also { out ->
+                                zip.getInputStream(entry).use { input -> out.outputStream().use { input.copyTo(it) } }
+                            }
+                        }
+                }
+                val gameCode = members.firstNotNullOfOrNull { GameCubeHeaderParser.parseGciHeader(it)?.gameId }
+                    ?: return@withContext emptyList()
+                fal.mkdirs(cardDir)
+                fal.listFiles(cardDir).orEmpty()
+                    .filter { it.isFile && it.extension.equals("gci", ignoreCase = true) }
+                    .filter {
+                        GameCubeHeaderParser.parseGciHeader(fal.getTransformedFile(it.path))?.gameId
+                            .equals(gameCode, ignoreCase = true)
+                    }
+                    .forEach { fal.delete(it.path) }
+                members.mapNotNull { member ->
+                    val target = "$cardDir/${member.name}"
+                    fal.prepareSaveAccess(target)
+                    target.takeIf { fal.copyFile(member.absolutePath, target) }
+                }
+            } finally {
+                staged.deleteRecursively()
+            }
         }
 
     override suspend fun extractDownload(tempFile: File, context: SaveContext): ExtractResult =
