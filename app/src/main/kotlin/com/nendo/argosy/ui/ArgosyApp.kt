@@ -761,8 +761,11 @@ fun ArgosyApp(
     }
 
     LaunchedEffect(viewModel) {
-        viewModel.coreCrashLaunch.collect { request ->
-            context.startActivity(request.intent, request.options)
+        viewModel.coreCrashLaunch.collect { gameId ->
+            navController.navigate(Screen.GameDetail.createRoute(gameId)) {
+                launchSingleTop = true
+            }
+            viewModel.initiateGameLaunch(gameId)
         }
     }
 

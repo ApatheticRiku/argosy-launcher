@@ -809,8 +809,8 @@ class ArgosyViewModel @Inject constructor(
     val netplayInviteLaunch: kotlinx.coroutines.flow.SharedFlow<GameLaunchRequest> = _netplayInviteLaunch
 
     private val _coreCrashLaunch =
-        kotlinx.coroutines.flow.MutableSharedFlow<GameLaunchRequest>(extraBufferCapacity = 1)
-    val coreCrashLaunch: kotlinx.coroutines.flow.SharedFlow<GameLaunchRequest> = _coreCrashLaunch
+        kotlinx.coroutines.flow.MutableSharedFlow<Long>(extraBufferCapacity = 1)
+    val coreCrashLaunch: kotlinx.coroutines.flow.SharedFlow<Long> = _coreCrashLaunch
 
     suspend fun launchOptionsFor(gameId: Long): android.os.Bundle? =
         emulatorLaunchTargetResolver.launchOptionsFor(gameId)
@@ -818,13 +818,7 @@ class ArgosyViewModel @Inject constructor(
     fun launchFromCoreCrash() {
         val gameId = coreCrashController.prompt.value?.gameId ?: return
         coreCrashController.dismiss()
-        viewModelScope.launch {
-            (launchGameUseCase(gameId = gameId, allowVariantPrompt = false) as? LaunchResult.Success)?.let {
-                _coreCrashLaunch.tryEmit(
-                    GameLaunchRequest(it.intent, emulatorLaunchTargetResolver.launchOptionsFor(gameId))
-                )
-            }
-        }
+        _coreCrashLaunch.tryEmit(gameId)
     }
 
     private fun observeNetplayInvites() {
