@@ -342,6 +342,62 @@ class SaveSyncViewModelTest {
     }
 
     @Test
+    fun `a second tap on a conflict that is already resolved never answers the next one`() = runTest(testDispatcher) {
+        fun conflict(id: Long, gameId: Long) = PendingConflictEntity(
+            id = id, gameId = gameId, rommSaveId = 90 + id, fileName = "save.dat",
+            slot = "Slot 1", emulator = "duckstation",
+            localUpdatedAt = Instant.now(), serverUpdatedAt = Instant.now()
+        )
+        val first = conflict(7, 42)
+        val second = conflict(8, 43)
+        val open = kotlinx.coroutines.flow.MutableStateFlow(listOf(first, second))
+        every { pendingConflictDao.observeOpenConflicts(any()) } returns open
+        coEvery { pendingConflictDao.getById(7L) } returns first
+        coEvery { pendingConflictDao.getById(8L) } returns second
+        coEvery { gameDao.getByIds(any()) } returns listOf(makeGame(42, "P5"), makeGame(43, "P4"))
+
+        val vm = build()
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        val tappedKey = vm.uiState.value.attentionRows.first { it.conflictId == 7L }.key
+
+        vm.resolveFocusedAttention(AttentionAction.KEEP_LOCAL, tappedKey)
+        advanceUntilIdle()
+        open.value = listOf(second)
+        advanceUntilIdle()
+        vm.resolveFocusedAttention(AttentionAction.KEEP_LOCAL, tappedKey)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { conflictResolutionService.resolve(first, ConflictResolution.KEEP_LOCAL) }
+        coVerify(exactly = 0) { conflictResolutionService.resolve(second, any()) }
+    }
+
+    @Test
+    fun `tapping a game row focuses it and tapping it again opens the game`() = runTest(testDispatcher) {
+        every { saveSyncDao.observeAll(any()) } returns flowOf(
+            listOf(
+                SaveSyncEntity(id = 1L, gameId = 5L, rommId = 5L, emulatorId = "e", channelName = null, syncStatus = SaveSyncEntity.STATUS_SYNCED),
+                SaveSyncEntity(id = 2L, gameId = 6L, rommId = 6L, emulatorId = "e", channelName = null, syncStatus = SaveSyncEntity.STATUS_SYNCED)
+            )
+        )
+        coEvery { gameDao.getByIds(any()) } returns listOf(makeGame(5, "X"), makeGame(6, "Y"))
+
+        val vm = build()
+        backgroundScope.launch { vm.uiState.collect {} }
+        advanceUntilIdle()
+        val target = vm.uiState.value.gameRows.first { it.gameId == 6L }
+        var navTarget: Long? = null
+
+        vm.tapGameRow(target) { navTarget = it }
+        advanceUntilIdle()
+        assertEquals(null, navTarget)
+        assertEquals(target.key, vm.uiState.value.focusedRow?.key)
+
+        vm.tapGameRow(target) { navTarget = it }
+        assertEquals(6L, navTarget)
+    }
+
+    @Test
     fun `confirm on focused synced game row navigates to game`() = runTest(testDispatcher) {
         every { saveSyncDao.observeAll(any()) } returns flowOf(
             listOf(

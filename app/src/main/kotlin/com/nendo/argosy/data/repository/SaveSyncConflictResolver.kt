@@ -1,6 +1,7 @@
 package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
@@ -10,6 +11,7 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.sync.ConflictInfo
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
+import com.nendo.argosy.data.sync.platform.SaveContext
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,7 +33,8 @@ class SaveSyncConflictResolver @Inject constructor(
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
     private val apiClient: dagger.Lazy<SaveSyncApiClient>,
     private val fal: com.nendo.argosy.data.storage.FileAccessLayer,
-    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+    private val saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry,
+    private val gciSaveHandler: com.nendo.argosy.data.sync.platform.GciSaveHandler
 ) {
     suspend fun checkForConflict(
         gameId: Long,
@@ -71,8 +74,28 @@ class SaveSyncConflictResolver @Inject constructor(
                         return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                     }
                     val targetFile = File(resolution.targetPath)
-                    if (resolution.isFolderBased) {
-                        val game = gameDao.getById(resolution.gameId)
+                    val game = gameDao.getById(resolution.gameId)
+                    val gciConfig = game?.let { SavePathRegistry.getConfigForPlatform(resolution.emulatorId, it.platformSlug) }
+                        ?.takeIf { it.usesGciFormat }
+                    var placedPath = resolution.targetPath
+                    if (game != null && gciConfig != null) {
+                        val placed = gciSaveHandler.extractDownload(
+                            tempFile,
+                            SaveContext(
+                                config = gciConfig,
+                                romPath = game.localPath,
+                                saveId = game.saveId ?: game.titleId,
+                                emulatorPackage = null,
+                                gameId = game.id,
+                                gameTitle = game.title,
+                                platformSlug = game.platformSlug,
+                                emulatorId = resolution.emulatorId,
+                                basePathOverride = savePathResolver.gciBaseOverride(gciConfig, game.id, game.platformSlug)
+                            )
+                        )
+                        placedPath = placed.targetPath?.takeIf { placed.success }
+                            ?: return@withContext SaveSyncResult.Error(placed.error ?: "Failed to place GameCube save")
+                    } else if (resolution.isFolderBased) {
                         val folderHandler = game?.platformSlug?.let { saveHandlerRegistry.getFolderHandler(it) }
                         val unzipSuccess = if (folderHandler != null && game != null) {
                             folderHandler.placeArchive(tempFile, targetFile, game.saveId ?: game.titleId)
@@ -97,7 +120,7 @@ class SaveSyncConflictResolver @Inject constructor(
                     saveCacheManager.get().cacheCurrentSave(
                         gameId = resolution.gameId,
                         emulatorId = resolution.emulatorId,
-                        savePath = resolution.targetPath,
+                        savePath = placedPath,
                         channelName = resolution.channelName,
                         isHardcore = false
                     )
@@ -111,7 +134,7 @@ class SaveSyncConflictResolver @Inject constructor(
                     if (syncEntity != null) {
                         saveSyncDao.upsert(
                             syncEntity.copy(
-                                localSavePath = resolution.targetPath,
+                                localSavePath = placedPath,
                                 localUpdatedAt = Instant.now(),
                                 lastSyncedAt = Instant.now(),
                                 syncStatus = SaveSyncEntity.STATUS_SYNCED

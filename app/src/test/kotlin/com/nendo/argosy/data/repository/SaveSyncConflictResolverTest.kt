@@ -41,6 +41,7 @@ class SaveSyncConflictResolverTest {
     private lateinit var fal: com.nendo.argosy.data.storage.FileAccessLayer
     private lateinit var saveHandlerRegistry: com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
     private lateinit var resolver: SaveSyncConflictResolver
+    private val gciSaveHandler: com.nendo.argosy.data.sync.platform.GciSaveHandler = mockk(relaxed = true)
 
     private lateinit var mockCacheManager: SaveCacheManager
     private lateinit var mockApiClient: SaveSyncApiClient
@@ -96,7 +97,8 @@ class SaveSyncConflictResolverTest {
             saveCacheManager = saveCacheManager,
             apiClient = apiClient,
             fal = fal,
-            saveHandlerRegistry = saveHandlerRegistry
+            saveHandlerRegistry = saveHandlerRegistry,
+            gciSaveHandler = gciSaveHandler
         )
     }
 
@@ -218,6 +220,29 @@ class SaveSyncConflictResolverTest {
 
         assertNotNull("Accented server slot should match ASCII channel name", result)
         localFile.delete()
+    }
+
+    @Test
+    fun `downgrading a GameCube hardcore save places the server save in the card folder`() = runTest {
+        coEvery { gameDao.getById(2L) } returns testGame.copy(id = 2L, platformSlug = "ngc", localPath = "/roms/zelda.iso")
+        coEvery { mockCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns true
+        val placed = "/GC/USA/Card A/01-GZLE-DATA.gci"
+        coEvery { gciSaveHandler.extractDownload(any(), any()) } returns
+            com.nendo.argosy.data.sync.platform.ExtractResult(success = true, targetPath = placed)
+        val held = File.createTempFile("held", ".gci").apply { writeBytes(byteArrayOf(1)) }
+
+        val result = resolver.resolveHardcoreConflict(
+            SaveSyncResult.NeedsHardcoreResolution(
+                tempFilePath = held.absolutePath, gameId = 2L, gameName = "Zelda", emulatorId = "dolphin",
+                targetPath = "/GC/USA/Card A/old.gci", isFolderBased = false, channelName = null
+            ),
+            HardcoreResolutionChoice.DOWNGRADE_TO_CASUAL
+        )
+
+        assertTrue("Expected success, got $result", result is SaveSyncResult.Success)
+        io.mockk.coVerify { gciSaveHandler.extractDownload(any(), any()) }
+        io.mockk.coVerify { mockCacheManager.cacheCurrentSave(2L, "dolphin", placed, null, any(), any(), any(), any(), any(), any(), any(), any()) }
+        io.mockk.coVerify(exactly = 0) { saveArchiver.copyFileToPath(any(), any()) }
     }
 
     private fun makeServerSave(

@@ -68,7 +68,7 @@ class GameActivityRepository @Inject constructor(
         GameActivitySnapshot(
             gameId = gameId,
             title = game.title,
-            platformName = platformDao.getById(game.platformId)?.name ?: game.platformSlug,
+            platformName = platformDao.getById(game.platformId)?.name.orEmpty(),
             coverPath = game.displayCoverPath,
             backgroundPath = game.displayBackgroundPath,
             days = days,

@@ -358,8 +358,9 @@ class SaveSyncViewModel @Inject constructor(
         _otherDevicesExpanded.update { !it }
     }
 
-    fun focusRow(key: String) {
-        _focusedRowKey.value = key
+    fun tapGameRow(row: GameSaveRow, onNavigateToGame: (Long) -> Unit) {
+        if (uiState.value.focusedRow?.key == row.key) onNavigateToGame(row.gameId)
+        else _focusedRowKey.value = row.key
     }
 
     fun setAttentionAction(action: AttentionAction) {
@@ -449,7 +450,7 @@ class SaveSyncViewModel @Inject constructor(
 
     fun resolveFocusedAttention(action: AttentionAction, rowKey: String? = null) {
         val state = uiState.value
-        val target = rowKey?.let { key -> state.allRows.firstOrNull { it.key == key } } ?: state.focusedRow
+        val target = if (rowKey != null) state.allRows.firstOrNull { it.key == rowKey } else state.focusedRow
         val row = target as? AttentionRow ?: return
         val currentIndex = state.allRows.indexOfFirst { it.key == row.key }.coerceAtLeast(0)
         val remaining = state.allRows.filter { it.key != row.key }

@@ -54,7 +54,7 @@ private fun GameActivitySnapshot.buildSlot(context: Context, isDark: Boolean): P
     val series = ChartPalette.series(isDark)
     val subtitle = context.joined(
         buildList {
-            add(platformName)
+            platformName.takeIf { it.isNotBlank() }?.let(::add)
             if (sessionCount > 0) {
                 add(res.getQuantityString(R.plurals.savesync_presentation_sessions, sessionCount, sessionCount))
                 add(context.getString(R.string.savesync_presentation_average, context.minutesLabel(totalActiveMs / sessionCount)))

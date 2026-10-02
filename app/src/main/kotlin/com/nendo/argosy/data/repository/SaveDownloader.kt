@@ -607,8 +607,22 @@ class SaveDownloader @Inject constructor(
                         )
                     val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
                     if (hasLocalHardcore && !saveArchiver.hasHardcoreTrailer(tempGciFile)) {
-                        Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | GCI server save has no hardcore trailer over a local hardcore save; refusing")
-                        return@withContext SaveSyncResult.Error("Server save would replace a hardcore save")
+                        Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | NEEDS_HARDCORE_RESOLUTION | GCI server save missing trailer")
+                        val resolutionTarget = existingMember ?: savePathResolver.constructSavePath(
+                            resolvedEmulatorId, game.title, game.platformSlug, game.localPath, preferredCore,
+                            game.saveId ?: game.titleId, gameId
+                        ) ?: return@withContext SaveSyncResult.Error("Failed to extract GCI save")
+                        val heldFile = File(context.cacheDir, "hardcore_gci_${gameId}_${System.nanoTime()}.tmp")
+                        tempGciFile.copyTo(heldFile, overwrite = true)
+                        return@withContext SaveSyncResult.NeedsHardcoreResolution(
+                            tempFilePath = heldFile.absolutePath,
+                            gameId = gameId,
+                            gameName = game.title,
+                            emulatorId = resolvedEmulatorId,
+                            targetPath = resolutionTarget,
+                            isFolderBased = false,
+                            channelName = channelName ?: syncEntity.channelName
+                        )
                     }
                     if (!skipBackup && existingMember != null &&
                         !saveCacheManager.get().protectBeforeOverwrite(gameId, resolvedEmulatorId, existingMember)

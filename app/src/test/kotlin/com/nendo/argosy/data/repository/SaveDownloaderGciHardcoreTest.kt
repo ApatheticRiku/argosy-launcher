@@ -37,6 +37,7 @@ class SaveDownloaderGciHardcoreTest {
     private val saveCacheManager: SaveCacheManager = mockk(relaxed = true)
     private val saveArchiver: SaveArchiver = mockk(relaxed = true)
     private val gciSaveHandler: GciSaveHandler = mockk(relaxed = true)
+    private val savePathResolver: com.nendo.argosy.data.sync.SavePathResolver = mockk(relaxed = true)
 
     private val downloader by lazy {
         SaveDownloader(
@@ -49,7 +50,7 @@ class SaveDownloaderGciHardcoreTest {
             titleDbRepository = mockk(relaxed = true),
             titleIdExtractor = mockk(relaxed = true),
             saveArchiver = saveArchiver,
-            savePathResolver = mockk(relaxed = true),
+            savePathResolver = savePathResolver,
             syncPreferencesRepository = mockk(relaxed = true),
             saveCacheManager = dagger.Lazy { saveCacheManager },
             fal = mockk(relaxed = true),
@@ -101,11 +102,35 @@ class SaveDownloaderGciHardcoreTest {
     }
 
     @Test
-    fun `a casual GameCube server save never replaces a local hardcore save`() = runTest {
+    fun `a casual GameCube server save over a local hardcore save asks the player instead of overwriting`() = runTest {
+        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns "/GC/USA/Card A/01-GZLE-DATA.gci"
+
         val result = downloader.downloadSave(gameId, "dolphin")
 
-        assertTrue("Expected a refusal, got $result", result is SaveSyncResult.Error)
+        assertTrue("Expected the hardcore choice, got $result", result is SaveSyncResult.NeedsHardcoreResolution)
+        result as SaveSyncResult.NeedsHardcoreResolution
+        assertTrue("The held download is gone", File(result.tempFilePath).exists())
         coVerify(exactly = 0) { gciSaveHandler.extractDownload(any(), any()) }
+    }
+
+    @Test
+    fun `a server autosave fetched into the cache is not locked`() = runTest {
+        fetchIntoCacheAs("autosave")
+
+        coVerify { saveCacheManager.cacheServerDownload(gameId, any(), any(), "autosave", any(), any(), false, false, serverSaveId) }
+    }
+
+    @Test
+    fun `a named server slot fetched into the cache is locked`() = runTest {
+        fetchIntoCacheAs("Before boss")
+
+        coVerify { saveCacheManager.cacheServerDownload(gameId, any(), any(), "Before boss", any(), any(), true, false, serverSaveId) }
+    }
+
+    private suspend fun fetchIntoCacheAs(channel: String) {
+        coEvery { saveCacheManager.cacheServerDownload(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+            SaveCacheManager.CacheResult.Created(0L, 77L)
+        downloader.downloadToCache(serverSaveId, gameId, channel, activate = false)
     }
 
     @Test

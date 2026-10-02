@@ -176,7 +176,7 @@ fun SaveSyncScreen(
             if (uiState.gameRows.isNotEmpty()) {
                 item { SectionHeader(stringResource(R.string.savesync_section_games)) }
                 itemsIndexed(uiState.gameRows, key = { _, row -> row.key }) { _, row ->
-                    Box(modifier = Modifier.clickableNoFocus { viewModel.focusRow(row.key) }) {
+                    Box(modifier = Modifier.clickableNoFocus { viewModel.tapGameRow(row, onNavigateToGame) }) {
                         GameSaveRowCard(
                             row = row,
                             isFocused = row.key == focusedKey
