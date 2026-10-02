@@ -356,6 +356,13 @@ class SaveSyncRepository @Inject constructor(
         val effectiveChannel = SaveSyncApiClient.syncKeyOf(channelName)
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
+        val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, channelName, secureSaves, ownerUserId)
+        Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | disk=${disk::class.simpleName}")
+        if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable || disk is SaveSyncOrchestrator.DiskCheck.Failed) {
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | disk check could not complete; skipping sync decision | decision=LocalIsNewer")
+            return@withContext PreLaunchSyncResult.LocalIsNewer
+        }
+
         val existing = saveSyncDao.getByGameEmulatorAndChannel(
             gameId,
             emulatorId,
@@ -368,14 +375,6 @@ class SaveSyncRepository @Inject constructor(
         }
 
         apiClient.flushPendingDeviceSync(gameId)
-
-        if (!secureSaves) {
-            val refresh = orchestrator.refreshCacheFromSystem(gameId, emulatorId, channelName, ownerUserId)
-            if (refresh is SaveSyncOrchestrator.RefreshOutcome.Unreadable) {
-                Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | save location unreadable (${refresh.dirPath}); skipping sync decision | decision=LocalIsNewer")
-                return@withContext PreLaunchSyncResult.LocalIsNewer
-            }
-        }
 
         val serverSaves = try {
             apiClient.checkSavesForGame(gameId, rommId)

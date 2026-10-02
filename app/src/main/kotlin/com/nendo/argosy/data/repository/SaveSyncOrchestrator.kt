@@ -319,6 +319,109 @@ class SaveSyncOrchestrator @Inject constructor(
         return systemHash != latest.contentHash
     }
 
+    sealed interface DiskCheck {
+        data object Matches : DiskCheck
+        data object Adopted : DiskCheck
+        data object Restored : DiskCheck
+        data object Untouched : DiskCheck
+        data object Failed : DiskCheck
+        data class Unreadable(val dirPath: String) : DiskCheck
+    }
+
+    suspend fun checkDiskAgainstActive(
+        gameId: Long,
+        emulatorId: String,
+        channelName: String?,
+        secureSaves: Boolean,
+        ownerUserId: Long?
+    ): DiskCheck {
+        val game = gameDao.getById(gameId) ?: return DiskCheck.Untouched
+        return checkDiskAgainstActive(game, emulatorId, channelName, secureSaves, ownerUserId)
+    }
+
+    suspend fun checkDiskAgainstActive(
+        game: GameEntity,
+        emulatorId: String,
+        channelName: String?,
+        secureSaves: Boolean,
+        ownerUserId: Long?
+    ): DiskCheck = withContext(Dispatchers.IO) {
+        val channel = channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME
+        if (STATE_CHANNEL_PATTERN.containsMatchIn(channel) || game.localPath == null) {
+            return@withContext DiskCheck.Untouched
+        }
+        val active = activeSaveRepository.getActiveRow(game.id)
+        if (active?.isHardcore == true || saveCacheDao.getMostRecent(game.id, ownerUserId)?.isHardcore == true) {
+            Logger.debug(TAG, "[SaveSync] DISK gameId=${game.id} | hardcore save in play, leaving the disk to the hardcore gate")
+            return@withContext DiskCheck.Untouched
+        }
+
+        val client = apiClient.get()
+        val savePath = when (val lookup = savePathResolver.discoverSavePathChecked(
+            emulatorId = emulatorId,
+            gameTitle = game.title,
+            platformSlug = game.platformSlug,
+            romPath = game.localPath,
+            cachedSaveId = game.saveId ?: game.titleId,
+            coreName = client.resolveCoreForGame(game, emulatorId),
+            emulatorPackage = emulatorResolver.getEmulatorPackageForGame(game.id, game.platformId, game.platformSlug),
+            gameId = game.id
+        )) {
+            is SaveLookup.Found -> lookup.path
+            SaveLookup.Absent -> return@withContext DiskCheck.Untouched
+            is SaveLookup.Unreadable -> {
+                saveAccessNotices.record(lookup.dirPath, emulatorId)
+                return@withContext DiskCheck.Unreadable(lookup.dirPath)
+            }
+        }
+
+        val cacheManager = saveCacheManager.get()
+        val diskHash = cacheManager.calculateLocalSaveHash(savePath, game.id, emulatorId)
+            ?: return@withContext DiskCheck.Untouched
+        val syncRow = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, SaveSyncApiClient.syncKeyOf(channel), ownerUserId)
+
+        if (active == null) {
+            if (saveOwnershipTracker.claim(savePath, emulatorId) is SaveClaim.Foreign) return@withContext DiskCheck.Untouched
+            Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | no active version, adopting the disk save | path=$savePath")
+            return@withContext if (cacheSystemSave(game.id, emulatorId, savePath, channelName)) DiskCheck.Adopted else DiskCheck.Untouched
+        }
+
+        val knownForms = setOfNotNull(
+            active.contentHash,
+            active.identityHash,
+            syncRow?.localContentHash?.takeIf { syncRow.rommSaveId != null && syncRow.rommSaveId == active.rommSaveId }
+        )
+        if (diskHash in knownForms) return@withContext DiskCheck.Matches
+
+        val newerDirty = saveCacheDao.getAllByGameChannelAndHash(game.id, ownerUserId, active.channelName, diskHash)
+            .firstOrNull { it.needsRemoteSync && !it.cachedAt.isBefore(active.cachedAt) }
+        if (newerDirty != null) {
+            Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | disk matches unsynced cache id=${newerDirty.id}, keeping it as the active version")
+            activeSaveRepository.activateCache(game.id, newerDirty.id)
+            return@withContext DiskCheck.Adopted
+        }
+
+        if (!secureSaves) {
+            if (saveOwnershipTracker.claim(savePath, emulatorId) is SaveClaim.Foreign) return@withContext DiskCheck.Untouched
+            Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | disk differs from active cache id=${active.id}, adopting it (Secure Saves off) | path=$savePath")
+            cacheSystemSave(game.id, emulatorId, savePath, channelName)
+            return@withContext DiskCheck.Adopted
+        }
+
+        Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | disk differs from active cache id=${active.id}, restoring it (Secure Saves on) | path=$savePath")
+        if (!cacheManager.protectBeforeOverwrite(game.id, emulatorId, savePath)) return@withContext DiskCheck.Failed
+        val roots = cacheManager.archiveRootNames(active.id)
+        if (!client.clearSavesBeforeRestore(savePath, game.platformSlug, game.saveId ?: game.titleId, roots)) {
+            return@withContext DiskCheck.Failed
+        }
+        if (!cacheManager.restoreSave(active.id, savePath)) return@withContext DiskCheck.Failed
+        val placedHash = cacheManager.calculateLocalSaveHash(savePath, game.id, emulatorId)
+        if (syncRow != null && placedHash != null && syncRow.rommSaveId != null && syncRow.rommSaveId == active.rommSaveId) {
+            saveSyncDao.updateLocalContentHash(syncRow.id, placedHash)
+        }
+        DiskCheck.Restored
+    }
+
     private suspend fun cacheSystemSave(
         gameId: Long,
         emulatorId: String,
