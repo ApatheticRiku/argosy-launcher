@@ -29,6 +29,7 @@ import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SaveDebugLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
@@ -111,12 +112,24 @@ class SaveDownloader @Inject constructor(
             emulatorSaveConfigRepository.resolveEffectiveSavePath(it, platformSlug)
         }?.takeIf { it.isNotBlank() }
 
+    private val downloadMutexes = java.util.concurrent.ConcurrentHashMap<Long, kotlinx.coroutines.sync.Mutex>()
+
     suspend fun downloadSave(
         gameId: Long,
         emulatorId: String,
         channelName: String? = null,
         skipBackup: Boolean = false,
         knownServerSaveId: Long? = null
+    ): SaveSyncResult = downloadMutexes.computeIfAbsent(gameId) { kotlinx.coroutines.sync.Mutex() }.withLock {
+        downloadSaveLocked(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+    }
+
+    private suspend fun downloadSaveLocked(
+        gameId: Long,
+        emulatorId: String,
+        channelName: String?,
+        skipBackup: Boolean,
+        knownServerSaveId: Long?
     ): SaveSyncResult = withContext(Dispatchers.IO) {
         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId emulator=$emulatorId channel=$channelName | Starting download")
         val secureSaves = syncPreferencesRepository.isSecureSaves()
@@ -422,7 +435,7 @@ class SaveDownloader @Inject constructor(
                     Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Insufficient cache disk space for zip")
                     return@withContext SaveSyncResult.Error("Insufficient disk space")
                 }
-                tempZipFile = File(context.cacheDir, serverSave.fileName)
+                tempZipFile = File(context.cacheDir, "dl_${gameId}_${System.nanoTime()}_${serverSave.fileName}")
                 val body = response.body()
                 if (body == null) {
                     Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Response body is null")
@@ -559,7 +572,7 @@ class SaveDownloader @Inject constructor(
                     return@withContext SaveSyncResult.Error("Empty response body")
                 }
 
-                val tempGciFile = File(context.cacheDir, "temp_gci_${System.currentTimeMillis()}.tmp")
+                val tempGciFile = File(context.cacheDir, "temp_gci_${gameId}_${System.nanoTime()}.tmp")
                 try {
                     body.byteStream().use { input ->
                         tempGciFile.outputStream().use { output ->
@@ -625,7 +638,7 @@ class SaveDownloader @Inject constructor(
                     return@withContext SaveSyncResult.Error("Empty response body")
                 }
 
-                var tempSaveFile: File? = File(context.cacheDir, "temp_save_${System.currentTimeMillis()}.tmp")
+                var tempSaveFile: File? = File(context.cacheDir, "temp_save_${gameId}_${System.nanoTime()}.tmp")
                 try {
                     body.byteStream().use { input ->
                         tempSaveFile!!.outputStream().use { output ->

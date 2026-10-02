@@ -14,7 +14,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -135,6 +137,28 @@ class SaveDownloaderCacheHitTest {
         downloader.downloadSave(gameId, "mgba")
 
         coVerify(exactly = 0) { saveCacheManager.restoreSave(cachedId, any()) }
+    }
+
+    @Test
+    fun `two downloads of one game never run at the same time`() = runTest {
+        val inflight = java.util.concurrent.atomic.AtomicInteger(0)
+        val maxInflight = java.util.concurrent.atomic.AtomicInteger(0)
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        coEvery { saveCacheManager.restoreSave(any(), any()) } coAnswers {
+            maxInflight.updateAndGet { maxOf(it, inflight.incrementAndGet()) }
+            gate.await()
+            inflight.decrementAndGet()
+            true
+        }
+
+        val first = launch { downloader.downloadSave(gameId, "mgba") }
+        val second = launch { downloader.downloadSave(gameId, "mgba") }
+        testScheduler.advanceUntilIdle()
+        gate.complete(Unit)
+        first.join()
+        second.join()
+
+        assertEquals(1, maxInflight.get())
     }
 
     @Test
