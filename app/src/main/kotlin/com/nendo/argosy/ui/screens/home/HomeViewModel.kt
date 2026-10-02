@@ -828,15 +828,11 @@ class HomeViewModel @Inject constructor(
             flushLibraryState()
             return
         }
-        val focusedGameId = anchorGameId ?: state.focusedGame?.id
-        val result = libraryDelegate.refreshCurrentRow(state.currentRow, focusedGameId)
-
-        val newIndex = if (focusedGameId != null) {
-            result.gameIds.indexOf(focusedGameId)
-                .takeIf { it >= 0 } ?: state.focusedGameIndex.coerceAtMost(result.gameIds.lastIndex.coerceAtLeast(0))
-        } else state.focusedGameIndex
+        val result = libraryDelegate.refreshCurrentRow(state.currentRow, anchorGameId ?: state.focusedGame?.id)
+        val newIndex = _uiState.value.indexAfterRefresh(state.currentRow, result.gameIds, anchorGameId)
 
         flushLibraryState()
+        if (newIndex == null) return
 
         if (result.isEmpty && _uiState.value.currentItems.isEmpty()) {
             val newRow = _uiState.value.availableRows.firstOrNull() ?: HomeRow.Continue
