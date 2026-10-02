@@ -478,8 +478,6 @@ class SaveSyncRepository @Inject constructor(
         channelName: String?
     ): ConflictInfo? = conflictResolver.checkForConflict(gameId, emulatorId, channelName)
 
-    suspend fun crossEmulatorMigrateIfNeeded(gameId: Long, currentEmulatorId: String) =
-        conflictResolver.crossEmulatorMigrateIfNeeded(gameId, currentEmulatorId)
 
     suspend fun analyzeChannel(
         gameId: Long,

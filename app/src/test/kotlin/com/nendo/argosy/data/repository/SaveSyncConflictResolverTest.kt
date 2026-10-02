@@ -105,30 +105,6 @@ class SaveSyncConflictResolverTest {
     }
 
     @Test
-    fun `cross-emulator restore with no save on disk targets the constructed save file`() = runTest {
-        val cache = com.nendo.argosy.data.local.entity.SaveCacheEntity(
-            id = 7L,
-            gameId = 1L,
-            emulatorId = "builtin",
-            cachedAt = Instant.parse("2026-09-30T10:00:00Z"),
-            saveSize = 1024,
-            cachePath = "1/x/test.srm",
-            contentHash = "cached_hash"
-        )
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
-        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
-        val constructed = "/storage/emulated/0/RetroArch/saves/mGBA/test.srm"
-        coEvery { savePathResolver.constructSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns constructed
-        coEvery { mockCacheManager.calculateLocalSaveHash(any(), any(), any()) } returns null
-        coEvery { mockCacheManager.restoreSave(any(), any()) } returns true
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, "retroarch")
-
-        io.mockk.coVerify(exactly = 1) { mockCacheManager.restoreSave(7L, constructed) }
-        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(7L, match { "{" in it }) }
-    }
-
-    @Test
     fun `checkForConflict local matches client anchor returns null`() = runTest {
         val syncEntity = makeSyncEntity(localContentHash = "matching_hash")
         setupConflictCheckMocks(syncEntity)
@@ -304,80 +280,4 @@ class SaveSyncConflictResolverTest {
         coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns entityWithRealPath
     }
 
-    private fun makeCache(
-        id: Long,
-        emulatorId: String,
-        contentHash: String? = "cache-hash",
-        cachedAtMs: Long = 1_000_000L
-    ) = com.nendo.argosy.data.local.entity.SaveCacheEntity(
-        id = id,
-        gameId = 1L,
-        emulatorId = emulatorId,
-        cachedAt = Instant.ofEpochMilli(cachedAtMs),
-        saveSize = 1024L,
-        cachePath = "cache/$id",
-        contentHash = contentHash
-    )
-
-    @Test
-    fun `crossEmulatorMigrateIfNeeded copies cache when latest cache emulator differs`() = runTest {
-        val cache = makeCache(id = 7L, emulatorId = "ppsspp")
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
-        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns "argosy.builtin.libretro"
-        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns "ppsspp_libretro"
-        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns "/builtin/target.srm"
-        coEvery { mockCacheManager.calculateLocalSaveHash("/builtin/target.srm", any(), any()) } returns null
-        coEvery { mockCacheManager.restoreSave(7L, "/builtin/target.srm") } returns true
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "argosy")
-
-        io.mockk.coVerify(exactly = 1) { mockCacheManager.restoreSave(7L, "/builtin/target.srm") }
-    }
-
-    @Test
-    fun `crossEmulatorMigrateIfNeeded no-ops when latest cache emulator matches current`() = runTest {
-        val cache = makeCache(id = 7L, emulatorId = "argosy")
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "argosy")
-
-        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
-    }
-
-    @Test
-    fun `crossEmulatorMigrateIfNeeded no-ops when no cache has a content hash`() = runTest {
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(makeCache(id = 7L, emulatorId = "ppsspp", contentHash = null))
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "argosy")
-
-        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
-    }
-
-    @Test
-    fun `crossEmulatorMigrateIfNeeded no-ops when disk hash already matches cache hash`() = runTest {
-        val cache = makeCache(id = 7L, emulatorId = "ppsspp", contentHash = "same-hash")
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
-        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns "argosy.builtin.libretro"
-        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns "ppsspp_libretro"
-        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns "/builtin/target.srm"
-        coEvery { mockCacheManager.calculateLocalSaveHash("/builtin/target.srm", any(), any()) } returns "same-hash"
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "argosy")
-
-        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
-    }
-
-    @Test
-    fun `crossEmulatorMigrateIfNeeded no-ops when target path cannot be resolved`() = runTest {
-        val cache = makeCache(id = 7L, emulatorId = "ppsspp")
-        coEvery { saveCacheDao.getByGame(1L) } returns listOf(cache)
-        coEvery { emulatorResolver.getEmulatorPackageForGame(any(), any(), any()) } returns null
-        coEvery { mockApiClient.resolveCoreForGame(testGame) } returns null
-        coEvery { savePathResolver.discoverSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
-        coEvery { savePathResolver.constructSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns null
-
-        resolver.crossEmulatorMigrateIfNeeded(1L, currentEmulatorId = "completely-unknown-emulator-id")
-
-        io.mockk.coVerify(exactly = 0) { mockCacheManager.restoreSave(any(), any()) }
-    }
 }

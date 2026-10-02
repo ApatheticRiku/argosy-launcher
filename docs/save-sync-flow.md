@@ -379,6 +379,15 @@ against live data (`GET /api/saves`, negotiate no-op twice) before the next phas
    (Secure Saves on) or adopt and sync (off), then a negotiate scoped to the game decides the
    server half with honest inputs. Argosy's own timestamp checks are removed. The pinned rule
    applies. Done when F-Zero GX launches clean twice and negotiate answers no-op twice.
+   Built as: `SaveSyncOrchestrator.checkDiskAgainstActive` (a disk with no save gets the active
+   version placed at the constructed path, which replaces `crossEmulatorMigrateIfNeeded`);
+   `NegotiateInventory` reports each slot's active cached version (the last transfer's server
+   hash and stamp when it is unchanged, its own hash and cache time when it is new) and reports
+   the disk only for the slot in play; pre-launch, the Scan and the background worker all ask
+   negotiate. The older-save session flag and the client-side upload timestamp guard are gone for
+   device-fenced servers, which answer 409 themselves. Negotiate's `delete` stays a no-op: sync
+   never deletes local bytes, and re-uploading a deliberately deleted save would undo it. The
+   core-crash relaunch runs the normal launch.
 6. Bulk and user paths. New-ROM download, forced checks, the reconcile applier, the Save Sync
    screen's conflict resolution, background conflict answers and game deletion all run through
    the same decision and writer; dead dual-screen handlers go.

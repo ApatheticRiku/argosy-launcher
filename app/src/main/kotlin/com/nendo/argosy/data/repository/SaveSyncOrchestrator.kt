@@ -358,25 +358,39 @@ class SaveSyncOrchestrator @Inject constructor(
         }
 
         val client = apiClient.get()
+        val coreName = client.resolveCoreForGame(game, emulatorId)
+        val cacheManager = saveCacheManager.get()
         val savePath = when (val lookup = savePathResolver.discoverSavePathChecked(
             emulatorId = emulatorId,
             gameTitle = game.title,
             platformSlug = game.platformSlug,
             romPath = game.localPath,
             cachedSaveId = game.saveId ?: game.titleId,
-            coreName = client.resolveCoreForGame(game, emulatorId),
+            coreName = coreName,
             emulatorPackage = emulatorResolver.getEmulatorPackageForGame(game.id, game.platformId, game.platformSlug),
             gameId = game.id
         )) {
             is SaveLookup.Found -> lookup.path
-            SaveLookup.Absent -> return@withContext DiskCheck.Untouched
+            SaveLookup.Absent -> {
+                if (active == null) return@withContext DiskCheck.Untouched
+                val target = savePathResolver.constructSavePath(
+                    emulatorId = emulatorId,
+                    gameTitle = game.title,
+                    platformSlug = game.platformSlug,
+                    romPath = game.localPath,
+                    coreName = coreName,
+                    cachedSaveId = game.saveId ?: game.titleId,
+                    gameId = game.id
+                ) ?: return@withContext DiskCheck.Untouched
+                Logger.info(TAG, "[SaveSync] DISK gameId=${game.id} | no save on disk for emulator=$emulatorId, placing active cache id=${active.id} (from emulator=${active.emulatorId}) | path=$target")
+                return@withContext if (cacheManager.restoreSave(active.id, target)) DiskCheck.Restored else DiskCheck.Failed
+            }
             is SaveLookup.Unreadable -> {
                 saveAccessNotices.record(lookup.dirPath, emulatorId)
                 return@withContext DiskCheck.Unreadable(lookup.dirPath)
             }
         }
 
-        val cacheManager = saveCacheManager.get()
         val diskHash = cacheManager.calculateLocalSaveHash(savePath, game.id, emulatorId)
             ?: return@withContext DiskCheck.Untouched
         val syncRow = saveSyncDao.getByGameEmulatorAndChannel(game.id, emulatorId, SaveSyncApiClient.syncKeyOf(channel), ownerUserId)

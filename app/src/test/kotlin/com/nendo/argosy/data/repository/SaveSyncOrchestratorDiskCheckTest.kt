@@ -150,6 +150,19 @@ class SaveSyncOrchestratorDiskCheckTest {
     }
 
     @Test
+    fun `no save on disk for this emulator places the active version at the constructed save file`() = runTest {
+        coEvery {
+            savePathResolver.discoverSavePathChecked(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns SaveLookup.Absent
+        val constructed = "/storage/emulated/0/RetroArch/saves/mGBA/game.srm"
+        coEvery { savePathResolver.constructSavePath(any(), any(), any(), any(), any(), any(), any(), any()) } returns constructed
+
+        assertEquals(SaveSyncOrchestrator.DiskCheck.Restored, check(secureSaves = false))
+        coVerify(exactly = 1) { saveCacheManager.restoreSave(active.id, constructed) }
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(active.id, match { "{" in it }) }
+    }
+
+    @Test
     fun `a hardcore active version is left to the hardcore gate`() = runTest {
         coEvery { activeSaveRepository.getActiveRow(gameId) } returns active.copy(isHardcore = true)
 

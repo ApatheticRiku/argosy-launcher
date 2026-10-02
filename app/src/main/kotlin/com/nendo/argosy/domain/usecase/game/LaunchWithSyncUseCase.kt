@@ -212,8 +212,6 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         n3dsSaveCaseRepair.repairIfNeeded(gameId, emulatorId, emulatorPackage)
 
-        saveSyncRepository.crossEmulatorMigrateIfNeeded(gameId, emulatorId)
-
         val syncResult = withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) {
             coroutineScope {
                 val stateSync = async { syncStatesQuietly(gameId, emulatorPackage, channelName) }
