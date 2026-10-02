@@ -158,6 +158,27 @@ class SaveUploaderTest {
     }
 
     @Test
+    fun `an unchanged upload links the active version to the server save it already is`() = runTest {
+        coEvery {
+            saveSyncDao.getByGameEmulatorAndChannel(gameId, emulatorId, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, any())
+        } returns SaveSyncEntity(
+            id = 11L, gameId = gameId, rommId = rommId, emulatorId = emulatorId, channelName = "autosave",
+            rommSaveId = 555L, localSavePath = preparedFile.absolutePath, syncStatus = SaveSyncEntity.STATUS_SYNCED,
+            lastUploadedHash = "zip-md5", localContentHash = "zip-md5"
+        )
+        every { saveArchiver.calculateContentHash(any()) } returns "zip-md5"
+        coEvery { saveCacheDao.getAllByGameChannelAndHash(any(), any(), any(), any()) } returns emptyList()
+        coEvery { saveCacheDao.getActive(gameId, any()) } returns SaveCacheEntity(
+            id = 42L, gameId = gameId, emulatorId = emulatorId, cachedAt = Instant.parse("2026-05-01T00:00:00Z"),
+            saveSize = 256L, cachePath = "a/path", channelName = "autosave", contentHash = "folder-form", isActive = true
+        )
+
+        uploader.uploadSave(gameId, emulatorId, channelName = "autosave")
+
+        coVerify { saveCacheDao.updateRommSaveId(42L, 555L) }
+    }
+
+    @Test
     fun `post-upload reconcile discards just-uploaded cache row when an older row already has the server hash`() = runTest {
         val older = SaveCacheEntity(
             id = 10L,

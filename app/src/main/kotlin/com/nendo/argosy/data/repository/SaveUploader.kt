@@ -237,11 +237,12 @@ class SaveUploader @Inject constructor(
                 if (prepared.isTemporary) fileToUpload.delete()
                 tempTrailerFile?.delete()
                 syncEntity.rommSaveId?.let { knownId ->
-                    saveCacheDao.getAllByGameChannelAndHash(gameId, ownerUserId, channelName, contentHash).firstOrNull()?.let { cache ->
-                        if (cache.rommSaveId != knownId) {
-                            saveCacheDao.updateRommSaveId(cache.id, knownId)
-                            Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Self-healed orphan cache row | cacheId=${cache.id}, rommSaveId=$knownId")
-                        }
+                    val cache = saveCacheDao.getAllByGameChannelAndHash(gameId, ownerUserId, channelName, contentHash).firstOrNull()
+                        ?: saveCacheDao.getActive(gameId, ownerUserId)
+                            ?.takeIf { SaveSyncApiClient.syncKeyOf(it.channelName) == SaveSyncApiClient.syncKeyOf(channelName) && it.rommSaveId == null }
+                    if (cache != null && cache.rommSaveId != knownId) {
+                        saveCacheDao.updateRommSaveId(cache.id, knownId)
+                        Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | Self-healed orphan cache row | cacheId=${cache.id}, rommSaveId=$knownId")
                     }
                 }
                 val localMtime = localPath?.let { File(it).takeIf { f -> f.exists() }?.lastModified()?.let(Instant::ofEpochMilli) }

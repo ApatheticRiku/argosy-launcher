@@ -49,6 +49,8 @@ class NegotiateInventory @Inject constructor(
                 fromCache++
                 stateFromVersion(row, version, fileName, slot)
             } else {
+                val slotInPlay = SaveSyncApiClient.syncKeyOf(activeSaveRepository.getActiveChannel(row.gameId))
+                if (slot != slotInPlay) return@mapNotNull null
                 if (!fal.exists(path)) return@mapNotNull null
                 fromDisk++
                 stateFromDisk(row, path, fileName, slot, secureSaves)

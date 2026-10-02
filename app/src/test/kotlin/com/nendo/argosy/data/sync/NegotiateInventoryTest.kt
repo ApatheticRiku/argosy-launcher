@@ -90,6 +90,16 @@ class NegotiateInventoryTest {
     }
 
     @Test
+    fun `a named slot with no cached version is not reported from the disk save that belongs to the slot in play`() = runTest {
+        coEvery { saveSyncDao.getAllWithLocalPath(any()) } returns listOf(row.copy(channelName = "main-save"))
+        coEvery { activeSaveRepository.getActiveRow(gameId) } returns null
+        coEvery { activeSaveRepository.getActiveChannel(gameId) } returns "autosave"
+        coEvery { saveCacheDao.getMostRecentInChannel(gameId, any(), "main-save") } returns null
+
+        assertEquals(emptyList<Any>(), inventory.build(secureSaves = true))
+    }
+
+    @Test
     fun `a rollback snapshot is never reported as the version`() = runTest {
         coEvery { activeSaveRepository.getActiveRow(gameId) } returns active("snapshot").copy(isRollback = true)
         coEvery { saveCacheDao.getMostRecentInChannel(gameId, any(), "autosave") } returns active("new-progress")
