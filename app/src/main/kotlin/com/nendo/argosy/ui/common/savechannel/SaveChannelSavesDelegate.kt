@@ -173,7 +173,7 @@ class SaveChannelSavesDelegate @Inject constructor(
         val activeChannel = state.activeChannel
         val activeSaveTimestamp = state.activeSaveTimestamp
         val activeSaveCacheId = state.activeSaveCacheId
-        val isActiveChannel = !slot.isArchivedBucket && channelName == activeChannel
+        val isActiveChannel = !slot.isArchivedBucket && slot.isActive
 
         val filtered = if (slot.isArchivedBucket) {
             holder.rawEntries.filter { it.isArchival }
@@ -187,12 +187,19 @@ class SaveChannelSavesDelegate @Inject constructor(
             }
         }.sortedByDescending { it.timestamp }
 
+        val activeIndex = when {
+            !isActiveChannel -> -1
+            else -> filtered.indexOfFirst { activeSaveCacheId != null && it.localCacheId == activeSaveCacheId }
+                .takeIf { it >= 0 }
+                ?: filtered.indexOfFirst { state.activeSaveServerId != null && it.serverSaveId == state.activeSaveServerId }
+                    .takeIf { it >= 0 }
+                ?: activeSaveTimestamp?.let { ts ->
+                    filtered.indices.singleOrNull { filtered[it].timestamp.toEpochMilli() == ts }
+                }
+                ?: if (activeSaveCacheId == null && activeSaveTimestamp == null) 0 else -1
+        }
         val history = filtered.mapIndexed { i, entry ->
-            val isApplied = isActiveChannel && when {
-                activeSaveCacheId != null -> entry.localCacheId == activeSaveCacheId
-                activeSaveTimestamp != null -> entry.timestamp.toEpochMilli() == activeSaveTimestamp
-                else -> i == 0
-            }
+            val isApplied = i == activeIndex
             SaveHistoryItem(
                 cacheId = entry.localCacheId ?: -1,
                 serverSaveId = entry.serverSaveId,
@@ -346,7 +353,7 @@ class SaveChannelSavesDelegate @Inject constructor(
         scope.launch {
             activateSaveChannelUseCase(currentGameId, channelName, state.currentCoreId)
             _state.update {
-                it.copy(activeChannel = channelName, activeSaveTimestamp = null, activeSaveCacheId = null)
+                it.copy(activeChannel = channelName, activeSaveTimestamp = null, activeSaveCacheId = null, activeSaveServerId = null)
             }
             onSaveStatusChanged(
                 SaveStatusEvent(channelName = channelName, timestamp = null)
@@ -384,7 +391,8 @@ class SaveChannelSavesDelegate @Inject constructor(
                         _state.update {
                             it.copy(
                                 activeSaveTimestamp = entryTimestamp,
-                                activeSaveCacheId = entry.localCacheId
+                                activeSaveCacheId = entry.localCacheId,
+                                activeSaveServerId = entry.serverSaveId
                             )
                         }
                         refreshEntries()
@@ -476,7 +484,8 @@ class SaveChannelSavesDelegate @Inject constructor(
                     showRestoreConfirmation = false,
                     activeChannel = targetChannel,
                     activeSaveTimestamp = targetTimestamp,
-                    activeSaveCacheId = entry.localCacheId
+                    activeSaveCacheId = entry.localCacheId,
+                    activeSaveServerId = entry.serverSaveId
                 )
             }
             onSaveStatusChanged(
@@ -784,7 +793,8 @@ class SaveChannelSavesDelegate @Inject constructor(
                     renameText = "",
                     activeChannel = name,
                     activeSaveTimestamp = null,
-                    activeSaveCacheId = null
+                    activeSaveCacheId = null,
+                    activeSaveServerId = null
                 )
             }
             refreshEntries()
@@ -926,7 +936,7 @@ class SaveChannelSavesDelegate @Inject constructor(
 
             if (state.activeChannel == channelName) {
                 _state.update {
-                    it.copy(activeChannel = null, activeSaveTimestamp = null, activeSaveCacheId = null)
+                    it.copy(activeChannel = null, activeSaveTimestamp = null, activeSaveCacheId = null, activeSaveServerId = null)
                 }
                 onSaveStatusChanged(
                     SaveStatusEvent(channelName = null, timestamp = null)

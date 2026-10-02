@@ -65,8 +65,10 @@ class SaveChannelDelegate @Inject constructor(
         soundManager.play(SoundType.OPEN_MODAL)
 
         scope.launch {
-            val activeSaveTimestamp = activeSaveRepository.getActiveTimestamp(gameId)
-            val activeSaveCacheId = activeSaveRepository.getActiveRow(gameId)?.id
+            val activeRow = activeSaveRepository.getActiveRow(gameId)
+            val activeSaveTimestamp = activeRow?.cachedAt?.toEpochMilli()
+            val activeSaveCacheId = activeRow?.id
+            val activeSaveServerId = activeRow?.rommSaveId
             val registeredChannels = activeSaveRepository.registeredChannels(gameId)
             val localEntries = savesDelegate.loadLocalEntries()
             val localSlots = savesDelegate.buildSaveSlots(
@@ -100,6 +102,7 @@ class SaveChannelDelegate @Inject constructor(
                     focusIndex = 0,
                     activeSaveTimestamp = activeSaveTimestamp,
                     activeSaveCacheId = activeSaveCacheId,
+                    activeSaveServerId = activeSaveServerId,
                     isLoading = false,
                     isLoadingServer = true
                 )

@@ -69,6 +69,8 @@ import com.nendo.argosy.util.formatSaveTimestamp
 
 private val SLOT_PICKER_LIST_MAX_HEIGHT =
     com.nendo.argosy.ui.theme.generated.DimensionTokens.Layout.slotPickerListMaxHeight.dp
+private const val MIN_VISIBLE_ITEMS = 4
+private const val LIST_HEIGHT_FRACTION = 0.6f
 
 @Composable
 fun SaveChannelModal(
@@ -156,7 +158,10 @@ fun SaveChannelModal(
             }
 
             val itemHeight = Dimens.settingsItemMinHeight
-            val maxVisibleItems = 4
+            val listHeight = maxOf(
+                itemHeight * MIN_VISIBLE_ITEMS,
+                androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp.dp * LIST_HEIGHT_FRACTION
+            )
 
             if (state.isLoading) {
                 Box(
@@ -165,7 +170,7 @@ fun SaveChannelModal(
                         .weight(1f, fill = false)
                         .heightIn(
                             min = itemHeight * 2,
-                            max = itemHeight * maxVisibleItems
+                            max = listHeight
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -175,13 +180,13 @@ fun SaveChannelModal(
                 when (state.selectedTab) {
                     SaveTab.SAVES -> SavesTabContent(
                         state = state,
-                        maxHeight = itemHeight * maxVisibleItems,
+                        maxHeight = listHeight,
                         onSlotClick = onSlotClick,
                         onHistoryClick = onHistoryClick
                     )
                     SaveTab.STATES -> StatesTabContent(
                         state = state,
-                        maxHeight = itemHeight * maxVisibleItems,
+                        maxHeight = listHeight,
                         onStateClick = onStateClick
                     )
                 }

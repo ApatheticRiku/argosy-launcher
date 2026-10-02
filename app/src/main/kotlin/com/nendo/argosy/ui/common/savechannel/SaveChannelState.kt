@@ -23,6 +23,7 @@ data class SaveChannelState(
     val activeChannel: String? = null,
     val activeSaveTimestamp: Long? = null,
     val activeSaveCacheId: Long? = null,
+    val activeSaveServerId: Long? = null,
     val savePath: String? = null,
     val emulatorId: String? = null,
     val emulatorPackage: String? = null,
