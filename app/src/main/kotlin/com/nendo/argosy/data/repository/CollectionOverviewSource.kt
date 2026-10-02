@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.shareIn
 import javax.inject.Inject
 import javax.inject.Singleton
 
-private const val OVERVIEW_COVER_LIMIT = 8
+private const val OVERVIEW_COVER_LIMIT = 32
 private const val OVERVIEW_SETTLE_MS = 300L
 private const val OVERVIEW_KEEP_ALIVE_MS = 60_000L
 

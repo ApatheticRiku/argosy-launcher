@@ -1,6 +1,23 @@
 package com.nendo.argosy.ui.components.collection
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -80,6 +97,7 @@ fun CollectionCell(
                 CoverStrip(
                     coverPaths = coverPaths,
                     placeholderIcon = placeholderIcon,
+                    scrolls = isFocused,
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -126,6 +144,7 @@ fun CollectionCell(
 private fun CoverStrip(
     coverPaths: List<String>,
     placeholderIcon: ImageVector,
+    scrolls: Boolean,
     modifier: Modifier = Modifier
 ) {
     val surface = MaterialTheme.colorScheme.surface
@@ -145,23 +164,80 @@ private fun CoverStrip(
     BoxWithConstraints(modifier = modifier.background(surface)) {
         val coverWidth = maxHeight * aspectRatio
         val slots = ceil(maxWidth / (coverWidth + gap)).toInt().coerceAtLeast(1)
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(gap)
-        ) {
-            coverPaths.take(slots).forEach { path ->
-                AsyncImage(
-                    model = rememberFileImageModel(path),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .width(coverWidth)
-                        .fillMaxHeight()
-                )
+        if (coverPaths.size > slots) {
+            LoopingCovers(coverPaths, coverWidth, gap, slots, scrolls)
+        } else {
+            Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
+                coverPaths.forEach { path -> MosaicCover(path, coverWidth) }
             }
         }
     }
 }
+
+@Composable
+private fun LoopingCovers(
+    coverPaths: List<String>,
+    coverWidth: Dp,
+    gap: Dp,
+    slots: Int,
+    scrolls: Boolean
+) {
+    val density = LocalDensity.current
+    val stepPx = with(density) { (coverWidth + gap).toPx() }
+    val loopPx = stepPx * coverPaths.size
+    val velocityPx = with(density) { ComponentDefaults.CollectionCell.mosaicScrollDpPerSecond.dp.toPx() }
+    val offset = remember(coverPaths) { mutableFloatStateOf(0f) }
+    val speed = remember { Animatable(0f) }
+    LaunchedEffect(scrolls, loopPx) {
+        if (scrolls) delay(ComponentDefaults.CollectionCell.mosaicScrollStartDelayMs.toLong())
+        launch {
+            speed.animateTo(
+                if (scrolls) 1f else 0f,
+                tween(ComponentDefaults.CollectionCell.mosaicScrollRampMs, easing = FastOutSlowInEasing)
+            )
+        }
+        var lastFrame = 0L
+        while (scrolls || speed.value > 0f) {
+            withFrameNanos { now ->
+                if (lastFrame != 0L) {
+                    val seconds = (now - lastFrame) / NANOS_PER_SECOND
+                    offset.floatValue = (offset.floatValue + speed.value * velocityPx * seconds) % loopPx
+                }
+                lastFrame = now
+            }
+        }
+    }
+    val first = (offset.floatValue / stepPx).toInt()
+    val within = offset.floatValue - first * stepPx
+    Box(modifier = Modifier.fillMaxSize().clipToBounds()) {
+        Row(
+            modifier = Modifier
+                .fillMaxHeight()
+                .wrapContentWidth(Alignment.Start, unbounded = true)
+                .offset { IntOffset(-within.roundToInt(), 0) },
+            horizontalArrangement = Arrangement.spacedBy(gap)
+        ) {
+            for (k in 0..slots) {
+                val position = first + k
+                key(position) { MosaicCover(coverPaths[position % coverPaths.size], coverWidth) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MosaicCover(path: String, coverWidth: Dp) {
+    AsyncImage(
+        model = rememberFileImageModel(path),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .width(coverWidth)
+            .fillMaxHeight()
+    )
+}
+
+private const val NANOS_PER_SECOND = 1_000_000_000f
 
 @Composable
 private fun SummaryStats(
