@@ -21,6 +21,15 @@ class AndroidDataAccessor @Inject constructor(
         private const val TAG = "AndroidDataAccessor"
         private const val ANDROID_PATH = "/Android/"
         private val ALT_PATH = BuildConfig.UCDATA_PATH.takeIf { it.isNotEmpty() }
+
+        /**
+         * Whether [path] is on internal shared storage, the only volume whose Android/data needs
+         * alt access; a removable volume's Android/data is reachable through the plain path.
+         */
+        fun isOnInternalVolume(path: String): Boolean =
+            !path.startsWith("/storage/") ||
+                path.startsWith("/storage/emulated/") ||
+                path.startsWith("/storage/self/")
     }
 
     @Volatile
@@ -44,16 +53,14 @@ class AndroidDataAccessor @Inject constructor(
                 altPathSupported?.let { return it }
             }
 
-            var anySupported = false
-            for (root in getAllStorageRootsForAltAccess()) {
-                val supported = setupAndVerifyAltAccess(root, hasStoragePermission)
-                if (supported) anySupported = true
-            }
-
+            val supported = setupAndVerifyAltAccess(
+                Environment.getExternalStorageDirectory().absolutePath,
+                hasStoragePermission
+            )
             if (hasStoragePermission) {
-                altPathSupported = anySupported
+                altPathSupported = supported
             }
-            return anySupported
+            return supported
         }
     }
 
@@ -64,22 +71,6 @@ class AndroidDataAccessor @Inject constructor(
                 if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
                     val path = vol.absolutePath
                     if (path !in roots && vol.canRead()) roots.add(path)
-                }
-            }
-        } catch (e: Exception) {
-            Logger.warn(TAG, "[AltAccess] Failed to enumerate storage volumes: ${e.message}")
-        }
-        return roots
-    }
-
-    fun getAllStorageRootsForAltAccess(): List<String> {
-        val roots = mutableListOf(Environment.getExternalStorageDirectory().absolutePath)
-        try {
-            File("/storage").listFiles()?.forEach { vol ->
-                if (vol.isDirectory && vol.name != "emulated" && vol.name != "self") {
-                    if (File(vol, "Android/data").exists()) {
-                        roots.add(vol.absolutePath)
-                    }
                 }
             }
         } catch (e: Exception) {
@@ -121,6 +112,7 @@ class AndroidDataAccessor @Inject constructor(
 
     fun transformPath(path: String): String {
         val altPath = ALT_PATH ?: return path
+        if (!isOnInternalVolume(path)) return path
         if (!isAltAccessSupported()) return path
         if (!isRestrictedAndroidPath(path)) return path
         if (path.contains(altPath)) return path
