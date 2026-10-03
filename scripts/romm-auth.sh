@@ -126,6 +126,19 @@ call_api() {
     echo "$response" | jq . 2>/dev/null || echo "$response"
 }
 
+download() {
+    local endpoint="$1"
+    local outfile="$2"
+    [[ -n "$endpoint" && -n "$outfile" ]] || { echo "Usage: $(basename "$0") download <endpoint> <outfile>"; return 1; }
+
+    local auth
+    auth=$(resolve_auth) || { echo "No RomM credentials available. See header of $(basename "$0")."; return 1; }
+    local base_url=$(printf '%s' "$auth" | cut -f1)
+    local bearer=$(printf '%s' "$auth" | cut -f2)
+
+    curl -s -f -o "$outfile" -H "Authorization: Bearer $bearer" "$base_url$endpoint"
+}
+
 status() {
     local found=0
     if [[ -s "$CLIENT_TOKEN_FILE" ]]; then
@@ -145,6 +158,9 @@ case "$1" in
     call)
         call_api "$2" "$3" "$4"
         ;;
+    download)
+        download "$2" "$3"
+        ;;
     refresh)
         refresh_token
         ;;
@@ -157,6 +173,7 @@ case "$1" in
         echo
         echo "Commands:"
         echo "  call <method> <endpoint> [data]    - API call"
+        echo "  download <endpoint> <outfile>      - binary-safe download"
         echo "  status                             - Show auth state"
         echo "  refresh                            - Refresh legacy OAuth token file"
         ;;
