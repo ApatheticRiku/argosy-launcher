@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import javax.inject.Inject
@@ -89,10 +90,7 @@ class LockScreenArtManager @Inject constructor(
         val startedAt = SystemClock.elapsedRealtime()
         context.registerComponentCallbacks(callbacks)
         try {
-            val deadline = startedAt + LAUNCH_DRAW_BUDGET_MS
-            val drawing = scope.async { refresh(gameId, notAfter = deadline) }
-            val drawn = withTimeoutOrNull(LAUNCH_DRAW_BUDGET_MS) { drawing.await() } == true
-            if (!drawing.isCompleted) drawing.cancel()
+            val drawn = withContext(Dispatchers.IO) { refresh(gameId, artLoadBudgetMs = LAUNCH_DRAW_BUDGET_MS) }
             val settled = drawn && withTimeoutOrNull(LAUNCH_RECOLOR_WAIT_MS) { recolored.await() } != null
             Logger.debug(
                 TAG,
@@ -111,7 +109,7 @@ class LockScreenArtManager @Inject constructor(
 
     private suspend fun refresh(
         gameId: Long? = playSessionTracker.activeSession.value?.gameId,
-        notAfter: Long? = null
+        artLoadBudgetMs: Long? = null
     ): Boolean = mutex.withLock {
         val enabled = displayPrefs.preferences.first().lockScreenArt
         val isHome = SecondaryHomeComponent.isDefaultHome(context)
@@ -127,18 +125,22 @@ class LockScreenArtManager @Inject constructor(
         }
         val (width, height) = screenSize() ?: return@withLock false
 
-        val (key, bitmap) = gameId?.let { heroArt(it, width, height) }
-            ?: mosaicArt(width, height)
-            ?: run {
-                Logger.debug(TAG, "refresh: nothing to draw | gameId=$gameId, size=${width}x$height")
+        val loadArt: suspend () -> Pair<String, Bitmap?>? = {
+            gameId?.let { heroArt(it, width, height) } ?: mosaicArt(width, height)
+        }
+        val art = if (artLoadBudgetMs != null) {
+            withTimeoutOrNull(artLoadBudgetMs) { loadArt() } ?: run {
+                Logger.debug(TAG, "refresh: art not ready within ${artLoadBudgetMs}ms; leaving the lock screen as it is | gameId=$gameId")
                 return@withLock false
             }
-        if (bitmap == null) return@withLock false
-        if (notAfter != null && SystemClock.elapsedRealtime() > notAfter) {
-            Logger.debug(TAG, "refresh: art was ready after the launch moved on; not setting it | key=$key")
-            bitmap.recycle()
+        } else {
+            loadArt()
+        }
+        val (key, bitmap) = art ?: run {
+            Logger.debug(TAG, "refresh: nothing to draw | gameId=$gameId, size=${width}x$height")
             return@withLock false
         }
+        if (bitmap == null) return@withLock false
 
         val set = runCatching {
             wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_LOCK)

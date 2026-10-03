@@ -403,9 +403,13 @@ class SaveCacheManager @Inject constructor(
         return Archived(precomputedContentHash ?: saveArchiver.calculateContentHash(saveFile), saveFile, null)
     }
 
-    private fun placedMatchesArchive(archive: File, placed: List<String>): Boolean =
+    @androidx.annotation.VisibleForTesting
+    internal fun placedMatchesArchive(archive: File, placed: List<String>): Boolean =
         java.util.zip.ZipFile(archive).use { zip ->
-            val entries = zip.entries().toList().filter { !it.isDirectory }.associateBy { File(it.name).name }
+            val entries = zip.entries().toList()
+                .filter { !it.isDirectory && it.name.endsWith(".gci", ignoreCase = true) }
+                .associateBy { File(it.name).name }
+            if (placed.map { File(it).name }.toSet() != entries.keys) return@use false
             placed.all { path ->
                 val entry = entries[File(path).name] ?: return@all false
                 val written = fal.readBytes(path) ?: return@all false

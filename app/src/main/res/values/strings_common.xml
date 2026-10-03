@@ -1334,10 +1334,14 @@
     <string name="ui_launch_overlay_cancel">Cancel</string>
     <string name="ui_launch_overlay_cancel_option">Cancel launch</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">Go back without starting the game</string>
+    <!-- Heading of the prompt shown before a game launches when its save data could not be put
+         back in place. "Save" is the noun: the game's save data, not the verb. -->
     <string name="ui_sync_overlay_restore_failed_title">Save Couldn\'t Be Restored</string>
-    <!-- %1$s is the game's title. -->
+    <!-- Body of that prompt. "save" is the noun: the game's save data. %1$s is the game's title. -->
     <string name="ui_sync_overlay_restore_failed_message">Argosy couldn\'t put your selected save for \"%1$s\" back in place.</string>
+    <!-- Choice in that prompt: start the game without syncing its save data. Verb phrase. -->
     <string name="ui_sync_overlay_restore_failed_launch">Launch Without Syncing</string>
+    <!-- Second line of that choice. "save" is the noun: the save data already on this device. -->
     <string name="ui_sync_overlay_restore_failed_launch_subtitle">Play with the save on this device. Nothing is uploaded now.</string>
     <!-- Heading when the save on this device has changes that were never backed up. -->
     <string name="ui_sync_overlay_local_modified_title">Local Save Modified</string>

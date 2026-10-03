@@ -532,6 +532,63 @@ class SaveCacheManagerCachingTest {
         assertEquals(members.map { it.name }.sorted(), card.list()?.sorted())
     }
 
+    private fun bundleOf(vararg members: File): File =
+        File(tempDir, "bundle_${members.size}.zip").also { archive ->
+            java.util.zip.ZipOutputStream(archive.outputStream()).use { zip ->
+                members.forEach { member ->
+                    zip.putNextEntry(java.util.zip.ZipEntry(member.name))
+                    zip.write(member.readBytes())
+                    zip.closeEntry()
+                }
+            }
+        }
+
+    @Test
+    fun `a GameCube bundle check fails when a member is missing from the card`() {
+        val staging = File(tempDir, "staging").apply { mkdirs() }
+        val fzc = gci(staging, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1)
+        val fZero = gci(staging, "8P-GFZE-f_zero.dat.gci", "GFZE", "f_zero.dat", 2)
+        val archive = bundleOf(fzc, fZero)
+
+        assertFalse(manager.placedMatchesArchive(archive, listOf(fzc.path)))
+        assertTrue(manager.placedMatchesArchive(archive, listOf(fzc.path, fZero.path)))
+    }
+
+    @Test
+    fun `a GameCube bundle check fails when a written file differs from the archive`() {
+        val staging = File(tempDir, "staging").apply { mkdirs() }
+        val fzc = gci(staging, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1)
+        val archive = bundleOf(fzc)
+        fzc.appendBytes(byteArrayOf(9))
+
+        assertFalse(manager.placedMatchesArchive(archive, listOf(fzc.path)))
+    }
+
+    @Test
+    fun `a GameCube bundle restore fails when a member does not land`() = runTest {
+        val staging = File(tempDir, "staging").apply { mkdirs() }
+        val members = listOf(
+            gci(staging, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1),
+            gci(staging, "8P-GFZE-f_zero.dat.gci", "GFZE", "f_zero.dat", 2)
+        )
+        val archive = File(tempDir, "save_cache/u1/9981/blocked/save.zip").apply { parentFile?.mkdirs() }
+        java.util.zip.ZipOutputStream(archive.outputStream()).use { zip ->
+            members.forEach { member ->
+                zip.putNextEntry(java.util.zip.ZipEntry(member.name))
+                zip.write(member.readBytes())
+                zip.closeEntry()
+            }
+        }
+        coEvery { saveCacheDao.getById(37L) } returns SaveCacheEntity(
+            id = 37L, gameId = 9981L, emulatorId = "argosy", cachedAt = Instant.EPOCH, saveSize = archive.length(),
+            cachePath = "u1/9981/blocked/save.zip", contentHash = "unused"
+        )
+        val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
+        File(card, "8P-GFZE-f_zero.dat.gci").apply { mkdirs() }.resolve("blocker").writeBytes(byteArrayOf(0))
+
+        assertFalse(manager.restoreSave(37L, File(card, "8P-GFZE-fzc.dat.gci").absolutePath))
+    }
+
     @Test
     fun `a new GameCube file changes the unit hash even when the first file is untouched`() = runTest {
         val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
