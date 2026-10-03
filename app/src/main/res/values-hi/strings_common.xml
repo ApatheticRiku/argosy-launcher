@@ -652,6 +652,10 @@
     <string name="ui_launch_overlay_cancel">रद्द करें</string>
     <string name="ui_launch_overlay_cancel_option">लॉन्च रद्द करें</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">गेम शुरू किए बिना वापस जाएँ</string>
+    <string name="ui_sync_overlay_restore_failed_title">सेव रिस्टोर नहीं हो सका</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy \"%1$s\" के चुने हुए सेव को वापस नहीं रख सका।</string>
+    <string name="ui_sync_overlay_restore_failed_launch">बिना सिंक किए लॉन्च करें</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">इस डिवाइस के सेव से खेलें। अभी कुछ भी अपलोड नहीं होगा।</string>
     <string name="ui_sync_overlay_local_modified_title">लोकल सेव में बदलाव</string>
     <string name="ui_sync_overlay_local_modified_message">\"%1$s\" के लिए आपकी लोकल सेव में ऐसे बदलाव हैं जिनका बैकअप नहीं लिया गया है।</string>
     <string name="ui_sync_overlay_local_modified_question">क्या आप अपनी लोकल प्रगति रखना चाहेंगे या पहले चुनी गई सेव रीस्टोर करना चाहेंगे?</string>

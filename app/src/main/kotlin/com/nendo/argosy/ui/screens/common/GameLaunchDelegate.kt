@@ -51,7 +51,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 enum class HardcoreConflictChoice { KEEP_HARDCORE, DOWNGRADE_TO_CASUAL, KEEP_LOCAL }
-enum class LocalModifiedChoice { KEEP_LOCAL, RESTORE_SELECTED }
+enum class LocalModifiedChoice { KEEP_LOCAL, RESTORE_SELECTED, LAUNCH_WITHOUT_SYNC }
 
 data class LaunchResultCallbacks(
     val onLaunch: (Intent) -> Unit,
@@ -135,6 +135,10 @@ class GameLaunchDelegate @Inject constructor(
         private val LOCAL_MODIFIED_OPTIONS = listOf(
             LaunchPromptOption.APPLY_LOCAL,
             LaunchPromptOption.RESTORE_SERVER
+        )
+        private val RESTORE_FAILED_OPTIONS = listOf(
+            LaunchPromptOption.RESTORE_SERVER,
+            LaunchPromptOption.LAUNCH_WITHOUT_SYNC
         )
     }
 
@@ -307,9 +311,11 @@ class GameLaunchDelegate @Inject constructor(
                             }
                             is SyncProgress.LocalModified -> {
                                 localModifiedInfo = progress
-                                localModifiedChoice = when (ticket.ask(progress, LOCAL_MODIFIED_OPTIONS)) {
+                                val options = if (progress.restoreFailed) RESTORE_FAILED_OPTIONS else LOCAL_MODIFIED_OPTIONS
+                                localModifiedChoice = when (ticket.ask(progress, options)) {
                                     LaunchPromptOption.APPLY_LOCAL -> LocalModifiedChoice.KEEP_LOCAL
                                     LaunchPromptOption.RESTORE_SERVER -> LocalModifiedChoice.RESTORE_SELECTED
+                                    LaunchPromptOption.LAUNCH_WITHOUT_SYNC -> LocalModifiedChoice.LAUNCH_WITHOUT_SYNC
                                     else -> null
                                 }
                                 android.util.Log.d("GameLaunchDelegate", "LocalModified resolved: $localModifiedChoice")
@@ -380,6 +386,8 @@ class GameLaunchDelegate @Inject constructor(
                                 activeSaveRepository.setActiveSaveApplied(gameId, true)
                             }
                         }
+                        LocalModifiedChoice.LAUNCH_WITHOUT_SYNC ->
+                            android.util.Log.d("GameLaunchDelegate", "User chose to launch with the save on disk; nothing uploaded")
                     }
                 }
 

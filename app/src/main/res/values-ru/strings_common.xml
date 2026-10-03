@@ -666,6 +666,10 @@
     <string name="ui_launch_overlay_cancel">Отмена</string>
     <string name="ui_launch_overlay_cancel_option">Отменить запуск</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">Вернуться, не запуская игру</string>
+    <string name="ui_sync_overlay_restore_failed_title">Не удалось восстановить сохранение</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy не удалось вернуть выбранное сохранение для «%1$s».</string>
+    <string name="ui_sync_overlay_restore_failed_launch">Запустить без синхронизации</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">Играть с сохранением на этом устройстве. Сейчас ничего не загружается.</string>
     <string name="ui_sync_overlay_local_modified_title">Локальное сохранение изменено</string>
     <string name="ui_sync_overlay_local_modified_message">Ваше локальное сохранение для \"%1$s\" содержит изменения, которые не были сохранены в резервную копию.</string>
     <string name="ui_sync_overlay_local_modified_question">Оставить локальный прогресс или восстановить ранее выбранное сохранение?</string>

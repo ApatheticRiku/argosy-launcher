@@ -582,6 +582,63 @@ internal fun LocalModifiedContent(
 }
 
 @Composable
+internal fun RestoreFailedContent(
+    gameTitle: String,
+    focusIndex: Int,
+    onRestoreSynced: () -> Unit,
+    onLaunchWithoutSync: () -> Unit,
+    onCancelLaunch: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(horizontal = Dimens.spacingXl)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(Dimens.iconXl + Dimens.spacingSm)
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        Text(
+            text = stringResource(R.string.ui_sync_overlay_restore_failed_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+
+        Text(
+            text = stringResource(R.string.ui_sync_overlay_restore_failed_message, gameTitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        Column(modifier = Modifier.fillMaxWidth(0.85f)) {
+            ConflictOption(
+                label = stringResource(R.string.ui_sync_overlay_local_modified_restore),
+                subtitle = stringResource(R.string.ui_sync_overlay_local_modified_restore_subtitle),
+                isFocused = focusIndex == 0,
+                onClick = onRestoreSynced
+            )
+            ConflictOption(
+                label = stringResource(R.string.ui_sync_overlay_restore_failed_launch),
+                subtitle = stringResource(R.string.ui_sync_overlay_restore_failed_launch_subtitle),
+                isFocused = focusIndex == 1,
+                onClick = onLaunchWithoutSync
+            )
+            CancelLaunchOption(isFocused = focusIndex == 2, onClick = onCancelLaunch)
+        }
+    }
+}
+
+@Composable
 private fun PostSessionConflictContent(
     gameTitle: String,
     channelName: String?,

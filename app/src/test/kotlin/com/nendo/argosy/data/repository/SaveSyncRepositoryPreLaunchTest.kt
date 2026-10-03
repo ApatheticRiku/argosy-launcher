@@ -126,7 +126,9 @@ class SaveSyncRepositoryPreLaunchTest {
 
         val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
 
-        assertEquals("/saves/save.srm", (result as PreLaunchSyncResult.LocalModified).localSavePath)
+        val prompt = result as PreLaunchSyncResult.LocalModified
+        assertEquals("/saves/save.srm", prompt.localSavePath)
+        assertTrue(prompt.restoreFailed)
     }
 
     @Test

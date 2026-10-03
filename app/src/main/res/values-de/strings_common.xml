@@ -652,6 +652,10 @@
     <string name="ui_launch_overlay_cancel">Abbrechen</string>
     <string name="ui_launch_overlay_cancel_option">Start abbrechen</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">Zurück, ohne das Spiel zu starten</string>
+    <string name="ui_sync_overlay_restore_failed_title">Spielstand konnte nicht wiederhergestellt werden</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy konnte den ausgewählten Spielstand für „%1$s“ nicht zurückspielen.</string>
+    <string name="ui_sync_overlay_restore_failed_launch">Ohne Synchronisierung starten</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">Mit dem Spielstand auf diesem Gerät spielen. Jetzt wird nichts hochgeladen.</string>
     <string name="ui_sync_overlay_local_modified_title">Lokaler Spielstand geändert</string>
     <string name="ui_sync_overlay_local_modified_message">Ihr lokaler Spielstand für \"%1$s\" enthält Änderungen, die noch nicht gesichert wurden.</string>
     <string name="ui_sync_overlay_local_modified_question">Möchten Sie Ihren lokalen Fortschritt behalten oder den zuvor gewählten Spielstand wiederherstellen?</string>

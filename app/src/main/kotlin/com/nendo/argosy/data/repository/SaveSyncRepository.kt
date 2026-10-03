@@ -72,7 +72,8 @@ sealed class PreLaunchSyncResult {
         val localSavePath: String,
         val serverTimestamp: Instant,
         val channelName: String?,
-        val serverSaveId: Long? = null
+        val serverSaveId: Long? = null,
+        val restoreFailed: Boolean = false
     ) : PreLaunchSyncResult()
 }
 
@@ -381,12 +382,13 @@ class SaveSyncRepository @Inject constructor(
                 Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | active save could not be restored and no local path is known | decision=LocalIsNewer")
                 return@withContext PreLaunchSyncResult.LocalIsNewer
             }
-            Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | active save could not be restored; asking which save to use | decision=LocalModified")
+            Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | active save could not be restored; asking how to launch | decision=LocalModified(restoreFailed)")
             return@withContext PreLaunchSyncResult.LocalModified(
                 localSavePath = localPath,
                 serverTimestamp = Instant.now(),
                 channelName = effectiveChannel,
-                serverSaveId = existing.rommSaveId
+                serverSaveId = existing.rommSaveId,
+                restoreFailed = true
             )
         }
         if (existing?.userSelectedRestorePoint == true) {

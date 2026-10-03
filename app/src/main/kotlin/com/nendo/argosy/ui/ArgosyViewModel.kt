@@ -186,6 +186,7 @@ private fun isNavRouteAvailable(route: String, socialConnected: Boolean, mediaSi
 class ArgosyViewModel @Inject constructor(
     private val application: Application,
     private val preferencesRepository: UserPreferencesRepository,
+    private val quickNavigationSource: com.nendo.argosy.data.preferences.QuickNavigationSource,
     val gamepadInputHandler: GamepadInputHandler,
     val hapticManager: HapticFeedbackManager,
     val soundManager: SoundFeedbackManager,
@@ -535,13 +536,14 @@ class ArgosyViewModel @Inject constructor(
     val navRingState: StateFlow<NavRingState> = combine(
         socialRepository.connectionState,
         preferencesRepository.userPreferences,
+        quickNavigationSource.enabled,
         _navBarVisible
-    ) { social, prefs, barVisible ->
+    ) { social, prefs, quickNavigation, barVisible ->
         val socialConnected = social is SocialConnectionState.Connected
         val pages = allDrawerItems.filter {
             isNavRouteAvailable(it.route, socialConnected, prefs.isJellyfinSignedIn)
         }
-        val ring = if (prefs.quickNavigation) {
+        val ring = if (quickNavigation) {
             NavRing.resolve(prefs.navRingRoutes).mapNotNull { token ->
                 pages.firstOrNull { NavRing.token(it.route) == token }
             }

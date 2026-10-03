@@ -574,6 +574,12 @@ fun LibraryScreen(
                                     else viewModel.toggleFavorite(it.id)
                                 }
                                 InputButton.X -> viewModel.toggleFilterMenu()
+                                InputButton.LT_RT -> if (quickNavigation) {
+                                    viewModel.nextPlatform()
+                                } else {
+                                    viewModel.jumpToAdjacentSection(1)
+                                }
+                                InputButton.LB_RB -> viewModel.nextPlatform()
                                 InputButton.SELECT -> if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) {
                                     com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
                                 } else {

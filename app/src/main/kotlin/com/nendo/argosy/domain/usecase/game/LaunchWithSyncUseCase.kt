@@ -241,7 +241,12 @@ class LaunchWithSyncUseCase @Inject constructor(
                 emit(SyncProgress.PreLaunch.Launching(channelName))
             }
             is PreLaunchSyncResult.LocalModified -> {
-                emit(SyncProgress.LocalModified(gameId, syncResult.localSavePath, syncResult.channelName, syncResult.serverSaveId))
+                emit(
+                    SyncProgress.LocalModified(
+                        gameId, syncResult.localSavePath, syncResult.channelName, syncResult.serverSaveId,
+                        restoreFailed = syncResult.restoreFailed
+                    )
+                )
             }
             is PreLaunchSyncResult.ServerIsNewer -> {
                 emit(SyncProgress.PreLaunch.Downloading(channelName))

@@ -638,6 +638,10 @@
     <string name="ui_launch_overlay_cancel">取消</string>
     <string name="ui_launch_overlay_cancel_option">取消啟動</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">返回且不啟動遊戲</string>
+    <string name="ui_sync_overlay_restore_failed_title">無法還原存檔</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy 無法還原「%1$s」的所選存檔。</string>
+    <string name="ui_sync_overlay_restore_failed_launch">不同步直接啟動</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">使用此裝置上的存檔遊玩，現在不會上傳任何內容。</string>
     <string name="ui_sync_overlay_local_modified_title">本機存檔已變更</string>
     <string name="ui_sync_overlay_local_modified_message">「%1$s」的本機存檔有尚未備份的變更。</string>
     <string name="ui_sync_overlay_local_modified_question">您要保留本機進度，還是還原先前選擇的存檔？</string>

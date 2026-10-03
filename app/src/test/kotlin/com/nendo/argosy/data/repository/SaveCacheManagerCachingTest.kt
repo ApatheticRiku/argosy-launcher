@@ -106,6 +106,17 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `a memory card that cannot be listed is treated as holding the save`() = runTest {
+        val card = ps2Card(gameFolders = emptyList())
+        card.setReadable(false)
+        try {
+            assertFalse(manager.protectBeforeOverwrite(9L, "armsx2", card.path))
+        } finally {
+            card.setReadable(true)
+        }
+    }
+
+    @Test
     fun `a memory card holding the game's save is backed up before a download lands`() = runTest {
         val card = ps2Card(gameFolders = listOf("BASLUS-21050"))
 

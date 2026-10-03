@@ -666,6 +666,10 @@
     <string name="ui_launch_overlay_cancel">Cancelar</string>
     <string name="ui_launch_overlay_cancel_option">Cancelar inicio</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">Volver sin iniciar el juego</string>
+    <string name="ui_sync_overlay_restore_failed_title">No se pudo restaurar la partida</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy no pudo restaurar la partida seleccionada de \"%1$s\".</string>
+    <string name="ui_sync_overlay_restore_failed_launch">Iniciar sin sincronizar</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">Juega con la partida de este dispositivo. No se sube nada ahora.</string>
     <string name="ui_sync_overlay_local_modified_title">Partida guardada local modificada</string>
     <string name="ui_sync_overlay_local_modified_message">Tu partida guardada local de \"%1$s\" tiene cambios que no se han respaldado.</string>
     <string name="ui_sync_overlay_local_modified_question">¿Quieres conservar tu progreso local o restaurar la partida guardada seleccionada anteriormente?</string>

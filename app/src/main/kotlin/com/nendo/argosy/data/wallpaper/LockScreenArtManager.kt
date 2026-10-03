@@ -89,8 +89,10 @@ class LockScreenArtManager @Inject constructor(
         val startedAt = SystemClock.elapsedRealtime()
         context.registerComponentCallbacks(callbacks)
         try {
-            val drawing = scope.async { refresh(gameId) }
+            val deadline = startedAt + LAUNCH_DRAW_BUDGET_MS
+            val drawing = scope.async { refresh(gameId, notAfter = deadline) }
             val drawn = withTimeoutOrNull(LAUNCH_DRAW_BUDGET_MS) { drawing.await() } == true
+            if (!drawing.isCompleted) drawing.cancel()
             val settled = drawn && withTimeoutOrNull(LAUNCH_RECOLOR_WAIT_MS) { recolored.await() } != null
             Logger.debug(
                 TAG,
@@ -108,7 +110,8 @@ class LockScreenArtManager @Inject constructor(
     }
 
     private suspend fun refresh(
-        gameId: Long? = playSessionTracker.activeSession.value?.gameId
+        gameId: Long? = playSessionTracker.activeSession.value?.gameId,
+        notAfter: Long? = null
     ): Boolean = mutex.withLock {
         val enabled = displayPrefs.preferences.first().lockScreenArt
         val isHome = SecondaryHomeComponent.isDefaultHome(context)
@@ -131,6 +134,11 @@ class LockScreenArtManager @Inject constructor(
                 return@withLock false
             }
         if (bitmap == null) return@withLock false
+        if (notAfter != null && SystemClock.elapsedRealtime() > notAfter) {
+            Logger.debug(TAG, "refresh: art was ready after the launch moved on; not setting it | key=$key")
+            bitmap.recycle()
+            return@withLock false
+        }
 
         val set = runCatching {
             wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_LOCK)

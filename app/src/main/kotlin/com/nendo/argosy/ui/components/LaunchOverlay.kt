@@ -277,7 +277,15 @@ private fun PromptContent(
             onKeepLocal = { onAnswer(LaunchPromptOption.SKIP_HARDCORE_SAVE) },
             onCancelLaunch = onCancel
         )
-        is SyncProgress.LocalModified -> LocalModifiedContent(
+        is SyncProgress.LocalModified -> if (conflict.restoreFailed) {
+            RestoreFailedContent(
+                gameTitle = gameTitle ?: stringResource(R.string.ui_sync_overlay_unknown_game),
+                focusIndex = focusIndex,
+                onRestoreSynced = { onAnswer(LaunchPromptOption.RESTORE_SERVER) },
+                onLaunchWithoutSync = { onAnswer(LaunchPromptOption.LAUNCH_WITHOUT_SYNC) },
+                onCancelLaunch = onCancel
+            )
+        } else LocalModifiedContent(
             gameTitle = gameTitle ?: stringResource(R.string.ui_sync_overlay_unknown_game),
             focusIndex = focusIndex,
             onKeepLocal = { onAnswer(LaunchPromptOption.APPLY_LOCAL) },

@@ -677,6 +677,10 @@
     <string name="ui_launch_overlay_cancel">Annuler</string>
     <string name="ui_launch_overlay_cancel_option">Annuler le lancement</string>
     <string name="ui_launch_overlay_cancel_option_subtitle">Revenir sans lancer le jeu</string>
+    <string name="ui_sync_overlay_restore_failed_title">Impossible de restaurer la sauvegarde</string>
+    <string name="ui_sync_overlay_restore_failed_message">Argosy n\'a pas pu remettre en place la sauvegarde choisie pour « %1$s ».</string>
+    <string name="ui_sync_overlay_restore_failed_launch">Lancer sans synchroniser</string>
+    <string name="ui_sync_overlay_restore_failed_launch_subtitle">Jouer avec la sauvegarde de cet appareil. Rien n\'est envoyé pour l\'instant.</string>
     <string name="ui_sync_overlay_local_modified_title">Sauvegarde locale modifiée</string>
     <string name="ui_sync_overlay_local_modified_message">Votre sauvegarde locale pour \"%1$s\" contient des modifications qui n\'ont pas été sauvegardées.</string>
     <string name="ui_sync_overlay_local_modified_question">Voulez-vous conserver votre progression locale ou restaurer la sauvegarde précédemment sélectionnée ?</string>

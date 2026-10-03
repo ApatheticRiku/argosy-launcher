@@ -54,6 +54,8 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+private const val RAIL_REUSE_MS = 5_000L
+
 /**
  * The one door the rest of the app uses to reach media: libraries, the item hierarchy, watch state
  * and the refreshes that fill them. The media DAOs are reached only through here. The player is the
@@ -71,8 +73,6 @@ import javax.inject.Singleton
  */
 @Suppress("TooManyFunctions")
 @OptIn(ExperimentalCoroutinesApi::class)
-private const val RAIL_REUSE_MS = 5_000L
-
 @Singleton
 class MediaRepository @Inject constructor(
     private val jellyfinPreferencesRepository: JellyfinPreferencesRepository,

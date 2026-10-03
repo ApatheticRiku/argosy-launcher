@@ -86,7 +86,7 @@ class LaunchProgressTracker internal constructor(private val scope: CoroutineSco
 
     /**
      * Opens a launch, waiting out a cancelled one that is still finishing. Null when another
-     * launch is already in progress.
+     * launch is already in progress, or this one was cancelled while it waited.
      */
     suspend fun begin(gameTitle: String?): Ticket? {
         val ticket: Ticket
@@ -103,6 +103,10 @@ class LaunchProgressTracker internal constructor(private val scope: CoroutineSco
         if (previous != null) {
             ticket.step(LaunchStep.FinishingPrevious)
             previous.awaitFinished()
+        }
+        if (ticket.isCancelled) {
+            finish(ticket, launched = false)
+            return null
         }
         return ticket
     }
