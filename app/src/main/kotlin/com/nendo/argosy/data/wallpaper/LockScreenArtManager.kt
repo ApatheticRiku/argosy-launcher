@@ -25,6 +25,7 @@ import com.nendo.argosy.util.SecondaryHomeComponent
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -55,6 +56,9 @@ class LockScreenArtManager @Inject constructor(
     private val scope = SafeCoroutineScope(Dispatchers.IO, TAG)
     private val mutex = Mutex()
     private var shownKey: String? = null
+    @Volatile private var libraryRefresh: Job? = null
+
+    private class LoadedArt(val art: Pair<String, Bitmap?>?)
 
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -78,6 +82,7 @@ class LockScreenArtManager @Inject constructor(
      * screen is alive, makes Android rebuild that screen.
      */
     suspend fun showBeforeLaunch(gameId: Long) {
+        libraryRefresh?.cancel()
         val recolored = CompletableDeferred<Unit>()
         val callbacks = object : ComponentCallbacks {
             override fun onConfigurationChanged(newConfig: Configuration) {
@@ -88,9 +93,14 @@ class LockScreenArtManager @Inject constructor(
             override fun onLowMemory() = Unit
         }
         val startedAt = SystemClock.elapsedRealtime()
-        context.registerComponentCallbacks(callbacks)
+        var armed = false
         try {
-            val drawn = withContext(Dispatchers.IO) { refresh(gameId, artLoadBudgetMs = LAUNCH_DRAW_BUDGET_MS) }
+            val drawn = withContext(Dispatchers.IO) {
+                refresh(gameId, artLoadBudgetMs = LAUNCH_DRAW_BUDGET_MS) {
+                    context.registerComponentCallbacks(callbacks)
+                    armed = true
+                }
+            }
             val settled = drawn && withTimeoutOrNull(LAUNCH_RECOLOR_WAIT_MS) { recolored.await() } != null
             Logger.debug(
                 TAG,
@@ -99,18 +109,24 @@ class LockScreenArtManager @Inject constructor(
                     "elapsedMs=${SystemClock.elapsedRealtime() - startedAt}"
             )
         } finally {
-            context.unregisterComponentCallbacks(callbacks)
+            if (armed) context.unregisterComponentCallbacks(callbacks)
         }
     }
 
     fun showLibraryAfterCancelledLaunch() {
-        scope.launch { refresh(gameId = null) }
+        libraryRefresh = scope.launch { refresh(gameId = null) }
     }
 
     private suspend fun refresh(
         gameId: Long? = playSessionTracker.activeSession.value?.gameId,
-        artLoadBudgetMs: Long? = null
+        artLoadBudgetMs: Long? = null,
+        beforeWrite: () -> Unit = {}
     ): Boolean = mutex.withLock {
+        val isLaunch = artLoadBudgetMs != null
+        if (!isLaunch && gameId != null && shownKey?.startsWith("game:$gameId:") != true) {
+            Logger.debug(TAG, "refresh: the launch did not set this game's art; leaving the lock screen during play | gameId=$gameId")
+            return@withLock false
+        }
         val enabled = displayPrefs.preferences.first().lockScreenArt
         val isHome = SecondaryHomeComponent.isDefaultHome(context)
         if (!enabled || !isHome) {
@@ -129,10 +145,11 @@ class LockScreenArtManager @Inject constructor(
             gameId?.let { heroArt(it, width, height) } ?: mosaicArt(width, height)
         }
         val art = if (artLoadBudgetMs != null) {
-            withTimeoutOrNull(artLoadBudgetMs) { loadArt() } ?: run {
+            val loaded = withTimeoutOrNull(artLoadBudgetMs) { LoadedArt(loadArt()) } ?: run {
                 Logger.debug(TAG, "refresh: art not ready within ${artLoadBudgetMs}ms; leaving the lock screen as it is | gameId=$gameId")
                 return@withLock false
             }
+            loaded.art
         } else {
             loadArt()
         }
@@ -142,6 +159,7 @@ class LockScreenArtManager @Inject constructor(
         }
         if (bitmap == null) return@withLock false
 
+        beforeWrite()
         val set = runCatching {
             wallpaperManager.setBitmap(bitmap, null, true, WallpaperManager.FLAG_LOCK)
         }.onSuccess {
