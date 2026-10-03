@@ -53,6 +53,16 @@
 -keep class org.spongycastle.** { *; }
 -dontwarn org.spongycastle.**
 
+# Result types whose class names appear in exported logs
+-keepnames class com.nendo.argosy.data.repository.PreLaunchSyncResult$*
+-keepnames class com.nendo.argosy.data.repository.SaveSyncResult$*
+-keepnames class com.nendo.argosy.data.repository.SaveSyncOrchestrator$DiskCheck$*
+-keepnames class com.nendo.argosy.data.repository.SaveCacheManager$CacheResult$*
+-keepnames class com.nendo.argosy.data.emulator.SessionEndResult$*
+-keepnames class com.nendo.argosy.data.emulator.SessionSaveOutcome$*
+-keepnames class com.nendo.argosy.data.emulator.LaunchResult$*
+-keepnames class com.nendo.argosy.data.steam.SteamDownloadState$*
+
 # Discord Social SDK (optional, may not be present)
 -keep class com.discord.socialsdk.** { *; }
 -keep class discordpp.** { *; }

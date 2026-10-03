@@ -320,6 +320,9 @@ object ComponentDefaults {
         const val iconSizeDp = 56
         const val progressWidthDp = 280
         const val fadeMs = 300
+        const val spinMs = 1000
+        const val stepFadeInMs = 200
+        const val stepFadeOutMs = 150
     }
 
     object InlineTilePlayer {

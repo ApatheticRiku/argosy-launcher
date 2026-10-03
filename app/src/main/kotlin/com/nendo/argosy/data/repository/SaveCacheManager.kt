@@ -2,6 +2,7 @@ package com.nendo.argosy.data.repository
 
 import android.content.Context
 import android.util.Log
+import com.nendo.argosy.util.Logger
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
@@ -105,7 +106,7 @@ class SaveCacheManager @Inject constructor(
         val secureSaves = syncPreferencesRepository.isSecureSaves()
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         if (!fal.exists(savePath)) {
-            Log.w(TAG, "Save file does not exist: $savePath")
+            Logger.warn(TAG,"Save file does not exist: $savePath")
             return@withContext CacheResult.Failed
         }
 
@@ -235,7 +236,7 @@ class SaveCacheManager @Inject constructor(
             tempFile?.delete()
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to cache save", e)
+            Logger.error(TAG,"Failed to cache save", e)
             tempFile?.delete()
             CacheResult.Failed
         }
@@ -261,7 +262,7 @@ class SaveCacheManager @Inject constructor(
         val channelName = resolveDefaultChannel(channelName, isHardcore = false)
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         if (!downloadedFile.exists() || downloadedFile.length() == 0L) {
-            Log.w(TAG, "Downloaded file missing or empty: ${downloadedFile.absolutePath}")
+            Logger.warn(TAG,"Downloaded file missing or empty: ${downloadedFile.absolutePath}")
             return@withContext CacheResult.Failed
         }
 
@@ -336,7 +337,7 @@ class SaveCacheManager @Inject constructor(
             pruneOldCaches(gameId, ownerUserId)
             CacheResult.Created(now.toEpochMilli(), insertedId)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to cache server download", e)
+            Logger.error(TAG,"Failed to cache server download", e)
             CacheResult.Failed
         }
     }
@@ -375,25 +376,25 @@ class SaveCacheManager @Inject constructor(
             members.forEach { fal.prepareSaveAccess(it) }
             val zip = File(context.cacheDir, "temp_unit_${System.currentTimeMillis()}.zip")
             if (!saveArchiver.zipFiles(members.map { fal.getTransformedFile(it) }, zip)) {
-                Log.e(TAG, "Failed to bundle save unit | members=$members")
+                Logger.error(TAG,"Failed to bundle save unit | members=$members")
                 zip.delete()
                 return null
             }
             val bundleHash = saveArchiver.calculateZipHash(zip)
             if (unit != null && unit.unit.contentHash.isNotEmpty() && unit.unit.contentHash != bundleHash) {
-                Log.w(TAG, "Unit hash parity mismatch | sigil=${unit.unit.contentHash} archive=$bundleHash members=$members")
+                Logger.warn(TAG,"Unit hash parity mismatch | sigil=${unit.unit.contentHash} archive=$bundleHash members=$members")
             }
             return Archived(precomputedContentHash ?: bundleHash, zip, zip)
         }
         if (fal.isDirectory(savePath)) {
             val roots = resolveArchiveRoots(saveFile, savePath, gameDao.getById(gameId))
             if (roots.isEmpty()) {
-                Log.w(TAG, "No save folders matched for game $gameId at $savePath -- skipping cache to avoid zipping unrelated saves")
+                Logger.warn(TAG,"No save folders matched for game $gameId at $savePath -- skipping cache to avoid zipping unrelated saves")
                 return null
             }
             val zip = File(context.cacheDir, "temp_save_${System.currentTimeMillis()}.zip")
             if (!zipArchiveRoots(roots, zip)) {
-                Log.e(TAG, "Failed to zip save folder(s)")
+                Logger.error(TAG,"Failed to zip save folder(s)")
                 zip.delete()
                 return null
             }
@@ -401,6 +402,16 @@ class SaveCacheManager @Inject constructor(
         }
         return Archived(precomputedContentHash ?: saveArchiver.calculateContentHash(saveFile), saveFile, null)
     }
+
+    private fun placedMatchesArchive(archive: File, placed: List<String>): Boolean =
+        java.util.zip.ZipFile(archive).use { zip ->
+            val entries = zip.entries().toList().filter { !it.isDirectory }.associateBy { File(it.name).name }
+            placed.all { path ->
+                val entry = entries[File(path).name] ?: return@all false
+                val written = fal.readBytes(path) ?: return@all false
+                zip.getInputStream(entry).use { it.readBytes() }.contentEquals(written)
+            }
+        }
 
     private fun isGciUnitArchive(entity: SaveCacheEntity, targetPath: String): Boolean =
         entity.cachePath.endsWith(".zip") && targetPath.endsWith(".gci", ignoreCase = true)
@@ -448,7 +459,7 @@ class SaveCacheManager @Inject constructor(
             saveArchiver.listFileEntries(cacheFile), targetPath, layout, game.platformSlug, contentName, game
         )
         if (destinations == null) {
-            Log.e(TAG, "[RESTORE] cache=${entity.id} unit bundle has entries the layout cannot place | zip=${cacheFile.name}")
+            Logger.error(TAG,"[RESTORE] cache=${entity.id} unit bundle has entries the layout cannot place | zip=${cacheFile.name}")
             return false
         }
         val ok = saveArchiver.unzipEntriesTo(cacheFile, destinations)
@@ -489,7 +500,7 @@ class SaveCacheManager @Inject constructor(
         savePath: String
     ): CacheResult = withContext(Dispatchers.IO) {
         if (!fal.exists(savePath)) {
-            Log.w(TAG, "Save file does not exist for rollback: $savePath")
+            Logger.warn(TAG,"Save file does not exist for rollback: $savePath")
             return@withContext CacheResult.Failed
         }
 
@@ -555,7 +566,7 @@ class SaveCacheManager @Inject constructor(
 
             CacheResult.Created(now.toEpochMilli(), rollbackId)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to cache rollback save", e)
+            Logger.error(TAG,"Failed to cache rollback save", e)
             tempFile?.delete()
             CacheResult.Failed
         }
@@ -567,23 +578,26 @@ class SaveCacheManager @Inject constructor(
     suspend fun restoreSave(cacheId: Long, targetPath: String): Boolean = withContext(Dispatchers.IO) {
         val entity = saveCacheDao.getById(cacheId)
         if (entity == null) {
-            Log.e(TAG, "Cache entry not found: $cacheId")
+            Logger.error(TAG,"Cache entry not found: $cacheId")
             return@withContext false
         }
         val secureSaves = syncPreferencesRepository.isSecureSaves()
 
         val cacheFile = File(cacheBaseDir, entity.cachePath)
         if (!cacheFile.exists()) {
-            Log.e(TAG, "Cache file not found: ${entity.cachePath}")
+            Logger.error(TAG,"Cache file not found: ${entity.cachePath}")
             return@withContext false
         }
 
         fal.prepareSaveAccess(targetPath)
+        var placedGciMembers: List<String>? = null
         try {
             val writeOk = if (isUnitCache(entity)) {
                 restoreUnit(entity, cacheFile, targetPath)
             } else if (isGciUnitArchive(entity, targetPath)) {
-                gciSaveHandler.placeUnitArchive(cacheFile, File(targetPath).parent ?: targetPath).isNotEmpty()
+                gciSaveHandler.placeUnitArchive(cacheFile, File(targetPath).parent ?: targetPath)
+                    .also { placedGciMembers = it }
+                    .isNotEmpty()
             } else if (isFolderCache(entity)) {
                 val game = gameDao.getById(entity.gameId)
                 if (!archiveHoldsThisSave(cacheFile, game, targetPath)) {
@@ -620,7 +634,7 @@ class SaveCacheManager @Inject constructor(
             }
 
             if (!writeOk) {
-                Log.e(TAG, "Failed to materialize cache $cacheId at $targetPath (write returned false)")
+                Logger.error(TAG,"Failed to materialize cache $cacheId at $targetPath (write returned false)")
                 SaveDebugLogger.logError(
                     operation = "restoreSave",
                     gameId = entity.gameId,
@@ -641,7 +655,15 @@ class SaveCacheManager @Inject constructor(
                 targetPath = targetPath
             )
 
-            try {
+            val placed = placedGciMembers
+            if (placed != null) {
+                val intact = placedMatchesArchive(cacheFile, placed)
+                Logger.debug(TAG, "[RESTORE_VERIFY] cache=$cacheId gci bundle members=${placed.size} intact=$intact")
+                if (!intact) {
+                    Logger.warn(TAG, "Restore of cache $cacheId wrote GameCube files that differ from the archive | target=$targetPath")
+                    return@withContext false
+                }
+            } else try {
                 val game = gameDao.getById(entity.gameId)
                 val actualHash = computeRestoredHash(game, targetPath, entity.emulatorId)
                 val match = actualHash != null && actualHash == entity.contentHash
@@ -655,11 +677,11 @@ class SaveCacheManager @Inject constructor(
                     match = match
                 )
                 if (entity.contentHash != null && actualHash != null && !match) {
-                    Log.w(TAG, "Restore hash mismatch for cache $cacheId: expected=${entity.contentHash}, actual=$actualHash, target=$targetPath -- failing restore so caller falls through to network fetch")
+                    Logger.warn(TAG,"Restore hash mismatch for cache $cacheId: expected=${entity.contentHash}, actual=$actualHash, target=$targetPath -- failing restore so caller falls through to network fetch")
                     return@withContext false
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "Restore verify failed for cache $cacheId: ${e.message}")
+                Logger.warn(TAG,"Restore verify failed for cache $cacheId: ${e.message}")
             }
 
             if (!secureSaves && !entity.isHardcore) {
@@ -681,7 +703,7 @@ class SaveCacheManager @Inject constructor(
 
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to restore save from cache", e)
+            Logger.error(TAG,"Failed to restore save from cache", e)
             SaveDebugLogger.logError(
                 operation = "restoreSave",
                 gameId = entity.gameId,
@@ -757,13 +779,13 @@ class SaveCacheManager @Inject constructor(
     suspend fun copyToChannel(cacheId: Long, channelName: String): Long? = withContext(Dispatchers.IO) {
         val source = saveCacheDao.getById(cacheId)
         if (source == null) {
-            Log.e(TAG, "Source cache entry not found: $cacheId")
+            Logger.error(TAG,"Source cache entry not found: $cacheId")
             return@withContext null
         }
 
         val sourceFile = File(cacheBaseDir, source.cachePath)
         if (!sourceFile.exists()) {
-            Log.e(TAG, "Source cache file not found: ${source.cachePath}")
+            Logger.error(TAG,"Source cache file not found: ${source.cachePath}")
             return@withContext null
         }
 
@@ -800,7 +822,7 @@ class SaveCacheManager @Inject constructor(
             Log.d(TAG, "Created channel '$channelName' from cache $cacheId -> $newId")
             newId
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to copy cache to channel", e)
+            Logger.error(TAG,"Failed to copy cache to channel", e)
             gameDir.deleteRecursively()
             null
         }
@@ -828,7 +850,7 @@ class SaveCacheManager @Inject constructor(
         val roots = saveArchiver.peekRootEntryNames(cacheFile)
         val tier = handler.matchArchive(cacheFile, saveId)
         if (tier == null) {
-            Log.e(
+            Logger.error(
                 TAG,
                 "[RESTORE] refusing archive that does not hold saveId=$saveId | " +
                     "roots=$roots, target=$targetPath, zip=${cacheFile.name}"
@@ -1054,7 +1076,7 @@ class SaveCacheManager @Inject constructor(
     suspend fun getSaveBytesFromEntity(entity: SaveCacheEntity): ByteArray? = withContext(Dispatchers.IO) {
         val cacheFile = File(cacheBaseDir, entity.cachePath)
         if (!cacheFile.exists()) {
-            Log.e(TAG, "Cache file not found: ${entity.cachePath}")
+            Logger.error(TAG,"Cache file not found: ${entity.cachePath}")
             return@withContext null
         }
 
@@ -1079,7 +1101,7 @@ class SaveCacheManager @Inject constructor(
                 saveArchiver.readBytesWithoutTrailer(cacheFile) ?: cacheFile.readBytes()
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to read cache file: ${entity.cachePath}", e)
+            Logger.error(TAG,"Failed to read cache file: ${entity.cachePath}", e)
             null
         }
     }
@@ -1142,11 +1164,11 @@ class SaveCacheManager @Inject constructor(
             }
             val match = actual == expected
             if (!match) {
-                Log.e(TAG, "Archive verify failed for cache $cacheId: expected=$expected, actual=$actual")
+                Logger.error(TAG,"Archive verify failed for cache $cacheId: expected=$expected, actual=$actual")
             }
             match
         } catch (e: Exception) {
-            Log.e(TAG, "Archive verify threw for cache $cacheId", e)
+            Logger.error(TAG,"Archive verify threw for cache $cacheId", e)
             false
         }
     }
@@ -1182,7 +1204,7 @@ class SaveCacheManager @Inject constructor(
                 unitHashFor(savePath, gameId, emulatorId) ?: saveArchiver.calculateContentHash(saveFile)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to calculate hash for $savePath", e)
+            Logger.error(TAG,"Failed to calculate hash for $savePath", e)
             null
         }
     }

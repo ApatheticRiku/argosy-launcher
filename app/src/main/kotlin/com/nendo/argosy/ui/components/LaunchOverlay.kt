@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Icon
@@ -35,32 +34,28 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.nendo.argosy.R
-import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.emulator.LaunchProgressTracker
 import com.nendo.argosy.domain.model.LaunchProgress
 import com.nendo.argosy.domain.model.LaunchPromptOption
 import com.nendo.argosy.domain.model.LaunchStep
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.ui.common.statusMessage
-import com.nendo.argosy.ui.input.InputHandler
-import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.InputGlyph
@@ -85,48 +80,68 @@ private fun launchProgressTracker(context: Context): LaunchProgressTracker =
         .launchProgressTracker()
 
 /**
- * The launch in progress over the whole surface. The surface that started launches passes
- * [hostsLaunch], which gives the overlay the input stack and ends a launch once the surface stops.
+ * The launch in progress over the surface that starts launches. It holds the input stack while a
+ * launch runs and ends the launch once that surface stops.
  */
 @Composable
 fun LaunchOverlay(
     modifier: Modifier = Modifier,
-    hostsLaunch: Boolean = true
+    viewModel: LaunchOverlayViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
-    val tracker = remember { launchProgressTracker(context) }
-    val progress by tracker.progress.collectAsState()
+    val progress by viewModel.progress.collectAsState()
+    val promptFocus by viewModel.promptFocus.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner, hostsLaunch) {
-        if (!hostsLaunch) return@DisposableEffect onDispose { }
+    DisposableEffect(lifecycleOwner, viewModel) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) tracker.hostStopped()
+            if (event == Lifecycle.Event.ON_STOP) viewModel.hostStopped()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
+    ModalInputEffect(active = progress != null, handler = viewModel.inputHandler)
+
+    LaunchOverlayContent(
+        progress = progress,
+        promptFocus = promptFocus,
+        onAnswer = viewModel::answer,
+        onCancel = { viewModel.cancel() },
+        modifier = modifier
+    )
+}
+
+@Composable
+fun LaunchOverlayMirror(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val tracker = remember { launchProgressTracker(context) }
+    val progress by tracker.progress.collectAsState()
+    LaunchOverlayContent(
+        progress = progress,
+        promptFocus = NO_PROMPT_FOCUS,
+        onAnswer = tracker::answer,
+        onCancel = { tracker.cancel() },
+        modifier = modifier
+    )
+}
+
+private const val NO_PROMPT_FOCUS = -1
+
+@Composable
+private fun LaunchOverlayContent(
+    progress: LaunchProgress?,
+    promptFocus: Int,
+    onAnswer: (LaunchPromptOption) -> Unit,
+    onCancel: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var lastShown by remember { mutableStateOf<LaunchProgress?>(null) }
     SideEffect { progress?.let { lastShown = it } }
-
-    val prompt = progress?.step as? LaunchStep.Prompt
-    var promptFocus by remember(prompt) { mutableIntStateOf(0) }
-    val currentProgress by rememberUpdatedState(progress)
-    val inputHandler = remember(tracker) {
-        LaunchOverlayInputHandler(
-            current = { currentProgress },
-            getPromptFocus = { promptFocus },
-            setPromptFocus = { promptFocus = it },
-            tracker = tracker
-        )
-    }
-    if (hostsLaunch) ModalInputEffect(active = progress != null, handler = inputHandler)
 
     val scrimAlpha = if (LocalLauncherTheme.current.isDarkTheme) {
         ComponentDefaults.LaunchOverlay.scrimAlphaDark
     } else {
         ComponentDefaults.LaunchOverlay.scrimAlphaLight
     }
-    val scrimColor = if (LocalLauncherTheme.current.isDarkTheme) Color.Black else Color.White
+    val scrimColor = MaterialTheme.colorScheme.background.copy(alpha = scrimAlpha)
 
     AnimatedVisibility(
         visible = progress != null,
@@ -138,7 +153,7 @@ fun LaunchOverlay(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(scrimColor.copy(alpha = scrimAlpha))
+                .background(scrimColor)
                 .clickableNoFocus { },
             contentAlignment = Alignment.Center
         ) {
@@ -147,63 +162,17 @@ fun LaunchOverlay(
                     gameTitle = shown.gameTitle,
                     prompt = step,
                     focusIndex = promptFocus,
-                    onAnswer = tracker::answer,
-                    onCancel = { tracker.cancel() }
+                    onAnswer = onAnswer,
+                    onCancel = onCancel
                 )
                 else -> StepContent(
                     gameTitle = shown.gameTitle,
                     step = step,
-                    onCancel = { tracker.cancel() }
+                    onCancel = onCancel
                 )
             }
         }
     }
-}
-
-private class LaunchOverlayInputHandler(
-    private val current: () -> LaunchProgress?,
-    private val getPromptFocus: () -> Int,
-    private val setPromptFocus: (Int) -> Unit,
-    private val tracker: LaunchProgressTracker
-) : InputHandler {
-
-    private val prompt: LaunchStep.Prompt? get() = current()?.step as? LaunchStep.Prompt
-
-    override fun onUp(): InputResult {
-        val step = prompt ?: return InputResult.HANDLED
-        setPromptFocus((getPromptFocus() - 1).coerceIn(0, step.options.size))
-        return InputResult.handled(SoundType.NAVIGATE)
-    }
-
-    override fun onDown(): InputResult {
-        val step = prompt ?: return InputResult.HANDLED
-        setPromptFocus((getPromptFocus() + 1).coerceIn(0, step.options.size))
-        return InputResult.handled(SoundType.NAVIGATE)
-    }
-
-    override fun onConfirm(): InputResult {
-        val step = prompt ?: return InputResult.HANDLED
-        val option = step.options.getOrNull(getPromptFocus())
-        if (option != null) tracker.answer(option) else tracker.cancel()
-        return InputResult.handled(SoundType.SELECT)
-    }
-
-    override fun onBack(): InputResult =
-        if (tracker.cancel()) InputResult.handled(SoundType.CLOSE_MODAL) else InputResult.HANDLED
-
-    override fun onLeft(): InputResult = InputResult.HANDLED
-    override fun onRight(): InputResult = InputResult.HANDLED
-    override fun onMenu(): InputResult = InputResult.HANDLED
-    override fun onSecondaryAction(): InputResult = InputResult.HANDLED
-    override fun onContextMenu(): InputResult = InputResult.HANDLED
-    override fun onPrevSection(): InputResult = InputResult.HANDLED
-    override fun onNextSection(): InputResult = InputResult.HANDLED
-    override fun onPrevTrigger(): InputResult = InputResult.HANDLED
-    override fun onNextTrigger(): InputResult = InputResult.HANDLED
-    override fun onSelect(): InputResult = InputResult.HANDLED
-    override fun onLeftStickClick(): InputResult = InputResult.HANDLED
-    override fun onRightStickClick(): InputResult = InputResult.HANDLED
-    override fun onLongConfirm(): InputResult = InputResult.HANDLED
 }
 
 @Composable
@@ -215,7 +184,10 @@ private fun StepContent(
     val rotation by rememberInfiniteTransition(label = "launch_spin").animateFloat(
         initialValue = 0f,
         targetValue = -360f,
-        animationSpec = infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart),
+        animationSpec = infiniteRepeatable(
+            tween(ComponentDefaults.LaunchOverlay.spinMs, easing = LinearEasing),
+            RepeatMode.Restart
+        ),
         label = "launch_rotation"
     )
     Column(
@@ -233,7 +205,10 @@ private fun StepContent(
         Spacer(modifier = Modifier.height(Dimens.spacingLg))
         AnimatedContent(
             targetState = step.message(),
-            transitionSpec = { fadeIn(tween(200)) togetherWith fadeOut(tween(150)) },
+            transitionSpec = {
+                fadeIn(tween(ComponentDefaults.LaunchOverlay.stepFadeInMs)) togetherWith
+                    fadeOut(tween(ComponentDefaults.LaunchOverlay.stepFadeOutMs))
+            },
             label = "launchStep"
         ) { message ->
             Text(

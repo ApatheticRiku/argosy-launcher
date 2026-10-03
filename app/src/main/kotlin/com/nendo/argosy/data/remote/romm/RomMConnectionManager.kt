@@ -272,7 +272,7 @@ class RomMConnectionManager @Inject constructor(
         cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 scope.launch {
-                    connectMutex.withLock { }
+                    awaitConnectInFlight()
                     if (isConnected() && SystemClock.elapsedRealtime() - lastConnectedAt < RECENT_CONNECT_MS) {
                         Logger.debug(TAG, "network available, a connect just finished; keeping it")
                         return@launch
@@ -296,6 +296,8 @@ class RomMConnectionManager @Inject constructor(
         if (result is RomMResult.Error) scheduleReconnect()
         return result
     }
+
+    private suspend fun awaitConnectInFlight() = connectMutex.withLock { }
 
     private suspend fun fetchCurrentUser(target: RomMApi): RomMUser? = try {
         val response = target.getCurrentUser()

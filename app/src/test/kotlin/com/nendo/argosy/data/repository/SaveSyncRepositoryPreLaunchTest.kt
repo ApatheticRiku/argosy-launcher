@@ -112,6 +112,44 @@ class SaveSyncRepositoryPreLaunchTest {
         io.mockk.coVerify(exactly = 0) { apiClient.checkSavesForGame(any(), any()) }
     }
 
+    private fun storedRow(status: String) = SaveSyncEntity(
+        gameId = gameId, rommId = rommId, emulatorId = emulatorId, channelName = "autosave",
+        rommSaveId = 60L, localSavePath = "/saves/save.srm", syncStatus = status
+    )
+
+    @Test
+    fun `a save that could not be restored asks which save to use instead of launching`() = runTest {
+        coEvery { orchestrator.checkDiskAgainstActive(any<Long>(), any(), any(), any(), any()) } returns
+            SaveSyncOrchestrator.DiskCheck.Failed
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns
+            storedRow(SaveSyncEntity.STATUS_SYNCED)
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertEquals("/saves/save.srm", (result as PreLaunchSyncResult.LocalModified).localSavePath)
+    }
+
+    @Test
+    fun `an unreadable save folder launches without touching sync`() = runTest {
+        coEvery { orchestrator.checkDiskAgainstActive(any<Long>(), any(), any(), any(), any()) } returns
+            SaveSyncOrchestrator.DiskCheck.Unreadable("/saves")
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertTrue(result is PreLaunchSyncResult.LocalIsNewer)
+    }
+
+    @Test
+    fun `a download over a conflict reconcile already flagged asks the user`() = runTest {
+        negotiateAnswers(op(ReconcileAction.DOWNLOAD, "autosave", 72L))
+        coEvery { saveSyncDao.getByGameEmulatorAndChannel(any(), any(), any(), any()) } returns
+            storedRow(SaveSyncEntity.STATUS_CONFLICT)
+
+        val result = repo.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+
+        assertEquals(72L, (result as PreLaunchSyncResult.LocalModified).serverSaveId)
+    }
+
     @Test
     fun `negotiate conflict asks the user instead of pulling`() = runTest {
         negotiateAnswers(op(ReconcileAction.CONFLICT, "autosave", 71L))

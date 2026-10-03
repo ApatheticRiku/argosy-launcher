@@ -364,8 +364,8 @@ class SaveSyncRepository @Inject constructor(
         saveRecoveryGate.awaitSettled()
         val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, channelName, secureSaves, ownerUserId)
         Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | disk=${disk::class.simpleName}")
-        if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable || disk is SaveSyncOrchestrator.DiskCheck.Failed) {
-            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | disk check could not complete; skipping sync decision | decision=LocalIsNewer")
+        if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable) {
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | save folder unreadable; skipping sync decision | decision=LocalIsNewer")
             return@withContext PreLaunchSyncResult.LocalIsNewer
         }
 
@@ -375,6 +375,20 @@ class SaveSyncRepository @Inject constructor(
             effectiveChannel,
             ownerUserId
         )
+        if (disk is SaveSyncOrchestrator.DiskCheck.Failed) {
+            val localPath = existing?.localSavePath
+            if (localPath == null) {
+                Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | active save could not be restored and no local path is known | decision=LocalIsNewer")
+                return@withContext PreLaunchSyncResult.LocalIsNewer
+            }
+            Logger.warn(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | active save could not be restored; asking which save to use | decision=LocalModified")
+            return@withContext PreLaunchSyncResult.LocalModified(
+                localSavePath = localPath,
+                serverTimestamp = Instant.now(),
+                channelName = effectiveChannel,
+                serverSaveId = existing.rommSaveId
+            )
+        }
         if (existing?.userSelectedRestorePoint == true) {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | userSelectedRestorePoint=true | decision=LocalIsNewer")
             return@withContext PreLaunchSyncResult.LocalIsNewer
@@ -451,8 +465,18 @@ class SaveSyncRepository @Inject constructor(
             .filter { SaveSyncApiClient.syncKeyOf(it.slot) == slot }
             .minByOrNull { PRE_LAUNCH_ACTION_PRIORITY.indexOf(it.action) }
         val serverTimestamp = op?.serverUpdatedAt?.let { SaveSyncApiClient.parseTimestamp(it) } ?: Instant.now()
+        val flaggedConflict = existing?.syncStatus == SaveSyncEntity.STATUS_CONFLICT
         val decision = when (op?.action) {
-            ReconcileAction.DOWNLOAD -> PreLaunchSyncResult.ServerIsNewer(serverTimestamp, slot, op.saveId)
+            ReconcileAction.DOWNLOAD -> if (flaggedConflict) {
+                PreLaunchSyncResult.LocalModified(
+                    localSavePath = existing?.localSavePath.orEmpty(),
+                    serverTimestamp = serverTimestamp,
+                    channelName = slot,
+                    serverSaveId = op.saveId
+                )
+            } else {
+                PreLaunchSyncResult.ServerIsNewer(serverTimestamp, slot, op.saveId)
+            }
             ReconcileAction.CONFLICT -> PreLaunchSyncResult.LocalModified(
                 localSavePath = existing?.localSavePath.orEmpty(),
                 serverTimestamp = serverTimestamp,

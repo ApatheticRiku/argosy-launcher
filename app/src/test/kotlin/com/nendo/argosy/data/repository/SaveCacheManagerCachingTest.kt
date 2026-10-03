@@ -496,6 +496,32 @@ class SaveCacheManagerCachingTest {
     }
 
     @Test
+    fun `restoring a GameCube bundle with duplicate copies succeeds when every file lands intact`() = runTest {
+        val staging = File(tempDir, "staging").apply { mkdirs() }
+        val members = listOf(
+            gci(staging, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1),
+            gci(staging, "8P-GFZE-f_zero.dat.gci", "GFZE", "f_zero.dat", 2),
+            gci(staging, "8P-GFZE-f_zero.dat0.gci", "GFZE", "f_zero.dat", 2)
+        )
+        val archive = File(tempDir, "save_cache/u1/9981/legacy/save.zip").apply { parentFile?.mkdirs() }
+        java.util.zip.ZipOutputStream(archive.outputStream()).use { zip ->
+            members.forEach { member ->
+                zip.putNextEntry(java.util.zip.ZipEntry(member.name))
+                zip.write(member.readBytes())
+                zip.closeEntry()
+            }
+        }
+        coEvery { saveCacheDao.getById(36L) } returns SaveCacheEntity(
+            id = 36L, gameId = 9981L, emulatorId = "argosy", cachedAt = Instant.EPOCH, saveSize = archive.length(),
+            cachePath = "u1/9981/legacy/save.zip", contentHash = "d4f78be74cc3297bbb60d83b0d330981"
+        )
+        val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
+
+        assertTrue(manager.restoreSave(36L, File(card, "8P-GFZE-fzc.dat.gci").absolutePath))
+        assertEquals(members.map { it.name }.sorted(), card.list()?.sorted())
+    }
+
+    @Test
     fun `a new GameCube file changes the unit hash even when the first file is untouched`() = runTest {
         val card = File(tempDir, "GC/USA/Card A").apply { mkdirs() }
         val first = gci(card, "8P-GFZE-fzc.dat.gci", "GFZE", "fzc.dat", 1)

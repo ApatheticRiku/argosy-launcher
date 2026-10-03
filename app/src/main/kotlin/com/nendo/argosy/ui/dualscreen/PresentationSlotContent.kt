@@ -133,7 +133,7 @@ fun PresentationSlotContent(
                     FooterBar(hints = hints.map { it.button to it.label })
                 }
             }
-            com.nendo.argosy.ui.components.LaunchOverlay(hostsLaunch = false)
+            com.nendo.argosy.ui.components.LaunchOverlayMirror()
         }
         val manager = com.nendo.argosy.DualScreenManagerHolder.instance
         if (showsNotifications && manager != null) {

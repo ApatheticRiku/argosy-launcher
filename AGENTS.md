@@ -61,6 +61,13 @@ exception is legitimate, and the boundary where it becomes a violation again.
   Dispatchers.IO, never main (GLRetroView serialize/destroy latch-block the
   caller until the GL thread runs). A progress overlay over a blocked main
   thread is a bug, not a mitigation - a frozen spinner means main is blocked.
+  Exception: LibretroActivity.onDestroy calls destroyNative on main when the
+  core is still alive. Android rebuilds a game screen by destroying the old
+  activity and creating the new one on main, and the new one's
+  LibretroDroid.create unloads whatever core is loaded; the old core has to be
+  gone first, and only blocking onDestroy orders the two. The screen is
+  already off when this runs. Any other blocking native call on main is still
+  a violation.
 
 ## Feature completeness (what "done" means)
 
