@@ -1675,21 +1675,20 @@
     <string name="settings_platform_path_custom_tag">(personnalisé)</string>
     <string name="settings_platform_rom_path_title">Chemin ROM</string>
     <string name="settings_platform_save_path_title">Chemin de sauvegarde</string>
-    <string name="settings_platform_save_path_blocked">Accès bloqué -- définissez un chemin de sauvegarde personnalisé</string>
+    <string name="settings_platform_save_path_blocked">Android bloque ce dossier. Choisissez un dossier de sauvegarde lisible par Argosy.</string>
     <string name="settings_platform_state_path_title">Chemin d\'état</string>
     <string name="settings_platform_retroarch_config_loaded">Depuis %1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">%1$s n\'a pas pu être lu -- définissez le dossier utilisé par RetroArch</string>
     <string name="settings_platform_retroarch_config_missing">Aucune configuration RetroArch trouvée -- définissez le dossier utilisé par RetroArch</string>
 
     <string name="settings_platform_memcard_title">Carte mémoire</string>
-    <string name="settings_platform_memcard_override_value">Utilise le chemin de sauvegarde personnalisé</string>
-    <string name="settings_platform_memcard_override_subtitle">Carte mémoire fixée via un chemin de sauvegarde personnalisé</string>
-    <string name="settings_platform_memcard_none_value">Aucune trouvée</string>
-    <string name="settings_platform_memcard_none_subtitle">Aucune carte mémoire dossier trouvée -- convertissez-en une dans %1$s pour activer la synchro des sauvegardes</string>
+    <string name="settings_platform_memcard_from_save_path_value">Définie par le chemin de sauvegarde</string>
+    <string name="settings_platform_memcard_none_value">Aucune carte dossier</string>
+    <string name="settings_platform_memcard_none_subtitle">La synchro des sauvegardes nécessite une carte mémoire dossier. Créez-en une dans les réglages de carte mémoire de %1$s.</string>
     <string name="settings_platform_memcard_this_emulator">cet émulateur</string>
     <string name="settings_platform_memcard_auto_value">Auto</string>
-    <string name="settings_platform_memcard_unselected_value">Non sélectionnée</string>
-    <string name="settings_platform_memcard_unselected_subtitle">Plusieurs cartes mémoire détectées -- sélectionnez-en une pour activer la synchro des sauvegardes</string>
+    <string name="settings_platform_memcard_unselected_value">Choisir une carte</string>
+    <string name="settings_platform_memcard_unselected_subtitle">Plusieurs cartes mémoire trouvées. Choisissez celle utilisée par la synchro des sauvegardes.</string>
 
     <string name="settings_platform_sync_toggle_title">Synchro activée</string>
     <string name="settings_platform_sync_toggle_subtitle">Inclure cette plateforme dans la synchro de la bibliothèque</string>

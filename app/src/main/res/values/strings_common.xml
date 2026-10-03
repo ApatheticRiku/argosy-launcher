@@ -411,7 +411,7 @@
          caps in English. -->
     <string name="ui_memcard_picker_title">SELECT MEMORY CARD</string>
     <!-- Second line under that heading. -->
-    <string name="ui_memcard_picker_subtitle">Save sync uses the selected folder memory card</string>
+    <string name="ui_memcard_picker_subtitle">Save sync reads and writes the card you choose</string>
     <!-- Second line under a memory card that holds nothing. Adjective describing the card. -->
     <string name="ui_memcard_picker_empty">empty</string>
     <!-- Second line under a memory card, saying how many games have saves on it. -->

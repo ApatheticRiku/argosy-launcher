@@ -1594,21 +1594,20 @@
     <string name="settings_platform_path_custom_tag">(自定义)</string>
     <string name="settings_platform_rom_path_title">ROM路径</string>
     <string name="settings_platform_save_path_title">存档路径</string>
-    <string name="settings_platform_save_path_blocked">访问被阻止 - 请设置自定义存档路径</string>
+    <string name="settings_platform_save_path_blocked">Android 阻止访问此文件夹。请选择 Argosy 可以读取的存档文件夹。</string>
     <string name="settings_platform_state_path_title">即时存档路径</string>
     <string name="settings_platform_retroarch_config_loaded">来自%1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">无法读取%1$s - 请设置RetroArch使用的文件夹</string>
     <string name="settings_platform_retroarch_config_missing">未找到RetroArch配置 - 请设置RetroArch使用的文件夹</string>
 
     <string name="settings_platform_memcard_title">记忆卡</string>
-    <string name="settings_platform_memcard_override_value">使用自定义存档路径</string>
-    <string name="settings_platform_memcard_override_subtitle">记忆卡由自定义存档路径固定</string>
-    <string name="settings_platform_memcard_none_value">未找到</string>
-    <string name="settings_platform_memcard_none_subtitle">未找到文件夹式记忆卡 - 请在%1$s中转换一个以启用存档同步</string>
+    <string name="settings_platform_memcard_from_save_path_value">由存档路径决定</string>
+    <string name="settings_platform_memcard_none_value">没有文件夹式记忆卡</string>
+    <string name="settings_platform_memcard_none_subtitle">存档同步需要文件夹式记忆卡。请在%1$s的记忆卡设置中创建一张。</string>
     <string name="settings_platform_memcard_this_emulator">此模拟器</string>
     <string name="settings_platform_memcard_auto_value">自动</string>
-    <string name="settings_platform_memcard_unselected_value">未选择</string>
-    <string name="settings_platform_memcard_unselected_subtitle">检测到多张记忆卡 - 请选择一张以启用存档同步</string>
+    <string name="settings_platform_memcard_unselected_value">选择记忆卡</string>
+    <string name="settings_platform_memcard_unselected_subtitle">找到多张记忆卡。请选择存档同步使用的那一张。</string>
 
     <string name="settings_platform_sync_toggle_title">已启用同步</string>
     <string name="settings_platform_sync_toggle_subtitle">在库同步中包含此平台</string>

@@ -805,12 +805,13 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 effectiveSaveConfigIdMc?.let { vm.emulatorDelegate.getEmulatorSaveConfig(it) }
             } else null
 
-            val folderMemcardCount = if (config.platform.slug == "ps2" && emulatorId != null) {
+            val folderMemcards = if (config.platform.slug == "ps2" && emulatorId != null) {
                 vm.emulatorDelegate.listPs2FolderMemcardsForEmulator(
                     emulatorId = emulatorId,
                     emulatorPackage = config.effectiveEmulatorPackage
-                ).size
-            } else -1
+                )
+            } else null
+            val folderMemcardCount = folderMemcards?.size ?: -1
 
             platformEmulatorInfoMap[config.platform.id] = StorageSettingsDelegate.PlatformEmulatorInfo(
                 supportsStatePath = supportsStatePath,
@@ -822,6 +823,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 effectiveStatePath = statePath,
                 isUserStatePathOverride = isUserStatePathOverride,
                 folderMemcardCount = folderMemcardCount,
+                onlyMemcardPath = folderMemcards?.singleOrNull()?.path,
                 selectedMemcardPath = saveConfigForMemcard?.selectedMemcardPath
             )
         }

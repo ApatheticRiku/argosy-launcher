@@ -3104,7 +3104,7 @@
     <!-- Row naming the folder its saves sit in. Noun phrase. -->
     <string name="settings_platform_save_path_title">Save Path</string>
     <!-- Second line of that row when Android will not let Argosy read the emulator's folder. -->
-    <string name="settings_platform_save_path_blocked">Access blocked -- set a custom save path</string>
+    <string name="settings_platform_save_path_blocked">Android blocks this folder. Choose a save folder Argosy can read.</string>
     <!-- Row naming the folder its save states sit in. "State" is a snapshot of a running
          game. -->
     <string name="settings_platform_state_path_title">State Path</string>
@@ -3119,23 +3119,22 @@
 
     <!-- Row naming which memory card this console's saves are read from. Noun phrase. -->
     <string name="settings_platform_memcard_title">Memory Card</string>
-    <!-- Value of that row when a custom save path decides it instead. -->
-    <string name="settings_platform_memcard_override_value">Using save-path override</string>
-    <!-- Second line of that row in that case. -->
-    <string name="settings_platform_memcard_override_subtitle">Memory card pinned via custom save path</string>
+    <!-- Value of that row when the custom save path is itself a memory card, so that card is the
+         one used. The card's name is shown on the second line. -->
+    <string name="settings_platform_memcard_from_save_path_value">Set by save path</string>
     <!-- Value of that row when the emulator has no folder-style card. -->
-    <string name="settings_platform_memcard_none_value">None found</string>
+    <string name="settings_platform_memcard_none_value">No folder card</string>
     <!-- Second line of that row in that case. %1$s is the emulator's name. -->
-    <string name="settings_platform_memcard_none_subtitle">No folder memory cards found -- convert one in %1$s to enable save sync</string>
+    <string name="settings_platform_memcard_none_subtitle">Save sync needs a folder memory card. Create one in %1$s\'s memory card settings.</string>
     <!-- Stands in for the emulator's name when it is unknown. -->
     <string name="settings_platform_memcard_this_emulator">this emulator</string>
     <!-- Value of that row when there is only one card to use. Adjective, short for
          "automatic". -->
     <string name="settings_platform_memcard_auto_value">Auto</string>
-    <!-- Value of that row when several cards exist and none is chosen. Adjective phrase. -->
-    <string name="settings_platform_memcard_unselected_value">Not selected</string>
+    <!-- Value of that row when several cards exist and none is chosen. Imperative. -->
+    <string name="settings_platform_memcard_unselected_value">Choose a card</string>
     <!-- Second line of that row in that case. -->
-    <string name="settings_platform_memcard_unselected_subtitle">Multiple memory cards detected -- select one to enable save sync</string>
+    <string name="settings_platform_memcard_unselected_subtitle">Several memory cards found. Choose the one save sync uses.</string>
 
     <!-- Row title. Adjective phrase: this console is included when the library is fetched. -->
     <string name="settings_platform_sync_toggle_title">Sync Enabled</string>

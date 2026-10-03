@@ -198,7 +198,7 @@
     <string name="ui_disc_picker_row">Disque %1$d</string>
 
     <string name="ui_memcard_picker_title">SÉLECTIONNER LA CARTE MÉMOIRE</string>
-    <string name="ui_memcard_picker_subtitle">La synchro des sauvegardes utilise la carte mémoire du dossier sélectionné</string>
+    <string name="ui_memcard_picker_subtitle">La synchro des sauvegardes lit et écrit la carte choisie</string>
     <string name="ui_memcard_picker_empty">vide</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="one">%d sauvegarde de jeu</item>

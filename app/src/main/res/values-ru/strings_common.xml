@@ -184,7 +184,7 @@
     <string name="ui_disc_picker_row">Диск %1$d</string>
 
     <string name="ui_memcard_picker_title">ВЫБОР КАРТЫ ПАМЯТИ</string>
-    <string name="ui_memcard_picker_subtitle">Синхронизация сохранений использует карту памяти выбранной папки</string>
+    <string name="ui_memcard_picker_subtitle">Синхронизация сохранений читает и записывает выбранную карту</string>
     <string name="ui_memcard_picker_empty">пусто</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="one">%d сохранение игры</item>

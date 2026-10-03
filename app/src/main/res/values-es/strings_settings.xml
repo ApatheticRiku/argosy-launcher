@@ -1685,21 +1685,20 @@
     <string name="settings_platform_path_custom_tag">(personalizada)</string>
     <string name="settings_platform_rom_path_title">Ruta de ROM</string>
     <string name="settings_platform_save_path_title">Ruta de guardado</string>
-    <string name="settings_platform_save_path_blocked">Acceso bloqueado: define una ruta de guardado personalizada</string>
+    <string name="settings_platform_save_path_blocked">Android bloquea esta carpeta. Elige una carpeta de guardado que Argosy pueda leer.</string>
     <string name="settings_platform_state_path_title">Ruta de estado</string>
     <string name="settings_platform_retroarch_config_loaded">Desde %1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">No se pudo leer %1$s: define la carpeta que usa RetroArch</string>
     <string name="settings_platform_retroarch_config_missing">No se encontró ninguna configuración de RetroArch: define la carpeta que usa RetroArch</string>
 
     <string name="settings_platform_memcard_title">Tarjeta de memoria</string>
-    <string name="settings_platform_memcard_override_value">Usando la ruta de guardado personalizada</string>
-    <string name="settings_platform_memcard_override_subtitle">Tarjeta de memoria fijada mediante una ruta de guardado personalizada</string>
-    <string name="settings_platform_memcard_none_value">Ninguna encontrada</string>
-    <string name="settings_platform_memcard_none_subtitle">No se encontraron tarjetas de memoria en carpeta: convierte una en %1$s para activar la sincronización de guardados</string>
+    <string name="settings_platform_memcard_from_save_path_value">Definida por la ruta de guardado</string>
+    <string name="settings_platform_memcard_none_value">Sin tarjeta en carpeta</string>
+    <string name="settings_platform_memcard_none_subtitle">La sincronización de guardados necesita una tarjeta de memoria en carpeta. Crea una en los ajustes de tarjeta de memoria de %1$s.</string>
     <string name="settings_platform_memcard_this_emulator">este emulador</string>
     <string name="settings_platform_memcard_auto_value">Auto</string>
-    <string name="settings_platform_memcard_unselected_value">No seleccionada</string>
-    <string name="settings_platform_memcard_unselected_subtitle">Se detectaron varias tarjetas de memoria: selecciona una para activar la sincronización de guardados</string>
+    <string name="settings_platform_memcard_unselected_value">Elige una tarjeta</string>
+    <string name="settings_platform_memcard_unselected_subtitle">Se encontraron varias tarjetas de memoria. Elige la que usa la sincronización de guardados.</string>
 
     <string name="settings_platform_sync_toggle_title">Sincronización activada</string>
     <string name="settings_platform_sync_toggle_subtitle">Incluir esta plataforma en la sincronización de la biblioteca</string>

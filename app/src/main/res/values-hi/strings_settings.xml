@@ -1632,21 +1632,20 @@
     <string name="settings_platform_path_custom_tag">(कस्टम)</string>
     <string name="settings_platform_rom_path_title">ROM पाथ</string>
     <string name="settings_platform_save_path_title">सेव पाथ</string>
-    <string name="settings_platform_save_path_blocked">एक्सेस ब्लॉक्ड -- कस्टम सेव पाथ सेट करें</string>
+    <string name="settings_platform_save_path_blocked">Android इस फ़ोल्डर को ब्लॉक करता है। ऐसा सेव फ़ोल्डर चुनें जिसे Argosy पढ़ सके।</string>
     <string name="settings_platform_state_path_title">स्टेट पाथ</string>
     <string name="settings_platform_retroarch_config_loaded">%1$s से</string>
     <string name="settings_platform_retroarch_config_unreadable">%1$s नहीं पढ़ी जा सकी -- वह फ़ोल्डर सेट करें जो RetroArch उपयोग करता है</string>
     <string name="settings_platform_retroarch_config_missing">कोई RetroArch कॉन्फ़िगरेशन नहीं मिला -- वह फ़ोल्डर सेट करें जो RetroArch उपयोग करता है</string>
 
     <string name="settings_platform_memcard_title">मेमोरी कार्ड</string>
-    <string name="settings_platform_memcard_override_value">सेव-पाथ ओवरराइड उपयोग हो रहा है</string>
-    <string name="settings_platform_memcard_override_subtitle">मेमोरी कार्ड कस्टम सेव पाथ से पिन किया गया है</string>
-    <string name="settings_platform_memcard_none_value">कोई नहीं मिला</string>
-    <string name="settings_platform_memcard_none_subtitle">कोई फ़ोल्डर मेमोरी कार्ड नहीं मिला -- सेव सिंक चालू करने के लिए %1$s में एक को कन्वर्ट करें</string>
-    <string name="settings_platform_memcard_this_emulator">यह एमुलेटर</string>
+    <string name="settings_platform_memcard_from_save_path_value">सेव पाथ से तय</string>
+    <string name="settings_platform_memcard_none_value">कोई फ़ोल्डर कार्ड नहीं</string>
+    <string name="settings_platform_memcard_none_subtitle">सेव सिंक के लिए फ़ोल्डर मेमोरी कार्ड चाहिए। %1$s की मेमोरी कार्ड सेटिंग्स में एक बनाएँ।</string>
+    <string name="settings_platform_memcard_this_emulator">इस एमुलेटर</string>
     <string name="settings_platform_memcard_auto_value">ऑटो</string>
-    <string name="settings_platform_memcard_unselected_value">चुना नहीं गया</string>
-    <string name="settings_platform_memcard_unselected_subtitle">कई मेमोरी कार्ड मिले -- सेव सिंक चालू करने के लिए एक चुनें</string>
+    <string name="settings_platform_memcard_unselected_value">कार्ड चुनें</string>
+    <string name="settings_platform_memcard_unselected_subtitle">कई मेमोरी कार्ड मिले। वह कार्ड चुनें जिसे सेव सिंक इस्तेमाल करे।</string>
 
     <string name="settings_platform_sync_toggle_title">सिंक चालू है</string>
     <string name="settings_platform_sync_toggle_subtitle">इस प्लेटफ़ॉर्म को लाइब्रेरी सिंक में शामिल करें</string>

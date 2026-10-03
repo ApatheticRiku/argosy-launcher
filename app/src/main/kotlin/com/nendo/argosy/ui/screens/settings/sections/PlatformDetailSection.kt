@@ -614,27 +614,30 @@ fun PlatformDetailSection(
                     val selectedName = selected?.let { java.io.File(it).name }
                     val emulatorName = config.effectiveEmulatorName
                         ?: stringResource(R.string.settings_platform_memcard_this_emulator)
-                    val isOverridingSavePath = storageConfig?.isUserSavePathOverride == true
+                    val onlyCard = storageConfig?.onlyMemcardPath
+                    val savePathCardName = onlyCard
+                        ?.takeIf { storageConfig?.isUserSavePathOverride == true }
+                        ?.takeIf { it.trimEnd('/') == storageConfig?.effectiveSavePath?.trimEnd('/') }
+                        ?.let { java.io.File(it).name }
                     val (value, subtitle) = when {
-                        isOverridingSavePath ->
-                            stringResource(R.string.settings_platform_memcard_override_value) to
-                                stringResource(R.string.settings_platform_memcard_override_subtitle)
+                        savePathCardName != null ->
+                            stringResource(R.string.settings_platform_memcard_from_save_path_value) to
+                                savePathCardName
                         cardCount <= 0 ->
                             stringResource(R.string.settings_platform_memcard_none_value) to
                                 stringResource(R.string.settings_platform_memcard_none_subtitle, emulatorName)
                         selected != null ->
-                            (selectedName ?: selected) to
-                                stringResource(R.string.settings_platform_path_custom_tag)
-                        cardCount == 1 ->
-                            stringResource(R.string.settings_platform_memcard_auto_value) to null
+                            stringResource(R.string.settings_platform_path_custom_tag) to (selectedName ?: selected)
+                        onlyCard != null ->
+                            stringResource(R.string.settings_platform_memcard_auto_value) to java.io.File(onlyCard).name
                         else ->
                             stringResource(R.string.settings_platform_memcard_unselected_value) to
                                 stringResource(R.string.settings_platform_memcard_unselected_subtitle)
                     }
                     ActionPreference(
                         title = stringResource(R.string.settings_platform_memcard_title),
-                        subtitle = subtitle ?: value,
-                        trailingText = if (subtitle != null) value else null,
+                        subtitle = subtitle,
+                        trailingText = value,
                         isFocused = isFocused(item),
                         onClick = { viewModel.openMemcardPicker(config) },
                         showResetButton = storageConfig?.memcardResettable == true,

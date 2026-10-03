@@ -378,6 +378,7 @@ class StorageSettingsDelegate @Inject constructor(
                     effectiveStatePath = info?.effectiveStatePath,
                     isUserStatePathOverride = info?.isUserStatePathOverride ?: false,
                     folderMemcardCount = info?.folderMemcardCount ?: -1,
+                    onlyMemcardPath = info?.onlyMemcardPath,
                     selectedMemcardPath = info?.selectedMemcardPath
                 )
             }
@@ -829,6 +830,7 @@ class StorageSettingsDelegate @Inject constructor(
         val effectiveStatePath: String? = null,
         val isUserStatePathOverride: Boolean = false,
         val folderMemcardCount: Int = -1,
+        val onlyMemcardPath: String? = null,
         val selectedMemcardPath: String? = null
     )
 

@@ -1642,21 +1642,20 @@
     <string name="settings_platform_path_custom_tag">(benutzerdefiniert)</string>
     <string name="settings_platform_rom_path_title">ROM-Pfad</string>
     <string name="settings_platform_save_path_title">Spielstand-Pfad</string>
-    <string name="settings_platform_save_path_blocked">Zugriff blockiert -- eigenen Spielstand-Pfad festlegen</string>
+    <string name="settings_platform_save_path_blocked">Android blockiert diesen Ordner. Wähle einen Spielstand-Ordner, den Argosy lesen kann.</string>
     <string name="settings_platform_state_path_title">Savestate-Pfad</string>
     <string name="settings_platform_retroarch_config_loaded">Aus %1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">%1$s konnte nicht gelesen werden -- den von RetroArch verwendeten Ordner festlegen</string>
     <string name="settings_platform_retroarch_config_missing">Keine RetroArch-Konfiguration gefunden -- den von RetroArch verwendeten Ordner festlegen</string>
 
     <string name="settings_platform_memcard_title">Memory Card</string>
-    <string name="settings_platform_memcard_override_value">Nutzt Spielstand-Pfad-Override</string>
-    <string name="settings_platform_memcard_override_subtitle">Memory Card durch eigenen Spielstand-Pfad festgelegt</string>
-    <string name="settings_platform_memcard_none_value">Keine gefunden</string>
-    <string name="settings_platform_memcard_none_subtitle">Keine Ordner-Memory-Cards gefunden -- eine in %1$s konvertieren, um Spielstand-Sync zu aktivieren</string>
+    <string name="settings_platform_memcard_from_save_path_value">Durch Spielstand-Pfad festgelegt</string>
+    <string name="settings_platform_memcard_none_value">Keine Ordnerkarte</string>
+    <string name="settings_platform_memcard_none_subtitle">Spielstand-Sync braucht eine Ordner-Memory-Card. Erstelle eine in den Memory-Card-Einstellungen von %1$s.</string>
     <string name="settings_platform_memcard_this_emulator">diesem Emulator</string>
     <string name="settings_platform_memcard_auto_value">Auto</string>
-    <string name="settings_platform_memcard_unselected_value">Nicht ausgewählt</string>
-    <string name="settings_platform_memcard_unselected_subtitle">Mehrere Memory Cards erkannt -- eine auswählen, um Spielstand-Sync zu aktivieren</string>
+    <string name="settings_platform_memcard_unselected_value">Karte wählen</string>
+    <string name="settings_platform_memcard_unselected_subtitle">Mehrere Memory Cards gefunden. Wähle die, die Spielstand-Sync nutzt.</string>
 
     <string name="settings_platform_sync_toggle_title">Sync aktiviert</string>
     <string name="settings_platform_sync_toggle_subtitle">Diese Plattform in den Bibliotheks-Sync einbeziehen</string>

@@ -181,7 +181,7 @@
     <string name="ui_disc_picker_row">光盘%1$d</string>
 
     <string name="ui_memcard_picker_title">选择存储卡</string>
-    <string name="ui_memcard_picker_subtitle">存档同步将使用所选文件夹对应的存储卡</string>
+    <string name="ui_memcard_picker_subtitle">存档同步会读写你选择的记忆卡</string>
     <string name="ui_memcard_picker_empty">空</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="other">%d个游戏存档</item>

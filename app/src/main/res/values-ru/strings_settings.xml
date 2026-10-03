@@ -1715,21 +1715,20 @@
     <string name="settings_platform_path_custom_tag">(свой)</string>
     <string name="settings_platform_rom_path_title">Путь ROM</string>
     <string name="settings_platform_save_path_title">Путь сохранения</string>
-    <string name="settings_platform_save_path_blocked">Доступ заблокирован - задайте свой путь сохранения</string>
+    <string name="settings_platform_save_path_blocked">Android блокирует эту папку. Выберите папку сохранений, доступную Argosy.</string>
     <string name="settings_platform_state_path_title">Путь состояний</string>
     <string name="settings_platform_retroarch_config_loaded">Из %1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">%1$s не удалось прочитать - задайте папку, которую использует RetroArch</string>
     <string name="settings_platform_retroarch_config_missing">Конфигурация RetroArch не найдена - задайте папку, которую использует RetroArch</string>
 
     <string name="settings_platform_memcard_title">Карта памяти</string>
-    <string name="settings_platform_memcard_override_value">Используется переопределённый путь сохранения</string>
-    <string name="settings_platform_memcard_override_subtitle">Карта памяти закреплена через свой путь сохранения</string>
-    <string name="settings_platform_memcard_none_value">Не найдено</string>
-    <string name="settings_platform_memcard_none_subtitle">Папочные карты памяти не найдены - преобразуйте одну в %1$s, чтобы включить синхронизацию сохранений</string>
-    <string name="settings_platform_memcard_this_emulator">этом эмуляторе</string>
+    <string name="settings_platform_memcard_from_save_path_value">Задана путём сохранения</string>
+    <string name="settings_platform_memcard_none_value">Нет папочной карты</string>
+    <string name="settings_platform_memcard_none_subtitle">Для синхронизации сохранений нужна папочная карта памяти. Создайте её в настройках карт памяти %1$s.</string>
+    <string name="settings_platform_memcard_this_emulator">этого эмулятора</string>
     <string name="settings_platform_memcard_auto_value">Авто</string>
-    <string name="settings_platform_memcard_unselected_value">Не выбрано</string>
-    <string name="settings_platform_memcard_unselected_subtitle">Обнаружено несколько карт памяти - выберите одну, чтобы включить синхронизацию сохранений</string>
+    <string name="settings_platform_memcard_unselected_value">Выберите карту</string>
+    <string name="settings_platform_memcard_unselected_subtitle">Найдено несколько карт памяти. Выберите ту, которую использует синхронизация сохранений.</string>
 
     <string name="settings_platform_sync_toggle_title">Синхронизация включена</string>
     <string name="settings_platform_sync_toggle_subtitle">Включить эту платформу в синхронизацию библиотеки</string>

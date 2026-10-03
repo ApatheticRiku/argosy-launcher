@@ -186,7 +186,7 @@
     <string name="ui_disc_picker_row">Disc %1$d</string>
 
     <string name="ui_memcard_picker_title">SPEICHERKARTE AUSWÄHLEN</string>
-    <string name="ui_memcard_picker_subtitle">Die Spielstand-Synchronisierung verwendet die Speicherkarte des gewählten Ordners</string>
+    <string name="ui_memcard_picker_subtitle">Spielstand-Sync liest und schreibt die gewählte Karte</string>
     <string name="ui_memcard_picker_empty">leer</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="one">%d Spielstand</item>

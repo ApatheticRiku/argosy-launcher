@@ -185,7 +185,7 @@
     <string name="ui_disc_picker_row">光碟%1$d</string>
 
     <string name="ui_memcard_picker_title">選擇記憶卡</string>
-    <string name="ui_memcard_picker_subtitle">存檔同步會使用所選資料夾的記憶卡</string>
+    <string name="ui_memcard_picker_subtitle">存檔同步會讀寫你選擇的記憶卡</string>
     <string name="ui_memcard_picker_empty">空白</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="other">%d款遊戲的存檔</item>

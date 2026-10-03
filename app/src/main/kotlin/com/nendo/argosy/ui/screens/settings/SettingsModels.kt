@@ -884,6 +884,7 @@ data class PlatformStorageConfig(
     val isUserStatePathOverride: Boolean = false,
     val supportsStatePath: Boolean = false,
     val folderMemcardCount: Int = -1,
+    val onlyMemcardPath: String? = null,
     val selectedMemcardPath: String? = null
 ) {
     val canResetSavePath: Boolean get() = isUserSavePathOverride || isEvaluatedSavePath

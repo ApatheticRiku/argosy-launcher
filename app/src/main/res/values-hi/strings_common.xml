@@ -186,7 +186,7 @@
     <string name="ui_disc_picker_row">डिस्क %1$d</string>
 
     <string name="ui_memcard_picker_title">मेमोरी कार्ड चुनें</string>
-    <string name="ui_memcard_picker_subtitle">सेव सिंक चयनित फ़ोल्डर मेमोरी कार्ड का उपयोग करता है</string>
+    <string name="ui_memcard_picker_subtitle">सेव सिंक आपके चुने कार्ड को पढ़ता और लिखता है</string>
     <string name="ui_memcard_picker_empty">खाली</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="one">%d गेम सेव</item>

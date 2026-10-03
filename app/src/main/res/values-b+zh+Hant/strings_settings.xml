@@ -1519,21 +1519,20 @@
     <string name="settings_platform_path_custom_tag">（自訂）</string>
     <string name="settings_platform_rom_path_title">ROM路徑</string>
     <string name="settings_platform_save_path_title">存檔路徑</string>
-    <string name="settings_platform_save_path_blocked">存取遭封鎖，請設定自訂存檔路徑</string>
+    <string name="settings_platform_save_path_blocked">Android 封鎖了此資料夾。請選擇 Argosy 可以讀取的存檔資料夾。</string>
     <string name="settings_platform_state_path_title">即時存檔路徑</string>
     <string name="settings_platform_retroarch_config_loaded">來自%1$s</string>
     <string name="settings_platform_retroarch_config_unreadable">無法讀取%1$s，請設定RetroArch使用的資料夾</string>
     <string name="settings_platform_retroarch_config_missing">找不到RetroArch設定檔，請設定RetroArch使用的資料夾</string>
 
     <string name="settings_platform_memcard_title">記憶卡</string>
-    <string name="settings_platform_memcard_override_value">使用存檔路徑覆寫</string>
-    <string name="settings_platform_memcard_override_subtitle">記憶卡已透過自訂存檔路徑固定</string>
-    <string name="settings_platform_memcard_none_value">找不到任何記憶卡</string>
-    <string name="settings_platform_memcard_none_subtitle">找不到資料夾式記憶卡，請在%1$s中轉換一個以啟用存檔同步</string>
+    <string name="settings_platform_memcard_from_save_path_value">由存檔路徑決定</string>
+    <string name="settings_platform_memcard_none_value">沒有資料夾式記憶卡</string>
+    <string name="settings_platform_memcard_none_subtitle">存檔同步需要資料夾式記憶卡。請在%1$s的記憶卡設定中建立一張。</string>
     <string name="settings_platform_memcard_this_emulator">此模擬器</string>
     <string name="settings_platform_memcard_auto_value">自動</string>
-    <string name="settings_platform_memcard_unselected_value">尚未選擇</string>
-    <string name="settings_platform_memcard_unselected_subtitle">偵測到多張記憶卡，請選擇一張以啟用存檔同步</string>
+    <string name="settings_platform_memcard_unselected_value">選擇記憶卡</string>
+    <string name="settings_platform_memcard_unselected_subtitle">找到多張記憶卡。請選擇存檔同步要使用的那一張。</string>
 
     <string name="settings_platform_sync_toggle_title">已啟用同步</string>
     <string name="settings_platform_sync_toggle_subtitle">在收藏庫同步時包含此平台</string>

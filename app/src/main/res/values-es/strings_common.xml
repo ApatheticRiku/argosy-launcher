@@ -187,7 +187,7 @@
     <string name="ui_disc_picker_row">Disco %1$d</string>
 
     <string name="ui_memcard_picker_title">SELECCIONAR TARJETA DE MEMORIA</string>
-    <string name="ui_memcard_picker_subtitle">La sincronización de partidas guardadas usa la tarjeta de memoria de la carpeta seleccionada</string>
+    <string name="ui_memcard_picker_subtitle">La sincronización de guardados lee y escribe la tarjeta que elijas</string>
     <string name="ui_memcard_picker_empty">vacía</string>
     <plurals name="ui_memcard_picker_save_count">
         <item quantity="one">%d partida guardada</item>
