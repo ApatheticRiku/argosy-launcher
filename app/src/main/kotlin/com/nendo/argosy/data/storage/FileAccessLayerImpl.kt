@@ -93,7 +93,7 @@ class FileAccessLayerImpl @Inject constructor(
             }
         }
 
-        if (isRestrictedPath(path)) {
+        if (isRestrictedPath(path) && !plainListingWorks(path)) {
             val (volumeId, relativePath) = extractVolumeAndPath(path) ?: return directListFiles(path)
             val docs = managedStorageAccessor.listFiles(volumeId, relativePath)
             if (docs != null && docs.isNotEmpty()) {
@@ -114,6 +114,9 @@ class FileAccessLayerImpl @Inject constructor(
         return directListFiles(path)
     }
 
+    private fun plainListingWorks(path: String): Boolean =
+        !AndroidDataAccessor.isOnInternalVolume(path) && File(path).list() != null
+
     private fun directListFiles(path: String): List<FileInfo>? {
         val dir = File(path)
         if (!dir.exists() || !dir.isDirectory) return null
@@ -131,7 +134,7 @@ class FileAccessLayerImpl @Inject constructor(
             }
         }
 
-        if (isRestrictedPath(path)) {
+        if (isRestrictedPath(path) && !plainListingWorks(path)) {
             extractVolumeAndPath(path)?.let { (volumeId, relativePath) ->
                 managedStorageAccessor.listFiles(volumeId, relativePath)?.forEach { doc ->
                     byName.putIfAbsent(

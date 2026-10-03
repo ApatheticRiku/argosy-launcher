@@ -1,10 +1,14 @@
 package com.nendo.argosy.data.remote.romm
 
+import android.os.SystemClock
 import com.nendo.argosy.util.Logger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "RomMAchievementService"
+private const val REFRESH_FLOOR_MS = 60_000L
 
 @Singleton
 class RomMAchievementService @Inject constructor(
@@ -12,12 +16,19 @@ class RomMAchievementService @Inject constructor(
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
 
-    private var raProgressionRefreshedThisSession = false
-    private var cachedRAProgression: Map<Long, List<RomMEarnedAchievement>> = emptyMap()
-    private var cachedProgression: List<RomMRAGameProgression> = emptyList()
+    private val refreshMutex = Mutex()
+    @Volatile private var refreshAttemptedThisSession = false
+    @Volatile private var lastRefreshAttemptAt = 0L
+    @Volatile private var cachedRAProgression: Map<Long, List<RomMEarnedAchievement>> = emptyMap()
+    @Volatile private var cachedProgression: List<RomMRAGameProgression> = emptyList()
 
     fun onAppResumed() {
-        raProgressionRefreshedThisSession = false
+        refreshAttemptedThisSession = false
+    }
+
+    fun onAccountChanged() {
+        refreshAttemptedThisSession = false
+        lastRefreshAttemptAt = 0L
         cachedRAProgression = emptyMap()
         cachedProgression = emptyList()
     }
@@ -44,52 +55,38 @@ class RomMAchievementService @Inject constructor(
     }
 
     suspend fun refreshRAProgressionOnStartup() {
-        val currentApi = api ?: return
-        try {
-            val userResponse = currentApi.getCurrentUser()
-            if (!userResponse.isSuccessful) return
-
-            val user = userResponse.body() ?: return
-            if (user.raUsername.isNullOrBlank()) return
-
-            var progression = user.raProgression?.results ?: emptyList()
-
-            val refreshResponse = currentApi.refreshRAProgression(user.id)
-            if (refreshResponse.isSuccessful) {
-                raProgressionRefreshedThisSession = true
-                val refreshedUserResponse = currentApi.getCurrentUser()
-                if (refreshedUserResponse.isSuccessful) {
-                    progression = refreshedUserResponse.body()?.raProgression?.results ?: emptyList()
-                } else {
-                    Logger.warn(TAG, "Post-refresh user fetch failed (${refreshedUserResponse.code()}); using pre-refresh progression")
-                }
-            }
-
-            updateCache(progression)
-        } catch (_: Exception) {
-        }
+        refreshRAProgressionIfNeeded()
     }
 
-    suspend fun refreshRAProgressionIfNeeded(force: Boolean = false): RomMResult<Unit> {
-        if (!force && raProgressionRefreshedThisSession) {
-            return RomMResult.Success(Unit)
-        }
+    /**
+     * Asks the server to refresh RetroAchievements progression and caches the result. Runs once
+     * after each app resume, or again on [force]; never twice within a minute.
+     */
+    suspend fun refreshRAProgressionIfNeeded(force: Boolean = false): RomMResult<Unit> = refreshMutex.withLock {
+        val sinceLast = SystemClock.elapsedRealtime() - lastRefreshAttemptAt
+        if (lastRefreshAttemptAt > 0L && sinceLast < REFRESH_FLOOR_MS) return@withLock RomMResult.Success(Unit)
+        if (refreshAttemptedThisSession && !force) return@withLock RomMResult.Success(Unit)
 
-        val currentApi = api ?: return RomMResult.Error("Not connected")
-        return try {
-            val userResponse = currentApi.getCurrentUser()
-            if (!userResponse.isSuccessful) {
-                return RomMResult.Error("Failed to get user", userResponse.code())
+        val currentApi = api ?: return@withLock RomMResult.Error("Not connected")
+        refreshAttemptedThisSession = true
+        lastRefreshAttemptAt = SystemClock.elapsedRealtime()
+        try {
+            val user = connectionManager.currentUser ?: run {
+                val userResponse = currentApi.getCurrentUser()
+                if (!userResponse.isSuccessful) {
+                    return@withLock RomMResult.Error("Failed to get user", userResponse.code())
+                }
+                userResponse.body() ?: return@withLock RomMResult.Error("No user data")
             }
-            val user = userResponse.body() ?: return RomMResult.Error("No user data")
             if (user.raUsername.isNullOrBlank()) {
-                return RomMResult.Error("No RetroAchievements username configured")
+                return@withLock RomMResult.Error("No RetroAchievements username configured")
             }
+            if (cachedProgression.isEmpty()) user.raProgression?.results?.let(::updateCache)
 
             val response = currentApi.refreshRAProgression(user.id)
             if (!response.isSuccessful) {
                 Logger.warn(TAG, "Failed to refresh RA progression: HTTP ${response.code()}; preserving existing cache")
-                return RomMResult.Error("Failed to refresh RA progression: HTTP ${response.code()}")
+                return@withLock RomMResult.Error("Failed to refresh RA progression: HTTP ${response.code()}")
             }
 
             val refreshedUserResponse = currentApi.getCurrentUser()
@@ -99,11 +96,7 @@ class RomMAchievementService @Inject constructor(
                 Logger.warn(TAG, "Post-refresh user fetch failed (${refreshedUserResponse.code()}); preserving existing cache")
                 null
             }
-
-            if (progression != null) {
-                raProgressionRefreshedThisSession = true
-                updateCache(progression)
-            }
+            if (progression != null) updateCache(progression)
 
             RomMResult.Success(Unit)
         } catch (e: Exception) {

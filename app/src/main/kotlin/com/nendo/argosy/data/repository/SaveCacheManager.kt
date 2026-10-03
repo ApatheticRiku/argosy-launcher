@@ -473,7 +473,15 @@ class SaveCacheManager @Inject constructor(
      * the bytes could not be cached, and the caller must not overwrite them.
      */
     suspend fun protectBeforeOverwrite(gameId: Long, emulatorId: String, savePath: String): Boolean =
-        !fal.exists(savePath) || cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+        !fal.exists(savePath) ||
+            !holdsSaveForGame(gameId, savePath) ||
+            cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+
+    private suspend fun holdsSaveForGame(gameId: Long, savePath: String): Boolean {
+        if (!fal.isDirectory(savePath)) return true
+        val game = gameDao.getById(gameId) ?: return true
+        return resolveArchiveRoots(fal.getTransformedFile(savePath), savePath, game).isNotEmpty()
+    }
 
     suspend fun cacheAsRollback(
         gameId: Long,

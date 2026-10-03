@@ -3,6 +3,7 @@ package com.nendo.argosy.data.remote.romm
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.local.entity.RomMAccountEntity
@@ -44,6 +45,8 @@ import javax.inject.Singleton
 private const val TAG = "RomMConnectionManager"
 private const val MIN_DEVICE_API_VERSION = "4.7.0"
 private const val CANDIDATE_PROBE_TIMEOUT_SECONDS = 5L
+private const val TOKEN_RECHECK_WINDOW_MS = 60_000L
+private const val RECENT_CONNECT_MS = 5_000L
 
 private val RECONNECT_BACKOFF_MS = listOf(5_000L, 10_000L, 20_000L, 40_000L, 60_000L)
 
@@ -130,6 +133,17 @@ class RomMConnectionManager @Inject constructor(
     private var reconnectJob: Job? = null
     private var networkCallbackRegistered = false
     @Volatile private var reconnectPending = false
+
+    /**
+     * The signed-in user as the server last returned it, refreshed on every connect and token
+     * check; null while disconnected.
+     */
+    @Volatile
+    var currentUser: RomMUser? = null
+        private set
+
+    @Volatile private var lastTokenVerifiedAt = 0L
+    @Volatile private var lastConnectedAt = 0L
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
@@ -258,6 +272,11 @@ class RomMConnectionManager @Inject constructor(
         cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 scope.launch {
+                    connectMutex.withLock { }
+                    if (isConnected() && SystemClock.elapsedRealtime() - lastConnectedAt < RECENT_CONNECT_MS) {
+                        Logger.debug(TAG, "network available, a connect just finished; keeping it")
+                        return@launch
+                    }
                     Logger.info(TAG, "network available, re-evaluating addresses (connected=${isConnected()})")
                     reconnectWithStoredAddresses()
                 }
@@ -283,11 +302,6 @@ class RomMConnectionManager @Inject constructor(
         if (response.isSuccessful) response.body() else null
     } catch (_: Exception) {
         null
-    }
-
-    private suspend fun refreshAvatarPath(target: RomMApi) {
-        val user = fetchCurrentUser(target) ?: return
-        userPreferencesRepository.setRomMAvatarPath(user.avatarPath)
     }
 
     private suspend fun requireSameInstance(newBaseUrl: String) {
@@ -445,11 +459,13 @@ class RomMConnectionManager @Inject constructor(
             }
             apiFactory.reachability.recordReachable(normalizedUrl)
             val newApi = createApi(normalizedUrl, token)
-            if (token != null && !isTokenAccepted(newApi)) {
-                Logger.info(TAG, "connect: server live at $normalizedUrl but the token was rejected")
-                return RomMResult.Error("Sign in again")
+            if (token != null) {
+                val user = verifiedUser(newApi) ?: run {
+                    Logger.info(TAG, "connect: server live at $normalizedUrl but the token was rejected")
+                    return RomMResult.Error("Sign in again")
+                }
+                userPreferencesRepository.setRomMAvatarPath(user.avatarPath)
             }
-            if (token != null) refreshAvatarPath(newApi)
             if (baseUrl.isNotEmpty() && baseUrl != normalizedUrl) {
                 Logger.info(TAG, "connect: moving from $baseUrl to $normalizedUrl")
             }
@@ -464,6 +480,7 @@ class RomMConnectionManager @Inject constructor(
             _connectionState.value = ConnectionState.Connected(version, capabilities)
             saveSyncRepository.get().setCapabilities(capabilities)
             reconnectPending = false
+            lastConnectedAt = SystemClock.elapsedRealtime()
             Logger.info(TAG, "connect: success at $normalizedUrl, version=$version, capabilities=$capabilities")
             if (registerDevice && token != null && isVersionAtLeast(MIN_DEVICE_API_VERSION)) {
                 registerDeviceIfNeeded()
@@ -710,6 +727,8 @@ class RomMConnectionManager @Inject constructor(
         accessToken = null
         baseUrl = ""
         cachedDeviceId = null
+        currentUser = null
+        lastTokenVerifiedAt = 0L
         _connectionState.value = ConnectionState.Disconnected
     }
 
@@ -787,12 +806,19 @@ class RomMConnectionManager @Inject constructor(
      * server has revoked. Reading it as proof of a session left a revoked account permanently
      * "connected": every request 401s while nothing ever leaves the connected state.
      */
-    private suspend fun isTokenAccepted(candidate: RomMApi): Boolean = try {
-        candidate.getCurrentUser().isSuccessful
+    private suspend fun verifiedUser(candidate: RomMApi): RomMUser? = try {
+        val response = candidate.getCurrentUser()
+        response.body()?.takeIf { response.isSuccessful }?.also {
+            currentUser = it
+            lastTokenVerifiedAt = SystemClock.elapsedRealtime()
+        }
     } catch (e: Exception) {
-        Logger.info(TAG, "isTokenAccepted: identity call failed: ${e.message}")
-        false
+        Logger.info(TAG, "verifiedUser: identity call failed: ${e.message}")
+        null
     }
+
+    private fun tokenVerifiedRecently(): Boolean =
+        currentUser != null && SystemClock.elapsedRealtime() - lastTokenVerifiedAt < TOKEN_RECHECK_WINDOW_MS
 
     /**
      * Re-checks the live session with the token rather than with liveness.
@@ -809,7 +835,7 @@ class RomMConnectionManager @Inject constructor(
         }
 
         try {
-            if (accessToken != null && !isTokenAccepted(currentApi)) {
+            if (accessToken != null && !tokenVerifiedRecently() && verifiedUser(currentApi) == null) {
                 Logger.info(TAG, "checkConnection: token rejected, scheduling reconnect")
                 scheduleReconnect()
                 return

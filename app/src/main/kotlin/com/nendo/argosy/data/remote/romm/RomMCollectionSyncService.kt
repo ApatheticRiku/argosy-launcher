@@ -11,6 +11,8 @@ import com.nendo.argosy.data.sync.SyncCoordinator
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -36,6 +38,7 @@ class RomMCollectionSyncService @Inject constructor(
     private val database: com.nendo.argosy.data.local.ALauncherDatabase
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
+    private val favoritesCheckMutex = Mutex()
 
     private fun parseTimestamp(timestamp: String?): Instant? {
         if (timestamp.isNullOrBlank()) return null
@@ -164,6 +167,10 @@ class RomMCollectionSyncService @Inject constructor(
             return RomMResult.Error("Not connected")
         }
 
+        return favoritesCheckMutex.withLock { checkFavoritesLocked() }
+    }
+
+    private suspend fun checkFavoritesLocked(): RomMResult<Unit> {
         val prefs = userPreferencesRepository.preferences.first()
         val lastCheck = prefs.lastFavoritesCheck
         if (lastCheck != null) {

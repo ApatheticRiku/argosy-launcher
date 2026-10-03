@@ -80,6 +80,39 @@ class SaveCacheManagerCachingTest {
         tempDir.deleteRecursively()
     }
 
+    private fun ps2Card(gameFolders: List<String>): File {
+        val card = File(tempDir, "memcards/maincard").apply { mkdirs() }
+        File(card, "_pcsx2_superblock").writeBytes(ByteArray(8))
+        File(card, "BASLUS-20675").apply { mkdirs() }.resolve("BASLUS-20675_slot0").writeBytes(byteArrayOf(1, 2))
+        gameFolders.forEach { File(card, it).apply { mkdirs() }.resolve("${it}_slot0").writeBytes(byteArrayOf(3, 4)) }
+        val handler = mockk<com.nendo.argosy.data.sync.platform.FolderSaveHandler>(relaxed = true)
+        every { saveHandlerRegistry.getFolderHandler("ps2") } returns handler
+        every { handler.findAllSaveFoldersBySaveId(card.path, "BASLUS-21050") } returns
+            gameFolders.map { File(card, it).path }
+        coEvery { gameDao.getById(9L) } returns com.nendo.argosy.data.local.entity.GameEntity(
+            id = 9L, title = "Burnout 3", sortTitle = "burnout 3", platformId = 1L, platformSlug = "ps2",
+            rommId = null, igdbId = null, localPath = null,
+            source = com.nendo.argosy.data.model.GameSource.ROMM_SYNCED, saveId = "BASLUS-21050"
+        )
+        return card
+    }
+
+    @Test
+    fun `a memory card with no save for the game needs no backup before a download lands`() = runTest {
+        val card = ps2Card(gameFolders = emptyList())
+
+        assertTrue(manager.protectBeforeOverwrite(9L, "armsx2", card.path))
+        coVerify(exactly = 0) { saveCacheDao.insert(any()) }
+    }
+
+    @Test
+    fun `a memory card holding the game's save is backed up before a download lands`() = runTest {
+        val card = ps2Card(gameFolders = listOf("BASLUS-21050"))
+
+        assertTrue(manager.protectBeforeOverwrite(9L, "armsx2", card.path))
+        coVerify(exactly = 1) { saveCacheDao.insert(any()) }
+    }
+
     @Test
     fun `deleting a download keeps versions the server does not hold and removes the rest`() = runTest {
         fun row(id: Long, rommSaveId: Long?, dirty: Boolean) = SaveCacheEntity(

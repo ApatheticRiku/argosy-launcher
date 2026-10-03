@@ -3,7 +3,9 @@ package com.nendo.argosy.domain.usecase.sync
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -42,7 +44,9 @@ class PrefetchGameSaveDataUseCase @Inject constructor(
     private val activeSaveRepository: ActiveSaveRepository,
     private val getUnifiedSavesUseCase: GetUnifiedSavesUseCase,
     private val getUnifiedStatesUseCase: GetUnifiedStatesUseCase,
-    private val saveSyncRepository: SaveSyncRepository
+    private val saveSyncRepository: SaveSyncRepository,
+    private val saveCacheDao: SaveCacheDao,
+    private val syncPreferencesRepository: SyncPreferencesRepository
 ) {
     private val lastRunAt = ConcurrentHashMap<Long, Long>()
 
@@ -85,8 +89,10 @@ class PrefetchGameSaveDataUseCase @Inject constructor(
             gameDiscDao.getDownloadedDiscCount(game.id) > 0
 
     private suspend fun prefetchSaves(gameId: Long) {
+        val ownerUserId = syncPreferencesRepository.getRommUserId()
         val serverOnly = getUnifiedSavesUseCase(gameId, expandHistory = true)
             .filter { it.source == UnifiedSaveEntry.Source.SERVER && it.serverSaveId != null }
+            .filterNot { entry -> entry.serverContentHash?.let { isCached(gameId, ownerUserId, it) } == true }
         if (serverOnly.isEmpty()) return
 
         for (entry in serverOnly) {
@@ -99,6 +105,9 @@ class PrefetchGameSaveDataUseCase @Inject constructor(
         }
         Logger.debug(TAG, "Prefetched ${serverOnly.size} server saves for gameId=$gameId")
     }
+
+    private suspend fun isCached(gameId: Long, ownerUserId: Long?, contentHash: String): Boolean =
+        contentHash.isNotBlank() && saveCacheDao.getByGameAndHash(gameId, ownerUserId, contentHash) != null
 
     /**
      * Reading the active channel's states is what downloads them; the list is a side effect worth

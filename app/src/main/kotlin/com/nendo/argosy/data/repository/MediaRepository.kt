@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.repository
 
+import android.os.SystemClock
 import com.nendo.argosy.data.local.dao.MediaCreditDao
 import com.nendo.argosy.data.local.dao.MediaItemDao
 import com.nendo.argosy.data.local.dao.MediaLibraryStats
@@ -36,6 +37,8 @@ import dagger.Lazy
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -68,6 +71,8 @@ import javax.inject.Singleton
  */
 @Suppress("TooManyFunctions")
 @OptIn(ExperimentalCoroutinesApi::class)
+private const val RAIL_REUSE_MS = 5_000L
+
 @Singleton
 class MediaRepository @Inject constructor(
     private val jellyfinPreferencesRepository: JellyfinPreferencesRepository,
@@ -88,6 +93,8 @@ class MediaRepository @Inject constructor(
 
     private val _nextUp = MutableStateFlow(OwnedRail())
     private val _continueWatching = MutableStateFlow(OwnedRail())
+    private val nextUpLock = Mutex()
+    private val continueWatchingLock = Mutex()
 
     val isSignedIn: Flow<Boolean> = jellyfinPreferencesRepository.preferences
         .map { it.isSignedIn }
@@ -466,18 +473,27 @@ class MediaRepository @Inject constructor(
     suspend fun refreshEpisodes(seriesId: String, seasonId: String): JellyfinResult<Int> =
         librarySyncService.syncSeasonEpisodes(seriesId, seasonId)
 
-    suspend fun refreshNextUp(): JellyfinResult<List<MediaItemEntity>> {
-        val result = librarySyncService.syncNextUp()
-        if (result is JellyfinResult.Success) _nextUp.value = OwnedRail(currentOwner(), result.data)
-        return result
-    }
+    suspend fun refreshNextUp(): JellyfinResult<List<MediaItemEntity>> =
+        refreshRail(_nextUp, nextUpLock) { librarySyncService.syncNextUp() }
 
-    suspend fun refreshContinueWatching(): JellyfinResult<List<MediaItemEntity>> {
-        val result = librarySyncService.syncContinueWatching()
-        if (result is JellyfinResult.Success) {
-            _continueWatching.value = OwnedRail(currentOwner(), result.data)
+    suspend fun refreshContinueWatching(): JellyfinResult<List<MediaItemEntity>> =
+        refreshRail(_continueWatching, continueWatchingLock) { librarySyncService.syncContinueWatching() }
+
+    private suspend fun refreshRail(
+        rail: MutableStateFlow<OwnedRail>,
+        lock: Mutex,
+        fetch: suspend () -> JellyfinResult<List<MediaItemEntity>>
+    ): JellyfinResult<List<MediaItemEntity>> = lock.withLock {
+        val owner = currentOwner()
+        val held = rail.value
+        if (held.owner == owner && SystemClock.elapsedRealtime() - held.fetchedAt < RAIL_REUSE_MS) {
+            return@withLock JellyfinResult.Success(held.items)
         }
-        return result
+        fetch().also { result ->
+            if (result is JellyfinResult.Success) {
+                rail.value = OwnedRail(owner, result.data, SystemClock.elapsedRealtime())
+            }
+        }
     }
 
     suspend fun pushPendingWatchState(): JellyfinResult<Int> = librarySyncService.pushPendingUserData()
@@ -590,7 +606,8 @@ class MediaRepository @Inject constructor(
      */
     private data class OwnedRail(
         val owner: String? = null,
-        val items: List<MediaItemEntity> = emptyList()
+        val items: List<MediaItemEntity> = emptyList(),
+        val fetchedAt: Long = 0L
     ) {
         fun itemsFor(currentOwner: String): List<MediaItemEntity> =
             if (owner == currentOwner) items else emptyList()

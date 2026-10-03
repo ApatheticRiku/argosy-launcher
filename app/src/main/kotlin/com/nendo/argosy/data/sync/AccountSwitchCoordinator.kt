@@ -343,7 +343,7 @@ class AccountSwitchCoordinator @Inject constructor(
         overlayWriter.materialiseForOwner(target.rommUserId)
         rommApiProvider.invalidateAll()
         connectionManager.get().rebindToActiveAccount()
-        rommAchievementService.get().onAppResumed()
+        rommAchievementService.get().onAccountChanged()
         retroAchievementsRepository.get().invalidateUnlocksCache()
         pushRetroArchCredentials()
     }

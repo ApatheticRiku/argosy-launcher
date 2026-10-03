@@ -11,6 +11,7 @@ data class UnifiedSaveEntry(
     val channelName: String? = null,
     val source: Source,
     val serverFileName: String? = null,
+    val serverContentHash: String? = null,
     val isLatest: Boolean = false,
     val isActive: Boolean = false,
     val isLocked: Boolean = false,

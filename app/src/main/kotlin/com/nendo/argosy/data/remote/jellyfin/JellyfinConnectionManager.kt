@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.util.Logger
@@ -33,6 +34,7 @@ private const val TAG = "JellyfinConnectionManager"
 private const val QUICK_CONNECT_POLL_INTERVAL_MS = 2_000L
 private const val QUICK_CONNECT_TIMEOUT_MS = 300_000L
 private const val QUICK_CONNECT_MAX_CONSECUTIVE_FAILURES = 5
+private const val RECENT_CONNECT_MS = 5_000L
 private const val HTTP_UNAUTHORIZED = 401
 private const val HTTP_FORBIDDEN = 403
 private const val HTTP_NOT_FOUND = 404
@@ -102,6 +104,7 @@ class JellyfinConnectionManager @Inject constructor(
     private var deviceId: String? = null
 
     private val connectMutex = Mutex()
+    @Volatile private var lastConnect: RecentConnect? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var networkCallbackRegistered = false
 
@@ -414,8 +417,14 @@ class JellyfinConnectionManager @Inject constructor(
 
     private suspend fun connectOnIo(serverUrl: String, token: String?, signedInUserId: String?) {
         connectMutex.withLock {
-            _connectionState.value = JellyfinConnectionState.Connecting
             val normalized = normalizeServerUrl(serverUrl)
+            val recent = lastConnect
+            if (isConnected() && recent != null && recent.serverUrl == normalized && recent.token == token &&
+                SystemClock.elapsedRealtime() - recent.at < RECENT_CONNECT_MS
+            ) {
+                return
+            }
+            _connectionState.value = JellyfinConnectionState.Connecting
             baseUrl = normalized
             val device = ensureDeviceId()
             val client = apiFactory.create(normalized, device, getDeviceName(), token)
@@ -454,9 +463,12 @@ class JellyfinConnectionManager @Inject constructor(
                     quickConnectEnabled = readQuickConnectEnabled(client)
                 )
             )
+            lastConnect = RecentConnect(normalized, token, SystemClock.elapsedRealtime())
             Logger.info(TAG, "connected to ${info.serverName} $version")
         }
     }
+
+    private data class RecentConnect(val serverUrl: String, val token: String?, val at: Long)
 
     private sealed class TokenCheck {
         data object Skipped : TokenCheck()

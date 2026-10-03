@@ -3,7 +3,9 @@ package com.nendo.argosy.domain.usecase.sync
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -34,11 +36,28 @@ class PrefetchGameSaveDataUseCaseTest {
     private val getUnifiedSaves: GetUnifiedSavesUseCase = mockk(relaxed = true)
     private val getUnifiedStates: GetUnifiedStatesUseCase = mockk(relaxed = true)
     private val saveSyncRepository: SaveSyncRepository = mockk(relaxed = true)
+    private val saveCacheDao: SaveCacheDao = mockk(relaxed = true)
+    private val syncPreferencesRepository: SyncPreferencesRepository = mockk(relaxed = true)
 
     private fun useCase() = PrefetchGameSaveDataUseCase(
         gameDao, gameFileDao, gameDiscDao, preferencesRepository, activeSaveRepository,
-        getUnifiedSaves, getUnifiedStates, saveSyncRepository
+        getUnifiedSaves, getUnifiedStates, saveSyncRepository, saveCacheDao, syncPreferencesRepository
     )
+
+    @Test
+    fun `a server save whose bytes are already cached is not downloaded again`() = runTest {
+        arrange()
+        val duplicate = serverEntry(77L).also { every { it.serverContentHash } returns "99cb" }
+        val fresh = serverEntry(78L).also { every { it.serverContentHash } returns "dcd0" }
+        coEvery { getUnifiedSaves(GAME_ID, true, any()) } returns listOf(duplicate, fresh)
+        coEvery { saveCacheDao.getByGameAndHash(GAME_ID, any(), "99cb") } returns mockk(relaxed = true)
+        coEvery { saveCacheDao.getByGameAndHash(GAME_ID, any(), "dcd0") } returns null
+
+        useCase()(GAME_ID)
+
+        coVerify(exactly = 0) { saveSyncRepository.downloadAndCacheSave(77L, any(), any(), any()) }
+        coVerify(exactly = 1) { saveSyncRepository.downloadAndCacheSave(78L, GAME_ID, "primary", activate = false) }
+    }
 
     private fun game(rommId: Long? = ROMM_ID, localPath: String? = "/roms/test.sfc") = GameEntity(
         id = GAME_ID,
