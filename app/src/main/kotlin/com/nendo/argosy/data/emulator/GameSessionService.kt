@@ -126,6 +126,9 @@ class GameSessionService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                startForegroundWithNotification(currentGameTitle, NotificationState.PLAYING)
+                awaitingForeground.set(false)
+                stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
                 return START_NOT_STICKY
             }
@@ -160,6 +163,7 @@ class GameSessionService : Service() {
 
                 cleanupPresenceKeepalive()
                 startForegroundWithNotification(gameTitle, NotificationState.PLAYING)
+                awaitingForeground.set(false)
 
                 // Reset save state to clean when starting a new session
                 broadcastSaveStateChanged(isDirty = false)
@@ -694,6 +698,7 @@ class GameSessionService : Service() {
         private const val CHANNEL_ID = "game_session_channel"
         private const val NOTIFICATION_ID = ServiceNotificationIds.GAME_SESSION
         private const val ACTION_STOP = "com.nendo.argosy.STOP_GAME_SESSION"
+        private val awaitingForeground = java.util.concurrent.atomic.AtomicBoolean(false)
         private const val ACTION_UPDATE_HARDCORE = "com.nendo.argosy.UPDATE_GAME_SESSION_HARDCORE"
         private const val EXTRA_WATCH_PATH = "watch_path"
         private const val EXTRA_GAME_TITLE = "game_title"
@@ -750,7 +755,8 @@ class GameSessionService : Service() {
                 putExtra(EXTRA_SESSION_START_TIME, sessionStartTime)
                 putExtra(EXTRA_EMULATOR_PACKAGE, emulatorPackage)
             }
-            context.startForegroundServiceSafely(intent)
+            awaitingForeground.set(true)
+            if (!context.startForegroundServiceSafely(intent)) awaitingForeground.set(false)
         }
 
         /**
@@ -768,7 +774,11 @@ class GameSessionService : Service() {
         }
 
         fun stop(context: Context) {
-            Logger.debug(TAG, "Stop requested")
+            Logger.debug(TAG, "Stop requested | awaitingForeground=${awaitingForeground.get()}")
+            if (awaitingForeground.get()) {
+                val intent = Intent(context, GameSessionService::class.java).apply { action = ACTION_STOP }
+                if (context.startForegroundServiceSafely(intent)) return
+            }
             context.stopService(Intent(context, GameSessionService::class.java))
         }
     }
