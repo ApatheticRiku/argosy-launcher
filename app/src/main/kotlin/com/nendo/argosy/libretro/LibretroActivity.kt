@@ -3683,6 +3683,7 @@ class LibretroActivity : ComponentActivity() {
     override fun onDestroy() {
         Log.d(TAG, "onDestroy: isFinishing=$isFinishing, isChangingConfigurations=$isChangingConfigurations")
         hideSecondScreen()
+        if (!coreDestroyed && ::retroView.isInitialized) retroView.destroyNative()
         coreDestroyed = true
         if (isFinishing) speedrunTimer.disarm()
         unregisterGamepadDetection()
