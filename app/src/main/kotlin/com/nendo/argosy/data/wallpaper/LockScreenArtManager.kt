@@ -60,6 +60,11 @@ class LockScreenArtManager @Inject constructor(
 
     private class LoadedArt(val art: Pair<String, Bitmap?>?)
 
+    companion object {
+        internal fun mayDraw(gameId: Long?, shownKey: String?, isLaunch: Boolean): Boolean =
+            isLaunch || gameId == null || shownKey?.startsWith("game:$gameId:") == true
+    }
+
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == Intent.ACTION_SCREEN_OFF) scope.launch { refresh() }
@@ -122,8 +127,7 @@ class LockScreenArtManager @Inject constructor(
         artLoadBudgetMs: Long? = null,
         beforeWrite: () -> Unit = {}
     ): Boolean = mutex.withLock {
-        val isLaunch = artLoadBudgetMs != null
-        if (!isLaunch && gameId != null && shownKey?.startsWith("game:$gameId:") != true) {
+        if (!mayDraw(gameId, shownKey, isLaunch = artLoadBudgetMs != null)) {
             Logger.debug(TAG, "refresh: the launch did not set this game's art; leaving the lock screen during play | gameId=$gameId")
             return@withLock false
         }
