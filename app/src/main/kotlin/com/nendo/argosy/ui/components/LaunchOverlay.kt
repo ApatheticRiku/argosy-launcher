@@ -119,7 +119,7 @@ fun LaunchOverlay(
             tracker = tracker
         )
     }
-    ModalInputEffect(active = hostsLaunch && progress != null, handler = inputHandler)
+    if (hostsLaunch) ModalInputEffect(active = progress != null, handler = inputHandler)
 
     val scrimAlpha = if (LocalLauncherTheme.current.isDarkTheme) {
         ComponentDefaults.LaunchOverlay.scrimAlphaDark
