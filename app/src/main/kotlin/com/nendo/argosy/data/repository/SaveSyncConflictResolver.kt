@@ -73,7 +73,7 @@ class SaveSyncConflictResolver @Inject constructor(
                     if (!saveCacheManager.get().protectBeforeOverwrite(resolution.gameId, resolution.emulatorId, resolution.targetPath)) {
                         return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                     }
-                    val targetFile = File(resolution.targetPath)
+                    val targetFile = fal.getTransformedFile(resolution.targetPath)
                     val game = gameDao.getById(resolution.gameId)
                     val gciConfig = game?.let { SavePathRegistry.getConfigForPlatform(resolution.emulatorId, it.platformSlug) }
                         ?.takeIf { it.usesGciFormat }
@@ -115,6 +115,10 @@ class SaveSyncConflictResolver @Inject constructor(
                         if (!written) {
                             return@withContext SaveSyncResult.Error("Failed to write save file")
                         }
+                    }
+
+                    if (!fal.commitSaveAccess(resolution.targetPath, placedPath)) {
+                        return@withContext SaveSyncResult.Error("Failed to write save")
                     }
 
                     saveCacheManager.get().cacheCurrentSave(

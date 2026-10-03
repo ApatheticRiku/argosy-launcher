@@ -71,6 +71,8 @@ class SaveSyncConflictResolverTest {
         fal = mockk(relaxed = true)
         saveHandlerRegistry = mockk(relaxed = true)
         every { fal.exists(any()) } returns true
+        every { fal.commitSaveAccess(*anyVararg()) } returns true
+        every { fal.getTransformedFile(any()) } answers { java.io.File(firstArg<String>()) }
         every { saveHandlerRegistry.isValidCachedSavePath(any(), any()) } returns true
 
         mockCacheManager = mockk(relaxed = true)

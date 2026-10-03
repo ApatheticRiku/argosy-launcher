@@ -104,7 +104,7 @@ class GciSaveHandler @Inject constructor(
                 members.mapNotNull { member ->
                     val target = "$cardDir/${member.name}"
                     fal.prepareSaveAccess(target)
-                    target.takeIf { fal.copyFile(member.absolutePath, target) }
+                    target.takeIf { fal.copyFile(member.absolutePath, target) && fal.commitSaveAccess(target) }
                 }
             } finally {
                 staged.deleteRecursively()
@@ -298,7 +298,7 @@ class GciSaveHandler @Inject constructor(
                         if (parentDir != null) fal.mkdirs(parentDir)
                         fal.prepareSaveAccess(targetPath)
 
-                        if (fal.copyFile(tempGciFile.absolutePath, targetPath)) {
+                        if (fal.copyFile(tempGciFile.absolutePath, targetPath) && fal.commitSaveAccess(targetPath)) {
                             extractedPaths.add(targetPath)
                             Logger.debug(TAG, "Extracted | entry=$entryName -> $targetPath")
                         } else {
@@ -361,7 +361,7 @@ class GciSaveHandler @Inject constructor(
         if (parentDir != null) fal.mkdirs(parentDir)
         fal.prepareSaveAccess(targetPath)
 
-        if (fal.copyFile(tempGciFile.absolutePath, targetPath)) {
+        if (fal.copyFile(tempGciFile.absolutePath, targetPath) && fal.commitSaveAccess(targetPath)) {
             Logger.debug(TAG, "Extracted single GCI | $targetPath")
             targetPath
         } else {

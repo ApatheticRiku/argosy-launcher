@@ -80,8 +80,8 @@ open class FolderSaveHandler(
             }
         }
 
-        val targetFolder = File(targetPath)
-        targetFolder.mkdirs()
+        fal.mkdirs(targetPath)
+        val targetFolder = fal.getTransformedFile(targetPath)
         ensureContainerPrepared(targetFolder)
 
         saveId?.let { pruneNonCanonicalSiblings(targetFolder, it) }

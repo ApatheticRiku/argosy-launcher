@@ -100,4 +100,12 @@ interface FileAccessLayer {
      * calls this once, up front, with each path it will touch.
      */
     fun prepareSaveAccess(vararg paths: String?)
+
+    /**
+     * Carries what a save operation wrote under [paths] out to the real folders, where the device
+     * keeps a mirrored copy of Android/data, and reports whether every write landed. True and a
+     * no-op everywhere else. Every save operation that writes calls this once it has finished
+     * writing, with the same paths it prepared, and fails the operation on false.
+     */
+    fun commitSaveAccess(vararg paths: String?): Boolean
 }

@@ -76,8 +76,8 @@ class SwitchSaveHandler @Inject constructor(
                     constructSavePath(basePath, saveId, context.emulatorPackage)
                 }
 
-            val targetFolder = File(targetPath)
-            targetFolder.mkdirs()
+            fal.mkdirs(targetPath)
+            val targetFolder = fal.getTransformedFile(targetPath)
 
             // Detect JKSV format and extract appropriately
             val success = try {

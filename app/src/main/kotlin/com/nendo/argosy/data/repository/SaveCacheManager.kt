@@ -653,6 +653,11 @@ class SaveCacheManager @Inject constructor(
                 return@withContext false
             }
 
+            if (!fal.commitSaveAccess(targetPath)) {
+                Logger.error(TAG, "Restored cache $cacheId into the mirrored copy but could not write it to $targetPath")
+                return@withContext false
+            }
+
             Log.d(TAG, "Restored save from cache $cacheId to $targetPath")
 
             SaveDebugLogger.logCacheRestored(

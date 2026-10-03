@@ -21,7 +21,29 @@ class FileAccessLayerSaveAccessTest {
     @Before
     fun setUp() {
         every { androidDataAccessor.isRestrictedAndroidPath(any()) } answers { firstArg<String>().contains("/Android/data/") }
+        every { androidDataAccessor.syncMirror(any()) } returns null
         fal = FileAccessLayerImpl(context, androidDataAccessor, managedStorageAccessor, rootFileAccessor)
+    }
+
+    @Test
+    fun `a mirrored device syncs the copy instead of granting group access`() {
+        every { rootFileAccessor.isAvailable } returns true
+        every { androidDataAccessor.syncMirror(listOf(restricted)) } returns true
+
+        fal.prepareSaveAccess(restricted, open, null)
+
+        verify(exactly = 1) { androidDataAccessor.syncMirror(listOf(restricted)) }
+        verify(exactly = 0) { rootFileAccessor.grantGroupAccess(any()) }
+    }
+
+    @Test
+    fun `commit reports a failed copy out and passes everywhere nothing is mirrored`() {
+        every { androidDataAccessor.syncMirror(listOf(restricted)) } returns false
+        assert(!fal.commitSaveAccess(restricted, open))
+
+        every { androidDataAccessor.syncMirror(listOf(restricted)) } returns null
+        assert(fal.commitSaveAccess(restricted, open))
+        assert(fal.commitSaveAccess(open, null))
     }
 
     @Test

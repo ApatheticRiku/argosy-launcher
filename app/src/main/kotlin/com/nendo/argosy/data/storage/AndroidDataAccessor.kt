@@ -15,7 +15,8 @@ import javax.inject.Singleton
 
 @Singleton
 class AndroidDataAccessor @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val mirror: AndroidDataMirror
 ) {
     companion object {
         private const val TAG = "AndroidDataAccessor"
@@ -40,6 +41,7 @@ class AndroidDataAccessor @Inject constructor(
     }
 
     fun isAltAccessSupported(): Boolean {
+        if (mirror.isActive) return true
         if (ALT_PATH == null) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
 
@@ -110,7 +112,24 @@ class AndroidDataAccessor @Inject constructor(
         }
     }
 
+    /**
+     * Reconciles the mirrored copies of [paths] with the real folders now and reports whether every
+     * copy succeeded. Null when Android/data is not mirrored on this device.
+     */
+    fun syncMirror(paths: Collection<String>): Boolean? {
+        if (!mirror.isActive) return null
+        return mirror.sync(paths.map { mirror.realPathOf(it) ?: it })
+    }
+
     fun transformPath(path: String): String {
+        if (mirror.isActive) {
+            if (mirror.isMirrorPath(path)) {
+                mirror.realPathOf(path)?.let { mirror.mirrorPathFor(it) }
+                return path
+            }
+            if (!isRestrictedAndroidPath(path)) return path
+            return mirror.mirrorPathFor(path) ?: path
+        }
         val altPath = ALT_PATH ?: return path
         if (!isOnInternalVolume(path)) return path
         if (!isAltAccessSupported()) return path
@@ -121,6 +140,7 @@ class AndroidDataAccessor @Inject constructor(
     }
 
     fun normalizePathForDisplay(path: String): String {
+        mirror.realPathOf(path)?.let { return it }
         val altPath = ALT_PATH ?: return path
         return path.replace(altPath, ANDROID_PATH)
     }

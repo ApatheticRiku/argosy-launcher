@@ -311,7 +311,7 @@ class SaveDownloader @Inject constructor(
 
         if (strandedCardToMigrate != null && preDownloadTargetPath != null && !fal.exists(preDownloadTargetPath)) {
             val carried = runCatching {
-                fal.copyFile(strandedCardToMigrate, preDownloadTargetPath)
+                fal.copyFile(strandedCardToMigrate, preDownloadTargetPath) && fal.commitSaveAccess(preDownloadTargetPath)
             }.getOrDefault(false)
             Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Carried stranded card to the libretro name | from=$strandedCardToMigrate, to=$preDownloadTargetPath, ok=$carried")
         }
@@ -721,7 +721,11 @@ class SaveDownloader @Inject constructor(
             }
 
             val serverTimestamp = SaveSyncApiClient.parseTimestamp(serverSave.updatedAt)
-            File(targetPath).setLastModified(serverTimestamp.toEpochMilli())
+            fal.getTransformedFile(targetPath).setLastModified(serverTimestamp.toEpochMilli())
+            if (!fal.commitSaveAccess(targetPath)) {
+                Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Wrote the mirrored copy but could not write it out | target=$targetPath")
+                return@withContext SaveSyncResult.Error("Failed to write save")
+            }
 
             if (isSwitchEmulator && game.titleId == null) {
                 val extractedTitleId = File(targetPath).name

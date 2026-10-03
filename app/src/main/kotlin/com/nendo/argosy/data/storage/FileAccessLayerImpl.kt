@@ -356,9 +356,16 @@ class FileAccessLayerImpl @Inject constructor(
     }
 
     override fun prepareSaveAccess(vararg paths: String?) {
-        if (!rootFileAccessor.isAvailable) return
         val restricted = paths.filterNotNull().filter(::isRestrictedPath)
-        if (restricted.isNotEmpty()) rootFileAccessor.grantGroupAccess(restricted)
+        if (restricted.isEmpty()) return
+        if (androidDataAccessor.syncMirror(restricted) != null) return
+        if (rootFileAccessor.isAvailable) rootFileAccessor.grantGroupAccess(restricted)
+    }
+
+    override fun commitSaveAccess(vararg paths: String?): Boolean {
+        val restricted = paths.filterNotNull().filter(::isRestrictedPath)
+        if (restricted.isEmpty()) return true
+        return androidDataAccessor.syncMirror(restricted) ?: true
     }
 
     private fun extractVolumeAndPath(path: String): Pair<String, String>? {

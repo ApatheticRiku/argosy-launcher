@@ -99,8 +99,8 @@ open class PrefixBundleFolderHandler(
             ?: resolveBasePath(context.config, null)
             ?: return@withContext ExtractResult(false, null, "No base path for $platformSlug saves")
 
-        val parentFolder = File(parentPath)
-        parentFolder.mkdirs()
+        fal.mkdirs(parentPath)
+        val parentFolder = fal.getTransformedFile(parentPath)
 
         val existing = findAllSaveFoldersBySaveId(parentPath, saveId)
         if (existing.isNotEmpty()) {
