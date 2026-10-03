@@ -39,6 +39,7 @@ import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.util.LogSanitizer
 import com.nendo.argosy.util.Logger
+import com.nendo.argosy.domain.model.LaunchStep
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.time.Instant
@@ -86,6 +87,7 @@ sealed class LaunchResult {
     data class MissingBios(val platformSlug: String) : LaunchResult()
     data class NoScummVMGameId(val gameName: String) : LaunchResult()
     data class Error(val message: String) : LaunchResult()
+    data object Cancelled : LaunchResult()
 }
 
 @Singleton
@@ -120,7 +122,8 @@ class GameLauncher @Inject constructor(
     private val extContentOrganizer: com.nendo.argosy.data.download.ExtContentOrganizer,
     private val baseRomFileResolver: BaseRomFileResolver,
     private val dreamcastVmuMigrator: DreamcastVmuMigrator,
-    private val volumeHealth: StorageVolumeHealth
+    private val volumeHealth: StorageVolumeHealth,
+    private val launchProgressTracker: LaunchProgressTracker
 ) {
     private val shellAmAvailable: Boolean by lazy {
         try {
@@ -675,7 +678,10 @@ class GameLauncher @Inject constructor(
                 return null
             }
             Logger.info(TAG, "[BuiltIn] Core not downloaded for ${game.platformSlug} (selected=$selectedCoreId), attempting download...")
-            val downloadResult = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug, selectedCoreId)
+            launchProgressTracker.report(LaunchStep.DownloadingCore(fraction = null))
+            val downloadResult = libretroCoreMgr.downloadCoreForPlatform(game.platformSlug, selectedCoreId) { fraction ->
+                launchProgressTracker.report(LaunchStep.DownloadingCore(fraction))
+            }
             corePath = downloadResult.getOrElse { err ->
                 val reason = err.message ?: "Unknown error"
                 lastCoreDownloadError = com.nendo.argosy.libretro.formatCoreDownloadError(reason)
@@ -688,6 +694,7 @@ class GameLauncher @Inject constructor(
         val coreFile = File(corePath)
         Logger.debug(TAG, "[BuiltIn] Core: ${coreFile.name}, exists=${coreFile.exists()}, size=${coreFile.length()}b")
 
+        launchProgressTracker.report(LaunchStep.PreparingSystemFiles)
         biosRepository.distributeBiosToEmulator(game.platformSlug, EmulatorRegistry.BUILTIN_PACKAGE)
         val systemDir = biosRepository.getLibretroSystemDir()
 

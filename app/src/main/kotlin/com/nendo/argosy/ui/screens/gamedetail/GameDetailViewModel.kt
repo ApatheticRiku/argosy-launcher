@@ -194,19 +194,6 @@ class GameDetailViewModel @Inject constructor(
         gameThemeAudio.exit(currentGameId)
     }
 
-    @Deprecated("Hardcore conflict is now handled by GameLaunchDelegate callbacks")
-    fun onKeepHardcore() { }
-
-    @Deprecated("Hardcore conflict is now handled by GameLaunchDelegate callbacks")
-    fun onDowngradeToCasual() { }
-
-    @Deprecated("Hardcore conflict is now handled by GameLaunchDelegate callbacks")
-    fun onKeepLocal() { }
-
-    fun setHardcoreConflictFocusIndex(index: Int) {
-        _uiState.update { it.copy(hardcoreConflictFocusIndex = index) }
-    }
-
     fun repairBackgroundImage(gameId: Long, failedPath: String) {
         if (backgroundRepairPending) return
         backgroundRepairPending = true

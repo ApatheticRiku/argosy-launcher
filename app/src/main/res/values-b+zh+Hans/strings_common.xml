@@ -616,6 +616,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">使用服务器存档，失去硬核状态</string>
     <string name="ui_sync_overlay_hardcore_skip">跳过同步</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">不同步直接启动</string>
+    <string name="ui_launch_overlay_step_finishing_previous">正在完成上一次启动</string>
+    <string name="ui_launch_overlay_step_downloading_core">正在下载核心</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">正在准备系统文件</string>
+    <string name="ui_launch_overlay_step_preparing_ui">正在准备界面</string>
+    <string name="ui_launch_overlay_step_launching">正在启动</string>
+    <string name="ui_launch_overlay_cancel">取消</string>
+    <string name="ui_launch_overlay_cancel_option">取消启动</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">返回且不启动游戏</string>
     <string name="ui_sync_overlay_local_modified_title">本地存档已修改</string>
     <string name="ui_sync_overlay_local_modified_message">“%1$s”的本地存档有尚未备份的更改。</string>
     <string name="ui_sync_overlay_local_modified_question">你想保留本地进度，还是恢复之前选择的存档？</string>

@@ -644,6 +644,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">सर्वर सेव का उपयोग करें, हार्डकोर स्टेटस खोएं</string>
     <string name="ui_sync_overlay_hardcore_skip">सिंक छोड़ें</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">बिना सिंक किए लॉन्च करें</string>
+    <string name="ui_launch_overlay_step_finishing_previous">पिछला लॉन्च पूरा हो रहा है</string>
+    <string name="ui_launch_overlay_step_downloading_core">कोर डाउनलोड हो रहा है</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">सिस्टम फ़ाइलें तैयार हो रही हैं</string>
+    <string name="ui_launch_overlay_step_preparing_ui">UI तैयार हो रहा है</string>
+    <string name="ui_launch_overlay_step_launching">लॉन्च हो रहा है</string>
+    <string name="ui_launch_overlay_cancel">रद्द करें</string>
+    <string name="ui_launch_overlay_cancel_option">लॉन्च रद्द करें</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">गेम शुरू किए बिना वापस जाएँ</string>
     <string name="ui_sync_overlay_local_modified_title">लोकल सेव में बदलाव</string>
     <string name="ui_sync_overlay_local_modified_message">\"%1$s\" के लिए आपकी लोकल सेव में ऐसे बदलाव हैं जिनका बैकअप नहीं लिया गया है।</string>
     <string name="ui_sync_overlay_local_modified_question">क्या आप अपनी लोकल प्रगति रखना चाहेंगे या पहले चुनी गई सेव रीस्टोर करना चाहेंगे?</string>

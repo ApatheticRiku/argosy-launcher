@@ -1254,6 +1254,8 @@ fun ArgosyApp(
                 }
             }
 
+            com.nendo.argosy.ui.components.LaunchOverlay()
+
             val mutedNotificationKeys = if (currentRoute == Screen.SyncMonitor.route) {
                 com.nendo.argosy.domain.usecase.sync.SyncNotificationKeys.ALL
             } else {

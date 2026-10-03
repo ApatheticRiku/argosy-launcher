@@ -3,15 +3,22 @@ package com.nendo.argosy.domain.usecase.game
 import android.content.Intent
 import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchOrigin
+import com.nendo.argosy.data.emulator.LaunchProgressTracker
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.data.repository.LibraryPointerRepair
+import com.nendo.argosy.data.wallpaper.LockScreenArtManager
+import com.nendo.argosy.domain.model.LaunchStep
 import io.mockk.coVerifyOrder
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -21,6 +28,8 @@ class LaunchGameUseCaseTest {
     private lateinit var gameLauncher: GameLauncher
     private lateinit var playSessionTracker: PlaySessionTracker
     private lateinit var libraryPointerRepair: LibraryPointerRepair
+    private lateinit var lockScreenArtManager: LockScreenArtManager
+    private lateinit var tracker: LaunchProgressTracker
     private lateinit var useCase: LaunchGameUseCase
 
     @Before
@@ -28,7 +37,84 @@ class LaunchGameUseCaseTest {
         gameLauncher = mockk(relaxed = true)
         playSessionTracker = mockk(relaxed = true)
         libraryPointerRepair = mockk(relaxed = true)
-        useCase = LaunchGameUseCase(gameLauncher, playSessionTracker, libraryPointerRepair)
+        lockScreenArtManager = mockk(relaxed = true)
+        tracker = LaunchProgressTracker(CoroutineScope(UnconfinedTestDispatcher()))
+        useCase = LaunchGameUseCase(
+            gameLauncher,
+            playSessionTracker,
+            libraryPointerRepair,
+            lockScreenArtManager,
+            tracker,
+            mockk(relaxed = true)
+        )
+    }
+
+    @Test
+    fun `a launch cancelled while preparing the UI never opens and puts the library art back`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
+        coEvery { lockScreenArtManager.showBeforeLaunch(123L) } answers { tracker.cancel() }
+
+        val result = useCase(123L)
+
+        assertEquals(LaunchResult.Cancelled, result)
+        verify { lockScreenArtManager.showLibraryAfterCancelledLaunch() }
+        coVerify(exactly = 0) { playSessionTracker.startSession(any(), any()) }
+        assertNull(tracker.progress.value)
+    }
+
+    @Test
+    fun `a launch the use case opened ends on its game screen`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
+
+        useCase(123L)
+
+        assertEquals(LaunchStep.Launching, tracker.progress.value?.step)
+    }
+
+    @Test
+    fun `a launch the caller opened stays open for the caller to finish`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.Success(intent)
+        val ticket = tracker.begin("Game")!!
+
+        useCase(123L)
+
+        assertEquals(ticket, tracker.current)
+    }
+
+    @Test
+    fun `an in-process launch shows its lock screen art before returning the intent`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns
+            LaunchResult.Success(intent, inProcess = true)
+
+        useCase(123L)
+
+        coVerifyOrder {
+            gameLauncher.launch(123L, null, any(), any(), any(), any(), any(), any())
+            lockScreenArtManager.showBeforeLaunch(123L)
+        }
+    }
+
+    @Test
+    fun `a resume leaves the lock screen art alone`() = runTest {
+        val intent = mockk<Intent>(relaxed = true)
+        coEvery { gameLauncher.launch(123L, null, true, any(), any(), any()) } returns LaunchResult.Success(intent)
+
+        useCase(123L, forResume = true)
+
+        coVerify(exactly = 0) { lockScreenArtManager.showBeforeLaunch(any()) }
+    }
+
+    @Test
+    fun `a failed launch leaves the lock screen art alone`() = runTest {
+        coEvery { gameLauncher.launch(123L, null, any(), any(), any(), any()) } returns LaunchResult.NoEmulator("nes")
+
+        useCase(123L)
+
+        coVerify(exactly = 0) { lockScreenArtManager.showBeforeLaunch(any()) }
     }
 
     @Test

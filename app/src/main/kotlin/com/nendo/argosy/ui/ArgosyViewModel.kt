@@ -922,6 +922,7 @@ class ArgosyViewModel @Inject constructor(
                         duration = NotificationDuration.MEDIUM
                     )
                 }
+                LaunchResult.Cancelled -> Unit
                 else -> {
                     notificationManager.show(
                         title = NotificationText.Raw("Can't join ${session.gameTitle}"),
@@ -1025,6 +1026,7 @@ class ArgosyViewModel @Inject constructor(
                         duration = NotificationDuration.MEDIUM
                     )
                 }
+                LaunchResult.Cancelled -> Unit
                 else -> {
                     notificationManager.show(
                         title = NotificationText.Res(

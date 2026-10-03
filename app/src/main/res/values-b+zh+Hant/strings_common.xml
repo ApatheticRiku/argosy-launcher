@@ -630,6 +630,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">使用伺服器存檔，並失去硬核模式資格</string>
     <string name="ui_sync_overlay_hardcore_skip">略過同步</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">不同步直接啟動遊戲</string>
+    <string name="ui_launch_overlay_step_finishing_previous">正在完成上一次啟動</string>
+    <string name="ui_launch_overlay_step_downloading_core">正在下載核心</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">正在準備系統檔案</string>
+    <string name="ui_launch_overlay_step_preparing_ui">正在準備介面</string>
+    <string name="ui_launch_overlay_step_launching">正在啟動</string>
+    <string name="ui_launch_overlay_cancel">取消</string>
+    <string name="ui_launch_overlay_cancel_option">取消啟動</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">返回且不啟動遊戲</string>
     <string name="ui_sync_overlay_local_modified_title">本機存檔已變更</string>
     <string name="ui_sync_overlay_local_modified_message">「%1$s」的本機存檔有尚未備份的變更。</string>
     <string name="ui_sync_overlay_local_modified_question">您要保留本機進度，還是還原先前選擇的存檔？</string>

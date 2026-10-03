@@ -318,7 +318,6 @@ data class GameDetailUiState(
     val launchVariantPickerFocusIndex: Int = 0,
     val relatedGames: List<com.nendo.argosy.ui.screens.home.HomeGameUi> = emptyList(),
     val relatedFocusIndex: Int = 0,
-    val hardcoreConflictFocusIndex: Int = 0,
     val saveChannel: SaveChannelState = SaveChannelState(),
     val syncScreenshotsEnabled: Boolean = false,
     val saveStatusInfo: SaveStatusInfo? = null,

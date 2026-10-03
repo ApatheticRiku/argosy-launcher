@@ -145,7 +145,8 @@ class GameLauncherTest {
                 userPreferencesRepository = userPreferencesRepository
             ),
             volumeHealth = mockk(relaxed = true),
-            dreamcastVmuMigrator = mockk(relaxed = true)
+            dreamcastVmuMigrator = mockk(relaxed = true),
+            launchProgressTracker = mockk(relaxed = true)
         )
     }
 

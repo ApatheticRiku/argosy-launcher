@@ -314,6 +314,14 @@ object ComponentDefaults {
         const val previewSizeDp = 48
     }
 
+    object LaunchOverlay {
+        const val scrimAlphaDark = 0.8f
+        const val scrimAlphaLight = 0.55f
+        const val iconSizeDp = 56
+        const val progressWidthDp = 280
+        const val fadeMs = 300
+    }
+
     object InlineTilePlayer {
         const val positionPollMs = 500
         const val overlayScrimAlpha = 0.55f

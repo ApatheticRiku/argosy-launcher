@@ -59,9 +59,6 @@ import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.SyncOverlay
-import com.nendo.argosy.domain.model.SyncProgress
-import com.nendo.argosy.ui.input.HardcoreConflictInputHandler
-import com.nendo.argosy.ui.input.LocalModifiedInputHandler
 import com.nendo.argosy.ui.input.LocalInputDispatcher
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.screens.gamedetail.components.AchievementListOverlay
@@ -268,62 +265,6 @@ fun GameDetailScreen(
         }
     }
 
-    val hardcoreConflictInputHandler = remember(viewModel) {
-        HardcoreConflictInputHandler(
-            getFocusIndex = { uiState.hardcoreConflictFocusIndex },
-            onFocusChange = viewModel::setHardcoreConflictFocusIndex,
-            onKeepHardcore = viewModel::onKeepHardcore,
-            onDowngradeToCasual = viewModel::onDowngradeToCasual,
-            onKeepLocal = viewModel::onKeepLocal
-        )
-    }
-
-    var localModifiedFocusIndex by remember { mutableIntStateOf(0) }
-    val localModifiedInputHandler = remember(uiState.syncOverlayState) {
-        LocalModifiedInputHandler(
-            getFocusIndex = { localModifiedFocusIndex },
-            onFocusChange = { localModifiedFocusIndex = it },
-            onKeepLocal = { uiState.syncOverlayState?.onKeepLocalModified?.invoke() },
-            onRestoreSelected = { uiState.syncOverlayState?.onRestoreSelected?.invoke() }
-        )
-    }
-
-    val delegateSyncProgress = uiState.syncOverlayState?.syncProgress
-    val isAnySyncing = uiState.isSyncing || uiState.syncOverlayState != null
-    val effectiveSyncProgress = delegateSyncProgress ?: if (uiState.isSyncing) uiState.syncProgress else null
-    val isHardcoreConflict = effectiveSyncProgress is SyncProgress.HardcoreConflict
-    val isLocalModified = effectiveSyncProgress is SyncProgress.LocalModified
-
-    LaunchedEffect(isHardcoreConflict) {
-        if (isHardcoreConflict) {
-            viewModel.setHardcoreConflictFocusIndex(0)
-            inputDispatcher.pushModal(hardcoreConflictInputHandler)
-        }
-    }
-
-    LaunchedEffect(isLocalModified) {
-        if (isLocalModified) {
-            localModifiedFocusIndex = 0
-            inputDispatcher.pushModal(localModifiedInputHandler)
-        }
-    }
-
-    DisposableEffect(isHardcoreConflict) {
-        onDispose {
-            if (isHardcoreConflict) {
-                inputDispatcher.removeModal(hardcoreConflictInputHandler)
-            }
-        }
-    }
-
-    DisposableEffect(isLocalModified) {
-        onDispose {
-            if (isLocalModified) {
-                inputDispatcher.removeModal(localModifiedInputHandler)
-            }
-        }
-    }
-
     val memcardPickerInputHandler = remember(viewModel) {
         com.nendo.argosy.ui.input.MemcardPickerInputHandler(
             getCards = { uiState.memcardPickerState?.cards ?: emptyList() },
@@ -434,8 +375,7 @@ fun GameDetailScreen(
                 onRelatedPositioned = { relatedTopY = it },
                 onBack = onBack,
                 onNavigateToPlatformSettings = onNavigateToPlatformSettings,
-                onNavigateToGame = onNavigateToGame,
-                localModifiedFocusIndex = localModifiedFocusIndex
+                onNavigateToGame = onNavigateToGame
             )
         }
         documentReader?.let { reader ->
@@ -470,8 +410,7 @@ private fun GameDetailContent(
     onRelatedPositioned: (Int) -> Unit,
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (Long) -> Unit,
-    onNavigateToGame: (Long) -> Unit,
-    localModifiedFocusIndex: Int
+    onNavigateToGame: (Long) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
     val pickerState by viewModel.pickerModalDelegate.state.collectAsState()
@@ -919,7 +858,7 @@ private fun GameDetailContent(
             }
         }
 
-        GameDetailModals(game = game, uiState = uiState, viewModel = viewModel, inputHandler = inputHandler, onBack = onBack, onNavigateToPlatformSettings = onNavigateToPlatformSettings, localModifiedFocusIndex = localModifiedFocusIndex)
+        GameDetailModals(game = game, uiState = uiState, viewModel = viewModel, inputHandler = inputHandler, onBack = onBack, onNavigateToPlatformSettings = onNavigateToPlatformSettings)
 
         ReviewListOverlay(
             visible = uiState.showReviewList,
@@ -950,8 +889,7 @@ private fun GameDetailModals(
     uiState: GameDetailUiState,
     viewModel: GameDetailViewModel,
     inputHandler: com.nendo.argosy.ui.input.InputHandler,
-    onBack: () -> Unit,
-    localModifiedFocusIndex: Int
+    onBack: () -> Unit
 ) {
     val pickerState by viewModel.pickerModalDelegate.state.collectAsState()
 
@@ -1352,14 +1290,7 @@ private fun GameDetailModals(
         onGrantPermission = delegateOverlay?.onGrantPermission,
         onDisableSync = delegateOverlay?.onDisableSync,
         onOpenSettings = delegateOverlay?.onOpenSettings,
-        onSkip = delegateOverlay?.onSkip,
-        onKeepHardcore = delegateOverlay?.onKeepHardcore ?: viewModel::onKeepHardcore,
-        onDowngradeToCasual = delegateOverlay?.onDowngradeToCasual ?: viewModel::onDowngradeToCasual,
-        onKeepLocal = delegateOverlay?.onKeepLocal ?: viewModel::onKeepLocal,
-        onKeepLocalModified = delegateOverlay?.onKeepLocalModified,
-        onRestoreSelected = delegateOverlay?.onRestoreSelected,
-        hardcoreConflictFocusIndex = uiState.hardcoreConflictFocusIndex,
-        localModifiedFocusIndex = localModifiedFocusIndex
+        onSkip = delegateOverlay?.onSkip
     )
 
     AnimatedVisibility(

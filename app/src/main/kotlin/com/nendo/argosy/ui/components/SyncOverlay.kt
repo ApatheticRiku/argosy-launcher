@@ -85,24 +85,15 @@ fun SyncOverlay(
     onGrantPermission: (() -> Unit)? = null,
     onDisableSync: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
-    onSkip: (() -> Unit)? = null,
-    onKeepHardcore: (() -> Unit)? = null,
-    onDowngradeToCasual: (() -> Unit)? = null,
-    onKeepLocal: (() -> Unit)? = null,
-    onKeepLocalModified: (() -> Unit)? = null,
-    onRestoreSelected: (() -> Unit)? = null,
-    hardcoreConflictFocusIndex: Int = 0,
-    localModifiedFocusIndex: Int = 0
+    onSkip: (() -> Unit)? = null
 ) {
     val isVisible = syncProgress != null &&
         syncProgress != SyncProgress.Idle &&
         syncProgress != SyncProgress.Skipped
 
     val isBlocked = syncProgress is SyncProgress.BlockedReason
-    val isHardcoreConflict = syncProgress is SyncProgress.HardcoreConflict
-    val isLocalModified = syncProgress is SyncProgress.LocalModified
     val isPostSessionConflict = syncProgress is SyncProgress.PostSessionConflict
-    val isActiveSync = syncProgress != null && syncProgress !is SyncProgress.Error && !isBlocked && !isHardcoreConflict && !isLocalModified && !isPostSessionConflict
+    val isActiveSync = syncProgress != null && syncProgress !is SyncProgress.Error && !isBlocked && !isPostSessionConflict
 
     val spinTransition = if (isActiveSync) {
         rememberInfiniteTransition(label = "sync_rotation")
@@ -150,24 +141,6 @@ fun SyncOverlay(
             contentAlignment = Alignment.Center
         ) {
             when {
-                isHardcoreConflict && syncProgress is SyncProgress.HardcoreConflict -> {
-                    HardcoreConflictContent(
-                        gameName = syncProgress.gameName,
-                        focusIndex = hardcoreConflictFocusIndex,
-                        onKeepHardcore = onKeepHardcore,
-                        onDowngradeToCasual = onDowngradeToCasual,
-                        onKeepLocal = onKeepLocal
-                    )
-                }
-                isLocalModified && syncProgress is SyncProgress.LocalModified -> {
-                    LocalModifiedContent(
-                        gameTitle = gameTitle
-                            ?: stringResource(R.string.ui_sync_overlay_unknown_game),
-                        focusIndex = localModifiedFocusIndex,
-                        onKeepLocal = onKeepLocalModified,
-                        onRestoreSelected = onRestoreSelected
-                    )
-                }
                 isPostSessionConflict && syncProgress is SyncProgress.PostSessionConflict -> {
                     PostSessionConflictContent(
                         gameTitle = syncProgress.gameTitle,
@@ -175,7 +148,7 @@ fun SyncOverlay(
                         localTimestamp = syncProgress.localTimestamp,
                         serverTimestamp = syncProgress.serverTimestamp,
                         serverDeviceName = syncProgress.serverDeviceName,
-                        focusIndex = localModifiedFocusIndex,
+                        focusIndex = 0,
                         onSkipSync = syncProgress.onSkipSync,
                         onOverwrite = syncProgress.onOverwrite
                     )
@@ -431,12 +404,13 @@ private fun BlockedSyncContent(
 }
 
 @Composable
-private fun HardcoreConflictContent(
+internal fun HardcoreConflictContent(
     gameName: String,
     focusIndex: Int,
     onKeepHardcore: (() -> Unit)?,
     onDowngradeToCasual: (() -> Unit)?,
-    onKeepLocal: (() -> Unit)?
+    onKeepLocal: (() -> Unit)?,
+    onCancelLaunch: () -> Unit
 ) {
     val warningColor = Color(0xFFFF9800)
 
@@ -511,16 +485,29 @@ private fun HardcoreConflictContent(
                     onClick = onKeepLocal
                 )
             }
+
+            CancelLaunchOption(isFocused = focusIndex == 3, onClick = onCancelLaunch)
         }
     }
 }
 
 @Composable
-private fun LocalModifiedContent(
+private fun CancelLaunchOption(isFocused: Boolean, onClick: () -> Unit) {
+    ConflictOption(
+        label = stringResource(R.string.ui_launch_overlay_cancel_option),
+        subtitle = stringResource(R.string.ui_launch_overlay_cancel_option_subtitle),
+        isFocused = isFocused,
+        onClick = onClick
+    )
+}
+
+@Composable
+internal fun LocalModifiedContent(
     gameTitle: String,
     focusIndex: Int,
     onKeepLocal: (() -> Unit)?,
-    onRestoreSelected: (() -> Unit)?
+    onRestoreSelected: (() -> Unit)?,
+    onCancelLaunch: () -> Unit
 ) {
     val warningColor = Color(0xFFFF9800)
 
@@ -588,6 +575,8 @@ private fun LocalModifiedContent(
                     onClick = onRestoreSelected
                 )
             }
+
+            CancelLaunchOption(isFocused = focusIndex == 2, onClick = onCancelLaunch)
         }
     }
 }

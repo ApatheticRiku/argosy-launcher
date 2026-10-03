@@ -1319,8 +1319,6 @@ class DualScreenManager(
     fun moveSyncConflictFocus(direction: Int) {
         val state = _dualSyncOverlay.value ?: return
         val maxIndex = when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict -> 2
-            is com.nendo.argosy.domain.model.SyncProgress.LocalModified -> 1
             is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> 1
             else -> return
         }
@@ -1362,15 +1360,6 @@ class DualScreenManager(
         val wasPostSession = state.syncProgress is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict
         val index = _dualSyncOverlayFocusIndex.value
         when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict -> when (index) {
-                0 -> state.onKeepHardcore?.invoke()
-                1 -> state.onDowngradeToCasual?.invoke()
-                2 -> state.onKeepLocal?.invoke()
-            }
-            is com.nendo.argosy.domain.model.SyncProgress.LocalModified -> when (index) {
-                0 -> state.onKeepLocalModified?.invoke()
-                1 -> state.onRestoreSelected?.invoke()
-            }
             is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> when (index) {
                 0 -> state.syncProgress.onSkipSync?.invoke()
                 1 -> state.syncProgress.onOverwrite?.invoke()
@@ -1384,8 +1373,6 @@ class DualScreenManager(
     fun dismissSyncConflict() {
         val state = _dualSyncOverlay.value ?: return
         when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.HardcoreConflict -> state.onKeepLocal?.invoke()
-            is com.nendo.argosy.domain.model.SyncProgress.LocalModified -> state.onKeepLocalModified?.invoke()
             is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> state.syncProgress.onSkipSync?.invoke()
             else -> {}
         }

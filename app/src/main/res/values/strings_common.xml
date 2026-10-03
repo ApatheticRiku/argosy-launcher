@@ -1325,6 +1325,15 @@
     <string name="ui_sync_overlay_hardcore_skip">Skip Sync</string>
     <!-- Second line under that choice. -->
     <string name="ui_sync_overlay_hardcore_skip_subtitle">Launch without syncing</string>
+    <string name="ui_launch_overlay_step_finishing_previous">Finishing previous launch</string>
+    <!-- "Core" is the emulator core that runs the game -->
+    <string name="ui_launch_overlay_step_downloading_core">Downloading core</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">Preparing system files</string>
+    <string name="ui_launch_overlay_step_preparing_ui">Preparing UI</string>
+    <string name="ui_launch_overlay_step_launching">Launching</string>
+    <string name="ui_launch_overlay_cancel">Cancel</string>
+    <string name="ui_launch_overlay_cancel_option">Cancel launch</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">Go back without starting the game</string>
     <!-- Heading when the save on this device has changes that were never backed up. -->
     <string name="ui_sync_overlay_local_modified_title">Local Save Modified</string>
     <!-- Body under that heading. %1$s is the game's title. -->

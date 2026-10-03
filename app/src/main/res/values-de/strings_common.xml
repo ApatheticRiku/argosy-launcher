@@ -644,6 +644,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">Serverspielstand verwenden, Hardcore-Status verlieren</string>
     <string name="ui_sync_overlay_hardcore_skip">Sync überspringen</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">Ohne Synchronisierung starten</string>
+    <string name="ui_launch_overlay_step_finishing_previous">Vorheriger Start wird abgeschlossen</string>
+    <string name="ui_launch_overlay_step_downloading_core">Core wird heruntergeladen</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">Systemdateien werden vorbereitet</string>
+    <string name="ui_launch_overlay_step_preparing_ui">Oberfläche wird vorbereitet</string>
+    <string name="ui_launch_overlay_step_launching">Wird gestartet</string>
+    <string name="ui_launch_overlay_cancel">Abbrechen</string>
+    <string name="ui_launch_overlay_cancel_option">Start abbrechen</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">Zurück, ohne das Spiel zu starten</string>
     <string name="ui_sync_overlay_local_modified_title">Lokaler Spielstand geändert</string>
     <string name="ui_sync_overlay_local_modified_message">Ihr lokaler Spielstand für \"%1$s\" enthält Änderungen, die noch nicht gesichert wurden.</string>
     <string name="ui_sync_overlay_local_modified_question">Möchten Sie Ihren lokalen Fortschritt behalten oder den zuvor gewählten Spielstand wiederherstellen?</string>

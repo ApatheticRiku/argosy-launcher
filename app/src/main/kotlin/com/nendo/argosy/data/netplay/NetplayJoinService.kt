@@ -376,6 +376,10 @@ class NetplayJoinService @Inject constructor(
         )
         _state.value = NetplayJoinState.JoiningSession(session, friend)
         val launch = launchGameUseCase(gameId = gameId, allowVariantPrompt = false)
+        if (launch is LaunchResult.Cancelled) {
+            _state.value = NetplayJoinState.Idle
+            return
+        }
         if (launch !is LaunchResult.Success) {
             _state.value = NetplayJoinState.Failed("Couldn't launch game")
             return

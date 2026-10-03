@@ -658,6 +658,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">Usar la partida guardada del servidor, perder el estado hardcore</string>
     <string name="ui_sync_overlay_hardcore_skip">Omitir sincronización</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">Iniciar sin sincronizar</string>
+    <string name="ui_launch_overlay_step_finishing_previous">Terminando el inicio anterior</string>
+    <string name="ui_launch_overlay_step_downloading_core">Descargando núcleo</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">Preparando archivos del sistema</string>
+    <string name="ui_launch_overlay_step_preparing_ui">Preparando la interfaz</string>
+    <string name="ui_launch_overlay_step_launching">Iniciando</string>
+    <string name="ui_launch_overlay_cancel">Cancelar</string>
+    <string name="ui_launch_overlay_cancel_option">Cancelar inicio</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">Volver sin iniciar el juego</string>
     <string name="ui_sync_overlay_local_modified_title">Partida guardada local modificada</string>
     <string name="ui_sync_overlay_local_modified_message">Tu partida guardada local de \"%1$s\" tiene cambios que no se han respaldado.</string>
     <string name="ui_sync_overlay_local_modified_question">¿Quieres conservar tu progreso local o restaurar la partida guardada seleccionada anteriormente?</string>

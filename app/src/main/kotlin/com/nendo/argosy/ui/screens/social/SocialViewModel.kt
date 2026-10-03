@@ -249,6 +249,7 @@ class SocialViewModel @Inject constructor(
                 is LaunchResult.Error -> {
                     _launchEvents.emit(SocialLaunchEvent.LaunchError(result.message))
                 }
+                LaunchResult.Cancelled -> Unit
                 else -> {
                     _launchEvents.emit(SocialLaunchEvent.LaunchError("Couldn't launch ${friend.currentGame?.title ?: "game"}"))
                 }

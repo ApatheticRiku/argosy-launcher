@@ -11,6 +11,7 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.ActiveSession
 import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchOrigin
+import com.nendo.argosy.data.emulator.LaunchProgressTracker
 import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.data.emulator.SavePathRegistry
@@ -22,6 +23,8 @@ import com.nendo.argosy.data.repository.HardcoreResolutionChoice
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
+import com.nendo.argosy.domain.model.LaunchPromptOption
+import com.nendo.argosy.domain.model.LaunchStep
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
@@ -44,7 +47,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -69,12 +71,7 @@ data class SyncOverlayState(
     val onGrantPermission: (() -> Unit)? = null,
     val onDisableSync: (() -> Unit)? = null,
     val onOpenSettings: (() -> Unit)? = null,
-    val onSkip: (() -> Unit)? = null,
-    val onKeepHardcore: (() -> Unit)? = null,
-    val onDowngradeToCasual: (() -> Unit)? = null,
-    val onKeepLocal: (() -> Unit)? = null,
-    val onKeepLocalModified: (() -> Unit)? = null,
-    val onRestoreSelected: (() -> Unit)? = null
+    val onSkip: (() -> Unit)? = null
 )
 
 data class DiscPickerState(
@@ -125,10 +122,20 @@ class GameLaunchDelegate @Inject constructor(
     private val variantResolver: com.nendo.argosy.data.emulator.VariantResolver,
     private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
     private val retroAchievementsRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
-    private val getUnifiedSavesUseCase: com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase
+    private val getUnifiedSavesUseCase: com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase,
+    private val launchProgressTracker: LaunchProgressTracker
 ) {
     companion object {
         private const val EMULATOR_KILL_DELAY_MS = 500L
+        private val HARDCORE_CONFLICT_OPTIONS = listOf(
+            LaunchPromptOption.KEEP_HARDCORE,
+            LaunchPromptOption.DOWNGRADE_TO_CASUAL,
+            LaunchPromptOption.SKIP_HARDCORE_SAVE
+        )
+        private val LOCAL_MODIFIED_OPTIONS = listOf(
+            LaunchPromptOption.APPLY_LOCAL,
+            LaunchPromptOption.RESTORE_SERVER
+        )
     }
 
     /**
@@ -180,13 +187,6 @@ class GameLaunchDelegate @Inject constructor(
 
     val isSyncing: Boolean get() = _syncOverlayState.value != null
 
-    // Guards against rapid d-pad / button-repeat re-entry on the launch path.
-    // isSyncing only fires when the sync overlay is up; built-in libretro
-    // launches show no overlay, so without this flag a second launchGame
-    // could spawn a second LibretroActivity while the first is still
-    // dlopen'ing the core (the core .so is single-instance per process).
-    private val launchInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
-
     private val sessionEndScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
@@ -223,14 +223,19 @@ class GameLaunchDelegate @Inject constructor(
             onLaunchFailed()
             return
         }
-        if (!launchInFlight.compareAndSet(false, true)) {
-            android.util.Log.d("GameLaunchDelegate", "launchGame: skipping reentrant call (launch already in flight)")
-            onLaunchFailed()
-            return
-        }
         _onLaunchFailed = onLaunchFailed
 
         scope.launch {
+            val game = gameRepository.getById(gameId) ?: run {
+                onLaunchFailed()
+                return@launch
+            }
+            val ticket = launchProgressTracker.begin(game.title) ?: run {
+                android.util.Log.d("GameLaunchDelegate", "launchGame: another launch is in progress")
+                onLaunchFailed()
+                return@launch
+            }
+            var launched = false
             try {
                 val activeSession = playSessionTracker.activeSession.value
                 val sessionRequiresKill = activeSession?.let { session ->
@@ -238,18 +243,12 @@ class GameLaunchDelegate @Inject constructor(
                     emuId?.let { EmulatorRegistry.getById(it) }?.launchConfig?.requiresEmulatorKill == true
                 } ?: false
 
-                // Emulators flagged requiresEmulatorKill (e.g. Vita3K) don't support resume -- always end stale sessions
                 if (sessionRequiresKill) {
                     android.util.Log.d("GameLaunchDelegate", "Session requires emulator kill, ending before fresh launch")
                     endSessionAndAwaitConflictAnswer()
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
-                val game = gameRepository.getById(gameId)
-                if (game == null) {
-                    onLaunchFailed()
-                    return@launch
-                }
                 val resolvedVariantId = variantResolver.resolveVariant(game)?.id
 
                 val canResume = !sessionRequiresKill && playSessionTracker.canResumeSession(gameId, resolvedVariantId)
@@ -263,11 +262,9 @@ class GameLaunchDelegate @Inject constructor(
 
                 if (canResume) {
                     val result = launchGameUseCase(gameId, discId, forResume = true, variantFileId = resolvedVariantId, allowVariantPrompt = false, prefetchedGame = game)
-                    dispatchPrimaryLaunchResult(result, channelName, discId, overrideLaunchMode, origin, onLaunch, onLaunchFailed)
+                    launched = dispatchPrimaryLaunchResult(result, channelName, discId, overrideLaunchMode, origin, onLaunch, onLaunchFailed)
                     return@launch
                 }
-
-                val gameTitle = game.title
 
                 val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
                 val emulatorId = emulatorPackage?.let { emulatorResolver.resolveEmulatorId(it) }
@@ -286,10 +283,7 @@ class GameLaunchDelegate @Inject constructor(
                 android.util.Log.d("GameLaunchDelegate", "launchGame: emulatorPackage=$emulatorPackage, emulatorId=$emulatorId, canSync=$canSync")
 
                 val syncStartTime = if (canSync) {
-                    _syncOverlayState.value = SyncOverlayState(
-                        gameTitle,
-                        SyncProgress.PreLaunch.CheckingSave(channelName)
-                    )
+                    ticket.step(LaunchStep.Save(SyncProgress.PreLaunch.CheckingSave(channelName)))
                     System.currentTimeMillis()
                 } else null
 
@@ -302,37 +296,31 @@ class GameLaunchDelegate @Inject constructor(
                     if (canSync && progress != SyncProgress.Skipped && progress != SyncProgress.Idle) {
                         when (progress) {
                             is SyncProgress.HardcoreConflict -> {
-                                android.util.Log.d("GameLaunchDelegate", "HardcoreConflict received - showing dialog and waiting for user choice")
                                 hardcoreConflictInfo = progress
-                                val choiceDeferred = CompletableDeferred<HardcoreConflictChoice>()
-                                _syncOverlayState.value = SyncOverlayState(
-                                    gameTitle = gameTitle,
-                                    syncProgress = progress,
-                                    onKeepHardcore = { choiceDeferred.complete(HardcoreConflictChoice.KEEP_HARDCORE) },
-                                    onDowngradeToCasual = { choiceDeferred.complete(HardcoreConflictChoice.DOWNGRADE_TO_CASUAL) },
-                                    onKeepLocal = { choiceDeferred.complete(HardcoreConflictChoice.KEEP_LOCAL) }
-                                )
-                                hardcoreConflictChoice = choiceDeferred.await()
+                                hardcoreConflictChoice = when (ticket.ask(progress, HARDCORE_CONFLICT_OPTIONS)) {
+                                    LaunchPromptOption.KEEP_HARDCORE -> HardcoreConflictChoice.KEEP_HARDCORE
+                                    LaunchPromptOption.DOWNGRADE_TO_CASUAL -> HardcoreConflictChoice.DOWNGRADE_TO_CASUAL
+                                    LaunchPromptOption.SKIP_HARDCORE_SAVE -> HardcoreConflictChoice.KEEP_LOCAL
+                                    else -> null
+                                }
                                 android.util.Log.d("GameLaunchDelegate", "Hardcore conflict resolved: $hardcoreConflictChoice")
                             }
                             is SyncProgress.LocalModified -> {
-                                android.util.Log.d("GameLaunchDelegate", "LocalModified received - showing dialog and waiting for user choice")
                                 localModifiedInfo = progress
-                                val choiceDeferred = CompletableDeferred<LocalModifiedChoice>()
-                                _syncOverlayState.value = SyncOverlayState(
-                                    gameTitle = gameTitle,
-                                    syncProgress = progress,
-                                    onKeepLocalModified = { choiceDeferred.complete(LocalModifiedChoice.KEEP_LOCAL) },
-                                    onRestoreSelected = { choiceDeferred.complete(LocalModifiedChoice.RESTORE_SELECTED) }
-                                )
-                                localModifiedChoice = choiceDeferred.await()
+                                localModifiedChoice = when (ticket.ask(progress, LOCAL_MODIFIED_OPTIONS)) {
+                                    LaunchPromptOption.APPLY_LOCAL -> LocalModifiedChoice.KEEP_LOCAL
+                                    LaunchPromptOption.RESTORE_SERVER -> LocalModifiedChoice.RESTORE_SELECTED
+                                    else -> null
+                                }
                                 android.util.Log.d("GameLaunchDelegate", "LocalModified resolved: $localModifiedChoice")
                             }
-                            else -> {
-                                _syncOverlayState.value = SyncOverlayState(gameTitle, progress)
-                            }
+                            else -> ticket.step(LaunchStep.Save(progress))
                         }
                     }
+                }
+                if (ticket.isCancelled) {
+                    onLaunchFailed()
+                    return@launch
                 }
 
                 if (hardcoreConflictInfo != null && hardcoreConflictChoice != null) {
@@ -402,8 +390,10 @@ class GameLaunchDelegate @Inject constructor(
                         delay(minDisplayTime - elapsed)
                     }
                 }
-
-                _syncOverlayState.value = null
+                if (ticket.isCancelled) {
+                    onLaunchFailed()
+                    return@launch
+                }
 
                 val launchMode = when {
                     !prefs.secureSaves -> overrideLaunchMode?.takeUnless { it.isHardcore }
@@ -415,10 +405,9 @@ class GameLaunchDelegate @Inject constructor(
                 }
 
                 val result = launchGameUseCase(gameId, discId, variantFileId = resolvedVariantId, allowVariantPrompt = allowVariantPrompt, prefetchedGame = game, origin = origin)
-                dispatchPrimaryLaunchResult(result, channelName, discId, launchMode, origin, onLaunch, onLaunchFailed)
+                launched = dispatchPrimaryLaunchResult(result, channelName, discId, launchMode, origin, onLaunch, onLaunchFailed)
             } finally {
-                _syncOverlayState.value = null
-                launchInFlight.set(false)
+                launchProgressTracker.finish(ticket, launched)
             }
         }
     }
@@ -431,11 +420,12 @@ class GameLaunchDelegate @Inject constructor(
         origin: LaunchOrigin,
         onLaunch: (Intent) -> Unit,
         onLaunchFailed: () -> Unit
-    ) {
+    ): Boolean {
         when (result) {
             is LaunchResult.Success -> {
                 soundManager.play(SoundType.LAUNCH_GAME)
                 onLaunch(applyLaunchExtras(result.intent, launchMode, origin))
+                return true
             }
             is LaunchResult.SelectDisc -> {
                 _discPickerState.value = DiscPickerState(
@@ -453,7 +443,7 @@ class GameLaunchDelegate @Inject constructor(
                     .sortedBy { com.nendo.argosy.data.model.VariantCategory.fromKey(it.category).sortOrder }
                 if (launchable.size <= 1) {
                     val retry = launchGameUseCase(result.gameId, discId, allowVariantPrompt = false, origin = origin)
-                    dispatchPrimaryLaunchResult(retry, channelName, discId, launchMode, origin, onLaunch, onLaunchFailed)
+                    return dispatchPrimaryLaunchResult(retry, channelName, discId, launchMode, origin, onLaunch, onLaunchFailed)
                 } else {
                     _variantPickerState.value = VariantPickerState(
                         gameId = result.gameId,
@@ -479,9 +469,14 @@ class GameLaunchDelegate @Inject constructor(
             }
             else -> dispatchErrorResult(result, onLaunchFailed)
         }
+        return false
     }
 
     private fun dispatchErrorResult(result: LaunchResult, onLaunchFailed: () -> Unit) {
+        if (result is LaunchResult.Cancelled) {
+            onLaunchFailed()
+            return
+        }
         hapticManager.vibrate(HapticPattern.ERROR)
         when (result) {
             is LaunchResult.NoEmulator -> notificationManager.showError(
@@ -776,6 +771,7 @@ class GameLaunchDelegate @Inject constructor(
                     soundManager.play(SoundType.LAUNCH_GAME)
                     state.onLaunch(applyLaunchExtras(result.intent, state.launchMode, state.origin))
                 }
+                LaunchResult.Cancelled -> Unit
                 is LaunchResult.Error -> notificationManager.showError(NotificationText.Raw(result.message))
                 else -> notificationManager.showError(NotificationText.Res(R.string.notif_gamelaunch_disc_launch_failed))
             }
@@ -826,6 +822,7 @@ class GameLaunchDelegate @Inject constructor(
                     soundManager.play(SoundType.LAUNCH_GAME)
                     state.onLaunch(applyLaunchExtras(result.intent, state.launchMode, state.origin))
                 }
+                LaunchResult.Cancelled -> Unit
                 is LaunchResult.Error -> notificationManager.showError(NotificationText.Raw(result.message))
                 else -> notificationManager.showError(NotificationText.Res(R.string.notif_gamelaunch_launch_failed))
             }
@@ -850,12 +847,14 @@ class GameLaunchDelegate @Inject constructor(
         origin: LaunchOrigin = LaunchOrigin.INTERNAL,
         callbacks: LaunchResultCallbacks
     ) {
-        if (!launchInFlight.compareAndSet(false, true)) {
-            android.util.Log.d("GameLaunchDelegate", "launchSimple: skipping reentrant call (launch already in flight)")
-            callbacks.onLaunchFailed()
-            return
-        }
         scope.launch {
+            val game = gameRepository.getById(gameId)
+            val ticket = launchProgressTracker.begin(game?.title) ?: run {
+                android.util.Log.d("GameLaunchDelegate", "launchSimple: another launch is in progress")
+                callbacks.onLaunchFailed()
+                return@launch
+            }
+            var launched = false
             try {
                 val activeSession = playSessionTracker.activeSession.value
                 if (activeSession != null) {
@@ -865,9 +864,13 @@ class GameLaunchDelegate @Inject constructor(
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
                 val rememberedVariantId = if (variantFileId == null && !allowVariantPrompt) {
-                    gameRepository.getById(gameId)?.let { variantResolver.resolveVariant(it)?.id }
+                    game?.let { variantResolver.resolveVariant(it)?.id }
                 } else {
                     null
+                }
+                if (ticket.isCancelled) {
+                    callbacks.onLaunchFailed()
+                    return@launch
                 }
                 val result = launchGameUseCase(
                     gameId = gameId,
@@ -876,11 +879,12 @@ class GameLaunchDelegate @Inject constructor(
                     variantFileId = variantFileId ?: rememberedVariantId,
                     skipVariantPrompt = skipVariantPrompt,
                     allowVariantPrompt = allowVariantPrompt,
+                    prefetchedGame = game,
                     origin = origin
                 )
-                dispatchSimpleResult(result, launchMode, origin, callbacks)
+                launched = dispatchSimpleResult(result, launchMode, origin, callbacks)
             } finally {
-                launchInFlight.set(false)
+                launchProgressTracker.finish(ticket, launched)
             }
         }
     }
@@ -890,11 +894,12 @@ class GameLaunchDelegate @Inject constructor(
         launchMode: LaunchMode?,
         origin: LaunchOrigin,
         callbacks: LaunchResultCallbacks
-    ) {
+    ): Boolean {
         when (result) {
             is LaunchResult.Success -> {
                 soundManager.play(SoundType.LAUNCH_GAME)
                 callbacks.onLaunch(applyLaunchExtras(result.intent, launchMode, origin))
+                return true
             }
             is LaunchResult.SelectDisc -> {
                 val handler = callbacks.onSelectDisc
@@ -932,5 +937,6 @@ class GameLaunchDelegate @Inject constructor(
             }
             else -> dispatchErrorResult(result, callbacks.onLaunchFailed)
         }
+        return false
     }
 }

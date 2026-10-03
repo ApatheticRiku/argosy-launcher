@@ -658,6 +658,14 @@
     <string name="ui_sync_overlay_hardcore_downgrade_subtitle">Использовать сохранение с сервера, потерять статус хардкор</string>
     <string name="ui_sync_overlay_hardcore_skip">Пропустить синхронизацию</string>
     <string name="ui_sync_overlay_hardcore_skip_subtitle">Запустить без синхронизации</string>
+    <string name="ui_launch_overlay_step_finishing_previous">Завершение предыдущего запуска</string>
+    <string name="ui_launch_overlay_step_downloading_core">Загрузка ядра</string>
+    <string name="ui_launch_overlay_step_preparing_system_files">Подготовка системных файлов</string>
+    <string name="ui_launch_overlay_step_preparing_ui">Подготовка интерфейса</string>
+    <string name="ui_launch_overlay_step_launching">Запуск</string>
+    <string name="ui_launch_overlay_cancel">Отмена</string>
+    <string name="ui_launch_overlay_cancel_option">Отменить запуск</string>
+    <string name="ui_launch_overlay_cancel_option_subtitle">Вернуться, не запуская игру</string>
     <string name="ui_sync_overlay_local_modified_title">Локальное сохранение изменено</string>
     <string name="ui_sync_overlay_local_modified_message">Ваше локальное сохранение для \"%1$s\" содержит изменения, которые не были сохранены в резервную копию.</string>
     <string name="ui_sync_overlay_local_modified_question">Оставить локальный прогресс или восстановить ранее выбранное сохранение?</string>
