@@ -902,7 +902,7 @@ fun ArgosyApp(
             val event = input.event
             val isBumper = event == GamepadEvent.PrevSection || event == GamepadEvent.NextSection
             if (!isBumper || inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
-            if (!result.handled && !inputDispatcher.hasActiveModal()) {
+            if (!result.handled && !inputDispatcher.hasCapturingOverlay()) {
                 when (event) {
                     GamepadEvent.PrevSection, GamepadEvent.NextSection -> {
                         val delta = if (event == GamepadEvent.PrevSection) -1 else 1
