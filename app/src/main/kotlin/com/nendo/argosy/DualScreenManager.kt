@@ -1,8 +1,11 @@
 package com.nendo.argosy
 
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
 import android.hardware.display.DisplayManager
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.util.Log
 import com.nendo.argosy.data.download.DownloadManager
@@ -2184,6 +2187,7 @@ class DualScreenManager(
             setSecondaryHomeComponentEnabled(true)
         }
         if (_isCompanionActive.value) return
+        if (isKeyguardLocked()) return
         val sessionInTheWay = !allowDuringSession && sessionStateStore.hasActiveSession()
         if (sessionInTheWay && !sessionStateStore.isArgosyForeground()) return
         if (sessionStateStore.isForeignAppOnSecondary()) return
@@ -2238,6 +2242,7 @@ class DualScreenManager(
     }
 
     private fun launchCompanionOnSecondaryDisplay() {
+        if (isKeyguardLocked()) return
         val options = displayAffinityHelper.getCompanionLaunchOptions() ?: return
         val intent = Intent(activityContext, SecondaryHomeActivity::class.java).apply {
             addFlags(
@@ -2365,6 +2370,20 @@ class DualScreenManager(
             }
         }
 
+    private val keyguardManager: KeyguardManager? = appContext.getSystemService(KeyguardManager::class.java)
+
+    private fun isKeyguardLocked(): Boolean = keyguardManager?.isKeyguardLocked == true
+
+    private val userPresentReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action != Intent.ACTION_USER_PRESENT) return
+            Log.d(TAG, "Device unlocked, companionActive=${_isCompanionActive.value}")
+            ensureCompanionLaunched()
+        }
+    }
+
+    private var userPresentReceiverRegistered = false
+
     private var dockedResyncJob: Job? = null
 
     private fun scheduleDockedResync() {
@@ -2385,6 +2404,10 @@ class DualScreenManager(
             false,
             blankPanelsSettingObserver
         )
+        if (!userPresentReceiverRegistered) {
+            appContext.registerReceiver(userPresentReceiver, IntentFilter(Intent.ACTION_USER_PRESENT))
+            userPresentReceiverRegistered = true
+        }
         syncDockedState()
         probeTaskMover()
     }
@@ -2395,6 +2418,10 @@ class DualScreenManager(
         dockedResyncJob?.cancel()
         displayAffinityHelper.unregisterDisplayListener(displayListener)
         appContext.contentResolver.unregisterContentObserver(blankPanelsSettingObserver)
+        if (userPresentReceiverRegistered) {
+            appContext.unregisterReceiver(userPresentReceiver)
+            userPresentReceiverRegistered = false
+        }
     }
 
     fun refocusSession() {
