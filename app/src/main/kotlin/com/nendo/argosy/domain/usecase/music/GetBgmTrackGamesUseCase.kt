@@ -1,7 +1,9 @@
 package com.nendo.argosy.domain.usecase.music
 
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.resolved
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -13,7 +15,8 @@ data class BgmTrackGame(
 
 class GetBgmTrackGamesUseCase @Inject constructor(
     private val gameFileDao: GameFileDao,
-    private val gameDao: GameDao
+    private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao
 ) {
     suspend operator fun invoke(gameFileIds: Collection<Long>): Map<Long, BgmTrackGame> =
         withContext(Dispatchers.IO) {
@@ -21,7 +24,8 @@ class GetBgmTrackGamesUseCase @Inject constructor(
                 for (fileId in gameFileIds.toSet()) {
                     val gameId = gameFileDao.getById(fileId)?.gameId ?: continue
                     val game = gameDao.getById(gameId) ?: continue
-                    put(fileId, BgmTrackGame(game.title, game.coverPath?.takeIf { it.isNotBlank() }))
+                    val cover = gameArtDao.resolved(gameId).coverPath?.takeIf { it.isNotBlank() }
+                    put(fileId, BgmTrackGame(game.title, cover))
                 }
             }
         }

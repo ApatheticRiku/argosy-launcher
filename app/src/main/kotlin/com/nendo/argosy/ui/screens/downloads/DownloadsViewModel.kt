@@ -347,7 +347,7 @@ class DownloadsViewModel @Inject constructor(
                             totalBytes = 0L,
                             bytesDownloaded = 0L,
                             state = DownloadState.PAUSED,
-                            coverPath = game?.displayCoverPath
+                            coverPath = game?.let { gameRepository.getArt(it.id).coverPath }
                         ))
                     }
                     else -> activeAppId = null
@@ -519,7 +519,7 @@ class DownloadsViewModel @Inject constructor(
             val game = gameRepository.getBySteamAppId(steamAppId)
             android.util.Log.d("DownloadsVM", "resumeSteamDownload: game=${game?.title}")
             if (game == null) return@launch
-            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.displayCoverPath)
+            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, item.coverPath)
         }
     }
 

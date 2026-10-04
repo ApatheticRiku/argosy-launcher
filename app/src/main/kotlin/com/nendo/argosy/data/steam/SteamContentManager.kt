@@ -6,6 +6,7 @@ import com.nendo.argosy.core.service.startServiceSafely
 import com.nendo.argosy.data.download.DownloadForegroundService
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SteamDownloadQueueDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.SteamDownloadDbState
 import com.nendo.argosy.data.local.entity.SteamDownloadQueueEntity
 import com.nendo.argosy.R
@@ -112,7 +113,8 @@ class SteamContentManager @Inject constructor(
     private val progressTracker: SteamProgressTracker,
     private val downloadTracker: SteamDownloadTracker,
     private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
-    private val attributionRepository: StorageAttributionRepository
+    private val attributionRepository: StorageAttributionRepository,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val heartbeatDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
@@ -239,7 +241,7 @@ class SteamContentManager @Inject constructor(
                 steamDownloadQueueDao.insert(SteamDownloadQueueEntity(
                     appId = appId,
                     gameName = game.title,
-                    coverPath = game.displayCoverPath,
+                    coverPath = gameArtDao.resolved(game.id).coverPath,
                     installDir = null,
                     installPath = localPath,
                     totalBytes = 0L,
@@ -1607,7 +1609,7 @@ class SteamContentManager @Inject constructor(
         try {
             Log.d(TAG, "Recovering download for ${game.title} (appId: $appId)")
             val appInfo = fetchAppInfo(appId.toInt())
-            queueDownload(appId, game.title, appInfo, game.displayCoverPath)
+            queueDownload(appId, game.title, appInfo, gameArtDao.resolved(game.id).coverPath)
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to recover download for $appId", e)

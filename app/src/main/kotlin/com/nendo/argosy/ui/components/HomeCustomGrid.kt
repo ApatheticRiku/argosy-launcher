@@ -1136,7 +1136,10 @@ private fun WideTileBox(
                 )
         ) {
         Row(modifier = Modifier.fillMaxSize()) {
-            val coverPath = content.game?.coverPath ?: content.coverPath
+            val gameCover = content.game?.let {
+                com.nendo.argosy.ui.common.rememberResolvedCoverPath(it.id, it.coverPath)
+            }
+            val coverPath = gameCover ?: content.coverPath
             val cover = com.nendo.argosy.ui.common.rememberFileImageModel(coverPath)
             val appIcon = content.packageName?.let { com.nendo.argosy.ui.coil.AppIconData(it) }
             val poster = content.posterUrl?.takeIf { it.isNotBlank() }

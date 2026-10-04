@@ -193,9 +193,10 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         MediaDownloadQueueEntity::class,
         MediaCreditEntity::class,
         com.nendo.argosy.data.local.entity.ManagedInstallerEntity::class,
-        com.nendo.argosy.data.local.entity.GameGroupPickEntity::class
+        com.nendo.argosy.data.local.entity.GameGroupPickEntity::class,
+        com.nendo.argosy.data.local.entity.GameArtEntity::class
     ],
-    version = 202,
+    version = 203,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -265,5 +266,6 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun mediaCreditDao(): MediaCreditDao
     abstract fun managedInstallerDao(): com.nendo.argosy.data.local.dao.ManagedInstallerDao
     abstract fun gameGroupPickDao(): com.nendo.argosy.data.local.dao.GameGroupPickDao
+    abstract fun gameArtDao(): com.nendo.argosy.data.local.dao.GameArtDao
 
 }

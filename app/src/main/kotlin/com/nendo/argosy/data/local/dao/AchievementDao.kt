@@ -53,8 +53,9 @@ interface AchievementDao {
     )
 
     @Query("""
-        SELECT a.*, g.title AS gameTitle, COALESCE(g.coverOverridePath, g.coverPath) AS gameCoverPath
+        SELECT a.*, g.title AS gameTitle, $RESOLVED_ART_SQL AS gameCoverPath
         FROM achievements a INNER JOIN games g ON a.gameId = g.id
+        LEFT JOIN game_art art ON art.gameId = g.id AND art.slot = 'COVER'
         WHERE a.ownerUserId = :ownerUserId
           AND (a.unlockedAt IS NOT NULL OR a.unlockedHardcoreAt IS NOT NULL)
         ORDER BY COALESCE(a.unlockedHardcoreAt, a.unlockedAt) DESC
@@ -63,8 +64,9 @@ interface AchievementDao {
     suspend fun getRecentUnlocks(ownerUserId: Long, limit: Int): List<UnlockWithGameRow>
 
     @Query("""
-        SELECT a.*, g.title AS gameTitle, COALESCE(g.coverOverridePath, g.coverPath) AS gameCoverPath
+        SELECT a.*, g.title AS gameTitle, $RESOLVED_ART_SQL AS gameCoverPath
         FROM achievements a INNER JOIN games g ON a.gameId = g.id
+        LEFT JOIN game_art art ON art.gameId = g.id AND art.slot = 'COVER'
         WHERE a.gameId = :gameId AND a.ownerUserId = :ownerUserId
           AND (a.unlockedAt IS NOT NULL OR a.unlockedHardcoreAt IS NOT NULL)
         ORDER BY COALESCE(a.unlockedHardcoreAt, a.unlockedAt) DESC

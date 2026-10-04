@@ -4,6 +4,7 @@ import android.content.Context
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
@@ -67,7 +68,8 @@ class SyncCoordinator @Inject constructor(
     private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
     private val syncStatesOnSessionEndUseCase:
         Lazy<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>,
-    private val negotiateInventory: NegotiateInventory
+    private val negotiateInventory: NegotiateInventory,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -454,7 +456,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = item.gameId,
                 gameName = game.title,
                 channelName = payload.channelName,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(item.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             )
@@ -848,7 +850,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = cache.channelName,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(cache.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             ))
@@ -965,7 +967,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = null,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(cache.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.PENDING
             ))

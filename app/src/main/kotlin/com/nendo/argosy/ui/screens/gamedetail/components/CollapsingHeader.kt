@@ -45,6 +45,7 @@ import coil.compose.AsyncImage
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.ui.common.rememberResolvedCoverPath
 import com.nendo.argosy.ui.components.Box3dCover
 import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.screens.gamedetail.GameDetailUi
@@ -138,8 +139,9 @@ private fun LandscapeExpandedHeader(
     modifier: Modifier = Modifier
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
+    val coverPath = rememberResolvedCoverPath(game.id, game.coverPath)
     val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
-        rememberCoverAspectRatio(game.coverPath, boxArtStyle.aspectRatio)
+        rememberCoverAspectRatio(coverPath, boxArtStyle.aspectRatio)
     } else {
         boxArtStyle.aspectRatio
     }
@@ -149,16 +151,16 @@ private fun LandscapeExpandedHeader(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXl)
     ) {
-        if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
+        if (game.boxSpinePath != null && coverPath?.startsWith("/") == true) {
             Box3dCover(
-                frontPath = game.coverPath,
+                frontPath = coverPath,
                 spinePath = game.boxSpinePath,
                 backPath = game.boxBackPath,
                 modifier = Modifier.height(coverHeight)
             )
         } else {
             CoverArtImage(
-                coverPath = game.coverPath,
+                coverPath = coverPath,
                 contentDescription = game.title,
                 modifier = Modifier
                     .width(EXPANDED_COVER_WIDTH)
@@ -184,8 +186,9 @@ private fun PortraitExpandedHeader(
     modifier: Modifier = Modifier
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
+    val coverPath = rememberResolvedCoverPath(game.id, game.coverPath)
     val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
-        rememberCoverAspectRatio(game.coverPath, boxArtStyle.aspectRatio)
+        rememberCoverAspectRatio(coverPath, boxArtStyle.aspectRatio)
     } else {
         boxArtStyle.aspectRatio
     }
@@ -202,16 +205,16 @@ private fun PortraitExpandedHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
+            if (game.boxSpinePath != null && coverPath?.startsWith("/") == true) {
                 Box3dCover(
-                    frontPath = game.coverPath,
+                    frontPath = coverPath,
                     spinePath = game.boxSpinePath,
                     backPath = game.boxBackPath,
                     modifier = Modifier.height(coverHeight)
                 )
             } else {
                 CoverArtImage(
-                    coverPath = game.coverPath,
+                    coverPath = coverPath,
                     contentDescription = game.title,
                     modifier = Modifier
                         .widthIn(max = coverWidth)
@@ -470,7 +473,7 @@ internal fun CollapsedHeader(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
     ) {
         AsyncImage(
-            model = rememberFileImageModel(game.coverPath),
+            model = rememberFileImageModel(rememberResolvedCoverPath(game.id, game.coverPath)),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier

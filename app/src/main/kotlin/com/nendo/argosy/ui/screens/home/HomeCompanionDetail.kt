@@ -14,6 +14,7 @@ fun HomeGameUi.toCompanionDetail(friends: List<FriendActivity> = emptyList()): C
         isGameTitle = true,
         spineUrl = boxSpinePath,
         logoUrl = logoPath,
+        gameId = id,
         stats = CompanionGameStats(
             developer = developer,
             releaseYear = releaseYear,

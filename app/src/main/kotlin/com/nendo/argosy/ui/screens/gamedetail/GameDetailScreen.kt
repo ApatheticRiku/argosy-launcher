@@ -517,7 +517,8 @@ private fun GameDetailContent(
     Box(modifier = Modifier.fillMaxSize()) {
         // Background layer - extends behind footer
         Box(modifier = Modifier.fillMaxSize().blur(combinedBlur)) {
-            val effectiveBackgroundPath = uiState.repairedBackgroundPath ?: game.backgroundPath
+            val liveBackgroundPath = com.nendo.argosy.ui.common.rememberResolvedBackgroundPath(game.id, game.backgroundPath)
+            val effectiveBackgroundPath = uiState.repairedBackgroundPath ?: liveBackgroundPath
             if (effectiveBackgroundPath != null) {
                 AsyncImage(
                     model = rememberFileImageModel(effectiveBackgroundPath),
@@ -527,8 +528,8 @@ private fun GameDetailContent(
                         .fillMaxSize()
                         .blur(24.dp),
                     onError = {
-                        if (uiState.repairedBackgroundPath == null && game.backgroundPath?.startsWith("/") == true) {
-                            viewModel.repairBackgroundImage(game.id, game.backgroundPath)
+                        if (uiState.repairedBackgroundPath == null && liveBackgroundPath?.startsWith("/") == true) {
+                            viewModel.repairBackgroundImage(game.id, liveBackgroundPath)
                         }
                     }
                 )

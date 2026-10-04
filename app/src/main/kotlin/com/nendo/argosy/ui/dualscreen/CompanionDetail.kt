@@ -19,7 +19,8 @@ data class CompanionDetail(
     val isGameTitle: Boolean = false,
     val spineUrl: String? = null,
     val logoUrl: String? = null,
-    val stats: CompanionGameStats? = null
+    val stats: CompanionGameStats? = null,
+    val gameId: Long? = null
 )
 
 /**

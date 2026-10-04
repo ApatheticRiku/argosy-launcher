@@ -8,6 +8,7 @@ import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.PlatformDao
+import com.nendo.argosy.data.local.dao.resolvedFor
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.NetplaySession
@@ -40,7 +41,8 @@ class NetplayJoinService @Inject constructor(
     private val platformDao: PlatformDao,
     private val coreManager: LibretroCoreManager,
     private val downloadManager: DownloadManager,
-    private val launchGameUseCase: LaunchGameUseCase
+    private val launchGameUseCase: LaunchGameUseCase,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var flowJob: Job? = null
@@ -176,6 +178,7 @@ class NetplayJoinService @Inject constructor(
     }
 
     private suspend fun buildJoinCandidates(candidates: List<GameEntity>): List<JoinCandidate> {
+        val art = gameArtDao.resolvedFor(candidates.map { it.id })
         return candidates.map { game ->
             val platform = platformDao.getById(game.platformId)
             val files = gameFileDao.getFilesForGame(game.id)
@@ -185,7 +188,7 @@ class NetplayJoinService @Inject constructor(
                 title = game.title,
                 platformSlug = game.platformSlug,
                 platformName = platform?.name ?: game.platformSlug,
-                coverPath = game.coverPath,
+                coverPath = art[game.id]?.coverPath,
                 isInstalled = hasAnyFile,
                 rommId = game.rommId
             )
@@ -231,7 +234,7 @@ class NetplayJoinService @Inject constructor(
             fileName = fileName,
             gameTitle = game.title,
             platformSlug = game.platformSlug,
-            coverPath = game.coverPath,
+            coverPath = candidate.coverPath,
             expectedSizeBytes = game.fileSizeBytes ?: 0L,
             isMultiFileRom = game.isMultiDisc,
             startNow = true

@@ -2,7 +2,9 @@ package com.nendo.argosy.data.steam
 
 import android.content.Context
 import com.nendo.argosy.data.launcher.SteamLaunchers
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.ui.components.SteamDownloadLocationPrompt
 import com.nendo.argosy.ui.components.SteamMarkOption
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,6 +22,7 @@ import javax.inject.Singleton
 class SteamDownloadPromptController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao,
     private val steamContentManager: SteamContentManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -44,7 +47,7 @@ class SteamDownloadPromptController @Inject constructor(
             _prompt.value = SteamDownloadLocationPrompt(
                 gameId = gameId,
                 title = game.title,
-                coverPath = game.displayCoverPath
+                coverPath = gameArtDao.resolved(gameId).coverPath
             )
         }
     }
@@ -78,7 +81,7 @@ class SteamDownloadPromptController @Inject constructor(
             if (game.isExternallyManaged) {
                 gameDao.setSteamLauncher(p.gameId, null)
             }
-            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.displayCoverPath)
+            steamContentManager.queueDownloadOptimistic(steamAppId, game.title, p.coverPath)
             clearPrompt()
         }
     }

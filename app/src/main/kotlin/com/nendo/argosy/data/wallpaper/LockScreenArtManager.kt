@@ -178,9 +178,10 @@ class LockScreenArtManager @Inject constructor(
     }
 
     private suspend fun heroArt(gameId: Long, width: Int, height: Int): Pair<String, Bitmap?>? {
-        val game = gameRepository.getById(gameId) ?: return null
+        gameRepository.getById(gameId) ?: return null
         shownKey?.takeIf { it.startsWith("game:$gameId:") }?.let { return it to null }
-        for (source in listOfNotNull(game.displayBackgroundPath, game.displayCoverPath)) {
+        val gameArt = gameRepository.getArt(gameId)
+        for (source in listOfNotNull(gameArt.backgroundPath, gameArt.coverPath)) {
             val key = "game:$gameId:$source:${width}x$height"
             if (key == shownKey) return key to null
             val art = load(source, width, height) ?: continue

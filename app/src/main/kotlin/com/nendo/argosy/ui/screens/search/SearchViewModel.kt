@@ -188,9 +188,9 @@ class SearchViewModel @Inject constructor(
 
     private suspend fun searchGames(query: String): List<SearchResultUi.Game> {
         val names = platformNames.value
-        return gameRepository.search(query).first()
-            .take(RESULTS_PER_KIND)
-            .map { it.toSearchResult(names[it.platformId]) }
+        val games = gameRepository.search(query).first().take(RESULTS_PER_KIND)
+        val art = gameRepository.getArt(games.map { it.id })
+        return games.map { it.toSearchResult(names[it.platformId], art[it.id]?.coverPath) }
     }
 
     private suspend fun searchMedia(query: String): List<SearchResultUi.Media> {
@@ -268,12 +268,12 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    private fun GameEntity.toSearchResult(platformName: String?) = SearchResultUi.Game(
+    private fun GameEntity.toSearchResult(platformName: String?, coverPath: String?) = SearchResultUi.Game(
         key = "game:$id",
         title = title,
         gameId = id,
         platformName = platformName,
-        coverPath = displayCoverPath,
+        coverPath = coverPath,
         developer = developer,
         releaseYear = releaseYear
     )

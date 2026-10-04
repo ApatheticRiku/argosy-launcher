@@ -1,6 +1,6 @@
 package com.nendo.argosy.data.repository
 
-import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.HomeGridPageDao
 import com.nendo.argosy.data.local.entity.HomeGridPageEntity
 import com.nendo.argosy.data.local.entity.PageAudioKind
@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +21,7 @@ import javax.inject.Singleton
 @Singleton
 class HomeGridPageRepository @Inject constructor(
     private val pageDao: HomeGridPageDao,
-    private val gameDao: GameDao
+    private val imageCacheManager: ImageCacheManager
 ) {
 
     /**
@@ -36,8 +37,8 @@ class HomeGridPageRepository @Inject constructor(
             if (followedGameIds.isEmpty()) {
                 flowOf(pages)
             } else {
-                combine(followedGameIds.map { gameDao.observeById(it) }) { games ->
-                    val backgrounds = games.filterNotNull().associate { it.id to it.displayBackgroundPath }
+                combine(followedGameIds.map { id -> imageCacheManager.observeArt(id).map { id to it } }) { art ->
+                    val backgrounds = art.associate { (id, resolved) -> id to resolved?.backgroundPath }
                     pages.map { page ->
                         if (page.followsGameBackground) {
                             page.copy(backgroundPath = backgrounds[page.backgroundGameId])

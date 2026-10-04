@@ -561,7 +561,7 @@ fun BoxArtSection(
                     releaseYear = null,
                     genre = game.genre,
                     isFavorite = game.isFavorite,
-                    isDownloaded = game.localPath != null
+                    isDownloaded = game.isDownloaded
                 )
             } ?: HomeGameUi(
                 id = 0,

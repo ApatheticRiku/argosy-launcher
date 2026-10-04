@@ -124,7 +124,6 @@ class LibrarySiblingPickFocusTest {
         sortTitle = title,
         localPath = null,
         source = GameSource.ROMM_REMOTE,
-        coverPath = null,
         isFavorite = false,
         isHidden = false,
         isMultiDisc = false,

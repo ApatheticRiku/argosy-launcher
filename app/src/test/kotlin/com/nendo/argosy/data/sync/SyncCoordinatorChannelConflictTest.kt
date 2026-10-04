@@ -132,7 +132,8 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -192,7 +193,8 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -260,7 +262,8 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -311,7 +314,8 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()
@@ -387,7 +391,8 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
 
         coordinator.processQueue()

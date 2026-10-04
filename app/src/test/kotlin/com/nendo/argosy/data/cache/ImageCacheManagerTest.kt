@@ -4,12 +4,11 @@ import android.content.Context
 import coil.Coil
 import coil.ImageLoader
 import com.nendo.argosy.data.local.dao.AchievementDao
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.GameImageCacheInfo
 import com.nendo.argosy.data.local.dao.PlatformDao
-import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.GameArtEntity
 import com.nendo.argosy.data.model.ArtSlot
-import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.storage.StorageVolumeHealth
 import com.nendo.argosy.data.storage.VolumeProbe
@@ -45,6 +44,7 @@ class ImageCacheManagerTest {
 
     private lateinit var context: Context
     private lateinit var gameDao: GameDao
+    private lateinit var gameArtDao: GameArtDao
     private lateinit var platformDao: PlatformDao
     private lateinit var achievementDao: AchievementDao
     private lateinit var volumeHealth: StorageVolumeHealth
@@ -62,6 +62,7 @@ class ImageCacheManagerTest {
             every { filesDir } returns defaultCacheDir
         }
         gameDao = mockk(relaxed = true)
+        gameArtDao = mockk(relaxed = true)
         platformDao = mockk(relaxed = true)
         achievementDao = mockk(relaxed = true)
         volumeHealth = mockk(relaxed = true)
@@ -69,6 +70,7 @@ class ImageCacheManagerTest {
         imageCacheManager = ImageCacheManager(
             context,
             gameDao,
+            gameArtDao,
             platformDao,
             achievementDao,
             volumeHealth,
@@ -96,39 +98,53 @@ class ImageCacheManagerTest {
         return file
     }
 
-    private fun game(
-        id: Long = 7L,
-        coverPath: String? = null,
-        coverOverridePath: String? = null,
-        backgroundOverridePath: String? = null,
-        logoOverridePath: String? = null
-    ) = GameEntity(
-        id = id,
-        platformId = 1L,
-        platformSlug = "snes",
-        title = "Game",
-        sortTitle = "game",
-        localPath = null,
-        rommId = 42L,
-        igdbId = null,
-        source = GameSource.ROMM_REMOTE,
-        coverPath = coverPath,
-        coverOverridePath = coverOverridePath,
-        backgroundOverridePath = backgroundOverridePath,
-        logoOverridePath = logoOverridePath
-    )
+    private fun stubArt(slot: ArtSlot, overridePath: String? = null, cachedPath: String? = null, cachedFromUrl: String? = null) {
+        coEvery { gameArtDao.get(7L, slot.name) } returns GameArtEntity(
+            gameId = 7L,
+            slot = slot.name,
+            cachedPath = cachedPath,
+            cachedFromUrl = cachedFromUrl,
+            overridePath = overridePath
+        )
+    }
+
+    private val oldUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-01"
+    private val newUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-30"
+    private val cachedFromOld = "/data/user/0/app/files/covers/snes/cover_42_${artUrlHash(oldUrl)}.jpg"
 
     @Test
     fun `cached art matches its source url and stops matching once the server url changes`() {
-        val oldUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-01"
-        val newUrl = "https://romm.example/assets/romm/resources/roms/1/42/cover/big.png?ts=2026-09-30"
-        val hash = java.security.MessageDigest.getInstance("MD5").digest(oldUrl.toByteArray())
-            .joinToString("") { "%02x".format(it) }.take(12)
-        val cached = "/data/user/0/app/files/covers/snes/cover_42_$hash.jpg"
+        assertTrue(isCachedFileFrom(cachedFromOld, oldUrl))
+        assertFalse(isCachedFileFrom(cachedFromOld, newUrl))
+    }
 
-        assertTrue(imageCacheManager.isCachedFromAny(cached, listOf(oldUrl)))
-        assertFalse(imageCacheManager.isCachedFromAny(cached, listOf(newUrl)))
-        assertTrue(imageCacheManager.isCachedFromAny(cached, listOf(newUrl, oldUrl)))
+    @Test
+    fun `a stale check on a row already cached from its source writes nothing`() = runTest {
+        stubArt(ArtSlot.COVER, cachedPath = cachedFromOld, cachedFromUrl = oldUrl)
+
+        imageCacheManager.queueArtIfStale(7L, ArtSlot.COVER, listOf(oldUrl), 42L, null, "Game")
+
+        coVerify(exactly = 0) { gameArtDao.backfillCachedFromUrl(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a migrated row whose file name carries the source hash is backfilled without a download`() = runTest {
+        stubArt(ArtSlot.COVER, cachedPath = cachedFromOld)
+
+        imageCacheManager.queueArtIfStale(7L, ArtSlot.COVER, listOf(oldUrl), 42L, null, "Game")
+
+        coVerify(exactly = 1) {
+            gameArtDao.backfillCachedFromUrl(7L, ArtSlot.COVER.name, cachedFromOld, oldUrl)
+        }
+    }
+
+    @Test
+    fun `a migrated row whose file came from another url is not backfilled`() = runTest {
+        stubArt(ArtSlot.COVER, cachedPath = cachedFromOld)
+
+        imageCacheManager.queueArtIfStale(7L, ArtSlot.COVER, listOf(newUrl), 42L, null, "Game")
+
+        coVerify(exactly = 0) { gameArtDao.backfillCachedFromUrl(any(), any(), any(), any()) }
     }
 
     @Test
@@ -238,7 +254,7 @@ class ImageCacheManagerTest {
         val coverOverride = cacheFile("snes", "covers", "cover_override_7_abc.jpg")
         val backgroundOverride = cacheFile("snes", "backgrounds", "bg_override_7_def.jpg")
         val logoOverride = cacheFile("snes", "logos", "logo_override_7_ghi.png")
-        coEvery { gameDao.getArtOverridePathsForPlatform("snes") } returns listOf(
+        coEvery { gameArtDao.getOverridePathsForPlatform("snes") } returns listOf(
             coverOverride.absolutePath,
             backgroundOverride.absolutePath,
             logoOverride.absolutePath
@@ -250,58 +266,56 @@ class ImageCacheManagerTest {
         assertTrue(coverOverride.exists())
         assertTrue(backgroundOverride.exists())
         assertTrue(logoOverride.exists())
-        coVerify(exactly = 1) { gameDao.clearCachedArtForPlatform("snes") }
-        coVerify(exactly = 0) { gameDao.clearCoverOverride(any()) }
-        coVerify(exactly = 0) { gameDao.clearBackgroundOverride(any()) }
-        coVerify(exactly = 0) { gameDao.clearLogoOverride(any()) }
+        coVerify(exactly = 1) { gameArtDao.clearCachedForPlatform("snes") }
+        coVerify(exactly = 1) { gameDao.clearCachedScreenshotsForPlatform("snes") }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateSourceUrl(any(), any(), any()) }
     }
 
     @Test
     fun `clearing an override clears the column and deletes its file`() = runTest {
         val override = cacheFile("snes", "covers", "cover_override_7_abc.jpg")
-        coEvery { gameDao.getById(7L) } returns game(coverOverridePath = override.absolutePath)
+        stubArt(ArtSlot.COVER, overridePath = override.absolutePath)
 
         imageCacheManager.clearArtOverride(7L, ArtSlot.COVER)
 
         assertFalse(override.exists())
-        coVerify(exactly = 1) { gameDao.clearCoverOverride(7L) }
+        coVerify(exactly = 1) { gameArtDao.updateOverride(7L, ArtSlot.COVER.name, null) }
     }
 
     @Test
     fun `clearing a background override leaves the cover override alone`() = runTest {
         val cover = cacheFile("snes", "covers", "cover_override_7_abc.jpg")
         val background = cacheFile("snes", "backgrounds", "bg_override_7_def.jpg")
-        coEvery { gameDao.getById(7L) } returns game(
-            coverOverridePath = cover.absolutePath,
-            backgroundOverridePath = background.absolutePath
-        )
+        stubArt(ArtSlot.COVER, overridePath = cover.absolutePath)
+        stubArt(ArtSlot.BACKGROUND, overridePath = background.absolutePath)
 
         imageCacheManager.clearArtOverride(7L, ArtSlot.BACKGROUND)
 
         assertTrue(cover.exists())
         assertFalse(background.exists())
-        coVerify(exactly = 1) { gameDao.clearBackgroundOverride(7L) }
-        coVerify(exactly = 0) { gameDao.clearCoverOverride(any()) }
+        coVerify(exactly = 1) { gameArtDao.updateOverride(7L, ArtSlot.BACKGROUND.name, null) }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(7L, ArtSlot.COVER.name, any()) }
     }
 
     @Test
     fun `clearing an override never deletes a file the override did not write`() = runTest {
         val foreign = cacheFile("snes", "covers", "cover_42_abc.jpg")
-        coEvery { gameDao.getById(7L) } returns game(logoOverridePath = foreign.absolutePath)
+        stubArt(ArtSlot.LOGO, overridePath = foreign.absolutePath)
 
         imageCacheManager.clearArtOverride(7L, ArtSlot.LOGO)
 
         assertTrue(foreign.exists())
-        coVerify(exactly = 1) { gameDao.clearLogoOverride(7L) }
+        coVerify(exactly = 1) { gameArtDao.updateOverride(7L, ArtSlot.LOGO.name, null) }
     }
 
     @Test
     fun `clearing a slot with no override writes nothing`() = runTest {
-        coEvery { gameDao.getById(7L) } returns game()
+        stubArt(ArtSlot.COVER)
 
         imageCacheManager.clearArtOverride(7L, ArtSlot.COVER)
 
-        coVerify(exactly = 0) { gameDao.clearCoverOverride(any()) }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(any(), any(), any()) }
     }
 
     @Test
@@ -315,7 +329,8 @@ class ImageCacheManagerTest {
         )
 
         assertFalse(applied)
-        coVerify(exactly = 0) { gameDao.setBackgroundOverride(any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.setOverride(any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(any(), any(), any()) }
     }
 
     @Test
@@ -325,23 +340,36 @@ class ImageCacheManagerTest {
         every { volumeHealth.newProbe() } returns probe
         every { probe.isGenuinelyAbsent("/gone/cover_override_7_abc.jpg") } returns true
         every { probe.isGenuinelyAbsent("/kept/bg_override_7_def.jpg") } returns false
-        coEvery { gameDao.getAllImageCacheInfo() } returns listOf(
-            GameImageCacheInfo(
-                id = 7L,
-                coverPath = null,
-                backgroundPath = null,
-                cachedScreenshotPaths = null,
-                logoPath = null,
-                coverOverridePath = "/gone/cover_override_7_abc.jpg",
-                backgroundOverridePath = "/kept/bg_override_7_def.jpg",
-                logoOverridePath = null
-            )
+        coEvery { gameArtDao.getAllCachedPaths() } returns emptyList()
+        coEvery { gameArtDao.getAllOverridePaths() } returns listOf(
+            "/gone/cover_override_7_abc.jpg",
+            "/kept/bg_override_7_def.jpg"
         )
+        coEvery { gameDao.getCachedScreenshotInfo() } returns emptyList()
         coEvery { platformDao.getAllPlatforms() } returns emptyList()
 
         imageCacheManager.validateAndCleanCache(force = true)
 
-        coVerify(exactly = 1) { gameDao.clearCoverOverride(7L) }
-        coVerify(exactly = 0) { gameDao.clearBackgroundOverride(any()) }
+        coVerify(exactly = 1) { gameArtDao.clearOverridePaths(listOf("/gone/cover_override_7_abc.jpg")) }
+    }
+
+    @Test
+    fun `missing-file sweep clears a cached path whose file is gone and keeps one on an unhealthy volume`() = runTest {
+        stubDecodedImageCache()
+        val probe = mockk<VolumeProbe>(relaxed = true)
+        every { volumeHealth.newProbe() } returns probe
+        every { probe.isGenuinelyAbsent("/gone/cover_42_abc.jpg") } returns true
+        every { probe.isGenuinelyAbsent("/unmounted/bg_42_def.jpg") } returns false
+        coEvery { gameArtDao.getAllCachedPaths() } returns listOf(
+            "/gone/cover_42_abc.jpg",
+            "/unmounted/bg_42_def.jpg"
+        )
+        coEvery { gameArtDao.getAllOverridePaths() } returns emptyList()
+        coEvery { gameDao.getCachedScreenshotInfo() } returns emptyList()
+        coEvery { platformDao.getAllPlatforms() } returns emptyList()
+
+        imageCacheManager.validateAndCleanCache(force = true)
+
+        coVerify(exactly = 1) { gameArtDao.clearCachedPaths(listOf("/gone/cover_42_abc.jpg")) }
     }
 }

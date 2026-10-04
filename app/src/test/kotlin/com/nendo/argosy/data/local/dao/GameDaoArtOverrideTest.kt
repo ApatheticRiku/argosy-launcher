@@ -1,54 +1,54 @@
 package com.nendo.argosy.data.local.dao
 
+import com.nendo.argosy.data.local.entity.GameArtEntity
 import com.nendo.argosy.data.model.ArtSlot
+import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.confirmVerified
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GameDaoArtOverrideTest {
 
-    private val gameDao = mockk<GameDao>(relaxed = true)
+    private val gameArtDao = mockk<GameArtDao>(relaxed = true)
 
     @Test
-    fun `setting a slot writes only that slot`() = runTest {
-        gameDao.setArtOverride(7L, ArtSlot.COVER, "/c.jpg")
-        gameDao.setArtOverride(7L, ArtSlot.BACKGROUND, "/b.jpg")
-        gameDao.setArtOverride(7L, ArtSlot.LOGO, "/l.png")
+    fun `clearing an override clears only that slot's override column`() = runTest {
+        gameArtDao.clearOverride(7L, ArtSlot.BACKGROUND)
 
-        coVerify(exactly = 1) { gameDao.setCoverOverride(7L, "/c.jpg") }
-        coVerify(exactly = 1) { gameDao.setBackgroundOverride(7L, "/b.jpg") }
-        coVerify(exactly = 1) { gameDao.setLogoOverride(7L, "/l.png") }
-        confirmVerified(gameDao)
+        coVerify(exactly = 1) { gameArtDao.updateOverride(7L, ArtSlot.BACKGROUND.name, null) }
+        coVerify(exactly = 0) { gameArtDao.updateCached(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateSourceUrl(any(), any(), any()) }
     }
 
     @Test
-    fun `clearing a slot clears only that slot`() = runTest {
-        gameDao.clearArtOverride(7L, ArtSlot.BACKGROUND)
+    fun `forgetting a cached file clears only the cache columns`() = runTest {
+        gameArtDao.clearCached(7L, ArtSlot.COVER)
 
-        coVerify(exactly = 1) { gameDao.clearBackgroundOverride(7L) }
-        coVerify(exactly = 0) { gameDao.clearCoverOverride(any()) }
-        coVerify(exactly = 0) { gameDao.clearLogoOverride(any()) }
+        coVerify(exactly = 1) { gameArtDao.updateCached(7L, ArtSlot.COVER.name, null, null) }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateSourceUrl(any(), any(), any()) }
     }
 
     @Test
-    fun `overridePath on cache info answers per slot`() {
-        val info = GameImageCacheInfo(
-            id = 7L,
-            coverPath = "/server.jpg",
-            backgroundPath = null,
-            cachedScreenshotPaths = null,
-            logoPath = null,
-            coverOverridePath = "/user.jpg",
-            backgroundOverridePath = null,
-            logoOverridePath = "/logo.png"
-        )
+    fun `resolved art for many games reads each chunk once`() = runTest {
+        val ids = (1L..1000L).toList()
+        coEvery { gameArtDao.getForGames(any()) } answers {
+            firstArg<List<Long>>().map { GameArtEntity(it, ArtSlot.COVER.name, sourceUrl = "u$it") }
+        }
 
-        assertEquals("/user.jpg", info.overridePath(ArtSlot.COVER))
-        assertNull(info.overridePath(ArtSlot.BACKGROUND))
-        assertEquals("/logo.png", info.overridePath(ArtSlot.LOGO))
+        val art = gameArtDao.resolvedFor(ids)
+
+        assertEquals(1000, art.size)
+        assertEquals("u500", art[500L]?.coverPath)
+        coVerify(exactly = 2) { gameArtDao.getForGames(any()) }
+    }
+
+    @Test
+    fun `resolved art for no games asks nothing`() = runTest {
+        assertTrue(gameArtDao.resolvedFor(emptyList()).isEmpty())
+        coVerify(exactly = 0) { gameArtDao.getForGames(any()) }
     }
 }

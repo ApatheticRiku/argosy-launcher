@@ -1927,6 +1927,7 @@ class DualScreenManager(
             scope.launch { refreshCompanionAchievements(gameId) }
             scope.launch(Dispatchers.IO) {
                 val game = gameDao.getById(gameId) ?: return@launch
+                val art = imageCacheManager.loadArt(gameId)
                 val platform = platformRepository.getById(game.platformId)
                 val documents = com.nendo.argosy.ui.screens.gamedetail.components.gameDocuments(
                     game = game,
@@ -1937,7 +1938,7 @@ class DualScreenManager(
                     com.nendo.argosy.hardware.CompanionInGameState(
                         gameId = gameId,
                         title = game.title,
-                        coverPath = game.displayCoverPath,
+                        coverPath = art.coverPath,
                         platformName = platform?.getDisplayName() ?: game.platformSlug,
                         developer = game.developer,
                         releaseYear = game.releaseYear,
@@ -1950,7 +1951,7 @@ class DualScreenManager(
                         isHardcore = sessionStateStore.isHardcore(),
                         isDirty = sessionStateStore.isSaveDirty(),
                         isLoaded = true,
-                        backgroundPath = game.displayBackgroundPath,
+                        backgroundPath = art.backgroundPath,
                         manual = documents.firstOrNull {
                             it.category == com.nendo.argosy.data.model.VariantCategory.MANUAL.key
                         },

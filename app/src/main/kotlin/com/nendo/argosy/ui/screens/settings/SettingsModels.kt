@@ -1820,12 +1820,34 @@ data class SettingsUiState(
     val fileLoggingPath: String? = null,
     val fileLogLevel: LogLevel = LogLevel.INFO,
     val saveDebugLoggingEnabled: Boolean = false,
-    val previewGame: GameListItem? = null,
-    val previewGames: List<GameListItem> = emptyList(),
+    val previewGame: SettingsPreviewGame? = null,
+    val previewGames: List<SettingsPreviewGame> = emptyList(),
     val previewGameIndex: Int = 0,
     val gradientConfig: GradientExtractionConfig = GradientExtractionConfig(),
     val gradientExtractionResult: GradientExtractionResult? = null,
     val frameDownloadingId: String? = null,
     val frameInstalledRefresh: Int = 0,
     val pendingCustomFrameRemovalId: String? = null
+)
+
+data class SettingsPreviewGame(
+    val id: Long,
+    val title: String,
+    val platformId: Long,
+    val platformSlug: String,
+    val genre: String?,
+    val isFavorite: Boolean,
+    val isDownloaded: Boolean,
+    val coverPath: String?
+)
+
+fun GameListItem.toSettingsPreviewGame(coverPath: String?) = SettingsPreviewGame(
+    id = id,
+    title = title,
+    platformId = platformId,
+    platformSlug = platformSlug,
+    genre = genre,
+    isFavorite = isFavorite,
+    isDownloaded = localPath != null,
+    coverPath = coverPath
 )

@@ -1268,7 +1268,7 @@ internal suspend fun routeResolvePreviewBitmap(vm: SettingsViewModel): Bitmap? {
 
 private suspend fun routeResolvePreviewImage(
     vm: SettingsViewModel,
-    game: com.nendo.argosy.data.local.entity.GameListItem
+    game: SettingsPreviewGame
 ): String? {
     val cached = vm.displayDelegate.getFirstCachedScreenshot(game.id)
     if (cached != null) return cached

@@ -1,10 +1,12 @@
 package com.nendo.argosy.data.launcher
 
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.cache.recordArtSource
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.preferences.StoragePreferencesRepository
@@ -88,7 +90,8 @@ class GameNativeStoreSync @Inject constructor(
     private val storagePrefs: StoragePreferencesRepository,
     private val preferencesRepository: UserPreferencesRepository,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
-    private val steamLibraryRepair: com.nendo.argosy.data.steam.SteamLibraryRepair
+    private val steamLibraryRepair: com.nendo.argosy.data.steam.SteamLibraryRepair,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     private val httpClient by lazy {
         OkHttpClient.Builder()
@@ -233,8 +236,6 @@ class GameNativeStoreSync @Inject constructor(
                 steamAppId = id.toLong(),
                 steamLauncher = GAMENATIVE_LAUNCHER,
                 source = GameSource.GAMENATIVE,
-                coverPath = meta.coverUrl,
-                backgroundPath = meta.backgroundUrl,
                 screenshotPaths = meta.screenshotUrls.takeIf { it.isNotEmpty() }?.joinToString(","),
                 developer = meta.developer,
                 releaseYear = meta.releaseYear,
@@ -243,7 +244,8 @@ class GameNativeStoreSync @Inject constructor(
                 addedAt = Instant.now()
             )
             val insertedId = gameDao.insert(game)
-            meta.coverUrl?.let { imageCacheManager.queueCoverCacheByGameId(it, insertedId) }
+            writeArtSource(insertedId, ArtSlot.COVER, meta.coverUrl, meta.title)
+            writeArtSource(insertedId, ArtSlot.BACKGROUND, meta.backgroundUrl, meta.title)
             queueScreenshotCache(insertedId, meta.screenshotUrls, cacheScreenshots)
             Logger.debug(TAG, "reconcile: added | store=${store.slug}, title=${meta.title}, id=$id")
             added++
@@ -272,6 +274,11 @@ class GameNativeStoreSync @Inject constructor(
             )
         }
         return StoreScanResult.Library(markers = markers.size, added = added, removed = removed)
+    }
+
+    private suspend fun writeArtSource(gameId: Long, slot: ArtSlot, url: String?, title: String) {
+        url ?: return
+        recordArtSource(gameArtDao, imageCacheManager, gameId, slot, listOf(url), title)
     }
 
     private suspend fun queueScreenshotCache(gameId: Long, urls: List<String>, enabled: Boolean) {

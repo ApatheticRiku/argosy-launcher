@@ -2229,6 +2229,7 @@ class LibraryViewModel @Inject constructor(
     private suspend fun GameEntity.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
         toLibraryGameUi(
             downloadStatus = downloadFileStatusRepository,
+            art = imageCacheManager.artFor(id),
             platformDisplayName = platformDisplayNames[platformId],
             gradientColors = gradientExtractionDelegate.getGradient(id)
         )
@@ -2236,6 +2237,7 @@ class LibraryViewModel @Inject constructor(
     private suspend fun GameListItem.toUi(platformDisplayNames: Map<Long, String> = emptyMap()): LibraryGameUi =
         toLibraryGameUi(
             downloadStatus = downloadFileStatusRepository,
+            art = imageCacheManager.artFor(id),
             platformDisplayName = platformDisplayNames[platformId],
             gradientColors = gradientExtractionDelegate.getGradient(id)
         )

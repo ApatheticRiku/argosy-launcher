@@ -124,7 +124,8 @@ internal fun LibraryGameList(
                         title = game.title,
                         platformSlug = game.platformSlug,
                         platformDisplayName = game.platformDisplayName,
-                        coverPath = uiState.repairedCoverPaths[game.id] ?: game.coverPath,
+                        coverPath = uiState.repairedCoverPaths[game.id]
+                            ?: com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath),
                         details = game.listDetails,
                         isDownloaded = game.isDownloaded,
                         needsInstall = game.needsInstall,

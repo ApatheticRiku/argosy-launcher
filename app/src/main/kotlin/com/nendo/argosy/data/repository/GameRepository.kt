@@ -10,6 +10,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import com.nendo.argosy.data.download.ZipExtractor
 import com.nendo.argosy.data.emulator.M3uManager
 import com.nendo.argosy.util.FileNames
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
@@ -17,17 +18,18 @@ import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.dao.PlatformShowcaseStats
 import com.nendo.argosy.data.local.dao.SearchCandidate
 import com.nendo.argosy.data.local.dao.UserRomsHiddenDao
-import com.nendo.argosy.data.local.dao.clearArtOverride
 import com.nendo.argosy.data.local.dao.coverPathsForGamesChunked
 import com.nendo.argosy.data.local.dao.getByIdsChunked
+import com.nendo.argosy.data.local.dao.resolved
+import com.nendo.argosy.data.local.dao.resolvedFor
 import com.nendo.argosy.data.local.dao.statsForGamesChunked
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameFileEntity
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.platform.platformRomRoots
-import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -79,7 +81,8 @@ class GameRepository @Inject constructor(
     private val preferencesRepository: UserPreferencesRepository,
     private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
     private val volumeHealth: StorageVolumeHealth,
-    private val attributionRepository: StorageAttributionRepository
+    private val attributionRepository: StorageAttributionRepository,
+    private val gameArtDao: GameArtDao
 ) {
     private val defaultDownloadDir: File by lazy {
         File(context.getExternalFilesDir(null), "downloads")
@@ -808,30 +811,6 @@ class GameRepository @Inject constructor(
         invalidated
     }
 
-    suspend fun ensureImagePathValid(gameId: Long): GameEntity? = withContext(Dispatchers.IO) {
-        val game = gameDao.getById(gameId) ?: return@withContext null
-        val probe = volumeHealth.newProbe()
-        var changed = false
-
-        if (game.coverPath?.startsWith("/") == true && probe.isGenuinelyAbsent(game.coverPath)) {
-            gameDao.clearCoverPath(gameId)
-            changed = true
-        }
-        if (game.backgroundPath?.startsWith("/") == true && probe.isGenuinelyAbsent(game.backgroundPath)) {
-            gameDao.clearBackgroundPath(gameId)
-            changed = true
-        }
-        for (slot in ArtSlot.entries) {
-            val override = game.overridePath(slot) ?: continue
-            if (override.startsWith("/") && probe.isGenuinelyAbsent(override)) {
-                gameDao.clearArtOverride(gameId, slot)
-                changed = true
-            }
-        }
-
-        if (changed) gameDao.getById(gameId) else game
-    }
-
     /**
      * The account every hidden-aware query below is run for. Resolved once per call and passed
      * down, never re-read partway through an operation.
@@ -1187,9 +1166,9 @@ class GameRepository @Inject constructor(
      */
     suspend fun recordCoverAspectRatio(gameId: Long, ratio: Float) {
         if (!ratio.isFinite() || ratio <= 0f) return
-        val stored = gameDao.getCoverAspectRatio(gameId)
+        val stored = gameArtDao.getCoverAspectRatio(gameId)
         if (stored != null && kotlin.math.abs(stored - ratio) < COVER_RATIO_TOLERANCE) return
-        gameDao.updateCoverAspectRatio(gameId, ratio)
+        gameArtDao.setCoverAspectRatio(gameId, ratio)
     }
 
     fun searchInstalled(query: String, limit: Int): Flow<List<GameEntity>> = flow {
@@ -1214,15 +1193,16 @@ class GameRepository @Inject constructor(
 
     suspend fun getByRaId(raId: Long): GameEntity? = gameDao.getByRaId(raId)
 
-    suspend fun getLocalGamesNeedingGradients(): List<com.nendo.argosy.data.local.dao.GradientExtractionCandidate> =
-        gameDao.getLocalGamesNeedingGradients(hiddenOwnerId())
+    suspend fun getGradientCandidates(): List<com.nendo.argosy.data.local.dao.GradientCandidate> =
+        gameArtDao.getGradientCandidates(hiddenOwnerId())
 
     suspend fun updateGradientColors(gameId: Long, json: String) =
-        gameDao.updateGradientColors(gameId, json)
+        gameArtDao.setGradientColors(gameId, json)
 
-    suspend fun clearCoverPath(gameId: Long) = gameDao.clearCoverPath(gameId)
+    suspend fun getArt(gameId: Long): ResolvedGameArt = gameArtDao.resolved(gameId)
 
-    suspend fun clearBackgroundPath(gameId: Long) = gameDao.clearBackgroundPath(gameId)
+    suspend fun getArt(gameIds: Collection<Long>): Map<Long, ResolvedGameArt> =
+        gameArtDao.resolvedFor(gameIds)
 
     suspend fun getGameFilesForGame(gameId: Long): List<com.nendo.argosy.data.local.entity.GameFileEntity> =
         gameFileDao.getFilesForGame(gameId)

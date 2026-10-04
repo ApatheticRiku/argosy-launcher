@@ -1,6 +1,8 @@
 package com.nendo.argosy.ui.screens.doodle
 
 import androidx.compose.ui.graphics.Color
+import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.repository.GameRepository
 
 enum class DoodleColor(val index: Int, val hex: Long) {
     WHITE(0, 0xFFFFFFFF),
@@ -192,6 +194,19 @@ data class GamePickerItem(
     val platform: String?,
     val coverPath: String?
 )
+
+suspend fun List<GameEntity>.toGamePickerItems(gameRepository: GameRepository): List<GamePickerItem> {
+    val art = gameRepository.getArt(map { it.id })
+    return map { game ->
+        GamePickerItem(
+            id = game.id,
+            igdbId = game.igdbId?.toInt(),
+            title = game.title,
+            platform = game.platformSlug,
+            coverPath = art[game.id]?.coverPath
+        )
+    }
+}
 
 data class DecodedDoodle(
     val size: CanvasSize,

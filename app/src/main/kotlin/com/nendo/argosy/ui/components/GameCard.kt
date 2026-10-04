@@ -113,10 +113,11 @@ fun GameCard(
     useBoxArt: Boolean = false
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
-    val effectiveCoverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(
+    val resolvedCoverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(
         gameId = game.id,
-        source = coverPathOverride ?: game.coverPath
-    ).orEmpty()
+        fallback = game.coverPath
+    )
+    val effectiveCoverPath = (coverPathOverride ?: resolvedCoverPath).orEmpty()
     val coverGradientColors = game.gradientColors
 
     val saturation by animateFloatAsState(

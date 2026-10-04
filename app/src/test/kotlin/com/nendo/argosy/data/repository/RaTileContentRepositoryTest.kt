@@ -1,9 +1,12 @@
 package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.local.dao.AchievementDao
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.AchievementEntity
+import com.nendo.argosy.data.local.entity.GameArtEntity
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.remote.ra.RACredentials
 import com.nendo.argosy.data.remote.romm.RomMAchievementService
@@ -38,13 +41,15 @@ class RaTileContentRepositoryTest {
     private val service = mockk<RomMAchievementService>()
     private val fetch = mockk<FetchAchievementsUseCase>()
     private val raRepository = mockk<RetroAchievementsRepository>()
+    private val gameArtDao = mockk<GameArtDao>()
 
     private val repository = RaTileContentRepository(
         achievementDao = achievementDao,
         gameDao = gameDao,
         romMAchievementService = service,
         fetchAchievementsUseCase = fetch,
-        retroAchievementsRepository = raRepository
+        retroAchievementsRepository = raRepository,
+        gameArtDao = gameArtDao
     )
 
     @Before
@@ -64,6 +69,10 @@ class RaTileContentRepositoryTest {
         coEvery { achievementDao.countUnlockedByGameId(any(), OWNER, any()) } returns 0
         coEvery { achievementDao.sumUnlockedPointsByGameId(any(), OWNER, any()) } returns 0
         coEvery { achievementDao.getNextLocked(any(), OWNER, any(), any()) } returns emptyList()
+        coEvery { gameArtDao.getForGame(any()) } answers {
+            val id = firstArg<Long>()
+            listOf(GameArtEntity(id, ArtSlot.COVER.name, cachedPath = "/covers/$id.png"))
+        }
     }
 
     private fun achievement(
@@ -114,7 +123,6 @@ class RaTileContentRepositoryTest {
         igdbId = null,
         raId = raId,
         source = GameSource.ROMM_REMOTE,
-        coverPath = "/covers/$id.png",
         achievementsFetchedAt = fetchedAt
     )
 

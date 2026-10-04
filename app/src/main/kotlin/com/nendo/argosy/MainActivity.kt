@@ -782,20 +782,11 @@ class MainActivity : ComponentActivity() {
                 imageCacheManager.migrateFlatToSharded()
             }
 
-            imageCacheManager.resumePendingCache()
-            imageCacheManager.resumePendingCoverCache()
-            if (preferencesRepository.preferences.first().boxArtCacheEnabled) {
+            if (prefs.boxArtCacheEnabled) {
                 imageCacheManager.resumePendingBoxFaceCache()
             }
             imageCacheManager.resumePendingLogoCache()
             imageCacheManager.resumePendingBadgeCache()
-
-            val validationResult = imageCacheManager.validateAndCleanCache()
-            if (validationResult.deletedFiles > 0 || validationResult.clearedPaths > 0) {
-                Log.i(TAG, "Cache validation: ${validationResult.deletedFiles} files deleted, ${validationResult.clearedPaths} paths cleared")
-            }
-
-            imageCacheManager.recoverMissingCovers()
 
             androidGameScanner.ensureAndroidPlatformExists()
 
@@ -810,6 +801,14 @@ class MainActivity : ComponentActivity() {
                 Log.i(TAG, "GameNative store sync: ${storeSync.results}")
             }
             lifecycleScope.launch { steamLibraryRepair.repairCovers() }
+
+            launch(Dispatchers.IO) {
+                val validationResult = imageCacheManager.validateAndCleanCache()
+                if (validationResult.deletedFiles > 0 || validationResult.clearedPaths > 0) {
+                    Log.i(TAG, "Cache validation: ${validationResult.deletedFiles} files deleted, ${validationResult.clearedPaths} paths cleared")
+                }
+                imageCacheManager.resumePendingArt()
+            }
 
             if (shouldInitializeScreenCapture(prefs)) {
                 if (screenCaptureManager.hasPermission.value && !screenCaptureManager.isCapturing.value) {

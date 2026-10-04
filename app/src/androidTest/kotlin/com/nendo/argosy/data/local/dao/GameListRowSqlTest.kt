@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.PendingConflictEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.domain.model.SaveListState
 import kotlinx.coroutines.flow.first
@@ -55,7 +56,6 @@ class GameListRowSqlTest {
                 rommId = 99L,
                 igdbId = 1234L,
                 source = GameSource.ROMM_SYNCED,
-                coverPath = "/covers/ct.jpg",
                 developer = "Square",
                 status = "finished",
                 completion = 65,
@@ -65,6 +65,7 @@ class GameListRowSqlTest {
                 lastPlayed = Instant.now()
             )
         )
+        db.gameArtDao().setCached(gameId, ArtSlot.COVER, "/covers/ct.jpg", null)
         Unit
     }
 

@@ -1,7 +1,9 @@
 package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.local.dao.AchievementDao
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.remote.romm.RomMAchievementService
@@ -45,7 +47,8 @@ class RaTileContentRepository @Inject constructor(
     private val gameDao: GameDao,
     private val romMAchievementService: RomMAchievementService,
     private val fetchAchievementsUseCase: FetchAchievementsUseCase,
-    private val retroAchievementsRepository: RetroAchievementsRepository
+    private val retroAchievementsRepository: RetroAchievementsRepository,
+    private val gameArtDao: GameArtDao
 ) {
 
     /**
@@ -146,7 +149,7 @@ class RaTileContentRepository @Inject constructor(
             latestUnlock = unlocked.firstOrNull(),
             gameId = game.id,
             gameTitle = game.title,
-            gameCoverPath = game.displayCoverPath,
+            gameCoverPath = gameArtDao.resolved(game.id).coverPath,
             total = total,
             nextLocked = achievementDao
                 .getNextLocked(game.id, owner, hardcoreOnly, RA_NEXT_LOCKED_CAP)

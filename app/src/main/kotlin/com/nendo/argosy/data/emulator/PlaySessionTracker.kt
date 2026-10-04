@@ -12,6 +12,7 @@ import android.provider.Settings
 import com.nendo.argosy.R
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.PlaySessionEntity
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
@@ -108,7 +109,8 @@ class PlaySessionTracker @Inject constructor(
     private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
     private val reconcileAchievementsOnSessionEndUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.achievement.ReconcileAchievementsOnSessionEndUseCase>,
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
-    private val sessionSaveFinalizer: SessionSaveFinalizer
+    private val sessionSaveFinalizer: SessionSaveFinalizer,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     companion object {
         private const val TAG = "PlaySessionTracker"
@@ -288,7 +290,7 @@ class PlaySessionTracker @Inject constructor(
                 title = NotificationText.Res(R.string.sync_session_save_uploaded_orphan),
                 subtitle = game?.title?.let { NotificationText.Raw(it) },
                 type = NotificationType.SUCCESS,
-                imagePath = game?.displayCoverPath,
+                imagePath = coverPathFor(orphaned.gameId),
                 duration = NotificationDuration.MEDIUM,
                 key = "sync-${orphaned.gameId}",
                 immediate = true
@@ -855,7 +857,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_uploaded),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.SUCCESS,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -867,7 +869,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_unchanged),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.INFO,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.SHORT,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -895,7 +897,7 @@ class PlaySessionTracker @Inject constructor(
                         )
                     ),
                     type = NotificationType.ERROR,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -903,6 +905,8 @@ class PlaySessionTracker @Inject constructor(
             }
         }
     }
+
+    private suspend fun coverPathFor(gameId: Long): String? = gameArtDao.resolved(gameId).coverPath
 
     private suspend fun syncStateData(gameId: Long, emulatorPackage: String) {
         val result = syncStatesOnSessionEndUseCase.get()(gameId, emulatorPackage)

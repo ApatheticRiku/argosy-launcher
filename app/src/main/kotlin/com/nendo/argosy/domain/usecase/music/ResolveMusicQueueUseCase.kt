@@ -1,7 +1,9 @@
 package com.nendo.argosy.domain.usecase.music
 
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -23,7 +25,8 @@ class ResolveMusicQueueUseCase @Inject constructor(
     private val getLocalMusicTrackState: GetLocalMusicTrackStateUseCase,
     private val gameDao: GameDao,
     private val gameFileDao: GameFileDao,
-    private val preferencesRepository: UserPreferencesRepository
+    private val preferencesRepository: UserPreferencesRepository,
+    private val gameArtDao: GameArtDao
 ) {
     suspend operator fun invoke(selection: MusicSelection): List<MusicQueueTrack> =
         withContext(Dispatchers.IO) {
@@ -64,8 +67,9 @@ class ResolveMusicQueueUseCase @Inject constructor(
         return game?.let { localSoundtrack(it) }.orEmpty()
     }
 
-    private suspend fun localSoundtrack(game: GameEntity): List<MusicQueueTrack> =
-        gameFileDao.getFilesByCategory(game.id, VariantCategory.SOUNDTRACK.key)
+    private suspend fun localSoundtrack(game: GameEntity): List<MusicQueueTrack> {
+        val cover = gameArtDao.resolved(game.id).coverPath?.takeIf { it.isNotBlank() }
+        return gameFileDao.getFilesByCategory(game.id, VariantCategory.SOUNDTRACK.key)
             .filter { isPlayableLocal(it.localPath, it.durationSeconds) }
             .sortedWith(compareBy({ it.trackNumber ?: Int.MAX_VALUE }, { it.fileName }))
             .mapNotNull { row ->
@@ -75,9 +79,10 @@ class ResolveMusicQueueUseCase @Inject constructor(
                     source = MusicTrackSource.Local(path),
                     title = row.trackTitle?.takeIf { it.isNotBlank() } ?: row.fileName.substringBeforeLast('.'),
                     gameTitle = game.title,
-                    coverPath = game.coverPath?.takeIf { it.isNotBlank() }
+                    coverPath = cover
                 )
             }
+    }
 
     private suspend fun List<RomMMusicTrack>.toQueue(
         token: String?,
@@ -90,7 +95,9 @@ class ResolveMusicQueueUseCase @Inject constructor(
                 ?: remoteSource(track.streamUrl, token)
                 ?: return@mapNotNull null
             val localCover = localCovers.getOrPut(track.romId) {
-                gameDao.getByRommId(track.romId)?.coverPath?.takeIf { it.isNotBlank() }
+                gameDao.getByRommId(track.romId)
+                    ?.let { gameArtDao.resolved(it.id).coverPath }
+                    ?.takeIf { it.isNotBlank() }
             }
             MusicQueueTrack(
                 id = serverTrackId(track.romFileId),

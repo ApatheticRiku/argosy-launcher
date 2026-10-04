@@ -41,7 +41,7 @@ class StoragePlatformGamesDelegate @Inject constructor(
         if (platformId < 0) return
         scope.launch {
             val games = breakdownUseCase.loadPlatform(platformId)
-            val covers = gameRepository.getByIds(games.map { it.gameId }).associate { it.id to it.displayCoverPath }
+            val covers = gameRepository.getArt(games.map { it.gameId }).mapValues { (_, art) -> art.coverPath }
             _state.update {
                 it.copy(
                     isLoading = false,

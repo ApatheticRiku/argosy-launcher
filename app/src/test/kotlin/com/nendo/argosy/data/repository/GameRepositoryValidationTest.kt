@@ -70,7 +70,8 @@ class GameRepositoryValidationTest {
             preferencesRepository = mockk(relaxed = true),
             fileAccessLayer = fal,
             volumeHealth = volumeHealth,
-            attributionRepository = mockk(relaxed = true)
+            attributionRepository = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true)
         )
     }
 

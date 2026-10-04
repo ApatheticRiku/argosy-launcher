@@ -1,13 +1,12 @@
 package com.nendo.argosy.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.model.ResolvedGameArt
 import java.io.File
 
 val LocalImageCacheManager = staticCompositionLocalOf<ImageCacheManager?> { null }
@@ -37,21 +36,22 @@ fun fileImageModel(path: String?): Any? = when {
     else -> path
 }
 
+/**
+ * [gameId]'s live art from the image cache's art model, or null before the model knows the game.
+ * Updates as the art is cached or overridden without touching any `games` query.
+ */
 @Composable
-fun rememberResolvedCoverPath(gameId: Long, source: String?): String? {
-    val manager = LocalImageCacheManager.current
-    var resolved by remember(gameId, source) { mutableStateOf(source) }
-
-    LaunchedEffect(gameId, source) {
-        if (manager == null || source.isNullOrBlank()) return@LaunchedEffect
-        if (source.startsWith("/")) return@LaunchedEffect
-        manager.queueCoverCacheByGameId(source, gameId)
-        manager.localCoverWritten.collect { (id, localPath) ->
-            if (id == gameId) {
-                resolved = localPath
-            }
-        }
-    }
-
-    return resolved
+fun rememberResolvedArt(gameId: Long): ResolvedGameArt? {
+    val manager = LocalImageCacheManager.current ?: return null
+    val flow = remember(manager, gameId) { manager.observeArt(gameId) }
+    val art by flow.collectAsState(initial = manager.artFor(gameId))
+    return art
 }
+
+@Composable
+fun rememberResolvedCoverPath(gameId: Long, fallback: String?): String? =
+    rememberResolvedArt(gameId)?.coverPath ?: fallback
+
+@Composable
+fun rememberResolvedBackgroundPath(gameId: Long, fallback: String?): String? =
+    rememberResolvedArt(gameId)?.backgroundPath ?: fallback

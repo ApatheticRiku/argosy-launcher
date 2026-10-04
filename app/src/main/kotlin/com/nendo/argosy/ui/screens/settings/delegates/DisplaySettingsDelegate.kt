@@ -44,6 +44,8 @@ import com.nendo.argosy.domain.model.CustomGridConfig
 import com.nendo.argosy.domain.model.CustomGridLayout
 import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.ui.screens.settings.DisplayState
+import com.nendo.argosy.ui.screens.settings.SettingsPreviewGame
+import com.nendo.argosy.ui.screens.settings.toSettingsPreviewGame
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -74,8 +76,8 @@ class DisplaySettingsDelegate @Inject constructor(
     private val _openBackgroundPickerEvent = MutableSharedFlow<Unit>()
     val openBackgroundPickerEvent: SharedFlow<Unit> = _openBackgroundPickerEvent.asSharedFlow()
 
-    private val _previewGame = MutableStateFlow<GameListItem?>(null)
-    val previewGame: StateFlow<GameListItem?> = _previewGame.asStateFlow()
+    private val _previewGame = MutableStateFlow<SettingsPreviewGame?>(null)
+    val previewGame: StateFlow<SettingsPreviewGame?> = _previewGame.asStateFlow()
 
     private val colorCount = 7
     private var _colorFocusIndex = 0
@@ -83,16 +85,22 @@ class DisplaySettingsDelegate @Inject constructor(
 
     fun loadPreviewGame(scope: CoroutineScope) {
         scope.launch {
-            _previewGame.value = gameRepository.getFirstGameWithCover()
+            val first = gameRepository.getFirstGameWithCover()
+            _previewGame.value = first?.let { listOf(it).toPreviewGames().firstOrNull() }
         }
     }
 
-    suspend fun loadPreviewGames(platformSlugs: Set<String>? = null): List<GameListItem> {
+    suspend fun loadPreviewGames(platformSlugs: Set<String>? = null): List<SettingsPreviewGame> {
         if (platformSlugs != null && platformSlugs.isNotEmpty()) {
             val filtered = gameRepository.getRecentlyPlayedOnPlatforms(platformSlugs.toList(), 10)
-            if (filtered.isNotEmpty()) return filtered
+            if (filtered.isNotEmpty()) return filtered.toPreviewGames()
         }
-        return gameRepository.getRecentlyPlayedWithCovers(10)
+        return gameRepository.getRecentlyPlayedWithCovers(10).toPreviewGames()
+    }
+
+    private suspend fun List<GameListItem>.toPreviewGames(): List<SettingsPreviewGame> {
+        val art = gameRepository.getArt(map { it.id })
+        return map { it.toSettingsPreviewGame(art[it.id]?.coverPath) }
     }
 
     suspend fun getFirstCachedScreenshot(gameId: Long): String? {

@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.repository
 
+import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.CollectionDao
 import com.nendo.argosy.data.local.dao.CollectionStats
 import com.nendo.argosy.data.local.entity.CollectionEntity
@@ -27,13 +28,10 @@ data class CollectionOverview(
     val coverPathsById: Map<Long, List<String>>
 )
 
-/**
- * Every collection with its local game count and first covers, read once for all collection
- * screens and kept for a minute after the last one leaves, so returning to them is immediate.
- */
 @Singleton
 class CollectionOverviewSource @Inject constructor(
-    collectionDao: CollectionDao
+    collectionDao: CollectionDao,
+    imageCacheManager: ImageCacheManager
 ) {
     private val scope = SafeCoroutineScope(Dispatchers.IO, "CollectionOverview")
 
@@ -41,12 +39,15 @@ class CollectionOverviewSource @Inject constructor(
     val overview: Flow<CollectionOverview> = combine(
         collectionDao.observeByTypes(CollectionType.entries),
         collectionDao.observeLocalCollectionStats(),
-        collectionDao.observeLocalCoverPaths(OVERVIEW_COVER_LIMIT)
-    ) { collections, stats, covers ->
+        collectionDao.observeLocalCoverGameIds(OVERVIEW_COVER_LIMIT),
+        imageCacheManager.gameArt
+    ) { collections, stats, coverGames, art ->
         CollectionOverview(
             collections = collections,
             statsById = stats.associateBy { it.collectionId },
-            coverPathsById = covers.groupBy({ it.collectionId }, { it.coverPath })
+            coverPathsById = coverGames
+                .mapNotNull { row -> art[row.gameId]?.coverPath?.let { row.collectionId to it } }
+                .groupBy({ it.first }, { it.second })
         )
     }
         .debounce(OVERVIEW_SETTLE_MS)

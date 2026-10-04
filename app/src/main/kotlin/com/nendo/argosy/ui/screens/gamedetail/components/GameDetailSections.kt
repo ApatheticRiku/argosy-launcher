@@ -105,7 +105,9 @@ fun GameHeader(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXl)
     ) {
         AsyncImage(
-            model = rememberFileImageModel(game.coverPath),
+            model = rememberFileImageModel(
+                com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath)
+            ),
             contentDescription = game.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier

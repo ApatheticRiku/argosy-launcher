@@ -672,6 +672,7 @@ class GameDetailViewModel @Inject constructor(
             downloadDelegate.updateDownloadSize(downloadSizeBytes)
 
             val isHiddenForOwner = gameRepository.isGameHidden(gameId)
+            val art = gameRepository.getArt(gameId)
 
             val isPrivate = game.igdbId != null &&
                 game.igdbId.toInt() in socialRepository.hiddenGameIds.value
@@ -685,6 +686,7 @@ class GameDetailViewModel @Inject constructor(
             _uiState.update { state ->
                 state.copy(
                     game = game.toGameDetailUi(
+                        art = art,
                         platformName = platform?.name
                             ?: context.getString(R.string.gamedetail_header_platform_unknown),
                         emulatorName = emulatorName,
@@ -1977,7 +1979,7 @@ class GameDetailViewModel @Inject constructor(
                 category = file.category,
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
-                coverPath = game.displayCoverPath,
+                coverPath = gameRepository.getArt(game.id).coverPath,
                 expectedSizeBytes = file.fileSize,
                 gameFolderName = game.rommFileName
             )
@@ -2136,8 +2138,9 @@ class GameDetailViewModel @Inject constructor(
             val platformNames = related.map { it.platformId }.distinct()
                 .mapNotNull { pid -> platformRepository.getById(pid)?.let { pid to it.name } }
                 .toMap()
+            val art = gameRepository.getArt(related.map { it.id })
             val ui = related.map { item ->
-                val mapped = item.toHomeGameUi(downloadFileStatusRepository, platformNames[item.platformId])
+                val mapped = item.toHomeGameUi(downloadFileStatusRepository, art[item.id], platformNames[item.platformId])
                 gradientExtractionDelegate.getGradient(mapped.id)
                     ?.let { mapped.copy(gradientColors = it) } ?: mapped
             }
@@ -2145,7 +2148,7 @@ class GameDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(relatedGames = ui, relatedFocusIndex = 0) }
             }
             val requests = related.map {
-                com.nendo.argosy.ui.screens.common.GameGradientRequest(it.id, it.coverPath)
+                com.nendo.argosy.ui.screens.common.GameGradientRequest(it.id, art[it.id]?.coverPath)
             }
             gradientExtractionDelegate.extractForVisibleGames(
                 viewModelScope, requests, focusedIndex = 0, buffer = requests.size

@@ -3,6 +3,7 @@ package com.nendo.argosy.data.repository
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.getByIdsChunked
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SaveSyncDao
@@ -55,7 +56,8 @@ class SaveSyncOrchestrator @Inject constructor(
     private val saveAccessNotices: SaveAccessNotices,
     private val saveOwnershipTracker: SaveOwnershipTracker,
     private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
-    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer
+    private val fileAccessLayer: com.nendo.argosy.data.storage.FileAccessLayer,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     sealed interface RefreshOutcome {
         data object Dirtied : RefreshOutcome
@@ -499,7 +501,7 @@ class SaveSyncOrchestrator @Inject constructor(
                 SyncOperation(
                     gameId = entity.gameId,
                     gameName = game.title,
-                    coverPath = game.displayCoverPath,
+                    coverPath = gameArtDao.resolved(entity.gameId).coverPath,
                     direction = SyncDirection.DOWNLOAD,
                     status = SyncStatus.PENDING
                 )

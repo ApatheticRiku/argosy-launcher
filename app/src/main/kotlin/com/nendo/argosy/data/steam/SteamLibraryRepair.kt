@@ -1,7 +1,10 @@
 package com.nendo.argosy.data.steam
 
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.cache.recordArtSource
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.remote.steam.SteamBrowseAssets
 import com.nendo.argosy.data.remote.steam.SteamStoreBrowseApi
@@ -19,6 +22,7 @@ import javax.inject.Singleton
 @Singleton
 class SteamLibraryRepair @Inject constructor(
     private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao,
     private val imageCacheManager: ImageCacheManager
 ) {
     private val api: SteamStoreBrowseApi by lazy {
@@ -51,12 +55,17 @@ class SteamLibraryRepair @Inject constructor(
         for (game in uncached) {
             val appId = game.steamAppId ?: continue
             val art = assets[appId]
+            val stored = gameArtDao.getForGame(game.id).associateBy { it.slot }
+            val storedCover = stored[ArtSlot.COVER.name]?.sourceUrl
             val cover = art?.let { assetUrl(it, it.libraryCapsule) }
+                ?: storedCover
+                ?: "$STEAM_CDN/$appId/library_600x900.jpg"
             val hero = art?.let { assetUrl(it, it.libraryHero) }
-            if (cover != null && cover != game.coverPath) gameDao.updateCoverPath(game.id, cover)
-            if (hero != null && hero != game.backgroundPath) gameDao.updateBackgroundPath(game.id, hero)
-            val candidates = listOfNotNull(cover, game.coverPath?.takeIf { it.startsWith("http") }).distinct()
-            if (candidates.isNotEmpty()) imageCacheManager.queueCoverCacheByGameId(candidates, game.id)
+            val coverCandidates = listOfNotNull(cover, storedCover).distinct()
+            recordArtSource(gameArtDao, imageCacheManager, game.id, ArtSlot.COVER, coverCandidates, game.title, steamAppId = appId)
+            if (hero != null) {
+                recordArtSource(gameArtDao, imageCacheManager, game.id, ArtSlot.BACKGROUND, listOf(hero), game.title, steamAppId = appId)
+            }
         }
         Logger.info(TAG, "repairCovers: re-queued ${uncached.size} covers, ${assets.size} resolved from the store")
     }
@@ -84,6 +93,7 @@ class SteamLibraryRepair @Inject constructor(
         const val TAG = "SteamLibraryRepair"
         const val STEAM_WEB_API = "https://api.steampowered.com/"
         const val STEAM_ASSET_HOST = "https://shared.akamai.steamstatic.com/store_item_assets/"
+        const val STEAM_CDN = "https://steamcdn-a.akamaihd.net/steam/apps"
         const val BATCH_SIZE = 50
     }
 }

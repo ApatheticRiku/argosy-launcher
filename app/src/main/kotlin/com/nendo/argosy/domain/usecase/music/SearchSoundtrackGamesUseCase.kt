@@ -1,8 +1,11 @@
 package com.nendo.argosy.domain.usecase.music
 
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
 import com.nendo.argosy.data.local.dao.PlatformDao
+import com.nendo.argosy.data.local.dao.resolved
+import com.nendo.argosy.data.local.dao.resolvedFor
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.remote.romm.RomMMusicGame
 import com.nendo.argosy.data.remote.romm.RomMMusicLibraryService
@@ -20,7 +23,8 @@ class SearchSoundtrackGamesUseCase @Inject constructor(
     private val musicLibrary: RomMMusicLibraryService,
     private val gameFileDao: GameFileDao,
     private val gameDao: GameDao,
-    private val platformDao: PlatformDao
+    private val platformDao: PlatformDao,
+    private val gameArtDao: GameArtDao
 ) {
     suspend operator fun invoke(query: String?, offset: Int, limit: Int): SoundtrackGamePage =
         withContext(Dispatchers.IO) {
@@ -44,7 +48,7 @@ class SearchSoundtrackGamesUseCase @Inject constructor(
 
     private suspend fun RomMMusicGame.toEntry(): SoundtrackGameEntry {
         val localGame = gameDao.getByRommId(romId)
-        val localCover = localGame?.coverPath?.takeIf { it.isNotBlank() }
+        val localCover = localGame?.let { gameArtDao.resolved(it.id).coverPath }?.takeIf { it.isNotBlank() }
         return SoundtrackGameEntry(
             selection = MusicSelection.GameSoundtrack(romId = romId, gameId = localGame?.id, title = name),
             platformName = platformName,
@@ -68,6 +72,7 @@ class SearchSoundtrackGamesUseCase @Inject constructor(
         val entries = if (countsByGame.isEmpty()) {
             emptyList()
         } else {
+            val art = gameArtDao.resolvedFor(countsByGame.keys)
             gameDao.getByIds(countsByGame.keys.toList())
                 .filter { search == null || it.title.contains(search, ignoreCase = true) }
                 .sortedBy { it.title.lowercase() }
@@ -79,7 +84,7 @@ class SearchSoundtrackGamesUseCase @Inject constructor(
                             title = game.title
                         ),
                         platformName = platformDao.getById(game.platformId)?.name,
-                        coverPath = game.coverPath?.takeIf { it.isNotBlank() },
+                        coverPath = art[game.id]?.coverPath?.takeIf { it.isNotBlank() },
                         trackCount = countsByGame[game.id] ?: 0
                     )
                 }

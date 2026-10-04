@@ -1173,7 +1173,8 @@ private fun LibraryMasonryGrid(
                     span = StaggeredGridItemSpan.SingleLane
                 ) {
                     val isFocused = gridItem.gameIndex == uiState.focusedIndex
-                    val coverPath = uiState.repairedCoverPaths[gridItem.game.id] ?: gridItem.game.coverPath
+                    val coverPath = uiState.repairedCoverPaths[gridItem.game.id]
+                        ?: com.nendo.argosy.ui.common.rememberResolvedCoverPath(gridItem.game.id, gridItem.game.coverPath)
                     val ratio = rememberCoverAspectRatio(coverPath, fallbackAspectRatio)
                     LibraryGameCard(
                         game = gridItem.game,

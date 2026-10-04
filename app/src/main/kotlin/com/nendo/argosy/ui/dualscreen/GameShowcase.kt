@@ -104,6 +104,27 @@ fun GameShowcase(
     bottomInset: Dp,
     modifier: Modifier = Modifier
 ) {
+    val art = detail.gameId?.let { com.nendo.argosy.ui.common.rememberResolvedArt(it) }
+    val liveDetail = remember(detail, art) { detail.withLiveArt(art) }
+    GameShowcaseContent(liveDetail, style, bottomInset, modifier)
+}
+
+private fun CompanionDetail.withLiveArt(art: com.nendo.argosy.data.model.ResolvedGameArt?): CompanionDetail {
+    if (art == null) return this
+    return copy(
+        artUrl = art.coverPath ?: artUrl,
+        backdropUrl = art.backgroundPath ?: backdropUrl,
+        logoUrl = art.logoPath?.takeIf { it.startsWith("/") } ?: logoUrl
+    )
+}
+
+@Composable
+private fun GameShowcaseContent(
+    detail: CompanionDetail,
+    style: PresentationStyle,
+    bottomInset: Dp,
+    modifier: Modifier
+) {
     val contentBottom = bottomInset + Dimens.spacingMd
     val theme = LocalArgosyTheme.current
     val friends = detail.stats?.friends.orEmpty().takeIf { style.shows(PresentationStat.FRIENDS) }.orEmpty()

@@ -491,10 +491,12 @@ fun HomeScreen(
 
     val effectiveBackgroundPath = if (uiState.useGameBackground) {
         uiState.focusedGame?.let { game ->
+            val background = com.nendo.argosy.ui.common.rememberResolvedBackgroundPath(game.id, game.backgroundPath)
+            val cover = com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath)
             when {
-                game.backgroundPath?.startsWith("/") == true -> game.backgroundPath
-                game.coverPath?.startsWith("/") == true -> game.coverPath
-                else -> game.backgroundPath ?: game.coverPath
+                background?.startsWith("/") == true -> background
+                cover?.startsWith("/") == true -> cover
+                else -> background ?: cover
             }
         }
     } else {
