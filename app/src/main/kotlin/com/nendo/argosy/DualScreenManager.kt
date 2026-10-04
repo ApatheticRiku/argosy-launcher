@@ -2370,9 +2370,8 @@ class DualScreenManager(
             }
         }
 
-    private val keyguardManager: KeyguardManager? = appContext.getSystemService(KeyguardManager::class.java)
-
-    private fun isKeyguardLocked(): Boolean = keyguardManager?.isKeyguardLocked == true
+    private fun isKeyguardLocked(): Boolean =
+        (appContext.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager)?.isKeyguardLocked == true
 
     private val userPresentReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
