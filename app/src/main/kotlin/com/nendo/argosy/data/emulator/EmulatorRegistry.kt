@@ -759,6 +759,18 @@ object EmulatorRegistry {
             downloadUrl = "https://play.google.com/store/apps/details?id=com.github.stenzek.duckstation"
         ),
         EmulatorDef(
+            id = "armsx1",
+            packageName = "com.nanodata.armsx",
+            displayName = "ARMSX1",
+            supportedPlatforms = setOf("psx"),
+            launchConfig = LaunchConfig.CustomScheme(
+                scheme = "armsx",
+                authority = ""
+            ),
+            downloadUrl = "https://github.com/ARMSX2/ARMSX1/releases",
+            releaseSource = ReleaseSource.GitHub("ARMSX2/ARMSX1")
+        ),
+        EmulatorDef(
             id = "nethersx2",
             packageName = "xyz.aethersx2.android",
             displayName = "NetherSX2",
@@ -1040,6 +1052,31 @@ object EmulatorRegistry {
             ),
             downloadUrl = "https://play.google.com/store/apps/details?id=aenu.aps3e"
         ),
+        EmulatorDef(
+            id = "armsx3",
+            packageName = "com.armsx3",
+            displayName = "ARMSX3",
+            supportedPlatforms = setOf("ps3"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.armsx2.BootSplashActivity",
+                intentExtras = mapOf("path" to ExtraValue.FilePath)
+            ),
+            downloadUrl = "https://github.com/ARMSX2/ARMSX3/releases",
+            releaseSource = ReleaseSource.GitHub("ARMSX2/ARMSX3")
+        ),
+        EmulatorDef(
+            id = "armsx3_play",
+            packageName = "com.armsx3.play",
+            displayName = "ARMSX3 (Play Store)",
+            supportedPlatforms = setOf("ps3"),
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.armsx2.BootSplashActivity",
+                intentExtras = mapOf("path" to ExtraValue.FilePath)
+            ),
+            downloadUrl = "https://play.google.com/store/apps/details?id=com.armsx3.play"
+        ),
 
         // Steam launchers
         EmulatorDef(
@@ -1108,7 +1145,7 @@ object EmulatorRegistry {
     fun getRecommendedEmulators(): Map<String, List<String>> = recommendedEmulators
 
     private val recommendedEmulators: Map<String, List<String>> = mapOf(
-        "psx" to listOf(BUILTIN_ID, "duckstation", "retroarch", "retroarch_64", "retroarch_32"),
+        "psx" to listOf(BUILTIN_ID, "duckstation", "armsx1", "retroarch", "retroarch_64", "retroarch_32"),
         "ps2" to listOf("nethersx2", "armsx2_refresh", "armsx2", "psx2", "pcsx2"),
         "psp" to listOf(
             BUILTIN_ID, "ppsspp", "ppsspp_gold", "ppsspp_legacy", "retroarch", "retroarch_64", "retroarch_32"
@@ -1150,7 +1187,7 @@ object EmulatorRegistry {
         "neogeo" to listOf("fbalpha", "retroarch", "retroarch_64", "retroarch_32"),
         "dos" to listOf("magic_dosbox", "dosbox_turbo"),
         "scummvm" to listOf("scummvm", "retroarch", "retroarch_64", "retroarch_32"),
-        "ps3" to listOf("aps3e"),
+        "ps3" to listOf("armsx3", "armsx3_play", "aps3e"),
         "atari2600" to listOf(BUILTIN_ID, "retroarch", "retroarch_64", "retroarch_32"),
         "lynx" to listOf("retroarch", "retroarch_64", "retroarch_32"),
         "tg16" to listOf(BUILTIN_ID, "retroarch", "retroarch_64", "retroarch_32"),

@@ -248,6 +248,19 @@ The user segment is hardcoded to `00000001` in aPS3e, so the config names it.
 Desktop RPCS3 can hold several, so a desktop path added later has to discover
 that level rather than inherit this constant.
 
+ARMSX3 bases (`com.armsx3` GitHub build, `com.armsx3.play` Play build):
+
+```
+{extStorage}/Android/data/com.armsx3/files/config/dev_hdd0/home/00000001/savedata
+{extStorage}/Android/data/com.armsx3.play/files/config/dev_hdd0/home/00000001/savedata
+```
+
+ARMSX3 also passes user `00000001` (`Rpcs3Bridge.kt` in ARMSX2/ARMSX3), and its
+root defaults to `getExternalFilesDir`. A root moved to the SD card or a custom
+folder in its onboarding needs the user's save path set to match. Saves are
+written to `.working_<dir>` and renamed into place, so dot-prefixed siblings are
+transient.
+
 ### Xbox 360 (`Xbox360FolderHandler`)
 
 `save_id` is 8-hex uppercase (`4D5307DC`), `FOLDER_EXACT`, but it is *not* the

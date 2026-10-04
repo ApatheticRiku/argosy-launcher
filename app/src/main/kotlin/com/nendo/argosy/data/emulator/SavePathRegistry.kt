@@ -523,6 +523,22 @@ object SavePathRegistry {
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true
         ),
+        "armsx3" to SavePathConfig(
+            emulatorId = "armsx3",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/com.armsx3/files/config/dev_hdd0/home/00000001/savedata"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true
+        ),
+        "armsx3_play" to SavePathConfig(
+            emulatorId = "armsx3_play",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/com.armsx3.play/files/config/dev_hdd0/home/00000001/savedata"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true
+        ),
 
         /**
          * Xbox 360 - content is keyed by profile before title, so the base stops at `content` and
@@ -748,6 +764,8 @@ object SavePathRegistry {
         "org.vita3k.emulator.ikhoeyZX" to "vita3k-zx",
         "com.github.stenzek.duckstation" to "duckstation",
         "aenu.aps3e" to "aps3e",
+        "com.armsx3" to "armsx3",
+        "com.armsx3.play" to "armsx3_play",
         "xendroid.compose" to "xendroid",
         "com.rfandango.haku_x" to "hakux"
     )
