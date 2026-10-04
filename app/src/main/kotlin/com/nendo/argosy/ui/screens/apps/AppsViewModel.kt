@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.view.Display
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.DualScreenManagerHolder
@@ -415,12 +416,9 @@ class AppsViewModel @Inject constructor(
             return
         }
         if (state.hasSecondaryDisplay) {
-            val dsm = DualScreenManagerHolder.instance
-            val presentation = displayAffinityHelper
-                .getRoleDisplayIds(dsm?.isRolesSwapped?.value == true)
-                ?.second
+            val topDisplay = displayAffinityHelper.dockedDisplayId ?: Display.DEFAULT_DISPLAY
             state.focusedApp?.let {
-                launchApp(it.packageName, overrideDisplayId = presentation)
+                launchApp(it.packageName, overrideDisplayId = topDisplay)
             }
         } else {
             enterReorderMode()
