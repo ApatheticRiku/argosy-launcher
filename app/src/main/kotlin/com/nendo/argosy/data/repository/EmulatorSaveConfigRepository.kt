@@ -1,8 +1,10 @@
 package com.nendo.argosy.data.repository
 
 import com.nendo.argosy.data.emulator.EmulatorRegistry
+import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity
+import java.io.File
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,6 +15,22 @@ class EmulatorSaveConfigRepository @Inject constructor(
 ) {
     suspend fun getByEmulator(emulatorId: String): EmulatorSaveConfigEntity? =
         emulatorSaveConfigDao.getByEmulator(emulatorId)
+
+    /**
+     * The ROM's folder when [config]'s saves live beside the ROM: the user switched that on, or
+     * the emulator saves there by default and the user has chosen no folder of their own.
+     */
+    suspend fun besideRomDir(config: SavePathConfig, platformSlug: String?, romPath: String?): String? {
+        if (romPath == null || !savesBesideRom(config, platformSlug)) return null
+        return File(romPath).parent
+    }
+
+    suspend fun savesBesideRom(config: SavePathConfig, platformSlug: String?): Boolean {
+        if (emulatorSaveConfigDao.getByEmulator(config.emulatorId)?.savesBesideRom == true) return true
+        return config.savesBesideRom &&
+            (config.emulatorId == EmulatorRegistry.BUILTIN_ID ||
+                resolveUserSavePath(config.emulatorId, platformSlug) == null)
+    }
 
     /**
      * The save path a user set for [emulatorId], falling back to one they set for a sibling

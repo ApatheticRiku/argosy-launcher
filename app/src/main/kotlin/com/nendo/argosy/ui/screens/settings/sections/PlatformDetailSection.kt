@@ -585,11 +585,13 @@ fun PlatformDetailSection(
                     val hasOverride = storageConfig?.isUserSavePathOverride == true
                     val canReset = storageConfig?.canResetSavePath == true
                     val isBuiltinEmulator = config.effectiveEmulatorId == EmulatorRegistry.BUILTIN_ID
+                    val besideRom = config.savesBesideRom && !hasOverride
                     val accessBlocked = !isBuiltinEmulator && !config.effectiveEmulatorIsRetroArch &&
-                        detail.packagePathAccess == PackageDataAccess.BLOCKED && !hasOverride
+                        detail.packagePathAccess == PackageDataAccess.BLOCKED && !hasOverride && !besideRom
                     ActionPreference(
                         title = stringResource(R.string.settings_platform_save_path_title),
                         subtitle = when {
+                            besideRom -> formatPath(context, storageConfig?.effectivePath)
                             accessBlocked ->
                                 stringResource(R.string.settings_platform_save_path_blocked)
                             config.effectiveEmulatorIsRetroArch -> retroArchPathSubtitle(

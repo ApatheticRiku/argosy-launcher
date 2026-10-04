@@ -139,7 +139,7 @@ class SavePathResolver @Inject constructor(
             com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(effectiveEmulatorId)
         val candidates = buildList {
             perGameSaveDir(gameId, config, platformSlug)?.let { add(it) }
-            besideRomDir(config, userConfig, romPath)?.let { add(it) }
+            besideRomDir(config, romPath, platformSlug)?.let { add(it) }
             userBaseOverride(effectiveEmulatorId, platformSlug)?.let { add(it) }
             gameId?.let { emulatorConfigDao.getSelectedMemcardForGame(it) }?.let { add(it) }
             userConfig?.selectedMemcardPath?.let { add(it) }
@@ -166,15 +166,8 @@ class SavePathResolver @Inject constructor(
         unreadable
     }
 
-    private fun besideRomDir(
-        config: SavePathConfig,
-        userConfig: com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity?,
-        romPath: String?
-    ): String? {
-        if (romPath == null) return null
-        if (!config.savesBesideRom && userConfig?.savesBesideRom != true) return null
-        return File(romPath).parent
-    }
+    private suspend fun besideRomDir(config: SavePathConfig, romPath: String?, platformSlug: String?): String? =
+        emulatorSaveConfigRepository.besideRomDir(config, platformSlug, romPath)
 
     private fun isUnreadableDir(path: String): Boolean =
         fal.exists(path) && fal.isDirectory(path) && fal.listFiles(path) == null
@@ -251,7 +244,7 @@ class SavePathResolver @Inject constructor(
         val userConfig = emulatorSaveConfigDao.getByEmulator(effectiveEmulatorId)
         val isRetroArch =
             com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(effectiveEmulatorId)
-        val besideRomBaseDir = besideRomDir(config, userConfig, romPath)
+        val besideRomBaseDir = besideRomDir(config, romPath, platformSlug)
         val overrideBaseDir = besideRomBaseDir ?: userBaseOverride(effectiveEmulatorId, platformSlug)
         val savePathOverrideForLog = overrideBaseDir
         val effectiveMemcard =
@@ -870,8 +863,7 @@ class SavePathResolver @Inject constructor(
             return constructRetroArchSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName)
         }
 
-        val userConfig = emulatorSaveConfigDao.getByEmulator(config.emulatorId)
-        val besideRomDir = besideRomDir(config, userConfig, romPath)
+        val besideRomDir = besideRomDir(config, romPath, platformSlug)
         val overridePath = besideRomDir ?: userBaseOverride(config.emulatorId, platformSlug)
         val baseDir = if (overridePath != null) {
             if (directoryExists(overridePath) || saveArchiver.getFileForPath(overridePath).mkdirs()) {

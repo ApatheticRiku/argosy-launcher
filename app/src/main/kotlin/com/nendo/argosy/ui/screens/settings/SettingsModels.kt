@@ -168,6 +168,7 @@ data class PlatformEmulatorConfig(
     val effectiveEmulatorPackage: String? = null,
     val effectiveEmulatorName: String? = null,
     val effectiveSavePath: String? = null,
+    val savesBesideRom: Boolean = false,
     val isUserSavePathOverride: Boolean = false,
     val isEvaluatedSavePath: Boolean = false,
     val isFallbackSavePath: Boolean = false,

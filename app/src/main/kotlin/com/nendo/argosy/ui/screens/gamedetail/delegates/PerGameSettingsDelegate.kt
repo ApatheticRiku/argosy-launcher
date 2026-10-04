@@ -281,9 +281,12 @@ class PerGameSettingsDelegate @Inject constructor(
         val perGamePath = emulatorConfigDao.getSavePathForGame(gameId)?.takeIf { it.isNotBlank() }
         val isRetroArch = emulatorDef?.launchConfig is LaunchConfig.RetroArch
         val userSaveConfig = saveConfig?.let { emulatorSaveConfigRepository.getByEmulator(it.emulatorId) }
+        val besideRomDir = saveConfig?.takeIf { !isRetroArch }
+            ?.let { emulatorSaveConfigRepository.besideRomDir(it, game.platformSlug, game.localPath) }
         val savePath = when {
             !showSavePathRow || saveConfig == null -> null
             perGamePath != null -> perGamePath
+            besideRomDir != null -> besideRomDir
             isRetroArch -> {
                 val request = RetroArchPathResolver.Request(
                     emulatorId = effectiveEmulatorId ?: saveConfig.emulatorId,

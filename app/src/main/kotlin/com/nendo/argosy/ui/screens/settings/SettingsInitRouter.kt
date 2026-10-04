@@ -452,6 +452,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 else -> savePathResolution?.basePath
             }
 
+            val savesBesideRom = savePathConfig != null && retroArchSave == null &&
+                vm.emulatorDelegate.savesBesideRom(savePathConfig, platform.slug)
+
             val extensionOptions = EmulatorRegistry.getExtensionOptionsForPlatform(platform.slug)
             val selectedExtension = vm.emulatorDelegate.getPreferredExtension(platform.id)
 
@@ -469,6 +472,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 effectiveEmulatorPackage = effectiveEmulatorDef?.packageName ?: adHocConfig?.packageName,
                 effectiveEmulatorName = effectiveEmulatorDef?.displayName ?: adHocConfig?.displayName,
                 effectiveSavePath = effectiveSavePath,
+                savesBesideRom = savesBesideRom,
                 isUserSavePathOverride = isUserSavePathOverride,
                 isEvaluatedSavePath = savePathResolution?.isEvaluatedDefault == true,
                 isFallbackSavePath = savePathResolution?.isFallbackDefault == true,
