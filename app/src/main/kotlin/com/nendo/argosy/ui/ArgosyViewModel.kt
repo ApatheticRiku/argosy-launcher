@@ -648,6 +648,11 @@ class ArgosyViewModel @Inject constructor(
         override fun onDown(): InputResult =
             moveWrappedFocus(_navFocusIndex, 1, drawerNavLastIndex, uiState.value.menuWrapMode)
 
+        override fun onRight(): InputResult {
+            onDismiss()
+            return InputResult.handled(SoundType.CLOSE_MODAL)
+        }
+
         override fun onConfirm(): InputResult {
             val currentIndex = _navFocusIndex.value
             if (currentIndex == DRAWER_ACCOUNT_ROW_INDEX) {
