@@ -763,9 +763,10 @@ object EmulatorRegistry {
             packageName = "com.nanodata.armsx",
             displayName = "ARMSX1",
             supportedPlatforms = setOf("psx"),
-            launchConfig = LaunchConfig.CustomScheme(
-                scheme = "armsx",
-                authority = ""
+            launchAction = Intent.ACTION_MAIN,
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "com.armsx2.BootSplashActivity",
+                intentExtras = mapOf("path" to ExtraValue.FilePath)
             ),
             downloadUrl = "https://github.com/ARMSX2/ARMSX1/releases",
             releaseSource = ReleaseSource.GitHub("ARMSX2/ARMSX1")
