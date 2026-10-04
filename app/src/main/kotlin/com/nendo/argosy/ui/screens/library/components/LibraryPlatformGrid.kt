@@ -90,7 +90,7 @@ fun LibraryPlatformGrid(
             start = Dimens.spacingMd,
             end = Dimens.spacingMd,
             top = LibraryPlatformGridHeaderHeight,
-            bottom = Dimens.footerHeight
+            bottom = Dimens.footerClearance
         ),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm),

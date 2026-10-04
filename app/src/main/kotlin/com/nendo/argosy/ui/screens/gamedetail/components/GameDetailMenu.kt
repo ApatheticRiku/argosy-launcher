@@ -160,7 +160,7 @@ fun GameDetailMenu(
 
     LazyColumn(
         state = listState,
-        contentPadding = PaddingValues(bottom = Dimens.footerHeight),
+        contentPadding = PaddingValues(bottom = Dimens.footerClearance),
         modifier = modifier
             .fillMaxHeight()
             .padding(end = if (isCompact) Dimens.spacingXs else Dimens.spacingMd),
