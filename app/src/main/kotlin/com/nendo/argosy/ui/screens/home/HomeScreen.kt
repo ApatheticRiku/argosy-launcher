@@ -176,6 +176,7 @@ fun HomeScreen(
     onNavigateToSettings: (String) -> Unit = {},
     onPlayMedia: (itemId: String, startOver: Boolean) -> Unit = { _, _ -> },
     onMediaSelect: (String) -> Unit = {},
+    isOverlayOpen: Boolean = false,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -400,13 +401,20 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(uiState.focusedGameIndex, uiState.focusedGame?.youtubeVideoId, uiState.videoWallpaperEnabled) {
+    LaunchedEffect(
+        uiState.focusedGameIndex,
+        uiState.focusedGame?.youtubeVideoId,
+        uiState.videoWallpaperEnabled,
+        uiState.showGameMenu,
+        isOverlayOpen
+    ) {
         viewModel.deactivateVideoPreview()
         if (!uiState.videoWallpaperEnabled) return@LaunchedEffect
         if (uiState.layoutKind != HomeLayoutKind.CAROUSEL) return@LaunchedEffect
         val game = uiState.focusedGame ?: return@LaunchedEffect
         val videoId = game.youtubeVideoId ?: return@LaunchedEffect
         val shouldSkip = uiState.showGameMenu ||
+            isOverlayOpen ||
             uiState.discPickerState != null ||
             suppressVideoPreview ||
             videoPlayedForGameId == game.id

@@ -4,6 +4,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -71,8 +73,11 @@ fun NavGraph(
         }
 
         composable(Screen.Home.route) {
+            val isDrawerOpen by argosyViewModel.isDrawerOpen.collectAsState()
+            val isQuickSettingsOpen by argosyViewModel.isQuickSettingsOpen.collectAsState()
             HomeScreen(
                 isDefaultView = true,
+                isOverlayOpen = isDrawerOpen || isQuickSettingsOpen,
                 onNavigateToCollections = { collectionId ->
                     navController.navigate(
                         if (collectionId > 0) {
