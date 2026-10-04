@@ -18,7 +18,6 @@ import com.nendo.argosy.data.repository.DatabaseAdminRepository
 import com.nendo.argosy.data.repository.HardResetBlocker
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.repository.GameRepository
-import com.nendo.argosy.data.storage.ManagedStorageAccessor
 import com.nendo.argosy.domain.usecase.MigratePlatformStorageUseCase
 import com.nendo.argosy.domain.usecase.MigrateStorageUseCase
 import com.nendo.argosy.domain.usecase.PurgePlatformUseCase
@@ -27,8 +26,6 @@ import com.nendo.argosy.libretro.LibretroCoreRegistry
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import com.nendo.argosy.ui.screens.settings.PlatformMigrationInfo
 import com.nendo.argosy.ui.screens.settings.PlatformStorageConfig
 import com.nendo.argosy.ui.screens.settings.StorageState
@@ -62,7 +59,6 @@ class StorageSettingsDelegate @Inject constructor(
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val databaseAdminRepository: DatabaseAdminRepository,
     private val saveCacheRepository: com.nendo.argosy.data.repository.SaveCacheRepository,
-    private val managedStorageAccessor: ManagedStorageAccessor,
     private val notificationManager: NotificationManager
 ) {
     private val _state = MutableStateFlow(StorageState())
@@ -1022,55 +1018,6 @@ class StorageSettingsDelegate @Inject constructor(
                 R.string.notif_storage_hardreset_pending_uploads_many,
                 listOf(named.joinToString(", "))
             )
-        }
-    }
-
-    fun testManagedStorageAccess(scope: CoroutineScope) {
-        scope.launch {
-            withContext(Dispatchers.IO) {
-                Log.i(TAG, "=== Testing ManagedStorageAccessor ===")
-                Log.i(TAG, "Managed access supported: ${managedStorageAccessor.isManagedAccessSupported()}")
-
-                val testPackages = listOf(
-                    "dev.eden.eden_emulator",
-                    "com.retroarch",
-                    "com.retroarch.aarch64"
-                )
-
-                for (pkg in testPackages) {
-                    Log.i(TAG, "--- Testing package: $pkg ---")
-
-                    val exists = managedStorageAccessor.exists(pkg)
-                    Log.i(TAG, "  exists(): $exists")
-
-                    if (exists) {
-                        val files = managedStorageAccessor.listAndroidDataFiles(pkg)
-                        if (files != null) {
-                            Log.i(TAG, "  listAndroidDataFiles(): ${files.size} files")
-                            files.take(5).forEach { file ->
-                                Log.i(TAG, "    - ${file.displayName} (dir=${file.isDirectory}, size=${file.size})")
-                            }
-                            if (files.size > 5) {
-                                Log.i(TAG, "    ... and ${files.size - 5} more")
-                            }
-                        } else {
-                            Log.i(TAG, "  listAndroidDataFiles(): NULL (access denied or not found)")
-                        }
-
-                        val filesSubPath = managedStorageAccessor.listAndroidDataFiles(pkg, "files")
-                        if (filesSubPath != null) {
-                            Log.i(TAG, "  listAndroidDataFiles(files/): ${filesSubPath.size} files")
-                            filesSubPath.take(5).forEach { file ->
-                                Log.i(TAG, "    - ${file.displayName} (dir=${file.isDirectory})")
-                            }
-                        } else {
-                            Log.i(TAG, "  listAndroidDataFiles(files/): NULL")
-                        }
-                    }
-                }
-
-                Log.i(TAG, "=== Test Complete ===")
-            }
         }
     }
 }
