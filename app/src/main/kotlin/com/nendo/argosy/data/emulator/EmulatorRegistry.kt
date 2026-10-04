@@ -601,6 +601,18 @@ object EmulatorRegistry {
             releaseSource = ReleaseSource.Gitea("https://git.eden-emu.dev", "eden-emu/eden")
         ),
         EmulatorDef(
+            id = "lemon",
+            packageName = "dev.lemon.lemon_emulator",
+            displayName = "Lemon",
+            supportedPlatforms = setOf("switch"),
+            launchConfig = LaunchConfig.Custom(
+                activityClass = "dev.lemon.lemon_emu.activities.EmulationActivity",
+            ),
+            defaultLaunchMethod = LaunchMethod.SHELL,
+            downloadUrl = "https://git.lemon-emu.org/lemon/Lemon-Project/releases",
+            releaseSource = ReleaseSource.Gitea("https://git.lemon-emu.org", "lemon/Lemon-Project")
+        ),
+        EmulatorDef(
             id = "strato",
             packageName = "org.stratoemu.strato",
             displayName = "Strato",
@@ -1163,7 +1175,7 @@ object EmulatorRegistry {
         "gc" to listOf("dolphin", "dolphin_handheld", "dolphin_cs", "retroarch", "retroarch_64", "retroarch_32"),
         "wii" to listOf("dolphin", "dolphin_handheld", "dolphin_cs", "retroarch", "retroarch_64", "retroarch_32"),
         "wiiu" to listOf("cemu", "cemu_dualscreen"),
-        "switch" to listOf("eden", "citron", "sudachi", "ryujinx", "yuzu", "strato", "skyline"),
+        "switch" to listOf("eden", "lemon", "citron", "sudachi", "ryujinx", "yuzu", "strato", "skyline"),
         "gba" to listOf(BUILTIN_ID, "pizza_boy_gba_pro", "pizza_boy_gba", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
         "gb" to listOf(BUILTIN_ID, "pizza_boy_gb_pro", "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),
         "gbc" to listOf(BUILTIN_ID, "pizza_boy_gb_pro", "pizza_boy_gb", "linkboy", "retroarch", "retroarch_64", "retroarch_32"),

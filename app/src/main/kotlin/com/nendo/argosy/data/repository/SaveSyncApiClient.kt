@@ -601,7 +601,7 @@ class SaveSyncApiClient @Inject constructor(
         internal val TIMESTAMP_ONLY_PATTERN = Regex("""^\d{4}-\d{2}-\d{2}[_-]\d{2}[_-]\d{2}[_-]\d{2}$""")
         internal val ROMM_TIMESTAMP_TAG = Regex("""^\[\d{4}-\d{2}-\d{2}[ _]\d{2}-\d{2}-\d{2}(-\d+)?\]$""")
         internal val SWITCH_EMULATOR_IDS = setOf(
-            "yuzu", "ryujinx", "citron", "strato", "eden", "sudachi", "skyline"
+            "yuzu", "ryujinx", "citron", "strato", "eden", "lemon", "sudachi", "skyline"
         )
 
         private val DIACRITICS_PATTERN = Regex("\\p{InCombiningDiacriticalMarks}+")

@@ -317,6 +317,15 @@ object SavePathRegistry {
             usesFolderBasedSaves = true,
             usesPackageTemplate = true
         ),
+        "lemon" to SavePathConfig(
+            emulatorId = "lemon",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/{package}/files/nand/user/save"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true,
+            usesPackageTemplate = true
+        ),
         "skyline" to SavePathConfig(
             emulatorId = "skyline",
             defaultPaths = listOf(
@@ -776,6 +785,7 @@ object SavePathRegistry {
         "dev.eden" to "eden",
         "dev.legacy.eden" to "eden",
         "org.eden" to "eden",
+        "dev.lemon" to "lemon",
         "xyz.aethersx2" to "nethersx2",
         "com.armsx2" to "armsx2_refresh",
         "come.nanodata.armsx2" to "armsx2"
