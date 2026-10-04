@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.common.resolve
@@ -44,6 +45,7 @@ import com.nendo.argosy.ui.components.FocusedScroll
 import com.nendo.argosy.ui.components.NavigationPreference
 import com.nendo.argosy.ui.screens.settings.ConnectionStatus
 import com.nendo.argosy.ui.screens.settings.ControlsState
+import com.nendo.argosy.ui.screens.settings.EmulatorState
 import com.nendo.argosy.ui.screens.settings.SettingsSection
 import com.nendo.argosy.ui.screens.settings.SocialAuthStatus
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -363,9 +365,22 @@ fun MainSettingsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
                     title = stringResource(item.titleRes),
                     subtitle = getSubtitle(item),
                     isFocused = isFocused(item),
-                    onClick = { handleClick(item) }
+                    onClick = { handleClick(item) },
+                    badge = updatesBadge(item, uiState.emulators)
                 )
             }
         }
     }
+}
+
+@Composable
+private fun updatesBadge(item: MainSettingsItem, emulators: EmulatorState): String? {
+    val (pluralRes, count) = when (item) {
+        MainSettingsItem.Platforms ->
+            R.plurals.settings_main_platforms_updates_badge to emulators.outdatedEmulatorCount
+        MainSettingsItem.BuiltinEmulator ->
+            R.plurals.settings_main_builtin_updates_badge to emulators.coreUpdatesAvailable
+        else -> return null
+    }
+    return if (count > 0) pluralStringResource(pluralRes, count, count) else null
 }

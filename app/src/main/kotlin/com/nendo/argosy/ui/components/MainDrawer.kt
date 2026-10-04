@@ -93,8 +93,7 @@ fun MainDrawer(
                 items = items,
                 currentRoute = currentRoute,
                 focusedIndex = drawerState.navFocusIndex - DRAWER_NAV_ITEM_OFFSET,
-                downloadCount = drawerState.downloadCount,
-                saveSyncAttentionCount = drawerState.saveSyncAttentionCount,
+                badgeFor = drawerState::badgeCountFor,
                 isRommConnected = drawerState.rommConnected,
                 onNavigate = onNavigate,
                 modifier = Modifier.weight(1f)
@@ -112,8 +111,7 @@ private fun NavigationContent(
     items: List<DrawerItem>,
     currentRoute: String?,
     focusedIndex: Int,
-    downloadCount: Int,
-    saveSyncAttentionCount: Int,
+    badgeFor: (String) -> Int?,
     isRommConnected: Boolean,
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -139,11 +137,7 @@ private fun NavigationContent(
                     )
                 }
 
-                val badge = when {
-                    item.route == Screen.Downloads.route && downloadCount > 0 -> downloadCount
-                    item.route == Screen.SaveSync.route && saveSyncAttentionCount > 0 -> saveSyncAttentionCount
-                    else -> null
-                }
+                val badge = badgeFor(item.route)
 
                 NavDrawerRow(
                     icon = getIconForRoute(item.route),

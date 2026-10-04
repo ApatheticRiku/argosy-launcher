@@ -1249,7 +1249,8 @@ fun ArgosyApp(
                         onInteract = { viewModel.showNavBar() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = Dimens.spacingSm)
+                            .padding(bottom = Dimens.spacingSm),
+                        badgeFor = drawerUiState::badgeCountFor
                     )
                 }
             }

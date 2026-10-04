@@ -3993,3 +3993,9 @@ object Migration_200_201 : Migration(200, 201) {
         db.execSQL("UPDATE `save_sync` SET `channelName` = 'autosave' WHERE $LATEST")
     }
 }
+
+object Migration_201_202 : Migration(201, 202) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE platform_libretro_settings ADD COLUMN preferNewerServerSave INTEGER")
+    }
+}

@@ -1355,6 +1355,14 @@
         <item quantity="one">%d Update</item>
         <item quantity="other">%d Updates</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d Update</item>
+        <item quantity="other">%d Updates</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d Update</item>
+        <item quantity="other">%d Updates</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Core-Optionen</string>
     <string name="settings_builtin_core_options_subtitle">Einstellungen und Overrides je Core</string>
 
@@ -2397,6 +2405,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Gilt nur für Casual-Spiele</string>
     <string name="settings_libretro_def_auto_restore_state_title">Savestate beim Start wiederherstellen</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Gilt nur für Casual-Spiele</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Neueren Server-Spielstand bevorzugen</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Savestate zum automatischen Fortsetzen überspringen, wenn ein neuerer Spielstand vom Server heruntergeladen wurde</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin- und Flycast-Savestates</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Experimentell; diese Cores können schwarz bleiben oder nicht fortsetzen. Wirkt sich erst beim nächsten Start aus, nur Casual-Spiele</string>
 

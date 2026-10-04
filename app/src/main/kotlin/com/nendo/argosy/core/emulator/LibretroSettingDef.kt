@@ -282,6 +282,14 @@ sealed class LibretroSettingDef(
         type = SettingType.Switch
     )
 
+    data object PreferNewerServerSave : LibretroSettingDef(
+        key = "preferNewerServerSave",
+        section = "saving",
+        title = R.string.settings_libretro_def_prefer_newer_server_save_title,
+        subtitle = R.string.settings_libretro_def_prefer_newer_server_save_subtitle,
+        type = SettingType.Switch
+    )
+
     data object HwCoreSaveStates : LibretroSettingDef(
         key = "hwCoreSaveStates",
         section = "saving",
@@ -312,6 +320,7 @@ sealed class LibretroSettingDef(
                 AudioVolume,
                 AutoSaveState,
                 AutoRestoreState,
+                PreferNewerServerSave,
                 HwCoreSaveStates
             )
         }

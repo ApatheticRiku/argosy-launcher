@@ -235,6 +235,13 @@ internal fun routeSetBuiltinAutoRestoreState(vm: SettingsViewModel, enabled: Boo
     }
 }
 
+internal fun routeSetBuiltinPreferNewerServerSave(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(preferNewerServerSave = enabled)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setBuiltinPreferNewerServerSave(enabled)
+    }
+}
+
 internal fun routeSetBuiltinHwCoreSaveStates(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(hwCoreSaveStatesEnabled = enabled)) }
     vm.viewModelScope.launch {
@@ -770,6 +777,7 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
             LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value?.removeSuffix("s")?.toIntOrNull())
             LibretroSettingDef.AutoSaveState -> current.copy(autoSaveState = value?.toBooleanStrictOrNull())
             LibretroSettingDef.AutoRestoreState -> current.copy(autoRestoreState = value?.toBooleanStrictOrNull())
+            LibretroSettingDef.PreferNewerServerSave -> current.copy(preferNewerServerSave = value?.toBooleanStrictOrNull())
             LibretroSettingDef.HwCoreSaveStates -> current.copy(hwCoreSaveStates = value?.toBooleanStrictOrNull())
         }
 
@@ -790,7 +798,7 @@ internal fun routeResetAllPlatformLibretroSettings(vm: SettingsViewModel) {
             overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardEnabled = null, fastForwardSpeed = null,
             rewindEnabled = null, rewindSpeed = null, rewindBufferDuration = null,
             skipDuplicateFrames = null, lowLatencyAudio = null, audioVolume = null, vsync = null,
-            autoSaveState = null, autoRestoreState = null, hwCoreSaveStates = null
+            autoSaveState = null, autoRestoreState = null, preferNewerServerSave = null, hwCoreSaveStates = null
         )
         if (updated.hasAnyOverrides()) {
             vm.libretroSettingsRepo.upsert(updated)

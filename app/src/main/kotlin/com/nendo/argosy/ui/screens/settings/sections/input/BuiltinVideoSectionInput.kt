@@ -178,6 +178,10 @@ internal class BuiltinVideoSectionInput(
             viewModel.setBuiltinAutoRestoreState(!videoState.autoRestoreState)
             InputResult.handled(SoundType.TOGGLE)
         }
+        LibretroSettingDef.PreferNewerServerSave -> {
+            viewModel.setBuiltinPreferNewerServerSave(!videoState.preferNewerServerSave)
+            InputResult.handled(SoundType.TOGGLE)
+        }
         LibretroSettingDef.HwCoreSaveStates -> {
             viewModel.setBuiltinHwCoreSaveStates(!videoState.hwCoreSaveStatesEnabled)
             InputResult.handled(SoundType.TOGGLE)

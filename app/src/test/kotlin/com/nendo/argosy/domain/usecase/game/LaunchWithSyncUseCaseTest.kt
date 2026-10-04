@@ -41,6 +41,9 @@ class LaunchWithSyncUseCaseTest {
     private val saveSyncRepository = mockk<SaveSyncRepository>(relaxed = true)
     private val titleIdDownloadObserver = mockk<TitleIdDownloadObserver>(relaxed = true)
     private val preLaunchStateSyncUseCase = mockk<PreLaunchStateSyncUseCase>(relaxed = true)
+    private val stateCacheManager = mockk<com.nendo.argosy.data.repository.StateCacheManager>(relaxed = true)
+    private val effectiveLibretroSettingsResolver =
+        mockk<com.nendo.argosy.data.preferences.EffectiveLibretroSettingsResolver>(relaxed = true)
 
     private lateinit var useCase: LaunchWithSyncUseCase
 
@@ -75,7 +78,9 @@ class LaunchWithSyncUseCaseTest {
             titleIdDownloadObserver, preLaunchStateSyncUseCase,
             mockk<com.nendo.argosy.data.sync.N3dsSaveCaseRepair>(relaxed = true),
             mockk<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>(relaxed = true),
-            siblingGroupRepository
+            siblingGroupRepository,
+            stateCacheManager,
+            effectiveLibretroSettingsResolver
         )
 
         every { preferencesRepository.userPreferences } returns MutableStateFlow(UserPreferences(saveSyncEnabled = true))
@@ -142,6 +147,87 @@ class LaunchWithSyncUseCaseTest {
         val progress = useCase.invokeWithProgress(gameId).toList()
 
         assertTrue("Expected Launching, got $progress", progress.any { it is SyncProgress.PreLaunch.Launching })
+    }
+
+    private val serverSaveTime = Instant.parse("2025-01-15T12:00:00Z")
+
+    private fun builtinDownloads(result: SaveSyncResult) {
+        every { emulatorResolver.resolveEmulatorId(emulatorPackage) } returns builtinId
+        every { SavePathRegistry.canSyncWithSettings(builtinId, any()) } returns true
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, builtinId, channelName = null, secureSaves = true)
+        } returns PreLaunchSyncResult.ServerIsNewer(serverSaveTime, "autosave", 42L)
+        coEvery { saveSyncRepository.downloadSave(gameId, builtinId, "autosave", knownServerSaveId = 42L) } returns result
+    }
+
+    private fun builtinSettings(autoRestore: Boolean, preferServer: Boolean) {
+        coEvery { effectiveLibretroSettingsResolver.getEffectiveSettings(game.platformId, game.platformSlug) } returns
+            com.nendo.argosy.data.preferences.BuiltinEmulatorSettings(
+                autoRestoreState = autoRestore,
+                preferNewerServerSave = preferServer
+            )
+    }
+
+    private val builtinId = com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_ID
+
+    private fun verifyDrop(times: Int) = io.mockk.coVerify(exactly = times) {
+        stateCacheManager.deleteAutoResumeStatesOlderThan(
+            builtinId, game.localPath!!, game.platformSlug, null, gameId, serverSaveTime
+        )
+    }
+
+    @Test
+    fun `a newer server save drops the built-in auto states written before it`() = runTest {
+        builtinDownloads(SaveSyncResult.Success(rommSaveId = 42L, serverTimestamp = serverSaveTime))
+        builtinSettings(autoRestore = true, preferServer = true)
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        verifyDrop(times = 1)
+    }
+
+    @Test
+    fun `turning the setting off keeps the auto state`() = runTest {
+        builtinDownloads(SaveSyncResult.Success(rommSaveId = 42L, serverTimestamp = serverSaveTime))
+        builtinSettings(autoRestore = true, preferServer = false)
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        verifyDrop(times = 0)
+    }
+
+    @Test
+    fun `with restore on launch off there is no auto state to drop`() = runTest {
+        builtinDownloads(SaveSyncResult.Success(rommSaveId = 42L, serverTimestamp = serverSaveTime))
+        builtinSettings(autoRestore = false, preferServer = true)
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        verifyDrop(times = 0)
+    }
+
+    @Test
+    fun `a download that changed nothing keeps the auto state`() = runTest {
+        builtinDownloads(SaveSyncResult.Success(rommSaveId = 42L, serverTimestamp = serverSaveTime, noOp = true))
+        builtinSettings(autoRestore = true, preferServer = true)
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        verifyDrop(times = 0)
+    }
+
+    @Test
+    fun `an external emulator's states are never dropped`() = runTest {
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } returns PreLaunchSyncResult.ServerIsNewer(serverSaveTime, "autosave", 42L)
+        coEvery { saveSyncRepository.downloadSave(gameId, emulatorId, "autosave", knownServerSaveId = 42L) } returns
+            SaveSyncResult.Success(rommSaveId = 42L, serverTimestamp = serverSaveTime)
+        builtinSettings(autoRestore = true, preferServer = true)
+
+        useCase.invokeWithProgress(gameId).toList()
+
+        io.mockk.coVerify(exactly = 0) { stateCacheManager.deleteAutoResumeStatesOlderThan(any(), any(), any(), any(), any(), any()) }
     }
 
     @Test

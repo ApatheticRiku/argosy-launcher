@@ -1243,6 +1243,12 @@
     <plurals name="settings_builtin_cores_updates_badge">
         <item quantity="other">%d個更新</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="other">%d個更新</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="other">%d個更新</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">核心選項</string>
     <string name="settings_builtin_core_options_subtitle">各核心的設定與覆寫</string>
 
@@ -2170,6 +2176,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">僅適用於一般模式的遊戲</string>
     <string name="settings_libretro_def_auto_restore_state_title">啟動時還原即時存檔</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">僅適用於一般模式的遊戲</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">優先使用較新的伺服器存檔</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">從伺服器下載了較新的存檔時，略過自動還原的即時存檔</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin與Flycast即時存檔</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">實驗性功能；這些核心可能出現黑畫面或無法繼續遊戲。將於下次啟動時生效，僅適用於一般模式的遊戲</string>
 

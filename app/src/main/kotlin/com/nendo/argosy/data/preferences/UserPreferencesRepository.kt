@@ -560,6 +560,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinAutoSaveState(enabled: Boolean) = builtinPrefs.setBuiltinAutoSaveState(enabled)
     suspend fun setBuiltinAutoRestoreState(enabled: Boolean) = builtinPrefs.setBuiltinAutoRestoreState(enabled)
     suspend fun setBuiltinAutoRestoreStateMode(mode: String) = builtinPrefs.setBuiltinAutoRestoreStateMode(mode)
+    suspend fun setBuiltinPreferNewerServerSave(enabled: Boolean) = builtinPrefs.setBuiltinPreferNewerServerSave(enabled)
     suspend fun setBuiltinCustomSavePath(path: String?) = builtinPrefs.setBuiltinCustomSavePath(path)
     suspend fun setBuiltinCustomStatePath(path: String?) = builtinPrefs.setBuiltinCustomStatePath(path)
     suspend fun setBuiltinMigrationComplete() = builtinPrefs.setBuiltinMigrationComplete()
@@ -648,6 +649,7 @@ data class BuiltinEmulatorSettings(
     val autoSaveState: Boolean = true,
     val autoRestoreState: Boolean = true,
     val autoRestoreStateMode: String = "restore",
+    val preferNewerServerSave: Boolean = true,
     val hwCoreSaveStatesEnabled: Boolean = false,
     val defaultToHardcore: String = "ask",
     val customSavePath: String? = null,

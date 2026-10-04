@@ -1385,6 +1385,16 @@
         <item quantity="many">%d mises à jour</item>
         <item quantity="other">%d mises à jour</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d mise à jour</item>
+        <item quantity="many">%d mises à jour</item>
+        <item quantity="other">%d mises à jour</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d mise à jour</item>
+        <item quantity="many">%d mises à jour</item>
+        <item quantity="other">%d mises à jour</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Options du core</string>
     <string name="settings_builtin_core_options_subtitle">Paramètres et remplacements par core</string>
 
@@ -2440,6 +2450,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">S\'applique uniquement aux jeux en mode Casual</string>
     <string name="settings_libretro_def_auto_restore_state_title">Restaurer l\'état au lancement</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">S\'applique uniquement aux jeux en mode Casual</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Préférer la sauvegarde serveur plus récente</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Ignorer l\'état de reprise automatique si une sauvegarde plus récente a été téléchargée depuis le serveur</string>
     <string name="settings_libretro_def_hw_core_save_states_title">États de sauvegarde Dolphin et Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Expérimental ; ces cores peuvent afficher un écran noir ou échouer à reprendre. Prend effet au prochain lancement, jeux en mode Casual uniquement</string>
 

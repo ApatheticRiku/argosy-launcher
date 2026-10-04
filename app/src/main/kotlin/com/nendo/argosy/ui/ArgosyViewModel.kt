@@ -128,9 +128,16 @@ data class DrawerState(
     val rommAvatarUrl: String? = null,
     val downloadCount: Int = 0,
     val saveSyncAttentionCount: Int = 0,
-    val emulatorUpdatesAvailable: Int = 0,
+    val pendingUpdateCount: Int = 0,
     val navFocusIndex: Int = 0
-)
+) {
+    fun badgeCountFor(route: String): Int? = when (route) {
+        Screen.Downloads.route -> downloadCount
+        Screen.SaveSync.route -> saveSyncAttentionCount
+        Screen.Settings.route -> pendingUpdateCount
+        else -> 0
+    }.takeIf { it > 0 }
+}
 
 data class QuickSettingsUiState(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -202,6 +209,7 @@ class ArgosyViewModel @Inject constructor(
     private val saveSyncRepository: SaveSyncRepository,
     private val startupMaintenance: com.nendo.argosy.ui.startup.StartupMaintenanceCoordinator,
     private val emulatorUpdateManager: EmulatorUpdateManager,
+    private val coreVersionRepository: com.nendo.argosy.data.repository.CoreVersionRepository,
     private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
     private val syncConflictNotifier: com.nendo.argosy.data.sync.SyncConflictNotifier,
     private val socialSyncCoordinator: com.nendo.argosy.data.sync.SocialSyncCoordinator,
@@ -470,7 +478,10 @@ class ArgosyViewModel @Inject constructor(
         listOf(
             romMRepository.connectionState,
             downloadManager.state,
-            emulatorUpdateManager.assignedUpdateCount,
+            combine(
+                emulatorUpdateManager.assignedUpdateCount,
+                coreVersionRepository.observeUpdateCount()
+            ) { emulators, cores -> emulators + cores },
             _navFocusIndex,
             socialRepository.connectionState,
             steamContentManager.activeDownload,
@@ -483,7 +494,7 @@ class ArgosyViewModel @Inject constructor(
     ) { values ->
         val connection = values[0] as ConnectionState
         val downloads = values[1] as DownloadQueueState
-        val emulatorUpdateCount = values[2] as Int
+        val pendingUpdateCount = values[2] as Int
         val navIndex = values[3] as Int
         val socialConnection = values[4] as SocialConnectionState
         val steamActiveDownload = values[5] as com.nendo.argosy.data.steam.SteamDownloadProgress?
@@ -509,7 +520,7 @@ class ArgosyViewModel @Inject constructor(
             rommAvatarUrl = rommAvatarUrl(userPrefs),
             downloadCount = downloadCount,
             saveSyncAttentionCount = saveSyncAttentionCount,
-            emulatorUpdatesAvailable = emulatorUpdateCount,
+            pendingUpdateCount = pendingUpdateCount,
             navFocusIndex = navIndex
         )
     }.stateIn(

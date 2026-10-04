@@ -1395,6 +1395,16 @@
         <item quantity="many">%d actualizaciones</item>
         <item quantity="other">%d actualizaciones</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d actualización</item>
+        <item quantity="many">%d actualizaciones</item>
+        <item quantity="other">%d actualizaciones</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d actualización</item>
+        <item quantity="many">%d actualizaciones</item>
+        <item quantity="other">%d actualizaciones</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Opciones del core</string>
     <string name="settings_builtin_core_options_subtitle">Ajustes y anulaciones por core</string>
 
@@ -2453,6 +2463,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Se aplica solo a los juegos en modo casual</string>
     <string name="settings_libretro_def_auto_restore_state_title">Restaurar estado al iniciar</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Se aplica solo a los juegos en modo casual</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Preferir la partida guardada más reciente del servidor</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Omite el estado de reanudación automática cuando se descargó del servidor una partida guardada más reciente</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Estados guardados de Dolphin y Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Experimental; estos cores pueden mostrar pantalla negra o no reanudarse. Se aplica en el próximo inicio, solo en juegos en modo casual</string>
 

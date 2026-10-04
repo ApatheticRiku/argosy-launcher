@@ -661,6 +661,7 @@ class SettingsViewModel @Inject constructor(
     fun setBuiltinRewindEnabled(enabled: Boolean) = routeSetBuiltinRewindEnabled(this, enabled)
     fun setBuiltinAutoSaveState(enabled: Boolean) = routeSetBuiltinAutoSaveState(this, enabled)
     fun setBuiltinAutoRestoreState(enabled: Boolean) = routeSetBuiltinAutoRestoreState(this, enabled)
+    fun setBuiltinPreferNewerServerSave(enabled: Boolean) = routeSetBuiltinPreferNewerServerSave(this, enabled)
     fun setBuiltinHwCoreSaveStates(enabled: Boolean) = routeSetBuiltinHwCoreSaveStates(this, enabled)
     fun setBuiltinDefaultToHardcore(mode: String) = routeSetBuiltinDefaultToHardcore(this, mode)
     fun cycleRADefaultMode(direction: Int) {

@@ -1345,6 +1345,14 @@
         <item quantity="one">%d अपडेट</item>
         <item quantity="other">%d अपडेट</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d अपडेट</item>
+        <item quantity="other">%d अपडेट</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d अपडेट</item>
+        <item quantity="other">%d अपडेट</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">कोर विकल्प</string>
     <string name="settings_builtin_core_options_subtitle">प्रति-कोर सेटिंग्स और ओवरराइड</string>
 
@@ -2387,6 +2395,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">केवल कैज़ुअल गेम पर लागू</string>
     <string name="settings_libretro_def_auto_restore_state_title">लॉन्च पर स्टेट बहाल करें</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">केवल कैज़ुअल गेम पर लागू</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">सर्वर का नया सेव प्राथमिकता से लें</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">सर्वर से नया सेव डाउनलोड होने पर ऑटो-रिज़्यूम स्टेट छोड़ें</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin और Flycast सेव स्टेट</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">प्रायोगिक; ये कोर ब्लैक-स्क्रीन हो सकते हैं या रिज़्यूम करने में विफल हो सकते हैं। अगले लॉन्च पर लागू होता है, केवल कैज़ुअल गेम</string>
 

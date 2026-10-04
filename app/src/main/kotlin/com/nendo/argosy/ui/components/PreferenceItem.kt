@@ -148,7 +148,8 @@ fun NavigationPreference(
     title: String,
     subtitle: String,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    badge: String? = null
 ) {
     Row(
         modifier = preferenceModifier(isFocused, onClick = onClick),
@@ -173,6 +174,10 @@ fun NavigationPreference(
                 style = MaterialTheme.typography.bodySmall,
                 color = preferenceSecondaryColor(isFocused)
             )
+        }
+        if (badge != null) {
+            PreferenceBadge(badge)
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
         Icon(
             Icons.Default.ChevronRight,
@@ -687,24 +692,27 @@ fun ActionPreference(
                                 else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
                     )
                 }
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.secondary,
-                                shape = RoundedCornerShape(Dimens.radiusSm)
-                            )
-                            .padding(horizontal = Dimens.spacingXs, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = badge,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondary
-                        )
-                    }
-                }
+                if (badge != null) PreferenceBadge(badge)
             }
         }
+    }
+}
+
+@Composable
+private fun PreferenceBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.secondary,
+                shape = RoundedCornerShape(Dimens.radiusSm)
+            )
+            .padding(horizontal = Dimens.spacingXs, vertical = Dimens.borderMedium)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondary
+        )
     }
 }
 

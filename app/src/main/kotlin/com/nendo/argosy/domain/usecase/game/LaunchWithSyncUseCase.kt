@@ -1,7 +1,11 @@
 package com.nendo.argosy.domain.usecase.game
 
+import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
+import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.preferences.EffectiveLibretroSettingsResolver
+import com.nendo.argosy.data.repository.StateCacheManager
 import com.nendo.argosy.data.emulator.TitleIdDownloadObserver
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -42,7 +46,9 @@ class LaunchWithSyncUseCase @Inject constructor(
     private val n3dsSaveCaseRepair: com.nendo.argosy.data.sync.N3dsSaveCaseRepair,
     private val syncStatesOnSessionEndUseCase:
         com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase,
-    private val siblingGroupRepository: SiblingGroupRepository
+    private val siblingGroupRepository: SiblingGroupRepository,
+    private val stateCacheManager: StateCacheManager,
+    private val effectiveLibretroSettingsResolver: EffectiveLibretroSettingsResolver
 ) {
     private val backgroundScope = SafeCoroutineScope(Dispatchers.IO, TAG)
 
@@ -131,6 +137,31 @@ class LaunchWithSyncUseCase @Inject constructor(
             preLaunchStateSyncUseCase(gameId, emulatorPackage, activeChannel)
         }
             .onFailure { Logger.error(TAG, "Pre-launch state sync failed for gameId=$gameId", it) }
+    }
+
+    private suspend fun dropAutoStatesOlderThanSave(
+        game: GameEntity,
+        emulatorId: String,
+        serverTimestamp: java.time.Instant?
+    ) {
+        if (emulatorId != EmulatorRegistry.BUILTIN_ID || serverTimestamp == null) return
+        val romPath = game.localPath ?: return
+        val settings = effectiveLibretroSettingsResolver.getEffectiveSettings(game.platformId, game.platformSlug)
+        if (!settings.autoRestoreState || !settings.preferNewerServerSave) return
+        val dropped = runCatching {
+            stateCacheManager.deleteAutoResumeStatesOlderThan(
+                emulatorId = emulatorId,
+                romPath = romPath,
+                platformSlug = game.platformSlug,
+                coreId = null,
+                gameId = game.id,
+                cutoff = serverTimestamp
+            )
+        }.onFailure { Logger.warn(TAG, "Could not drop stale auto states for gameId=${game.id}: ${it.message}") }
+            .getOrDefault(false)
+        if (dropped) {
+            Logger.info(TAG, "[SaveSync] PRE_LAUNCH gameId=${game.id} | Dropped the auto-resume state older than the downloaded save | serverTimestamp=$serverTimestamp")
+        }
     }
 
     private fun refreshMainSiblingInBackground(gameId: Long) {
@@ -256,6 +287,9 @@ class LaunchWithSyncUseCase @Inject constructor(
                 )
                 when (downloadResult) {
                     is SaveSyncResult.Success -> {
+                        if (!downloadResult.noOp) {
+                            dropAutoStatesOlderThanSave(game, emulatorId, downloadResult.serverTimestamp)
+                        }
                         emit(SyncProgress.PreLaunch.Downloading(channelName, success = true))
                         emit(SyncProgress.PreLaunch.Writing(channelName))
                         emit(SyncProgress.PreLaunch.Writing(channelName, success = true))

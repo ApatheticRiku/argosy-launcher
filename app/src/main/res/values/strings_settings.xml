@@ -2556,6 +2556,18 @@
         <item quantity="one">%d update</item>
         <item quantity="other">%d updates</item>
     </plurals>
+    <!-- Chip on the Platforms row of the main settings list: how many of the emulators your
+         platforms use have a newer version. "Update" is a noun. -->
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d update</item>
+        <item quantity="other">%d updates</item>
+    </plurals>
+    <!-- Chip on the Built-in Emulator row of the main settings list: how many of its downloaded
+         cores have a newer version. "Update" is a noun. -->
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d update</item>
+        <item quantity="other">%d updates</item>
+    </plurals>
     <!-- Row opening the per-engine settings. Noun phrase, plural. -->
     <string name="settings_builtin_core_options_title">Core Options</string>
     <!-- Second line of that row. -->
@@ -4565,6 +4577,12 @@
     <string name="settings_libretro_def_auto_restore_state_title">Restore State on Launch</string>
     <!-- Second line of that row. Same "casual games" sense as the sibling row above. -->
     <string name="settings_libretro_def_auto_restore_state_subtitle">Applies to casual games only</string>
+    <!-- Row title. "Save" is a noun here: the game's save data (in-game save file) synced from
+         the server, not the verb. -->
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Prefer Newer Server Save</string>
+    <!-- Second line of that row. "Save" is a noun (save data); "state" means an emulator save
+         state (snapshot) that would otherwise be resumed automatically at launch. -->
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Skip the auto-resume state when a newer save was downloaded from the server</string>
     <!-- Row title. "Dolphin" and "Flycast" are emulator core names, kept as written. "Save
          States" here are emulator snapshots, not the save-sync feature. -->
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin and Flycast Save States</string>

@@ -188,6 +188,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("builtin_auto_save_state", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_auto_restore_state", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_auto_restore_state_mode", SettingsBackupType.STRING),
+        SettingsBackupKey("builtin_prefer_newer_server_save", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_hw_core_save_states", SettingsBackupType.BOOLEAN)
     )
 

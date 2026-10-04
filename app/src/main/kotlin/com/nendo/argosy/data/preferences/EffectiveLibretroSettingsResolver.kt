@@ -56,6 +56,7 @@ class EffectiveLibretroSettingsResolver @Inject constructor(
             autoSaveState = perPlatform?.autoSaveState ?: global.autoSaveState,
             autoRestoreState = perPlatform?.autoRestoreState ?: global.autoRestoreState,
             autoRestoreStateMode = global.autoRestoreStateMode,
+            preferNewerServerSave = perPlatform?.preferNewerServerSave ?: global.preferNewerServerSave,
             hwCoreSaveStatesEnabled = perPlatform?.hwCoreSaveStates ?: global.hwCoreSaveStatesEnabled
         )
     }

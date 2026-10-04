@@ -49,13 +49,17 @@ data class PlatformLibretroSettingsEntity(
     val hwCoreSaveStates: Boolean? = null,
     val frameOffsetX: Float? = null,
     val frameOffsetY: Float? = null,
-    val frameZoom: Float? = null
+    val frameZoom: Float? = null,
+    val preferNewerServerSave: Boolean? = null
 ) {
     fun hasAnyOverrides(): Boolean =
         hasAnyVideoOverrides() || hasAnyControlOverrides() || hasAnyPathOverrides() || hasAnySavingOverrides()
 
     fun hasAnySavingOverrides(): Boolean =
-        autoSaveState != null || autoRestoreState != null || hwCoreSaveStates != null
+        autoSaveState != null ||
+        autoRestoreState != null ||
+        preferNewerServerSave != null ||
+        hwCoreSaveStates != null
 
     fun hasAnyVideoOverrides(): Boolean =
         shader != null ||

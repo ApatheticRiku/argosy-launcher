@@ -49,7 +49,8 @@ fun FloatingNavBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit,
     onInteract: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    badgeFor: (String) -> Int? = { null }
 ) {
     AnimatedVisibility(
         visible = visible && destinations.size > 1,
@@ -76,6 +77,7 @@ fun FloatingNavBar(
                     NavBarDestination(
                         item = item,
                         isCurrent = NavRing.routeMatches(item.route, currentRoute),
+                        hasBadge = badgeFor(item.route) != null,
                         onClick = { onNavigate(item.route) }
                     )
                 }
@@ -105,6 +107,7 @@ private fun Modifier.observeTouchDowns(onDown: (y: Float, height: Int) -> Unit):
 private fun NavBarDestination(
     item: DrawerItem,
     isCurrent: Boolean,
+    hasBadge: Boolean,
     onClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
@@ -126,5 +129,13 @@ private fun NavBarDestination(
             tint = if (isCurrent) theme.focusAccent else theme.textDim,
             modifier = Modifier.size(Dimens.iconMd)
         )
+        if (hasBadge) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(Dimens.spacingSm)
+                    .background(theme.focusAccent, CircleShape)
+            )
+        }
     }
 }

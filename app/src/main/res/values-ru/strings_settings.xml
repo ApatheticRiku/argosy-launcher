@@ -1422,6 +1422,18 @@
         <item quantity="many">%d обновлений</item>
         <item quantity="other">%d обновления</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d обновление</item>
+        <item quantity="few">%d обновления</item>
+        <item quantity="many">%d обновлений</item>
+        <item quantity="other">%d обновления</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d обновление</item>
+        <item quantity="few">%d обновления</item>
+        <item quantity="many">%d обновлений</item>
+        <item quantity="other">%d обновления</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Настройки ядра</string>
     <string name="settings_builtin_core_options_subtitle">Настройки и переопределения для каждого ядра</string>
 
@@ -2495,6 +2507,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Применяется только к обычным играм</string>
     <string name="settings_libretro_def_auto_restore_state_title">Восстанавливать состояние при запуске</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Применяется только к обычным играм</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Предпочитать более новое сохранение с сервера</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Пропускать состояние для автовозобновления, если с сервера загружено более новое сохранение</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Быстрые сохранения Dolphin и Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Экспериментально; эти ядра могут показывать чёрный экран или не возобновляться. Вступает в силу при следующем запуске, только для обычных игр</string>
 

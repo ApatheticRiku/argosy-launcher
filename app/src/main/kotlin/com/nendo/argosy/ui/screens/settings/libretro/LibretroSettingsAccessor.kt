@@ -68,6 +68,7 @@ class GlobalLibretroSettingsAccessor(
         LibretroSettingDef.RewindBufferDuration -> state.rewindBufferDuration
         LibretroSettingDef.AutoSaveState -> state.autoSaveState.toString()
         LibretroSettingDef.AutoRestoreState -> state.autoRestoreState.toString()
+        LibretroSettingDef.PreferNewerServerSave -> state.preferNewerServerSave.toString()
         LibretroSettingDef.HwCoreSaveStates -> state.hwCoreSaveStatesEnabled.toString()
     }
 
@@ -92,6 +93,7 @@ class GlobalLibretroSettingsAccessor(
             LibretroSettingDef.LowLatencyAudio -> state.lowLatencyAudio
             LibretroSettingDef.AutoSaveState -> state.autoSaveState
             LibretroSettingDef.AutoRestoreState -> state.autoRestoreState
+            LibretroSettingDef.PreferNewerServerSave -> state.preferNewerServerSave
             LibretroSettingDef.HwCoreSaveStates -> state.hwCoreSaveStatesEnabled
             else -> return
         }
@@ -161,6 +163,7 @@ class PlatformLibretroSettingsAccessor(
         LibretroSettingDef.RewindBufferDuration -> globalState.rewindBufferDuration
         LibretroSettingDef.AutoSaveState -> globalState.autoSaveState.toString()
         LibretroSettingDef.AutoRestoreState -> globalState.autoRestoreState.toString()
+        LibretroSettingDef.PreferNewerServerSave -> globalState.preferNewerServerSave.toString()
         LibretroSettingDef.HwCoreSaveStates -> globalState.hwCoreSaveStatesEnabled.toString()
     }
 
@@ -219,6 +222,7 @@ class PlatformLibretroSettingsAccessor(
             LibretroSettingDef.RewindBufferDuration -> ps.rewindBufferDuration?.let { "${it}s" }
             LibretroSettingDef.AutoSaveState -> ps.autoSaveState?.toString()
             LibretroSettingDef.AutoRestoreState -> ps.autoRestoreState?.toString()
+            LibretroSettingDef.PreferNewerServerSave -> ps.preferNewerServerSave?.toString()
             LibretroSettingDef.HwCoreSaveStates -> ps.hwCoreSaveStates?.toString()
         }
     }

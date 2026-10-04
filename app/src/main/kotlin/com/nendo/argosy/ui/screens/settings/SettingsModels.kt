@@ -525,6 +525,14 @@ data class EmulatorState(
             config.effectiveEmulatorId != null && config.effectiveEmulatorId in emulatorUpdateVersions
         }
 
+    val outdatedEmulatorCount: Int
+        get() = platforms
+            .filter { it.platform.syncEnabled }
+            .mapNotNull { it.effectiveEmulatorId }
+            .filter { it in emulatorUpdateVersions }
+            .distinct()
+            .size
+
     val activePlatforms: List<PlatformEmulatorConfig>
         get() = platforms.filter { it.platform.syncEnabled }
 
@@ -655,6 +663,7 @@ data class BuiltinVideoState(
     val rewindBufferDuration: String = "15s",
     val autoSaveState: Boolean = true,
     val autoRestoreState: Boolean = true,
+    val preferNewerServerSave: Boolean = true,
     val hwCoreSaveStatesEnabled: Boolean = false,
     val savePath: String = "",
     val statePath: String = "",

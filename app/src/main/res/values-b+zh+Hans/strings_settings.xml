@@ -1309,6 +1309,12 @@
     <plurals name="settings_builtin_cores_updates_badge">
         <item quantity="other">%d个更新</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="other">%d个更新</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="other">%d个更新</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">核心选项</string>
     <string name="settings_builtin_core_options_subtitle">各核心的设置与覆盖项</string>
 
@@ -2334,6 +2340,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">仅适用于休闲模式游戏</string>
     <string name="settings_libretro_def_auto_restore_state_title">启动时恢复即时存档</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">仅适用于休闲模式游戏</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">优先使用较新的服务器存档</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">从服务器下载了较新的存档时，跳过自动恢复的即时存档</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin与Flycast即时存档</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">实验性功能；这些核心可能出现黑屏或无法恢复。将在下次启动时生效，仅适用于休闲模式游戏</string>
 

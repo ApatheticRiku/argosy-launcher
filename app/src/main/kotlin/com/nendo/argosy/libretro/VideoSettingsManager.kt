@@ -143,6 +143,7 @@ class VideoSettingsManager(
         LibretroSettingDef.RewindBufferDuration -> currentRewindBufferDuration
         LibretroSettingDef.AutoSaveState,
         LibretroSettingDef.AutoRestoreState,
+        LibretroSettingDef.PreferNewerServerSave,
         LibretroSettingDef.HwCoreSaveStates -> ""
     }
 
@@ -168,6 +169,7 @@ class VideoSettingsManager(
         LibretroSettingDef.RewindBufferDuration -> globalSettings.rewindBufferDurationDisplay
         LibretroSettingDef.AutoSaveState,
         LibretroSettingDef.AutoRestoreState,
+        LibretroSettingDef.PreferNewerServerSave,
         LibretroSettingDef.HwCoreSaveStates -> ""
     }
 
@@ -336,6 +338,7 @@ class VideoSettingsManager(
                 LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = null)
                 LibretroSettingDef.AutoSaveState,
                 LibretroSettingDef.AutoRestoreState,
+                LibretroSettingDef.PreferNewerServerSave,
                 LibretroSettingDef.HwCoreSaveStates -> current
             }
             if (updated.hasAnyOverrides()) {
@@ -482,6 +485,7 @@ class VideoSettingsManager(
             }
             LibretroSettingDef.AutoSaveState,
             LibretroSettingDef.AutoRestoreState,
+            LibretroSettingDef.PreferNewerServerSave,
             LibretroSettingDef.HwCoreSaveStates -> {
             }
         }
@@ -570,6 +574,7 @@ class VideoSettingsManager(
                 LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value.removeSuffix("s").toIntOrNull())
                 LibretroSettingDef.AutoSaveState,
                 LibretroSettingDef.AutoRestoreState,
+                LibretroSettingDef.PreferNewerServerSave,
                 LibretroSettingDef.HwCoreSaveStates -> current
             }
 

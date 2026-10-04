@@ -675,7 +675,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             hudShowPlaytime = builtinSettings.hudShowPlaytime,
             hudShowFps = builtinSettings.hudShowFps,
             hudShowLastSave = builtinSettings.hudShowLastSave,
-            emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions
+            emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions,
+            coreUpdatesAvailable = currentEmulatorState.coreUpdatesAvailable
         ))
         vm.emulatorDelegate.updateCoreCounts()
         anchoredPlatformId?.let { anchorId ->
@@ -881,6 +882,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rewindBufferDuration = refreshSettings.rewindBufferDurationDisplay,
                     autoSaveState = refreshSettings.autoSaveState,
                     autoRestoreState = refreshSettings.autoRestoreState,
+                    preferNewerServerSave = refreshSettings.preferNewerServerSave,
                     hwCoreSaveStatesEnabled = refreshSettings.hwCoreSaveStatesEnabled,
                     savePath = refreshSettings.customSavePath
                         ?: AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath,
