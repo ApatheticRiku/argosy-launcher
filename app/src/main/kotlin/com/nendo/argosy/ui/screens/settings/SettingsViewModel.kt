@@ -282,9 +282,6 @@ class SettingsViewModel @Inject constructor(
         displayDelegate.observeScreenCapturePermission(viewModelScope)
         routeStartControllerDetectionPolling(this)
         installerDelegate.observeJobs(viewModelScope)
-
-        // TODO: Remove after testing manage=true Android/data access
-        storageDelegate.testManagedStorageAccess(viewModelScope)
     }
 
     fun cyclePlatformContext(direction: Int) = routeCyclePlatformContext(this, direction)
