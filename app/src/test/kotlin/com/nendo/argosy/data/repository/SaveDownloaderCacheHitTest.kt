@@ -123,6 +123,14 @@ class SaveDownloaderCacheHitTest {
     }
 
     @Test
+    fun `a cached copy from another channel is never restored or activated for a named channel`() = runTest {
+        downloader.downloadSave(gameId, "mgba", channelName = "Main Game")
+
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(cachedId, any()) }
+        coVerify(exactly = 0) { activeSaveRepository.activateCache(gameId, cachedId) }
+    }
+
+    @Test
     fun `cache hit refuses to overwrite when the disk save cannot be protected`() = runTest {
         coEvery { saveCacheManager.protectBeforeOverwrite(any(), any(), any()) } returns false
 

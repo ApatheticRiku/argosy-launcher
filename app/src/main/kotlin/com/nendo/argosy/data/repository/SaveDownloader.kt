@@ -336,6 +336,7 @@ class SaveDownloader @Inject constructor(
 
         if (preDownloadTargetPath != null && serverSave.contentHash != null) {
             val cachedMatch = saveCacheManager.get().findCachedByHash(gameId, serverSave.contentHash)
+                ?.takeIf { SaveSyncApiClient.syncKeyOf(it.channelName) == SaveSyncApiClient.syncKeyOf(channelName) }
                 ?.takeIf { it.isHardcore || !saveCacheManager.get().hasHardcoreSave(gameId) }
             if (cachedMatch != null) {
                 Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cache hit (hash=${serverSave.contentHash}), restoring from cacheId=${cachedMatch.id} instead of fetching content")
