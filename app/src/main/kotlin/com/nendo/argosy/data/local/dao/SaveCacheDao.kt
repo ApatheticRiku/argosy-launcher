@@ -440,18 +440,6 @@ interface SaveCacheDao {
 
     @Query(
         """
-        SELECT id FROM save_cache
-        WHERE gameId = :gameId
-          AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
-          AND cachedAt = :timestamp
-        ORDER BY cachedAt DESC
-        LIMIT 1
-        """
-    )
-    suspend fun getIdAtTimestampForOwner(gameId: Long, ownerUserId: Long?, timestamp: Long): Long?
-
-    @Query(
-        """
         UPDATE save_cache SET isActive = 0
         WHERE gameId = :gameId
           AND isActive = 1

@@ -90,14 +90,6 @@ class ActiveSaveRepository @Inject constructor(
         saveChannelDao.delete(gameId, channelName, activeOwnerId())
     }
 
-    suspend fun activateTimestamp(gameId: Long, timestamp: Long): Boolean {
-        val ownerUserId = activeOwnerId()
-        val cacheId = saveCacheDao.getIdAtTimestampForOwner(gameId, ownerUserId, timestamp)
-            ?: return false
-        saveCacheDao.setActiveRow(gameId, ownerUserId, cacheId)
-        return true
-    }
-
     suspend fun clearActive(gameId: Long) {
         saveCacheDao.clearActive(gameId, activeOwnerId())
     }

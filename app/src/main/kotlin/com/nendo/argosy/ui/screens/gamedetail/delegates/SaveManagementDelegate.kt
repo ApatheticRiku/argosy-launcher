@@ -60,11 +60,12 @@ class SaveManagementDelegate @Inject constructor(
             gameId, emulatorId, com.nendo.argosy.data.repository.SaveSyncApiClient.syncKeyOf(namedChannel), ownerUserId
         )
 
-        val cacheTimestamp = if (namedChannel != null) {
-            saveCacheManager.getMostRecentInChannel(gameId, namedChannel)?.cachedAt
+        val newestCached = if (namedChannel != null) {
+            saveCacheManager.getMostRecentInChannel(gameId, namedChannel)
         } else {
-            saveCacheManager.getMostRecentSave(gameId)?.cachedAt
+            saveCacheManager.getMostRecentSave(gameId)
         }
+        val cacheTimestamp = newestCached?.cachedAt
 
         // Unified view so a server-only cloud save (no local cache, no sync row -- the common
         // freshly-synced case) is not misreported as NO_SAVE.
@@ -86,8 +87,8 @@ class SaveManagementDelegate @Inject constructor(
             ?: cacheTimestamp?.toEpochMilli()
             ?: serverTimestamp?.toEpochMilli()
 
-        if (activeSaveTimestamp == null && cacheTimestamp != null) {
-            activeSaveRepository.activateTimestamp(gameId, cacheTimestamp.toEpochMilli())
+        if (activeSaveTimestamp == null && newestCached != null) {
+            activeSaveRepository.activateCache(gameId, newestCached.id)
         }
 
         val lastSyncTime = syncEntity?.lastSyncedAt
