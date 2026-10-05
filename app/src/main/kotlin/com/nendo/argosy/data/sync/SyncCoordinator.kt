@@ -69,7 +69,8 @@ class SyncCoordinator @Inject constructor(
     private val syncStatesOnSessionEndUseCase:
         Lazy<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>,
     private val negotiateInventory: NegotiateInventory,
-    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao,
+    private val snapshotRouter: Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -733,6 +734,12 @@ class SyncCoordinator @Inject constructor(
      * that owns it: a row owned by an absent account uploads from its own cached bytes through
      * that account's client, and never through the live connection or the live save path.
      */
+    private suspend fun clearChainDirtyFlags(cache: SaveCacheEntity) {
+        val channel = cache.channelName
+        if (channel == null) saveCacheDao.clearDirtyFlagForNoChannel(cache.gameId, cache.ownerUserId)
+        else saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, channel, excludeId = -1)
+    }
+
     private suspend fun processDirtySaveCaches(signedInUserId: Long?): Int {
         kotlinx.coroutines.withTimeoutOrNull(ORPHAN_RECOVERY_TIMEOUT_MS) { saveRecoveryGate.await() }
             ?: Logger.warn(TAG, "processDirtySaveCaches: orphan-recovery gate timed out, draining anyway")
@@ -752,8 +759,10 @@ class SyncCoordinator @Inject constructor(
             saveSyncRepository.get().flushPendingDeviceSync(gid)
         }
 
-        val channelCaches = dirtySaves.filter { it.channelName != null }.sortedBy { it.cachedAt }
-        val nonChannelCaches = dirtySaves.filter { it.channelName == null }
+        val snapshotGames = affectedGameIds.filter { snapshotRouter.get().handles(it) }.toSet()
+        val (channelCaches, nonChannelCaches) = dirtySaves
+            .partition { it.channelName != null || it.gameId in snapshotGames }
+            .let { (channel, live) -> channel.sortedBy { it.cachedAt } to live }
 
         val conflicts = mutableMapOf<Long, Pair<SaveCacheEntity, ConflictInfo>>()
         val resolutions = mutableMapOf<Long, ConflictResolution>()
@@ -829,12 +838,12 @@ class SyncCoordinator @Inject constructor(
                 )
                 if (conflictInfo != null) {
                     conflictedChains += chain
-                    saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName!!, excludeId = -1)
+                    clearChainDirtyFlags(cache)
                     val conflictId = pendingConflictDao.record(
                         PendingConflictEntity(
                             gameId = cache.gameId,
                             rommSaveId = conflictInfo.serverSaveId,
-                            fileName = cache.channelName,
+                            fileName = cache.channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
                             slot = cache.channelName,
                             emulator = cache.emulatorId,
                             localUpdatedAt = cache.cachedAt,
@@ -863,7 +872,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 rommId = game.rommId,
                 emulatorId = cache.emulatorId,
-                channelName = cache.channelName!!,
+                channelName = cache.channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
                 cacheFile = cacheFile,
                 contentHash = cache.contentHash,
                 uploadedCacheId = cache.id,
@@ -889,7 +898,7 @@ class SyncCoordinator @Inject constructor(
                 }
                 is SaveSyncResult.Conflict -> {
                     conflictedChains += chain
-                    saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName, excludeId = -1)
+                    clearChainDirtyFlags(cache)
                     if (ownerApi != null) {
                         parkConflictForOwner(cache, game.title, result, ownerApi.rommUserId)
                         Logger.warn(TAG, "processDirtySaveCaches: Parked conflict for absent owner ${ownerApi.rommUserId} | cacheId=${cache.id} gameId=${cache.gameId} channel=${cache.channelName}")

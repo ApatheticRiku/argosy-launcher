@@ -55,7 +55,8 @@ class SessionSaveFinalizer @Inject constructor(
     private val saveAccessNotices: SaveAccessNotices,
     private val saveCacheManager: dagger.Lazy<SaveCacheManager>,
     private val saveSyncRepository: dagger.Lazy<SaveSyncRepository>,
-    private val syncSaveOnSessionEnd: dagger.Lazy<SyncSaveOnSessionEndUseCase>
+    private val syncSaveOnSessionEnd: dagger.Lazy<SyncSaveOnSessionEndUseCase>,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     suspend fun finalize(input: SessionSaveInput): SessionSaveOutcome {
         if (input.variantFileId != null || input.isNetplayGuest) return SessionSaveOutcome.Exempt
@@ -87,7 +88,7 @@ class SessionSaveFinalizer @Inject constructor(
             is SaveLookup.Found -> lookup.path
         }
 
-        val activeChannel = if (input.isHardcore) null else input.channelName
+        val activeChannel = snapshotRouter.get().sessionChannel(input.gameId, input.isHardcore, input.channelName)
         val cache = saveCacheManager.get().cacheCurrentSave(
             gameId = input.gameId,
             emulatorId = emulatorId,

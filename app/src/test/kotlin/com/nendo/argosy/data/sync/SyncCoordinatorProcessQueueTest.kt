@@ -118,6 +118,7 @@ class SyncCoordinatorProcessQueueTest {
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
             negotiateInventory = mockk(relaxed = true),
             gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter(),
         )
     }
 

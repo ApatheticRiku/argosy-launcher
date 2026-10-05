@@ -111,7 +111,8 @@ class PlaySessionTracker @Inject constructor(
     private val reconcileAchievementsOnSessionEndUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.achievement.ReconcileAchievementsOnSessionEndUseCase>,
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
     private val sessionSaveFinalizer: SessionSaveFinalizer,
-    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     companion object {
         private const val TAG = "PlaySessionTracker"
@@ -525,7 +526,8 @@ class PlaySessionTracker @Inject constructor(
             sessionServiceMutex.withLock {
                 val game = gameDao.getById(gameId)
                 val activeSave = activeSaveRepository.getActiveRow(gameId)
-                val channelName = if (isHardcore || variantFileId != null) null else activeSave?.channelName
+                val channelName = if (variantFileId != null) null
+                else snapshotRouter.get().sessionChannel(gameId, isHardcore, activeSave?.channelName)
 
                 _activeSession.value = _activeSession.value?.copy(channelName = channelName)
 
@@ -571,7 +573,8 @@ class PlaySessionTracker @Inject constructor(
                 val session = _activeSession.value ?: return@withLock
                 if (session.gameId != gameId || session.isHardcore == isHardcore) return@withLock
                 val activeSave = activeSaveRepository.getActiveRow(gameId)
-                val channelName = if (isHardcore || session.variantFileId != null) null else activeSave?.channelName
+                val channelName = if (session.variantFileId != null) null
+                else snapshotRouter.get().sessionChannel(gameId, isHardcore, activeSave?.channelName)
                 val updated = session.copy(
                     isHardcore = isHardcore,
                     channelName = channelName
@@ -650,7 +653,7 @@ class PlaySessionTracker @Inject constructor(
         } else null
 
         val liveHardcore = _activeSession.value?.takeIf { it.gameId == gameId }?.isHardcore ?: isHardcore
-        val channelName = if (liveHardcore) null else activeSaveRepository.getActiveChannel(gameId)
+        val channelName = snapshotRouter.get().sessionChannel(gameId, liveHardcore, activeSaveRepository.getActiveChannel(gameId))
 
         Logger.debug(TAG, "[GameSession] Starting service for gameId=$gameId | watchPath=$watchPath | savePath=$savePath | hardcore=$liveHardcore")
         GameSessionService.start(
@@ -1039,7 +1042,7 @@ class PlaySessionTracker @Inject constructor(
             emulatorPackage = session.emulatorPackage,
             gameId = session.gameId
         ) ?: return null
-        val activeChannel = if (session.isHardcore) null else session.channelName
+        val activeChannel = snapshotRouter.get().sessionChannel(session.gameId, session.isHardcore, session.channelName)
         return try {
             saveCacheManager.get().cacheCurrentSave(
                 gameId = session.gameId,

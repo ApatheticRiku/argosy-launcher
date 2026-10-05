@@ -53,7 +53,8 @@ class SessionSaveFinalizerTest {
         saveAccessNotices = mockk(relaxed = true),
         saveCacheManager = { saveCacheManager },
         saveSyncRepository = { saveSyncRepository },
-        syncSaveOnSessionEnd = { useCase }
+        syncSaveOnSessionEnd = { useCase },
+        snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
     )
 
     private val input = SessionSaveInput(

@@ -24,6 +24,16 @@ class SnapshotSyncRouterTest {
     }
 
     @Test
+    fun `a hardcore session keeps its channel on a snapshot server and drops it on an older one`() = runBlocking {
+        coEvery { engine.isEligible(5) } returns true
+        coEvery { engine.isEligible(6) } returns false
+
+        org.junit.Assert.assertEquals("speedrun", router.sessionChannel(5, isHardcore = true, activeChannel = "speedrun"))
+        org.junit.Assert.assertEquals(null, router.sessionChannel(6, isHardcore = true, activeChannel = "speedrun"))
+        org.junit.Assert.assertEquals("speedrun", router.sessionChannel(6, isHardcore = false, activeChannel = "speedrun"))
+    }
+
+    @Test
     fun `a launch on an older server keeps syncing autosave`() = runBlocking {
         coEvery { engine.isEligible(5) } returns false
 

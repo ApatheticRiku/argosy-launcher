@@ -24,6 +24,15 @@ class SnapshotSyncRouter @Inject constructor(
      * The channel a launch syncs: the one asked for, else on a snapshot server the game's active
      * channel, since every channel syncs there. Older servers keep syncing autosave at launch.
      */
+    suspend fun handles(gameId: Long): Boolean = engine.isEligible(gameId)
+
+    /**
+     * The channel a play session's saves belong to. Older servers keep hardcore saves outside any
+     * channel; on a snapshot server hardcore is a property of the snapshot, so the channel stays.
+     */
+    suspend fun sessionChannel(gameId: Long, isHardcore: Boolean, activeChannel: String?): String? =
+        if (isHardcore && !handles(gameId)) null else activeChannel
+
     suspend fun launchChannel(gameId: Long, requested: String?): String? =
         if (requested != null || !engine.isEligible(gameId)) requested
         else activeSaveRepository.getActiveChannel(gameId)

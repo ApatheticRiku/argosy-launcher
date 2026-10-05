@@ -6,6 +6,8 @@ import io.mockk.mockk
 
 fun legacySnapshotRouter(): dagger.Lazy<SnapshotSyncRouter> {
     val router = mockk<SnapshotSyncRouter>()
+    coEvery { router.handles(any()) } returns false
+    coEvery { router.sessionChannel(any(), any(), any()) } answers { if (secondArg<Boolean>()) null else thirdArg() }
     coEvery { router.launchChannel(any(), any()) } answers { secondArg() }
     coEvery { router.preLaunch(any(), any(), any()) } returns null
     coEvery { router.upload(any(), any(), any(), any(), any()) } returns null

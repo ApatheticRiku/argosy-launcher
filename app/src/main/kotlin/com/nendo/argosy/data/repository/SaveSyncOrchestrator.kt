@@ -72,9 +72,9 @@ class SaveSyncOrchestrator @Inject constructor(
      *
      * When a channel is known the bytes are captured into the save cache now and the queue row is
      * pinned to that cache id, so the drain uploads what was on disk at enqueue time rather than
-     * re-reading a live path that may by then hold another account's progress. A null channel
-     * (hardcore, or a game with no active channel) is left unpinned and drains through the live
-     * path as before, because the cache-pinned upload addresses a named server slot.
+     * re-reading a live path that may by then hold another account's progress. A null channel (a
+     * game with no active channel, or hardcore on a server without snapshots) is left unpinned and
+     * drains through the live path, because the cache-pinned upload addresses a named server slot.
      */
     suspend fun queueUpload(
         gameId: Long,
