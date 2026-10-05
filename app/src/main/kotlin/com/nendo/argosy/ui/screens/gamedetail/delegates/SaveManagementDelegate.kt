@@ -2,6 +2,8 @@ package com.nendo.argosy.ui.screens.gamedetail.delegates
 
 import android.content.Context
 import com.nendo.argosy.R
+import com.nendo.argosy.data.emulator.BuiltinSaveBase
+import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.local.dao.SaveSyncDao
@@ -32,6 +34,7 @@ class SaveManagementDelegate @Inject constructor(
     private val saveSyncDao: SaveSyncDao,
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
     private val emulatorResolver: EmulatorResolver,
+    private val builtinSaveBase: BuiltinSaveBase,
     private val saveCacheManager: SaveCacheManager,
     private val saveSyncRepository: SaveSyncRepository,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
@@ -129,7 +132,11 @@ class SaveManagementDelegate @Inject constructor(
             }
             val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
             val coreName = saveSyncRepository.resolveCoreForGame(gameId)
-            val savePath = computeEffectiveSavePath(emulatorId, game.platformSlug, emulatorPackage, coreName)
+            val savePath = if (emulatorId == EmulatorRegistry.BUILTIN_ID) {
+                builtinSaveBase.forGame(game)
+            } else {
+                computeEffectiveSavePath(emulatorId, game.platformSlug, emulatorPackage, coreName)
+            }
             val stateCoreId = coreVersionExtractor.getCoreIdForEmulator(emulatorId, game.platformSlug)
             saveChannelDelegate.show(
                 scope = scope,
