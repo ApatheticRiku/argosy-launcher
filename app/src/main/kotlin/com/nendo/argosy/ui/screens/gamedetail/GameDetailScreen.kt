@@ -1271,7 +1271,9 @@ private fun GameDetailModals(
                 else -> Unit
             }
         },
-        onDismiss = viewModel::dismissSaveCacheDialog
+        onDismiss = viewModel::dismissSaveCacheDialog,
+        coverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath),
+        snapshotActions = viewModel.snapshotViewActions
     )
 
     PermissionRequiredModal(

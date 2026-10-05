@@ -86,28 +86,48 @@ class SnapshotChannelService @Inject constructor(
             ?.takeIf { it.isSuccessful }?.body()
     }
 
-    suspend fun restoreAsCurrent(gameId: Long, emulatorId: String, channel: RomMChannel, snapshotId: Long): SnapshotActionResult {
-        val result = push(intoChannel(channel).put("parent_snapshot_id", snapshotId))
+    suspend fun restoreAsCurrent(
+        gameId: Long,
+        emulatorId: String,
+        channel: RomMChannel,
+        snapshotId: Long,
+        approveHardcoreDowngrade: Boolean = false
+    ): SnapshotActionResult {
+        val result = push(intoChannel(channel).put("parent_snapshot_id", snapshotId), approveHardcoreDowngrade)
         if (result == SnapshotActionResult.Done && isDeviceChannel(gameId, channel)) {
             engine.keepServer(gameId, emulatorId, argosyChannelOf(channel))
         }
         return result
     }
 
-    suspend fun fork(romFileId: Long, snapshotId: Long, label: String): SnapshotActionResult =
+    suspend fun fork(
+        romFileId: Long,
+        snapshotId: Long,
+        label: String,
+        approveHardcoreDowngrade: Boolean = false
+    ): SnapshotActionResult =
         push(
             JSONObject()
                 .put("rom_file_id", romFileId)
                 .put("label", label)
                 .put("expected_current_id", JSONObject.NULL)
-                .put("parent_snapshot_id", snapshotId)
+                .put("parent_snapshot_id", snapshotId),
+            approveHardcoreDowngrade
         )
 
-    suspend fun copyOver(snapshotId: Long, target: RomMChannel): SnapshotActionResult =
-        push(intoChannel(target).put("parent_snapshot_id", snapshotId))
+    suspend fun copyOver(
+        snapshotId: Long,
+        target: RomMChannel,
+        approveHardcoreDowngrade: Boolean = false
+    ): SnapshotActionResult =
+        push(intoChannel(target).put("parent_snapshot_id", snapshotId), approveHardcoreDowngrade)
 
-    suspend fun makeSnapshot(channel: RomMChannel, saveId: Long): SnapshotActionResult =
-        push(intoChannel(channel).put("save", JSONObject().put("copy_of", saveId)))
+    suspend fun makeSnapshot(
+        channel: RomMChannel,
+        saveId: Long,
+        approveHardcoreDowngrade: Boolean = false
+    ): SnapshotActionResult =
+        push(intoChannel(channel).put("save", JSONObject().put("copy_of", saveId)), approveHardcoreDowngrade)
 
     suspend fun newChannel(romFileId: Long, label: String, fromBackupId: Long?): SnapshotActionResult {
         val api = apiClient.get().getApi() ?: return SnapshotActionResult.Offline
@@ -151,11 +171,12 @@ class SnapshotChannelService @Inject constructor(
             .put("channel_id", channel.id)
             .put("expected_current_id", channel.currentSnapshotId ?: JSONObject.NULL)
 
-    private suspend fun push(manifest: JSONObject): SnapshotActionResult {
+    private suspend fun push(manifest: JSONObject, approveHardcoreDowngrade: Boolean): SnapshotActionResult {
         val client = apiClient.get()
         val api = client.getApi() ?: return SnapshotActionResult.Offline
         val deviceId = client.getDeviceId() ?: return SnapshotActionResult.Offline
         manifest.put("emulator", EMULATOR).put("emulator_version", BuildConfig.VERSION_NAME)
+        if (approveHardcoreDowngrade) manifest.put("approve_hardcore_downgrade", true)
         return when (val outcome = pusher.push(api, deviceId, manifest)) {
             is PushOutcome.Written -> SnapshotActionResult.Done
             is PushOutcome.Conflict -> SnapshotActionResult.Stale
@@ -190,9 +211,9 @@ class SnapshotChannelService @Inject constructor(
 
     private suspend fun ownerUserId(): Long = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER
 
-    private companion object {
+    companion object {
         const val HISTORY_PAGE = 20
-        const val DEFAULT_LABEL = "default"
-        const val EMULATOR = "argosy"
+        private const val DEFAULT_LABEL = "default"
+        private const val EMULATOR = "argosy"
     }
 }

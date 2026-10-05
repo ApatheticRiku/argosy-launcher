@@ -187,6 +187,30 @@ class GameDetailViewModel @Inject constructor(
 
     val saveChannelDelegate get() = saveManagement.saveChannelDelegate
 
+    val snapshotViewActions by lazy {
+        com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewActions(
+            saveManagement.saveChannelDelegate.snapshotDelegate,
+            viewModelScope,
+            ::handleSaveStatusChanged
+        )
+    }
+
+    private val snapshotInput: InputHandler by lazy {
+        com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotInputHandler(
+            delegate = saveManagement.saveChannelDelegate.snapshotDelegate,
+            saveState = { saveManagement.saveChannelDelegate.state.value },
+            scope = viewModelScope,
+            onSaveStatusChanged = ::handleSaveStatusChanged
+        )
+    }
+
+    private fun routeSnapshotInput(press: (InputHandler) -> InputResult): InputResult? =
+        if (saveManagement.saveChannelDelegate.state.value.isSnapshotSavesView) {
+            press(snapshotInput).takeIf { it.handled }
+        } else {
+            null
+        }
+
     override fun onCleared() {
         super.onCleared()
         clearCompanionDetail()
@@ -2443,6 +2467,7 @@ class GameDetailViewModel @Inject constructor(
         onNavigateToGame: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
+            routeSnapshotInput { it.onUp() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2476,6 +2501,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onDown(): InputResult {
+            routeSnapshotInput { it.onDown() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2509,6 +2535,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onLeft(): InputResult {
+            routeSnapshotInput { it.onLeft() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2545,6 +2572,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onRight(): InputResult {
+            routeSnapshotInput { it.onRight() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2581,6 +2609,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onPrevSection(): InputResult {
+            routeSnapshotInput { it.onPrevSection() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2602,6 +2631,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onNextSection(): InputResult {
+            routeSnapshotInput { it.onNextSection() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2625,6 +2655,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onConfirm(): InputResult {
+            routeSnapshotInput { it.onConfirm() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2667,6 +2698,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onBack(): InputResult {
+            routeSnapshotInput { it.onBack() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2735,6 +2767,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onSecondaryAction(): InputResult {
+            routeSnapshotInput { it.onSecondaryAction() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             if (state.reviewEditor != null) { promptReviewDelete(); return InputResult.HANDLED }
@@ -2748,6 +2781,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onContextMenu(): InputResult {
+            routeSnapshotInput { it.onContextMenu() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             if (state.reviewEditor != null) return InputResult.HANDLED

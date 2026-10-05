@@ -63,6 +63,11 @@ import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.common.StateScreenshotViewer
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotChannelView
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotEntryOverlays
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotOverlays
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewActions
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewState
 import com.nendo.argosy.ui.common.displayName
 import com.nendo.argosy.util.formatSaveSize
 import com.nendo.argosy.util.formatSaveTimestamp
@@ -86,9 +91,12 @@ fun SaveChannelModal(
     onDismissScreenshotPreview: () -> Unit = {},
     onSlotPickerClick: (Int) -> Unit = {},
     onHintClick: (InputButton) -> Unit = {},
-    onDismiss: () -> Unit = {}
+    onDismiss: () -> Unit = {},
+    coverPath: String? = null,
+    snapshotActions: SnapshotViewActions? = null
 ) {
     if (!state.isVisible) return
+    val snapshotView = state.snapshot?.takeIf { snapshotActions != null }
 
     ModalPresenceEffect()
     val isDarkTheme = LocalLauncherTheme.current.isDarkTheme
@@ -178,12 +186,21 @@ fun SaveChannelModal(
                 }
             } else {
                 when (state.selectedTab) {
-                    SaveTab.SAVES -> SavesTabContent(
-                        state = state,
-                        maxHeight = listHeight,
-                        onSlotClick = onSlotClick,
-                        onHistoryClick = onHistoryClick
-                    )
+                    SaveTab.SAVES -> if (snapshotView != null && snapshotActions != null) {
+                        SnapshotChannelView(
+                            state = snapshotView,
+                            coverPath = coverPath,
+                            maxHeight = listHeight,
+                            actions = snapshotActions
+                        )
+                    } else {
+                        SavesTabContent(
+                            state = state,
+                            maxHeight = listHeight,
+                            onSlotClick = onSlotClick,
+                            onHistoryClick = onHistoryClick
+                        )
+                    }
                     SaveTab.STATES -> StatesTabContent(
                         state = state,
                         maxHeight = listHeight,
@@ -194,8 +211,17 @@ fun SaveChannelModal(
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            val hints = buildFooterHints(state)
+            val hints = if (snapshotView != null && state.selectedTab == SaveTab.SAVES) {
+                buildSnapshotFooterHints(state, snapshotView)
+            } else {
+                buildFooterHints(state)
+            }
             FooterHintsWithState(hints = hints, onHintClick = onHintClick)
+        }
+
+        if (snapshotView != null && snapshotActions != null && state.selectedTab == SaveTab.SAVES) {
+            SnapshotOverlays(state = snapshotView, coverPath = coverPath, actions = snapshotActions)
+            SnapshotEntryOverlays(state = snapshotView, actions = snapshotActions)
         }
 
         if (state.showRestoreConfirmation &&
@@ -771,6 +797,20 @@ private fun formatTruncatedPath(path: String, maxSegments: Int = 3): String {
         segments.joinToString("/")
     } else {
         "../" + segments.takeLast(maxSegments).joinToString("/")
+    }
+}
+
+@Composable
+private fun buildSnapshotFooterHints(
+    state: SaveChannelState,
+    snapshot: SnapshotViewState
+): List<FooterHintItem> = buildList {
+    if (snapshot.hasOverlay) return@buildList
+    if (snapshot.focusedTile != null) {
+        add(FooterHintItem(InputButton.X, stringResource(R.string.save_channels_footer_channel_actions)))
+    }
+    if (state.supportsStates) {
+        add(FooterHintItem(InputButton.RB, stringResource(R.string.ui_save_channel_footer_tab_states)))
     }
 }
 
