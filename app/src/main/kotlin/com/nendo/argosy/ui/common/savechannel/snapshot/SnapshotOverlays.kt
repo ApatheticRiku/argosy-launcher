@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -22,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.NestedModal
@@ -90,14 +90,17 @@ private fun SnapshotDetailOverlay(
     val card = detail.card
     val time = snapshotRelativeTime(card.savedAt).orEmpty()
     val title = card.snapshotId?.let { stringResource(R.string.save_channels_detail_title, time, it) } ?: time
-    NestedModal(title = title, onDismiss = actions::closeOverlay) {
+    NestedModal(title = title, baseWidth = Dimens.modalWidthXl, onDismiss = actions::closeOverlay) {
         Column(
             modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                SnapshotThumb(card.thumbnailUrl, coverPath, Modifier.width(Dimens.saveChannelDetailThumbWidth))
-                Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+                SnapshotThumb(card.thumbnailUrl, coverPath, Modifier.weight(1f))
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                ) {
                     SnapshotCardBadges(card, LocalLauncherTheme.current.semanticColors.warning)
                     DetailRow(stringResource(R.string.save_channels_detail_row_channel), detail.channelLabel)
                     if (card.isOlderClient) {
@@ -144,14 +147,20 @@ private fun SnapshotDetailOverlay(
 @Composable
 private fun DetailRow(label: String, value: String) {
     val theme = LocalArgosyTheme.current
-    Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = theme.textDim)
+    Column {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = theme.textPrimary
+        )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            color = theme.textPrimary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            color = theme.textDim,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = Dimens.spacingSm)
         )
     }
 }
