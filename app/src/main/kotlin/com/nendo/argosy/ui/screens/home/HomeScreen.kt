@@ -402,6 +402,7 @@ fun HomeScreen(
     }
 
     val previewBlocked = videoPreviewBlocked || uiState.showGameMenu ||
+        uiState.showAddToCollectionModal || uiState.showCreateCollectionDialog ||
         uiState.discPickerState != null || uiState.memcardPickerState != null ||
         uiState.syncOverlayState != null || uiState.changelogEntry != null || siblingChoiceOpen
     val currentPreviewBlocked by rememberUpdatedState(previewBlocked)
