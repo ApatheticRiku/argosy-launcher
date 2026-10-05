@@ -38,12 +38,12 @@ import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 
 private const val ROW_MINE_HEADER = "mine_header"
-private const val ROW_MINE_TILES = "mine_tiles"
+private const val ROW_MINE_PREFIX = "mine_"
 private const val ROW_MINE_EMPTY = "mine_empty"
 private const val ROW_BACKUPS_HEADER = "backups_header"
 private const val ROW_BACKUP_PREFIX = "backup_"
 private const val ROW_COMMUNITY_HEADER = "community_header"
-private const val ROW_COMMUNITY_TILES = "community_tiles"
+private const val ROW_COMMUNITY_PREFIX = "community_"
 private const val SKELETON_COUNT = 3
 
 @Composable
@@ -95,8 +95,8 @@ private fun SnapshotSections(
                     SnapshotMessage(stringResource(R.string.save_channels_section_mine_empty))
                 }
             } else {
-                item(key = ROW_MINE_TILES) {
-                    TileStrip(state.mine, state, isMine = true, coverPath = coverPath, actions = actions)
+                itemsIndexed(state.mine, key = { _, tile -> "$ROW_MINE_PREFIX${tile.channelId}" }) { index, tile ->
+                    ChannelRow(tile, index, state, isMine = true, coverPath = coverPath, actions = actions)
                 }
             }
             if (state.backups.isNotEmpty()) {
@@ -116,8 +116,8 @@ private fun SnapshotSections(
                 item(key = ROW_COMMUNITY_HEADER) {
                     SectionHeader(title = stringResource(R.string.save_channels_section_community_title))
                 }
-                item(key = ROW_COMMUNITY_TILES) {
-                    TileStrip(state.community, state, isMine = false, coverPath = coverPath, actions = actions)
+                itemsIndexed(state.community, key = { _, tile -> "$ROW_COMMUNITY_PREFIX${tile.channelId}" }) { index, tile ->
+                    ChannelRow(tile, index, state, isMine = false, coverPath = coverPath, actions = actions)
                 }
             }
         }
@@ -126,23 +126,27 @@ private fun SnapshotSections(
 
 private fun rowKeys(state: SnapshotViewState): List<String> = buildList {
     add(ROW_MINE_HEADER)
-    add(if (state.mine.isEmpty()) ROW_MINE_EMPTY else ROW_MINE_TILES)
+    if (state.mine.isEmpty()) add(ROW_MINE_EMPTY)
+    state.mine.forEach { add("$ROW_MINE_PREFIX${it.channelId}") }
     if (state.backups.isNotEmpty()) {
         add(ROW_BACKUPS_HEADER)
         state.backups.forEach { add("$ROW_BACKUP_PREFIX${it.saveId}") }
     }
     if (state.community.isNotEmpty()) {
         add(ROW_COMMUNITY_HEADER)
-        add(ROW_COMMUNITY_TILES)
+        state.community.forEach { add("$ROW_COMMUNITY_PREFIX${it.channelId}") }
     }
 }
 
 private fun stopKey(state: SnapshotViewState): String? =
     when (val stop = state.stop) {
         SnapshotStop.NewChannel -> ROW_MINE_HEADER
-        SnapshotStop.MineTiles -> ROW_MINE_TILES
-        SnapshotStop.CommunityTiles -> ROW_COMMUNITY_TILES
-        SnapshotStop.Cards -> if (state.expanded?.isMine == false) ROW_COMMUNITY_TILES else ROW_MINE_TILES
+        SnapshotStop.MineTiles -> state.mine.getOrNull(state.mineIndex)?.let { "$ROW_MINE_PREFIX${it.channelId}" }
+        SnapshotStop.CommunityTiles ->
+            state.community.getOrNull(state.communityIndex)?.let { "$ROW_COMMUNITY_PREFIX${it.channelId}" }
+        SnapshotStop.Cards -> state.expanded?.let { open ->
+            (if (open.isMine) ROW_MINE_PREFIX else ROW_COMMUNITY_PREFIX) + open.channelId
+        }
         is SnapshotStop.Backup -> state.backups.getOrNull(stop.index)?.let { "$ROW_BACKUP_PREFIX${it.saveId}" }
     }
 
@@ -177,53 +181,39 @@ private fun SectionHeader(
 }
 
 @Composable
-private fun TileStrip(
-    tiles: List<SnapshotTileUi>,
+private fun ChannelRow(
+    tile: SnapshotTileUi,
+    index: Int,
     state: SnapshotViewState,
     isMine: Boolean,
     coverPath: String?,
     actions: SnapshotViewActions
 ) {
-    val stripState = rememberLazyListState()
+    val rowState = rememberLazyListState()
     val tileFocus = if (isMine) state.mineIndex else state.communityIndex
     val tileStop = if (isMine) SnapshotStop.MineTiles else SnapshotStop.CommunityTiles
-    val open = state.expanded?.takeIf { it.isMine == isMine }
-    val openIndex = open?.let { expanded -> tiles.indexOfFirst { it.channelId == expanded.channelId } } ?: -1
-    val inlineCount = open?.let(::inlineItemCount) ?: 0
-    val focusedItem = if (open != null && state.isStopFocused(SnapshotStop.Cards)) {
-        openIndex + 1 + open.focusIndex
-    } else {
-        tileFocus + if (openIndex in 0 until tileFocus) inlineCount else 0
-    }
-    LaunchedEffect(focusedItem) { stripState.animateScrollToItemCentered(focusedItem) }
+    val open = state.expanded?.takeIf { it.isMine == isMine && it.channelId == tile.channelId }
+    val cardsFocused = open != null && state.isStopFocused(SnapshotStop.Cards)
+    val focusedItem = if (cardsFocused && open != null) 1 + open.focusIndex else 0
+    LaunchedEffect(focusedItem) { rowState.animateScrollToItemCentered(focusedItem) }
     LazyRow(
-        state = stripState,
+        state = rowState,
         contentPadding = PaddingValues(horizontal = Dimens.spacingXs),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
         verticalAlignment = Alignment.Top
     ) {
-        tiles.forEachIndexed { index, tile ->
-            item(key = tile.channelId) {
-                SnapshotChannelTile(
-                    tile = tile,
-                    coverPath = coverPath,
-                    isFocused = state.isStopFocused(tileStop) && index == tileFocus,
-                    isExpanded = index == openIndex,
-                    onClick = { actions.tapTile(isMine, index) },
-                    onLongClick = { actions.longPressTile(isMine, index) }
-                )
-            }
-            if (index == openIndex && open != null) {
-                inlineCards(open, state.isStopFocused(SnapshotStop.Cards), coverPath, actions)
-            }
+        item(key = tile.channelId) {
+            SnapshotChannelTile(
+                tile = tile,
+                coverPath = coverPath,
+                isFocused = state.isStopFocused(tileStop) && index == tileFocus,
+                isExpanded = open != null,
+                onClick = { actions.tapTile(isMine, index) },
+                onLongClick = { actions.longPressTile(isMine, index) }
+            )
         }
+        if (open != null) inlineCards(open, cardsFocused, coverPath, actions)
     }
-}
-
-private fun inlineItemCount(open: SnapshotExpandedUi): Int = when {
-    open.isLoading -> SKELETON_COUNT
-    open.cards.isEmpty() -> 1
-    else -> open.stopCount
 }
 
 private fun LazyListScope.inlineCards(

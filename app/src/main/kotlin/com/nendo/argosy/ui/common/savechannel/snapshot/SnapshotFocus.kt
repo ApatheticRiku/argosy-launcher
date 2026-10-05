@@ -24,47 +24,63 @@ internal object SnapshotFocus {
         return collapsed.copy(stop = clampStop(collapsed, stop))
     }
 
-    fun moveVertical(state: SnapshotViewState, delta: Int): SnapshotViewState {
-        val stops = state.stops
-        if (stops.isEmpty()) return state
-        val current = stops.indexOf(rowStop(state)).coerceAtLeast(0)
-        return state.copy(stop = stops[(current + delta).mod(stops.size)])
+    private fun openIndex(state: SnapshotViewState, isMine: Boolean): Int {
+        val open = state.expanded?.takeIf { it.isMine == isMine } ?: return -1
+        val tiles = if (isMine) state.mine else state.community
+        return tiles.indexOfFirst { it.channelId == open.channelId }
+    }
+
+    private fun currentRow(state: SnapshotViewState): Pair<SnapshotStop, Int> = when (val row = rowStop(state)) {
+        SnapshotStop.MineTiles ->
+            row to if (state.stop == SnapshotStop.Cards) openIndex(state, isMine = true) else state.mineIndex
+        SnapshotStop.CommunityTiles ->
+            row to if (state.stop == SnapshotStop.Cards) openIndex(state, isMine = false) else state.communityIndex
+        else -> row to -1
     }
 
     /**
-     * Left and right along one row, where an open channel's cards sit right after its tile:
-     * stepping past the open tile enters its cards, and stepping past either end of the cards
-     * returns to the tiles on that side.
+     * Up and down through one row per channel, then the backups and the community channels.
+     */
+    fun moveVertical(state: SnapshotViewState, delta: Int): SnapshotViewState {
+        val rows = buildList {
+            state.stops.forEach { stop ->
+                when (stop) {
+                    SnapshotStop.MineTiles -> state.mine.indices.forEach { add(stop to it) }
+                    SnapshotStop.CommunityTiles -> state.community.indices.forEach { add(stop to it) }
+                    else -> add(stop to -1)
+                }
+            }
+        }
+        if (rows.isEmpty()) return state
+        val current = rows.indexOf(currentRow(state)).coerceAtLeast(0)
+        val (stop, index) = rows[(current + delta).mod(rows.size)]
+        return when (stop) {
+            SnapshotStop.MineTiles -> state.copy(stop = stop, mineIndex = index)
+            SnapshotStop.CommunityTiles -> state.copy(stop = stop, communityIndex = index)
+            else -> state.copy(stop = stop)
+        }
+    }
+
+    /**
+     * Left and right along a channel's row: right from an open channel's tile enters its cards,
+     * and left from the first card returns to the tile.
      */
     fun moveHorizontal(state: SnapshotViewState, delta: Int): SnapshotViewState {
-        val row = rowStop(state)
-        val isMine = row == SnapshotStop.MineTiles
+        val (row, tileIndex) = currentRow(state)
         if (row != SnapshotStop.MineTiles && row != SnapshotStop.CommunityTiles) return state
-        val tiles = if (isMine) state.mine else state.community
-        if (tiles.isEmpty()) return state
-        val open = state.expanded?.takeIf { it.isMine == isMine }
-        val openIndex = open?.let { expanded -> tiles.indexOfFirst { it.channelId == expanded.channelId } } ?: -1
-        val tileIndex = if (isMine) state.mineIndex else state.communityIndex
-        fun onTile(index: Int) = if (isMine) {
-            state.copy(stop = SnapshotStop.MineTiles, mineIndex = index.mod(tiles.size))
-        } else {
-            state.copy(stop = SnapshotStop.CommunityTiles, communityIndex = index.mod(tiles.size))
-        }
-        if (open == null || openIndex < 0 || open.stopCount == 0) return onTile(tileIndex + delta)
+        val isMine = row == SnapshotStop.MineTiles
+        val open = state.expanded?.takeIf { it.isMine == isMine && openIndex(state, isMine) == tileIndex }
+        if (open == null || open.stopCount == 0) return state
         if (state.stop == SnapshotStop.Cards) {
             val next = open.focusIndex + delta
             return when {
-                next < 0 -> onTile(openIndex)
-                next >= open.stopCount -> onTile(openIndex + 1)
+                next < 0 -> if (isMine) state.copy(stop = row, mineIndex = tileIndex)
+                else state.copy(stop = row, communityIndex = tileIndex)
+                next >= open.stopCount -> state
                 else -> state.copy(expanded = open.copy(focusIndex = next))
             }
         }
-        return when {
-            tileIndex == openIndex && delta > 0 -> state.copy(stop = SnapshotStop.Cards, expanded = open.copy(focusIndex = 0))
-            tileIndex == (openIndex + 1).mod(tiles.size) && delta < 0 && tiles.size > 1 ->
-                state.copy(stop = SnapshotStop.Cards, expanded = open.copy(focusIndex = open.stopCount - 1))
-            else -> onTile(tileIndex + delta)
-        }
+        return if (delta > 0) state.copy(stop = SnapshotStop.Cards, expanded = open.copy(focusIndex = 0)) else state
     }
 
     fun moveOverlay(state: SnapshotViewState, delta: Int): SnapshotViewState {
