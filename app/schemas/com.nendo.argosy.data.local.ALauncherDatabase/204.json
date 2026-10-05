@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 204,
-    "identityHash": "0dc1e0e918ae7345e23b515abef84eb3",
+    "identityHash": "7b00fb8f962150e44a6dbdd2f1b12837",
     "entities": [
       {
         "tableName": "platforms",
@@ -7401,7 +7401,7 @@
       },
       {
         "tableName": "snapshot_channels",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `channelId` TEXT NOT NULL, `romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, `heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`ownerUserId`, `gameId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `label` TEXT NOT NULL, `channelId` TEXT NOT NULL, `romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, `heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`ownerUserId`, `gameId`, `label`))",
         "fields": [
           {
             "fieldPath": "ownerUserId",
@@ -7413,6 +7413,12 @@
             "fieldPath": "gameId",
             "columnName": "gameId",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -7458,14 +7464,15 @@
           "autoGenerate": false,
           "columnNames": [
             "ownerUserId",
-            "gameId"
+            "gameId",
+            "label"
           ]
         }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0dc1e0e918ae7345e23b515abef84eb3')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7b00fb8f962150e44a6dbdd2f1b12837')"
     ]
   }
 }
