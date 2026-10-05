@@ -382,9 +382,12 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
-    fun `applying a snapshot places its banked auto state and screenshot for the built-in core`() = runBlocking {
+    fun `applying a snapshot clears the emulator's held states and places its bank`() = runBlocking {
         val dir = tempDir.newFolder("applied")
         val auto = java.io.File(dir, "Lunar (USA).state.auto").apply { writeBytes(byteArrayOf(1)) }
+        val stray = java.io.File(dir, "Lunar (USA).state3").apply { writeBytes(byteArrayOf(2)) }
+        val strayShot = java.io.File(dir, "Lunar (USA).state3.png").apply { writeBytes(byteArrayOf(3)) }
+        every { archiver.calculateContentHash(stray) } returns "stray"
         coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
         coEvery { statePaths.liveStateBaseDir(GAME_ID) } returns dir
         every { statePaths.liveStateFile(dir, "Lunar (USA)", -1) } returns auto
@@ -414,6 +417,7 @@ class SnapshotSyncEngineTest {
         assertEquals(SnapshotSyncResult.Applied(42), engine.sync(GAME_ID, EMULATOR, null))
         assertTrue(byteArrayOf(5, 5, 5).contentEquals(auto.readBytes()))
         assertTrue(byteArrayOf(8).contentEquals(java.io.File(dir, "Lunar (USA).state.auto.png").readBytes()))
+        assertTrue("a slot the bank lacks is removed", !stray.exists() && !strayShot.exists())
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.nendo.argosy.data.sync.snapshot
 
 import android.content.Context
 import com.nendo.argosy.BuildConfig
+import com.nendo.argosy.data.emulator.ArchiveRomNaming
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.libretro.LibretroStateSlots
@@ -17,6 +18,7 @@ import com.nendo.argosy.data.remote.romm.RomMRomFile
 import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.remote.romm.RomMSnapshotConflict
 import com.nendo.argosy.data.remote.romm.RomMSnapshotSave
+import com.nendo.argosy.data.remote.romm.RomMSnapshotState
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveDownloader
 import com.nendo.argosy.data.repository.SaveSyncApiClient
@@ -313,7 +315,7 @@ class SnapshotSyncEngine @Inject constructor(
 
     private suspend fun autoStates(ctx: ChannelView, emulatorId: String, isHardcore: Boolean): List<StatePart> {
         if (isHardcore || emulatorId != EmulatorRegistry.BUILTIN_ID) return emptyList()
-        val romBaseName = ctx.game.localPath?.let { File(it).nameWithoutExtension } ?: return emptyList()
+        val romBaseName = liveBaseName(ctx.game) ?: return emptyList()
         val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug)
             ?: return emptyList()
         val dir = statePaths.liveStateBaseDir(ctx.game.id)
@@ -404,26 +406,51 @@ class SnapshotSyncEngine @Inject constructor(
                 else -> return SnapshotSyncResult.Failed("save ${save.id} was not placed: ${placed::class.simpleName}")
             }
         }
-        applyAutoState(ctx, snapshot, emulatorId)
+        applyBank(ctx, snapshot, emulatorId)
         record(ctx, snapshot.id, snapshot.digest, save?.hashes())
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
     }
 
-    private suspend fun applyAutoState(ctx: ChannelView, snapshot: RomMSnapshot, emulatorId: String) {
-        if (emulatorId != EmulatorRegistry.BUILTIN_ID || snapshot.isHardcore) return
-        val romBaseName = ctx.game.localPath?.let { File(it).nameWithoutExtension } ?: return
+    private fun liveBaseName(game: GameEntity): String? =
+        game.localPath?.let { ArchiveRomNaming.liveBaseName(File(it), game.platformSlug) }
+
+    private fun bankSlot(key: String): Int? =
+        if (key == AUTO_SLOT) LibretroStateSlots.AUTO_SLOT else key.toIntOrNull()?.takeIf { it in 0..LibretroStateSlots.MAX_SLOT }
+
+    private suspend fun applyBank(ctx: ChannelView, snapshot: RomMSnapshot, emulatorId: String) {
+        if (emulatorId != EmulatorRegistry.BUILTIN_ID) return
+        val romBaseName = liveBaseName(ctx.game) ?: return
         val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug) ?: return
-        val banked = snapshot.states[core]?.get(AUTO_SLOT) ?: return
-        val path = banked.downloadPath ?: return
         val dir = statePaths.liveStateBaseDir(ctx.game.id)
-        val file = statePaths.liveStateFile(dir, romBaseName, LibretroStateSlots.AUTO_SLOT)
-        if (file.isFile && banked.contentHash != null && saveArchiver.calculateContentHash(file) == banked.contentHash) return
-        val written = fetchTo(ctx.api, path, file)
-        val shot = File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION")
-        if (written) banked.screenshot?.downloadPath?.let { fetchTo(ctx.api, it, shot) } ?: shot.delete()
-        Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | auto state from #${snapshot.id} ($core) written=$written")
+        val bank: Map<Int, RomMSnapshotState> = if (snapshot.isHardcore) {
+            emptyMap()
+        } else {
+            snapshot.states[core].orEmpty().mapNotNull { (key, state) -> bankSlot(key)?.let { it to state } }.toMap()
+        }
+        val kept = mutableSetOf<Int>()
+        withContext(Dispatchers.IO) {
+            dir.listFiles().orEmpty().forEach { file ->
+                val slot = LibretroStateSlots.parseSlotNumber(romBaseName, file.name) ?: return@forEach
+                val banked = bank[slot]
+                if (banked?.contentHash != null && saveArchiver.calculateContentHash(file) == banked.contentHash) {
+                    kept += slot
+                    return@forEach
+                }
+                file.delete()
+                File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION").delete()
+            }
+        }
+        var written = 0
+        bank.filterKeys { it !in kept }.forEach { (slot, banked) ->
+            val path = banked.downloadPath ?: return@forEach
+            val file = statePaths.liveStateFile(dir, romBaseName, slot)
+            if (!fetchTo(ctx.api, path, file)) return@forEach
+            written++
+            banked.screenshot?.downloadPath?.let { fetchTo(ctx.api, it, File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION")) }
+        }
+        Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | bank of #${snapshot.id} ($core): kept=${kept.size} written=$written of ${bank.size}")
     }
 
     private suspend fun fetchTo(api: RomMApi, downloadPath: String, target: File): Boolean = withContext(Dispatchers.IO) {
