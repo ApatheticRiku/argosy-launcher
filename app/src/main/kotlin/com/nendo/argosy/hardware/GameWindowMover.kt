@@ -39,6 +39,6 @@ internal fun builtInGameTask(activityManager: ActivityManager): ActivityManager.
     val gameActivity = LibretroActivity::class.java.name
     return activityManager.appTasks.firstNotNullOfOrNull { task ->
         runCatching { task.taskInfo }.getOrNull()
-            ?.takeIf { it.topActivity?.className == gameActivity }
+            ?.takeIf { it.topActivity?.className == gameActivity || it.baseActivity?.className == gameActivity }
     }
 }

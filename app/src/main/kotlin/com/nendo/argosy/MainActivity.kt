@@ -208,12 +208,14 @@ class MainActivity : ComponentActivity() {
 
     private var hasResumedBefore = false
     private var yieldedFocusToGame = false
+    private var recreatedBySystem = false
 
     // --- Lifecycle ---
 
     @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        recreatedBySystem = savedInstanceState != null
 
         if (display != null && display!!.displayId != Display.DEFAULT_DISPLAY) {
             val docked = com.nendo.argosy.util.DisplayAffinityHelper.dockedExternalDisplayId(this) != null
@@ -428,7 +430,12 @@ class MainActivity : ComponentActivity() {
 
         dualScreenManager.broadcastForegroundState(true)
 
-        cleanupStaleSession()
+        if (recreatedBySystem) {
+            recreatedBySystem = false
+            Log.d(TAG, "onResume: recreated by a configuration change, leaving any session to the game")
+        } else {
+            cleanupStaleSession()
+        }
         revalidateDownloadedFiles()
 
         if (hasResumedBefore) {
