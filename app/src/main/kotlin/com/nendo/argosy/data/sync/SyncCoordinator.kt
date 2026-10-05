@@ -795,8 +795,11 @@ class SyncCoordinator @Inject constructor(
         }
 
         var synced = 0
+        val conflictedChains = mutableSetOf<Triple<Long, Long?, String?>>()
 
         for (cache in channelCaches) {
+            val chain = Triple(cache.gameId, cache.ownerUserId, cache.channelName)
+            if (chain in conflictedChains) continue
             val game = gameDao.getById(cache.gameId) ?: continue
             if (game.rommId == null) continue
             if (game.localPath == null) {
@@ -825,6 +828,7 @@ class SyncCoordinator @Inject constructor(
                     channelName = cache.channelName
                 )
                 if (conflictInfo != null) {
+                    conflictedChains += chain
                     saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName!!, excludeId = -1)
                     val conflictId = pendingConflictDao.record(
                         PendingConflictEntity(
@@ -884,6 +888,7 @@ class SyncCoordinator @Inject constructor(
                     Logger.debug(TAG, "processDirtySaveCaches: Synced channel cache id=${cache.id} gameId=${cache.gameId} channel=${cache.channelName} rommSaveId=${result.rommSaveId} noOp=${result.noOp}")
                 }
                 is SaveSyncResult.Conflict -> {
+                    conflictedChains += chain
                     saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName, excludeId = -1)
                     if (ownerApi != null) {
                         parkConflictForOwner(cache, game.title, result, ownerApi.rommUserId)
