@@ -209,10 +209,11 @@ class SnapshotSyncEngine @Inject constructor(
         if (files.isEmpty()) return null
         val launched = game.localPath?.let { File(it).name }
         files.firstOrNull { it.fileName == launched }?.let { return it }
-        if (launched?.endsWith(".m3u", ignoreCase = true) == true) {
-            return files.filter { it.discNumber == 1 }.minByOrNull { it.fileName } ?: files.minByOrNull { it.fileName }
-        }
-        return files.singleOrNull()
+        val games = files
+            .filter { it.category == null || it.category.equals(GAME_FILE_CATEGORY, ignoreCase = true) }
+            .sortedBy { it.fileName.lowercase() }
+        return games.firstOrNull { it.fileName.substringAfterLast('.').lowercase() in LOADER_EXTENSIONS }
+            ?: games.firstOrNull()
     }
 
     private fun held(ctx: ChannelView): SnapshotPoint? {
@@ -347,10 +348,12 @@ class SnapshotSyncEngine @Inject constructor(
 
     companion object {
         private const val TAG = "SnapshotSyncEngine"
-        private const val DEFAULT_LABEL = "Default"
+        private const val DEFAULT_LABEL = "default"
         private const val FORMAT_NEUTRAL = "neutral"
         private const val EMULATOR = "argosy"
         private const val FILE_MISMATCH_FIELD = "rom_file_id"
+        private const val GAME_FILE_CATEGORY = "game"
+        private val LOADER_EXTENSIONS = setOf("cue", "gdi", "ccd", "mds", "toc")
         private val JSON = "application/json".toMediaType()
         private val OCTET_STREAM = "application/octet-stream".toMediaType()
     }

@@ -96,7 +96,7 @@ class SnapshotSyncEngineTest {
         id = id,
         digest = "sha256:$id",
         createdAt = "2026-10-05T10:00:00Z",
-        channel = RomMSnapshotChannel(CHANNEL, "Default", romFileId = FILE_ID),
+        channel = RomMSnapshotChannel(CHANNEL, "default", romFileId = FILE_ID),
         save = save?.let { RomMSnapshotSave(id * 10, it, it) }
     )
 
@@ -120,7 +120,7 @@ class SnapshotSyncEngineTest {
         assertEquals(SnapshotSyncResult.Pushed(41), result)
         val manifest = manifestOf(parts.captured)
         assertEquals(FILE_ID, manifest.getLong("rom_file_id"))
-        assertEquals("Default", manifest.getString("label"))
+        assertEquals("default", manifest.getString("label"))
         assertTrue(manifest.isNull("expected_current_id"))
         assertEquals("content-a", manifest.getJSONObject("save").getString("hash"))
         assertEquals("neutral", manifest.getJSONObject("save").getString("format"))
@@ -169,7 +169,7 @@ class SnapshotSyncEngineTest {
         assertEquals(SnapshotSyncResult.Pushed(41), engine.sync(GAME_ID, EMULATOR))
         val retry = manifestOf(pushes[1])
         assertTrue(retry.getString("channel_id") != "legacy")
-        assertEquals("Default", retry.getString("label"))
+        assertEquals("default", retry.getString("label"))
     }
 
     @Test
