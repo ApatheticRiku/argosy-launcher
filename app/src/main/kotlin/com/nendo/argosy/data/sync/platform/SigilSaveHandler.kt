@@ -5,6 +5,7 @@ import com.nendo.argosy.data.emulator.EmulatorResolver
 import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.SwitchProfileParser
+import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.platform.PlatformDefinitions
@@ -28,7 +29,8 @@ data class SigilRoute(
     val layout: String,
     val root: String,
     val emulatorPackage: String?,
-    val profile: String?
+    val profile: String?,
+    val options: Map<String, String> = emptyMap()
 )
 
 sealed class SigilCollect {
@@ -62,6 +64,7 @@ class SigilSaveHandler @Inject constructor(
     private val emulatorSaveConfigRepository: EmulatorSaveConfigRepository,
     private val switchProfileParser: SwitchProfileParser,
     private val titleDbRepository: TitleDbRepository,
+    private val emulatorConfigDao: EmulatorConfigDao,
     private val fal: FileAccessLayer
 ) : PlatformSaveHandler {
 
@@ -71,6 +74,8 @@ class SigilSaveHandler @Inject constructor(
         private val LAYOUTS: Map<String, Map<String, String>> = mapOf(
             "gc" to mapOf("dolphin" to "dolphin_standalone", "dolphin_mmjr" to "dolphin_standalone"),
             "psx" to mapOf("duckstation" to "duckstation"),
+            "ps2" to listOf("nethersx2", "aethersx2", "pcsx2", "armsx2_refresh", "armsx2")
+                .associateWith { "pcsx2_standalone" },
             "psp" to mapOf("ppsspp" to "ppsspp_standalone", "ppsspp_gold" to "ppsspp_standalone"),
             "vita" to mapOf("vita3k" to "vita3k", "vita3k-zx" to "vita3k"),
             "ps3" to mapOf("aps3e" to "aps3e", "armsx3" to "armsx3", "armsx3_play" to "armsx3"),
@@ -103,6 +108,8 @@ class SigilSaveHandler @Inject constructor(
             "azahar" to "sdmc",
             "lime3ds" to "sdmc"
         )
+
+        private const val PCSX2_SLOT1_OPTION = "Slot1_Filename"
 
         private val CLOSED_EMULATOR_LAYOUTS = setOf("ryujinx", "kenjinx")
 
@@ -165,7 +172,22 @@ class SigilSaveHandler @Inject constructor(
             ?: return@withContext null
         val layout = layoutFor(config.emulatorId, game.platformSlug) ?: return@withContext null
         val root = rootFor(game, config, layout, emulatorPackage) ?: return@withContext null
-        SigilRoute(layout, root, emulatorPackage, profileFor(layout, emulatorPackage, root))
+        SigilRoute(
+            layout = layout,
+            root = root,
+            emulatorPackage = emulatorPackage,
+            profile = profileFor(layout, emulatorPackage, root),
+            options = optionsFor(layout, game.id, config.emulatorId)
+        )
+    }
+
+    private suspend fun optionsFor(layout: String, gameId: Long, configEmulatorId: String): Map<String, String> {
+        if (layout != "pcsx2_standalone") return emptyMap()
+        val card = emulatorConfigDao.getSelectedMemcardForGame(gameId)
+            ?: emulatorSaveConfigRepository.getByEmulator(configEmulatorId)?.selectedMemcardPath
+        val name = card?.trimEnd('/')?.substringAfterLast('/')?.takeIf { it.isNotBlank() }
+            ?: return emptyMap()
+        return mapOf(PCSX2_SLOT1_OPTION to name)
     }
 
     private suspend fun rootFor(game: GameEntity, config: SavePathConfig, layout: String, pkg: String?): String? {
@@ -202,6 +224,7 @@ class SigilSaveHandler @Inject constructor(
                 core = route.layout,
                 contentPath = contentName(game),
                 saveRoot = route.root,
+                options = route.options,
                 gameIds = ids,
                 unmanaged = true,
                 profile = route.profile,
@@ -240,6 +263,7 @@ class SigilSaveHandler @Inject constructor(
                 core = route.layout,
                 contentPath = contentName(game),
                 saveRoot = route.root,
+                options = route.options,
                 gameIds = ids,
                 unmanaged = true,
                 overwriteLocal = true,
