@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -17,16 +18,20 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -76,6 +81,8 @@ private val SLOT_PICKER_LIST_MAX_HEIGHT =
     com.nendo.argosy.ui.theme.generated.DimensionTokens.Layout.slotPickerListMaxHeight.dp
 private const val MIN_VISIBLE_ITEMS = 4
 private const val LIST_HEIGHT_FRACTION = 0.6f
+private const val HEADER_PATH_SEGMENTS = 2
+private const val ACTIVE_PILL_FILL_ALPHA = 0.18f
 
 @Composable
 fun SaveChannelModal(
@@ -113,50 +120,36 @@ fun SaveChannelModal(
             .clickableNoFocus(onClick = onDismiss),
         contentAlignment = Alignment.Center
     ) {
+        val theme = LocalArgosyTheme.current
+        val panelShape = RoundedCornerShape(Dimens.radiusXl)
         Column(
             modifier = Modifier
-                .background(
-                    MaterialTheme.colorScheme.surface,
-                    RoundedCornerShape(Dimens.radiusLg)
-                )
-                .width(Dimens.modalWidthXl)
+                .padding(horizontal = Dimens.spacingLg)
+                .widthIn(max = Dimens.saveChannelModalWidth)
+                .fillMaxWidth()
+                .clip(panelShape)
+                .background(theme.surfaceBase)
+                .border(Dimens.borderThin, theme.hairlineLow, panelShape)
                 .clickableNoFocus {}
-                .padding(Dimens.spacingMd)
+                .padding(horizontal = Dimens.spacingLg, vertical = Dimens.spacingMd)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = stringResource(R.string.ui_save_channel_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    if (savePath != null) {
-                        val displayPath = formatTruncatedPath(
-                            savePath, maxSegments = 5
-                        )
-                        Text(
-                            text = displayPath,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                if (state.snapshot == null) ActiveSaveIndicator(activeChannel = state.activeChannel)
-            }
+            ModalHeader(
+                savePath = savePath,
+                activeChannel = state.activeChannel,
+                showActiveChannel = state.snapshot == null
+            )
 
             if (state.showsStatesTab) {
-                Spacer(modifier = Modifier.height(Dimens.spacingSm))
+                Spacer(modifier = Modifier.height(Dimens.spacingMd))
                 TabRow(
                     selectedTab = state.selectedTab,
                     onTabSwitch = onTabSwitch
                 )
+            } else {
+                Spacer(modifier = Modifier.height(Dimens.spacingSm))
             }
+
+            HorizontalDivider(color = theme.hairlineLow)
 
             Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
@@ -443,13 +436,61 @@ private fun SavesTabContent(
 }
 
 @Composable
+private fun ModalHeader(
+    savePath: String?,
+    activeChannel: String?,
+    showActiveChannel: Boolean
+) {
+    val theme = LocalArgosyTheme.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+        ) {
+            Text(
+                text = stringResource(R.string.ui_save_channel_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = theme.textPrimary,
+                maxLines = 1
+            )
+            if (savePath != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Folder,
+                        contentDescription = null,
+                        tint = theme.textMute,
+                        modifier = Modifier.size(Dimens.iconXs)
+                    )
+                    Text(
+                        text = formatTruncatedPath(savePath, maxSegments = HEADER_PATH_SEGMENTS),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = theme.textMute,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+        if (showActiveChannel) ActiveSaveIndicator(activeChannel = activeChannel)
+    }
+}
+
+@Composable
 private fun TabRow(
     selectedTab: SaveTab,
     onTabSwitch: (SaveTab) -> Unit
 ) {
+    val theme = LocalArgosyTheme.current
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingLg)
     ) {
         SaveTab.entries.forEach { tab ->
             val isActive = tab == selectedTab
@@ -457,22 +498,24 @@ private fun TabRow(
                 SaveTab.SAVES -> stringResource(R.string.ui_save_channel_tab_saves)
                 SaveTab.STATES -> stringResource(R.string.ui_save_channel_tab_states)
             }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
-                color = if (isActive) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        if (isActive) MaterialTheme.colorScheme.primary
-                            .copy(alpha = 0.12f)
-                        else Color.Transparent
-                    )
-                    .clickableNoFocus { onTabSwitch(tab) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            )
+            Column(
+                modifier = Modifier.width(IntrinsicSize.Max).clickableNoFocus { onTabSwitch(tab) },
+                verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = if (isActive) theme.textPrimary else theme.textDim,
+                    maxLines = 1
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(Dimens.borderMedium)
+                        .clip(RoundedCornerShape(Dimens.radiusPill))
+                        .background(if (isActive) theme.focusAccent else Color.Transparent)
+                )
+            }
         }
     }
 }
@@ -773,19 +816,28 @@ private fun HistoryRow(
 
 @Composable
 private fun ActiveSaveIndicator(activeChannel: String?) {
+    val accent = LocalArgosyTheme.current.focusAccent
+    val shape = RoundedCornerShape(Dimens.radiusPill)
     Row(
+        modifier = Modifier
+            .clip(shape)
+            .background(accent.copy(alpha = ACTIVE_PILL_FILL_ALPHA))
+            .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
     ) {
-        Text(
-            text = "\u25C6",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+        Box(
+            modifier = Modifier
+                .size(Dimens.dotSm)
+                .clip(CircleShape)
+                .background(accent)
         )
         Text(
             text = activeChannel ?: stringResource(R.string.ui_save_channel_active_default),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary
+            color = accent,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

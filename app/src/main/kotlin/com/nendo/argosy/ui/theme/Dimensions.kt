@@ -61,6 +61,7 @@ object Dimens {
     val screenMapCardWidth: Dp @Composable get() =DimensionTokens.Layout.screenMapCardWidth.dp * scale
     val saveChannelTileWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelTileWidth.dp * scale
     val saveChannelCardWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelCardWidth.dp * scale
+    val saveChannelModalWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelModalWidth.dp * scale
     val dotSm: Dp @Composable get() = DimensionTokens.Dot.sm.dp * scale
     val dotLg: Dp @Composable get() = DimensionTokens.Dot.lg.dp * scale
     val avatarXs: Dp @Composable get() = DimensionTokens.Avatar.xs.dp * scale

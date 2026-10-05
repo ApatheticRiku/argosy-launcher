@@ -1,5 +1,6 @@
 package com.nendo.argosy.ui.common.savechannel.snapshot
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -8,20 +9,32 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallSplit
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.NestedModal
@@ -93,10 +106,15 @@ private fun SnapshotDetailOverlay(
     NestedModal(title = title, baseWidth = Dimens.modalWidthXl, onDismiss = actions::closeOverlay) {
         Column(
             modifier = Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)) {
-                SnapshotThumb(card.thumbnailUrl, coverPath, Modifier.weight(1f))
+                SnapshotThumb(
+                    url = card.thumbnailUrl,
+                    fallbackPath = coverPath,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(Dimens.radiusLg)
+                )
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
@@ -122,23 +140,32 @@ private fun SnapshotDetailOverlay(
                 }
             }
             if (!card.isOlderClient) {
-                Text(
-                    text = stringResource(R.string.save_channels_detail_states_title),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = theme.textDim
-                )
-                when {
-                    detail.states.isNotEmpty() -> detail.states.forEach { core -> CoreStates(core) }
-                    card.isHardcore -> StatesNote(stringResource(R.string.save_channels_detail_states_hardcore))
-                    else -> StatesNote(stringResource(R.string.save_channels_detail_states_none))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(Dimens.radiusLg))
+                        .background(theme.surfaceRaised)
+                        .padding(Dimens.spacingSm),
+                    verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                ) {
+                    SnapshotEyebrow(stringResource(R.string.save_channels_detail_states_title))
+                    when {
+                        detail.states.isNotEmpty() -> detail.states.forEach { core -> CoreStates(core) }
+                        card.isHardcore -> StatesNote(stringResource(R.string.save_channels_detail_states_hardcore))
+                        else -> StatesNote(stringResource(R.string.save_channels_detail_states_none))
+                    }
                 }
             }
-            detail.actions.forEachIndexed { index, action ->
-                SnapshotOverlayRow(
-                    label = action.label(),
-                    isFocused = isActive && detail.focusIndex == index,
-                    onClick = { actions.tapOverlayRow(index) }
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+                HorizontalDivider(color = theme.hairlineLow)
+                detail.actions.forEachIndexed { index, action ->
+                    SnapshotOverlayRow(
+                        label = action.label(),
+                        isFocused = isActive && detail.focusIndex == index,
+                        onClick = { actions.tapOverlayRow(index) },
+                        icon = action.icon
+                    )
+                }
             }
         }
     }
@@ -146,21 +173,14 @@ private fun SnapshotDetailOverlay(
 
 @Composable
 private fun DetailRow(label: String, value: String) {
-    val theme = LocalArgosyTheme.current
     Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = theme.textPrimary
-        )
+        SnapshotEyebrow(label)
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
-            color = theme.textDim,
+            style = MaterialTheme.typography.bodyMedium,
+            color = LocalArgosyTheme.current.textPrimary,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = Dimens.spacingSm)
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -169,12 +189,18 @@ private fun DetailRow(label: String, value: String) {
 @Composable
 private fun CoreStates(core: SnapshotCoreStatesUi) {
     val theme = LocalArgosyTheme.current
-    Column(
-        modifier = Modifier.padding(start = Dimens.spacingSm),
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
-        Text(text = core.core, style = MaterialTheme.typography.bodySmall, color = theme.textPrimary)
+        Text(
+            text = core.core,
+            style = MaterialTheme.typography.bodyMedium,
+            color = theme.textPrimary,
+            maxLines = 1
+        )
         FlowRow(
+            modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
@@ -200,27 +226,50 @@ internal fun SnapshotOverlayRow(
     label: String,
     isFocused: Boolean,
     onClick: () -> Unit,
-    isDestructive: Boolean = false
+    isDestructive: Boolean = false,
+    icon: ImageVector? = null
 ) {
     val theme = LocalArgosyTheme.current
     val shape = RoundedCornerShape(Dimens.radiusMd)
-    Text(
-        text = label,
-        style = MaterialTheme.typography.bodyMedium,
-        color = if (isDestructive) theme.destructive else theme.textPrimary,
+    val labelColor = if (isDestructive) theme.destructive else theme.textPrimary
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = Dimens.menuRowHeight)
             .argosyFocusIndicators(focused = isFocused, indicators = FocusIndicators.ListRow, shape = shape)
             .clip(shape)
             .clickableNoFocus(onClick = onClick)
-            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm)
-    )
+            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isDestructive) labelColor else theme.textDim,
+                modifier = Modifier.size(Dimens.iconSm)
+            )
+        }
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = labelColor)
+    }
 }
+
+private val SnapshotDetailAction.icon: ImageVector
+    get() = when (this) {
+        SnapshotDetailAction.USE_ON_DEVICE -> Icons.Filled.PlayArrow
+        SnapshotDetailAction.RESTORE -> Icons.Filled.Restore
+        SnapshotDetailAction.FORK -> Icons.AutoMirrored.Filled.CallSplit
+        SnapshotDetailAction.COPY_OVER -> Icons.Filled.ContentCopy
+        SnapshotDetailAction.PIN -> Icons.Filled.PushPin
+        SnapshotDetailAction.UNPIN -> Icons.Outlined.PushPin
+        SnapshotDetailAction.MAKE_SNAPSHOT -> Icons.Filled.Layers
+    }
 
 @Composable
 private fun SnapshotDetailAction.label(): String = stringResource(
     when (this) {
+        SnapshotDetailAction.USE_ON_DEVICE -> R.string.save_channels_detail_action_use_on_device
         SnapshotDetailAction.RESTORE -> R.string.save_channels_detail_action_restore
         SnapshotDetailAction.FORK -> R.string.save_channels_detail_action_fork
         SnapshotDetailAction.COPY_OVER -> R.string.save_channels_detail_action_copy_over

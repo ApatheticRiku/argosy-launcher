@@ -123,6 +123,7 @@ object DimensionTokens {
         const val achievementRowBadge = 56
         const val saveChannelTileWidth = 168
         const val saveChannelCardWidth = 136
+        const val saveChannelModalWidth = 680
     }
 
     object Elevation {

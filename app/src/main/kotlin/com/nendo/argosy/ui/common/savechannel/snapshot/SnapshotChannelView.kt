@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.common.savechannel.snapshot
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,7 +81,7 @@ private fun SnapshotSections(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
             item(key = ROW_MINE_HEADER) {
                 SectionHeader(
@@ -101,7 +102,10 @@ private fun SnapshotSections(
             }
             if (state.backups.isNotEmpty()) {
                 item(key = ROW_BACKUPS_HEADER) {
-                    SectionHeader(title = stringResource(R.string.save_channels_section_backups_title))
+                    SectionHeader(
+                        title = stringResource(R.string.save_channels_section_backups_title),
+                        modifier = Modifier.padding(top = Dimens.spacingMd)
+                    )
                 }
                 itemsIndexed(state.backups, key = { _, backup -> "$ROW_BACKUP_PREFIX${backup.saveId}" }) { index, backup ->
                     SnapshotBackupRow(
@@ -114,7 +118,10 @@ private fun SnapshotSections(
             }
             if (state.community.isNotEmpty()) {
                 item(key = ROW_COMMUNITY_HEADER) {
-                    SectionHeader(title = stringResource(R.string.save_channels_section_community_title))
+                    SectionHeader(
+                        title = stringResource(R.string.save_channels_section_community_title),
+                        modifier = Modifier.padding(top = Dimens.spacingMd)
+                    )
                 }
                 itemsIndexed(state.community, key = { _, tile -> "$ROW_COMMUNITY_PREFIX${tile.channelId}" }) { index, tile ->
                     ChannelRow(tile, index, state, isMine = false, coverPath = coverPath, actions = actions)
@@ -153,20 +160,28 @@ private fun stopKey(state: SnapshotViewState): String? =
 @Composable
 private fun SectionHeader(
     title: String,
+    modifier: Modifier = Modifier,
     actionLabel: String? = null,
     isActionFocused: Boolean = false,
     onAction: () -> Unit = {}
 ) {
     val theme = LocalArgosyTheme.current
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = Dimens.spacingXs),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = modifier.fillMaxWidth().padding(horizontal = Dimens.spacingSm + Dimens.spacingXs),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.labelMedium,
-            color = theme.textDim,
-            modifier = Modifier.weight(1f)
+            style = MaterialTheme.typography.titleSmall,
+            color = theme.textPrimary,
+            maxLines = 1
+        )
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(Dimens.borderThin)
+                .background(theme.hairlineHigh)
         )
         if (actionLabel != null) {
             ModalActionButton(
@@ -196,23 +211,42 @@ private fun ChannelRow(
     val cardsFocused = open != null && state.isStopFocused(SnapshotStop.Cards)
     val focusedItem = if (cardsFocused && open != null) 1 + open.focusIndex else 0
     LaunchedEffect(focusedItem) { rowState.animateScrollToItemCentered(focusedItem) }
-    LazyRow(
-        state = rowState,
-        contentPadding = PaddingValues(horizontal = Dimens.spacingXs),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
-        verticalAlignment = Alignment.Top
-    ) {
-        item(key = tile.channelId) {
-            SnapshotChannelTile(
-                tile = tile,
-                coverPath = coverPath,
-                isFocused = state.isStopFocused(tileStop) && index == tileFocus,
-                isExpanded = open != null,
-                onClick = { actions.tapTile(isMine, index) },
-                onLongClick = { actions.longPressTile(isMine, index) }
+    val theme = LocalArgosyTheme.current
+    val laneShape = RoundedCornerShape(Dimens.radiusXl)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(laneShape)
+            .then(
+                if (open != null) {
+                    Modifier
+                        .background(theme.surfaceRaised)
+                        .border(Dimens.borderThin, theme.hairlineLow, laneShape)
+                } else {
+                    Modifier
+                }
             )
+    ) {
+        LazyRow(
+            state = rowState,
+            contentPadding = PaddingValues(Dimens.spacingSm),
+            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+            verticalAlignment = Alignment.Top
+        ) {
+            item(key = tile.channelId) {
+                Box(modifier = Modifier.padding(end = Dimens.spacingXs)) {
+                    SnapshotChannelTile(
+                        tile = tile,
+                        coverPath = coverPath,
+                        isFocused = state.isStopFocused(tileStop) && index == tileFocus,
+                        isExpanded = open != null,
+                        onClick = { actions.tapTile(isMine, index) },
+                        onLongClick = { actions.longPressTile(isMine, index) }
+                    )
+                }
+            }
+            if (open != null) inlineCards(open, cardsFocused, coverPath, actions)
         }
-        if (open != null) inlineCards(open, cardsFocused, coverPath, actions)
     }
 }
 
@@ -261,7 +295,7 @@ private fun CardSkeleton() {
             .width(Dimens.saveChannelCardWidth)
             .aspectRatio(THUMB_ASPECT)
             .clip(RoundedCornerShape(Dimens.radiusLg))
-            .background(LocalArgosyTheme.current.surfaceRaised)
+            .background(LocalArgosyTheme.current.surfaceElevated)
     )
 }
 

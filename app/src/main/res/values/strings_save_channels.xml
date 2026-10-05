@@ -3,9 +3,9 @@
     <!--
       Owner: ui/common/savechannel/snapshot
       Key prefix: save_channels_
-      The channel view of the save manager on a RomM server with snapshots. English follows
-      RomM's own channel panel. Keys are named for the usage site, never for the English text,
-      and identical English is never shared between two usage sites.
+      The channel view of the save manager on a RomM server with snapshots. Keys are named for
+      the usage site, never for the English text, and identical English is never shared between
+      two usage sites. Keep the English short: these labels sit on small tiles and menu rows.
       "Channel" throughout means a named line of saves for one game on the server, not a TV
       channel. "Snapshot" means one saved point in a channel: the save plus its states.
     -->
@@ -21,9 +21,9 @@
     <!-- Button beside the Mine heading that starts a new channel. -->
     <string name="save_channels_section_mine_new">New channel</string>
     <!-- Shown under Mine when the user has no channels at all. -->
-    <string name="save_channels_section_mine_empty">No channels yet. A client that syncs saves creates one, or you can start one here.</string>
+    <string name="save_channels_section_mine_empty">No channels yet</string>
     <!-- Shown when the channel list could not be fetched from the server. -->
-    <string name="save_channels_load_failed">Couldn\'t load this game\'s channels.</string>
+    <string name="save_channels_load_failed">Couldn\'t load channels</string>
 
     <!-- ============================ Channel tile ============================ -->
 
@@ -34,23 +34,20 @@
     <!-- Chip on another user's shared channel. %1$s is that user's name. -->
     <string name="save_channels_tile_chip_by_owner">by %1$s</string>
     <!-- Chip on a channel that only holds saves from older clients, none in snapshot form. -->
-    <string name="save_channels_tile_chip_no_snapshots">No snapshots yet</string>
+    <string name="save_channels_tile_chip_no_snapshots">Legacy only</string>
     <!-- Chip on the channel this device currently syncs the game with. -->
     <string name="save_channels_tile_chip_this_device">This device</string>
-    <!-- Tile subtitle. %1$s is when the channel was last saved to ("2 hours ago"), %2$s is
-         the device that saved it. -->
-    <string name="save_channels_tile_subtitle">%1$s · %2$s</string>
     <!-- Tile subtitle for a channel with nothing in it. -->
-    <string name="save_channels_tile_subtitle_empty">No saves yet</string>
-    <!-- Hint on the footer button that opens the focused channel's action list. -->
-    <string name="save_channels_footer_channel_actions">Channel actions</string>
+    <string name="save_channels_tile_subtitle_empty">Empty</string>
+    <!-- Hint on the footer button that opens the focused channel's action list. Noun. -->
+    <string name="save_channels_footer_channel_actions">Options</string>
 
     <!-- ============================ Device labels ============================ -->
 
     <!-- Device name when the server does not know which device made a save. -->
-    <string name="save_channels_device_unknown">Unknown device</string>
+    <string name="save_channels_device_unknown">Unknown</string>
     <!-- Device name for a save another user made, whose device names stay private. -->
-    <string name="save_channels_device_other_user">Another user\'s device</string>
+    <string name="save_channels_device_other_user">Other user</string>
 
     <!-- ============================ Snapshot cards ============================ -->
 
@@ -62,19 +59,19 @@
     <string name="save_channels_card_badge_pinned">Pinned</string>
     <!-- Badge on a snapshot made in RetroAchievements hardcore mode. -->
     <string name="save_channels_card_badge_hardcore">Hardcore</string>
-    <!-- Badge on a save an older client uploaded without making a snapshot. -->
-    <string name="save_channels_card_badge_older_client">Older client</string>
+    <!-- Badge on a save an older client uploaded without making a snapshot. Adjective. -->
+    <string name="save_channels_card_badge_older_client">Legacy</string>
     <!-- Server id of a snapshot, shown small on its card. %1$d is the id. -->
     <string name="save_channels_card_caption_id">#%1$d</string>
     <!-- Shown in an opened channel that holds no saves at all. -->
-    <string name="save_channels_cards_empty">No saves yet</string>
+    <string name="save_channels_cards_empty">Empty</string>
     <!-- Last card in a channel's strip; fetches the next page of older snapshots. -->
-    <string name="save_channels_card_load_more">Load more</string>
+    <string name="save_channels_card_load_more">More</string>
 
     <!-- ============================ Backups ============================ -->
 
     <!-- Action on a backup row: start a new channel with this save in it. -->
-    <string name="save_channels_backup_action_new_channel">New channel from this backup</string>
+    <string name="save_channels_backup_action_new_channel">New channel</string>
 
     <!-- ============================ Snapshot detail ============================ -->
 
@@ -84,115 +81,120 @@
     <string name="save_channels_detail_row_channel">Channel</string>
     <!-- Detail row label: the device that made the snapshot. -->
     <string name="save_channels_detail_row_device">Device</string>
-    <!-- Detail row label: the snapshot this one was made from. -->
-    <string name="save_channels_detail_row_parent">Made from</string>
+    <!-- Detail row label: the snapshot this one was made from. Noun. -->
+    <string name="save_channels_detail_row_parent">Parent</string>
     <!-- Detail row label: when the snapshot was saved. Past participle. -->
     <string name="save_channels_detail_row_saved">Saved</string>
     <!-- Detail row label: the save file name of an older client's save. -->
     <string name="save_channels_detail_row_file">File</string>
-    <!-- Value of the Made from row. %1$d is the parent snapshot's server id. -->
+    <!-- Value of the Parent row. %1$d is the parent snapshot's server id. -->
     <string name="save_channels_detail_parent_id">#%1$d</string>
-    <!-- Value of the Made from row when the snapshot has no parent. -->
+    <!-- Value of the Parent row when the snapshot has no parent. -->
     <string name="save_channels_detail_parent_none">-</string>
     <!-- Heading over the save states bundled with the snapshot. "States" means save states. -->
-    <string name="save_channels_detail_states_title">States in this snapshot</string>
+    <string name="save_channels_detail_states_title">States</string>
     <!-- Shown in place of the states list for a hardcore snapshot. -->
-    <string name="save_channels_detail_states_hardcore">Hardcore snapshots carry no states.</string>
+    <string name="save_channels_detail_states_hardcore">None in hardcore</string>
     <!-- Shown in place of the states list when the snapshot has none. -->
-    <string name="save_channels_detail_states_none">No states.</string>
+    <string name="save_channels_detail_states_none">None</string>
     <!-- Save state slot that the emulator writes automatically. -->
     <string name="save_channels_detail_state_slot_auto">Auto</string>
     <!-- Numbered save state slot. %1$s is the slot number. -->
     <string name="save_channels_detail_state_slot_numbered">Slot %1$s</string>
     <!-- Detail action: make this snapshot the channel's current save. -->
-    <string name="save_channels_detail_action_restore">Restore as current</string>
-    <!-- Detail action: start a new channel from this snapshot. -->
-    <string name="save_channels_detail_action_fork">Fork to new channel</string>
+    <string name="save_channels_detail_action_restore">Make current</string>
+    <!-- Detail action: start a new channel from this snapshot. Verb. -->
+    <string name="save_channels_detail_action_fork">Fork</string>
     <!-- Detail action: put this snapshot on top of another of the user's channels. -->
-    <string name="save_channels_detail_action_copy_over">Copy over channel</string>
+    <string name="save_channels_detail_action_copy_over">Copy to…</string>
+    <!-- Detail action on a channel's current save: sync this channel on this device. -->
+    <string name="save_channels_detail_action_use_on_device">Use here</string>
     <!-- Detail action: keep this snapshot from ever being cleaned up. Verb. -->
     <string name="save_channels_detail_action_pin">Pin</string>
     <!-- Detail action: undo Pin. Verb. -->
     <string name="save_channels_detail_action_unpin">Unpin</string>
     <!-- Detail action on an older client's save: turn it into a snapshot in its channel. -->
-    <string name="save_channels_detail_action_make_snapshot">Make it a snapshot</string>
+    <string name="save_channels_detail_action_make_snapshot">Make snapshot</string>
     <!-- Title of the list of channels a snapshot can be copied over. -->
-    <string name="save_channels_copy_picker_title">Copy over channel</string>
+    <string name="save_channels_copy_picker_title">Copy to</string>
 
     <!-- ============================ Channel actions ============================ -->
 
     <!-- Channel action: make this channel the one the game syncs with on this device. -->
-    <string name="save_channels_menu_action_use_on_device">Use on this device</string>
+    <string name="save_channels_menu_action_use_on_device">Use here</string>
     <!-- Channel action: give the channel a new name. Verb. -->
     <string name="save_channels_menu_action_rename">Rename</string>
     <!-- Channel action: let other users on the server see the channel. Verb. -->
     <string name="save_channels_menu_action_share">Share</string>
     <!-- Channel action: undo Share. -->
-    <string name="save_channels_menu_action_stop_sharing">Stop sharing</string>
-    <!-- Channel action: delete the channel. -->
-    <string name="save_channels_menu_action_delete">Delete channel</string>
+    <string name="save_channels_menu_action_stop_sharing">Unshare</string>
+    <!-- Channel action: delete the channel. Verb. -->
+    <string name="save_channels_menu_action_delete">Delete</string>
 
     <!-- ============================ Name entry ============================ -->
 
     <!-- Title of the name entry for a new channel. -->
     <string name="save_channels_label_title_new">New channel</string>
     <!-- Title of the name entry when renaming a channel. -->
-    <string name="save_channels_label_title_rename">Rename channel</string>
-    <!-- Title of the name entry when forking a snapshot into a new channel. -->
-    <string name="save_channels_label_title_fork">Fork to a new channel</string>
+    <string name="save_channels_label_title_rename">Rename</string>
+    <!-- Title of the name entry when forking a snapshot into a new channel. Verb. -->
+    <string name="save_channels_label_title_fork">Fork</string>
     <!-- Placeholder in the channel name field. Noun. -->
     <string name="save_channels_label_field_placeholder">Name</string>
     <!-- Label of the picker choosing which backup a new channel starts with. -->
     <string name="save_channels_label_start_from">Start from</string>
-    <!-- Start-from choice: the new channel begins with no save. -->
-    <string name="save_channels_label_start_empty">Start empty</string>
+    <!-- Start-from choice: the new channel begins with no save. Adjective. -->
+    <string name="save_channels_label_start_empty">Empty</string>
     <!-- Name entry button that cancels. -->
     <string name="save_channels_label_cancel">Cancel</string>
     <!-- Name entry confirm button for a new channel. Verb. -->
     <string name="save_channels_label_confirm_new">Create</string>
     <!-- Name entry confirm button when renaming. Verb. -->
     <string name="save_channels_label_confirm_rename">Rename</string>
-    <!-- Name entry confirm button when forking. -->
-    <string name="save_channels_label_confirm_fork">Fork to new channel</string>
+    <!-- Name entry confirm button when forking. Verb. -->
+    <string name="save_channels_label_confirm_fork">Fork</string>
 
     <!-- ============================ Confirmations ============================ -->
 
     <!-- Title of the confirmation before sharing a channel. -->
-    <string name="save_channels_share_confirm_title">Share this channel?</string>
-    <string name="save_channels_share_confirm_body">Everyone on this server can see this channel\'s saves and save their own progress into it.</string>
+    <string name="save_channels_share_confirm_title">Share channel?</string>
+    <!-- Body of the share confirmation: other users can see the channel and save into it. -->
+    <string name="save_channels_share_confirm_body">Everyone on this server can see and save to it.</string>
     <!-- Confirm button that shares the channel. Verb. -->
     <string name="save_channels_share_confirm_action">Share</string>
     <!-- Title of the confirmation before a softcore save replaces a hardcore one. -->
-    <string name="save_channels_hardcore_confirm_title">Replace a hardcore save?</string>
-    <string name="save_channels_hardcore_confirm_body">This channel\'s current save was made in hardcore mode. Restoring a softcore save replaces it as current. The hardcore save stays in the history.</string>
+    <string name="save_channels_hardcore_confirm_title">Replace hardcore save?</string>
+    <!-- Body of the hardcore confirmation: the hardcore save is kept in the channel's history. -->
+    <string name="save_channels_hardcore_confirm_body">The hardcore save stays in history.</string>
     <!-- Confirm button that lets the softcore save replace the hardcore one. Verb. -->
     <string name="save_channels_hardcore_confirm_action">Replace</string>
     <!-- Title of the delete confirmation. %1$s is the channel name. -->
     <string name="save_channels_delete_confirm_title">Delete %1$s?</string>
     <!-- Delete warning. %1$d is the number of pinned snapshots, %2$d the number of older
-         client saves in the channel. -->
-    <string name="save_channels_delete_confirm_body">The current save and %1$d pinned snapshots stay as backups, and %2$d saves from older clients become backups. Older snapshots are deleted.</string>
-    <!-- Button the user holds down to delete the channel. -->
-    <string name="save_channels_delete_confirm_hold">Delete channel</string>
+         client saves in the channel. Both, plus the current save, become backups. -->
+    <string name="save_channels_delete_confirm_body">Current, %1$d pinned and %2$d legacy saves become backups. The rest are deleted.</string>
+    <!-- Button the user holds down to delete the channel. Verb. -->
+    <string name="save_channels_delete_confirm_hold">Delete</string>
 
     <!-- ============================ Notices ============================ -->
 
-    <string name="save_channels_notice_restored">Restored as current</string>
-    <string name="save_channels_notice_forked">New channel created from this snapshot</string>
-    <string name="save_channels_notice_copied">Copied into the channel</string>
-    <string name="save_channels_notice_made_snapshot">Snapshot created</string>
+    <string name="save_channels_notice_restored">Made current</string>
+    <string name="save_channels_notice_forked">Forked</string>
+    <string name="save_channels_notice_copied">Copied</string>
+    <string name="save_channels_notice_made_snapshot">Snapshot made</string>
     <string name="save_channels_notice_created">Channel created</string>
-    <string name="save_channels_notice_renamed">Channel renamed</string>
-    <string name="save_channels_notice_shared">Channel shared</string>
-    <string name="save_channels_notice_unshared">Channel no longer shared</string>
-    <string name="save_channels_notice_deleted">Channel deleted</string>
+    <string name="save_channels_notice_renamed">Renamed</string>
+    <string name="save_channels_notice_shared">Shared</string>
+    <string name="save_channels_notice_unshared">Unshared</string>
+    <string name="save_channels_notice_deleted">Deleted</string>
     <!-- %1$s is the channel name now synced on this device. -->
-    <string name="save_channels_notice_used_on_device">Now using %1$s on this device</string>
-    <string name="save_channels_notice_stale">Another device saved to this channel first. It\'s been refreshed so you can try again.</string>
+    <string name="save_channels_notice_used_on_device">Using %1$s</string>
+    <!-- Another device moved the channel first; the view reloaded. -->
+    <string name="save_channels_notice_stale">Changed elsewhere, refreshed</string>
     <!-- %1$s is the server's reason. -->
-    <string name="save_channels_notice_failed">Couldn\'t update the channel: %1$s</string>
+    <string name="save_channels_notice_failed">Failed: %1$s</string>
     <!-- The server refused to let a softcore save replace a hardcore one and nothing changed. -->
-    <string name="save_channels_notice_hardcore_kept">The server kept the hardcore save as current, so nothing changed.</string>
-    <string name="save_channels_notice_offline">Couldn\'t reach the server.</string>
-    <string name="save_channels_notice_history_failed">Couldn\'t load the channel\'s history.</string>
+    <string name="save_channels_notice_hardcore_kept">Hardcore save kept</string>
+    <string name="save_channels_notice_offline">Server unreachable</string>
+    <string name="save_channels_notice_history_failed">Couldn\'t load history</string>
 </resources>

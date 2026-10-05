@@ -47,7 +47,7 @@ class SnapshotViewDelegate @Inject constructor(
             state.labelEntry != null -> confirmLabel(scope)
             state.copyPicker != null -> confirmCopyTarget(scope)
             state.channelMenu != null -> runChannelAction(scope, onSaveStatusChanged)
-            state.detail != null -> runDetailAction(scope)
+            state.detail != null -> runDetailAction(scope, onSaveStatusChanged)
             else -> confirmStop(scope, state)
         }
     }
@@ -240,6 +240,9 @@ class SnapshotViewDelegate @Inject constructor(
             listOfNotNull(SnapshotDetailAction.MAKE_SNAPSHOT.takeIf { channel.isOwn })
         } else {
             buildList {
+                if (card.isCurrent && snapshot?.tile(channelId)?.isDeviceChannel == false) {
+                    add(SnapshotDetailAction.USE_ON_DEVICE)
+                }
                 if (!card.isCurrent && canWrite) add(SnapshotDetailAction.RESTORE)
                 if (runner.romFileIdFor(channel) != null) add(SnapshotDetailAction.FORK)
                 if (runner.copyTargets(channel).isNotEmpty()) add(SnapshotDetailAction.COPY_OVER)
@@ -260,11 +263,12 @@ class SnapshotViewDelegate @Inject constructor(
         }
     }
 
-    private fun runDetailAction(scope: CoroutineScope) {
+    private fun runDetailAction(scope: CoroutineScope, onSaveStatusChanged: (SaveStatusEvent) -> Unit) {
         val detail = snapshot?.detail ?: return
         val channel = runner.entryOf(detail.channelId)?.channel ?: return
         val snapshotId = detail.card.snapshotId
         when (detail.focusedAction ?: return) {
+            SnapshotDetailAction.USE_ON_DEVICE -> runner.useOnDevice(scope, detail.channelId, onSaveStatusChanged)
             SnapshotDetailAction.RESTORE -> {
                 val emulatorId = holder.state.value.emulatorId ?: return
                 runner.push(scope, SnapshotPush.Restore(channel, snapshotId ?: return, emulatorId))

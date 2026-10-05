@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -29,8 +29,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -49,6 +52,7 @@ import com.nendo.argosy.util.formatRelativeTime
 internal const val THUMB_ASPECT = 4f / 3f
 private const val CHIP_FILL_ALPHA = 0.18f
 private const val MUTED_ALPHA = 0.7f
+private const val BADGE_SCRIM_ALPHA = 0.85f
 private val TileFocus = FocusIndicators(ring = true, fill = true)
 
 @Composable
@@ -65,14 +69,19 @@ internal fun SnapshotDeviceUi.label(): String = when (this) {
 }
 
 @Composable
-internal fun SnapshotThumb(url: String?, fallbackPath: String?, modifier: Modifier = Modifier) {
+internal fun SnapshotThumb(
+    url: String?,
+    fallbackPath: String?,
+    modifier: Modifier = Modifier,
+    shape: Shape? = null
+) {
     val theme = LocalArgosyTheme.current
     var serverFailed by remember(url) { mutableStateOf(false) }
     val model = rememberFileImageModel(url?.takeUnless { serverFailed } ?: fallbackPath)
     Box(
         modifier = modifier
             .aspectRatio(THUMB_ASPECT)
-            .clip(RoundedCornerShape(Dimens.radiusMd))
+            .clip(shape ?: RoundedCornerShape(Dimens.radiusMd))
             .background(theme.surfaceRaised),
         contentAlignment = Alignment.Center
     ) {
@@ -113,7 +122,31 @@ internal fun SnapshotChip(text: String, color: Color, outlined: Boolean = false)
     )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun SnapshotOverlayBadge(text: String, color: Color, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        maxLines = 1,
+        modifier = modifier
+            .clip(RoundedCornerShape(Dimens.radiusSm))
+            .background(LocalArgosyTheme.current.surfaceBase.copy(alpha = BADGE_SCRIM_ALPHA))
+            .padding(horizontal = Dimens.spacingXs)
+    )
+}
+
+@Composable
+internal fun SnapshotEyebrow(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = LocalArgosyTheme.current.textDim,
+        maxLines = 1,
+        modifier = modifier
+    )
+}
+
 @Composable
 internal fun SnapshotChannelTile(
     tile: SnapshotTileUi,
@@ -124,15 +157,9 @@ internal fun SnapshotChannelTile(
     onLongClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
-    val semantic = LocalLauncherTheme.current.semanticColors
     val shape = RoundedCornerShape(Dimens.radiusLg)
     val time = snapshotRelativeTime(tile.savedAt)
-    val subtitle = when {
-        time != null && tile.device != null ->
-            stringResource(R.string.save_channels_tile_subtitle, time, tile.device.label())
-        time != null -> time
-        else -> stringResource(R.string.save_channels_tile_subtitle_empty)
-    }
+    val device = tile.device?.takeIf { time != null }?.label()
     Column(
         modifier = Modifier
             .width(Dimens.saveChannelTileWidth)
@@ -142,7 +169,7 @@ internal fun SnapshotChannelTile(
             .padding(Dimens.spacingXs),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
     ) {
-        SnapshotThumb(tile.thumbnailUrl, coverPath, Modifier.fillMaxWidth())
+        StackedThumb(tile, coverPath)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = tile.label,
@@ -154,46 +181,93 @@ internal fun SnapshotChannelTile(
             )
             if (isExpanded) {
                 Icon(
-                    imageVector = Icons.Filled.ExpandMore,
+                    imageVector = Icons.Filled.ChevronRight,
                     contentDescription = null,
                     tint = theme.textDim,
                     modifier = Modifier.size(Dimens.iconSm)
                 )
             }
         }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
-            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
-        ) {
-            if (tile.isHardcore) {
-                SnapshotChip(stringResource(R.string.save_channels_tile_chip_hardcore), semantic.warning)
-            }
-            if (tile.isShared) {
-                val shared = if (tile.isOwn || tile.ownerName == null) {
-                    stringResource(R.string.save_channels_tile_chip_shared)
-                } else {
-                    stringResource(R.string.save_channels_tile_chip_by_owner, tile.ownerName)
-                }
-                SnapshotChip(shared, semantic.success)
-            }
-            if (tile.hasOnlyOlderSaves) {
-                SnapshotChip(stringResource(R.string.save_channels_tile_chip_no_snapshots), theme.textDim, outlined = true)
-            }
-            if (tile.isDeviceChannel) {
-                SnapshotChip(stringResource(R.string.save_channels_tile_chip_this_device), theme.focusAccent)
+        Column {
+            Text(
+                text = time ?: stringResource(R.string.save_channels_tile_subtitle_empty),
+                style = MaterialTheme.typography.bodySmall,
+                color = theme.textDim,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (device != null) {
+                Text(
+                    text = device,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = theme.textMute,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = theme.textDim,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+        TileChips(tile)
+    }
+}
+
+@Composable
+private fun StackedThumb(tile: SnapshotTileUi, coverPath: String?) {
+    val theme = LocalArgosyTheme.current
+    val offset = Dimens.spacingXs
+    val sheetShape = RoundedCornerShape(Dimens.radiusMd)
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .padding(start = offset, bottom = offset)
+                .clip(sheetShape)
+                .background(theme.surfaceElevated)
+                .border(Dimens.borderThin, theme.hairlineHigh, sheetShape)
         )
+        SnapshotThumb(
+            url = tile.thumbnailUrl,
+            fallbackPath = coverPath,
+            modifier = Modifier.fillMaxWidth().padding(top = offset, end = offset)
+        )
+        if (tile.isDeviceChannel) {
+            SnapshotOverlayBadge(
+                text = stringResource(R.string.save_channels_tile_chip_this_device),
+                color = theme.focusAccent,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(top = offset + Dimens.spacingXs, start = Dimens.spacingXs)
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TileChips(tile: SnapshotTileUi) {
+    if (!tile.isHardcore && !tile.isShared && !tile.hasOnlyOlderSaves) return
+    val theme = LocalArgosyTheme.current
+    val semantic = LocalLauncherTheme.current.semanticColors
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        if (tile.isHardcore) {
+            SnapshotChip(stringResource(R.string.save_channels_tile_chip_hardcore), semantic.warning)
+        }
+        if (tile.isShared) {
+            val shared = if (tile.isOwn || tile.ownerName == null) {
+                stringResource(R.string.save_channels_tile_chip_shared)
+            } else {
+                stringResource(R.string.save_channels_tile_chip_by_owner, tile.ownerName)
+            }
+            SnapshotChip(shared, semantic.success)
+        }
+        if (tile.hasOnlyOlderSaves) {
+            SnapshotChip(stringResource(R.string.save_channels_tile_chip_no_snapshots), theme.textDim, outlined = true)
+        }
+    }
+}
+
 @Composable
 internal fun SnapshotCard(
     card: SnapshotCardUi,
@@ -209,38 +283,66 @@ internal fun SnapshotCard(
     Column(
         modifier = Modifier
             .width(Dimens.saveChannelCardWidth)
-            .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
             .clip(shape)
-            .border(
-                width = if (card.isCurrent) Dimens.borderMedium else Dimens.borderThin,
-                color = if (card.isCurrent) theme.focusAccent else theme.hairlineLow,
-                shape = shape
-            )
+            .background(theme.surfaceElevated)
+            .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
+            .border(Dimens.borderThin, theme.hairlineLow, shape)
             .clickableNoFocus(onClick = onClick)
-            .padding(Dimens.spacingXs),
-        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
     ) {
-        SnapshotThumb(card.thumbnailUrl, coverPath, Modifier.fillMaxWidth())
-        Text(
-            text = snapshotRelativeTime(card.savedAt).orEmpty(),
-            style = MaterialTheme.typography.labelLarge,
-            color = if (muted) theme.textDim else theme.textPrimary,
-            maxLines = 1
-        )
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = theme.textDim.copy(alpha = if (muted) MUTED_ALPHA else 1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        SnapshotCardBadges(card, semantic.warning)
+        Box {
+            SnapshotThumb(
+                url = card.thumbnailUrl,
+                fallbackPath = coverPath,
+                modifier = Modifier.fillMaxWidth().alpha(if (muted) MUTED_ALPHA else 1f),
+                shape = RectangleShape
+            )
+            if (card.isCurrent) {
+                SnapshotOverlayBadge(
+                    text = stringResource(R.string.save_channels_card_badge_current),
+                    color = theme.focusAccent,
+                    modifier = Modifier.align(Alignment.TopStart).padding(Dimens.spacingXs)
+                )
+            }
+        }
+        Column(
+            modifier = Modifier.padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
+            verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = snapshotRelativeTime(card.savedAt).orEmpty(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (muted) theme.textDim else theme.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                card.snapshotId?.let {
+                    Text(
+                        text = stringResource(R.string.save_channels_card_caption_id, it),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = theme.textMute,
+                        maxLines = 1
+                    )
+                }
+            }
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = theme.textDim.copy(alpha = if (muted) MUTED_ALPHA else 1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            SnapshotCardBadges(card, semantic.warning, showCurrent = false)
+        }
     }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun SnapshotCardBadges(card: SnapshotCardUi, hardcoreColor: Color) {
+internal fun SnapshotCardBadges(card: SnapshotCardUi, hardcoreColor: Color, showCurrent: Boolean = true) {
+    val current = showCurrent && card.isCurrent
+    if (!card.isOlderClient && !current && !card.isBranch && !card.isPinned && !card.isHardcore) return
     val theme = LocalArgosyTheme.current
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXs),
@@ -249,7 +351,7 @@ internal fun SnapshotCardBadges(card: SnapshotCardUi, hardcoreColor: Color) {
         if (card.isOlderClient) {
             SnapshotChip(stringResource(R.string.save_channels_card_badge_older_client), theme.textDim, outlined = true)
         }
-        if (card.isCurrent) {
+        if (current) {
             SnapshotChip(stringResource(R.string.save_channels_card_badge_current), theme.focusAccent)
         }
         if (card.isBranch) {
@@ -260,13 +362,6 @@ internal fun SnapshotCardBadges(card: SnapshotCardUi, hardcoreColor: Color) {
         }
         if (card.isHardcore) {
             SnapshotChip(stringResource(R.string.save_channels_card_badge_hardcore), hardcoreColor)
-        }
-        card.snapshotId?.let {
-            Text(
-                text = stringResource(R.string.save_channels_card_caption_id, it),
-                style = MaterialTheme.typography.labelSmall,
-                color = theme.textMute
-            )
         }
     }
 }
@@ -279,8 +374,9 @@ internal fun SnapshotLoadMoreCard(isFocused: Boolean, isLoading: Boolean, onClic
         modifier = Modifier
             .width(Dimens.saveChannelCardWidth)
             .aspectRatio(THUMB_ASPECT)
-            .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
             .clip(shape)
+            .background(theme.surfaceElevated)
+            .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
             .border(Dimens.borderThin, theme.hairlineLow, shape)
             .clickableNoFocus(enabled = !isLoading, onClick = onClick),
         contentAlignment = Alignment.Center

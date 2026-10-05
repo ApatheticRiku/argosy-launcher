@@ -59,7 +59,7 @@ data class SnapshotBackupUi(
 
 data class SnapshotCoreStatesUi(val core: String, val slots: List<String>)
 
-enum class SnapshotDetailAction { RESTORE, FORK, COPY_OVER, PIN, UNPIN, MAKE_SNAPSHOT }
+enum class SnapshotDetailAction { USE_ON_DEVICE, RESTORE, FORK, COPY_OVER, PIN, UNPIN, MAKE_SNAPSHOT }
 
 data class SnapshotDetailUi(
     val channelId: String,
