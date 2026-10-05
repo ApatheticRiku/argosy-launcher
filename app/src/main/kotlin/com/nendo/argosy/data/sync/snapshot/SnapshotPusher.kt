@@ -6,8 +6,10 @@ import com.nendo.argosy.data.remote.romm.RomMSnapshotConflict
 import com.squareup.moshi.Moshi
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,11 +29,20 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
     private val snapshotAdapter = moshi.adapter(RomMSnapshot::class.java)
     private val conflictAdapter = moshi.adapter(RomMSnapshotConflict::class.java)
 
-    suspend fun push(api: RomMApi, deviceId: String, manifest: JSONObject, save: SnapshotUnit? = null): PushOutcome {
+    suspend fun push(
+        api: RomMApi,
+        deviceId: String,
+        manifest: JSONObject,
+        save: SnapshotUnit? = null,
+        screenshot: File? = null
+    ): PushOutcome {
         val parts = buildList {
             add(MultipartBody.Part.createFormData(MANIFEST_PART, null, manifest.toString().toRequestBody(JSON)))
             if (save != null) {
                 add(MultipartBody.Part.createFormData(SAVE_PART, save.name, save.data.toRequestBody(OCTET_STREAM)))
+                screenshot?.takeIf { it.isFile }?.let {
+                    add(MultipartBody.Part.createFormData(SAVE_SCREENSHOT_PART, it.name, it.asRequestBody(JPEG)))
+                }
             }
         }
         val response = runCatching { api.pushSnapshot(deviceId, parts) }.getOrElse {
@@ -57,7 +68,9 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
     private companion object {
         const val MANIFEST_PART = "manifest"
         const val SAVE_PART = "save"
+        const val SAVE_SCREENSHOT_PART = "save_screenshot"
         val JSON = "application/json".toMediaType()
+        val JPEG = "image/jpeg".toMediaType()
         val OCTET_STREAM = "application/octet-stream".toMediaType()
     }
 }

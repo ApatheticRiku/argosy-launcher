@@ -3,9 +3,13 @@ package com.nendo.argosy.hardware
 import android.annotation.SuppressLint
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
+import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class FocusAccessibilityService : AccessibilityService() {
 
@@ -41,6 +45,30 @@ class FocusAccessibilityService : AccessibilityService() {
             }
         }, null)
         Log.d(TAG, "Focus tap dispatched=$dispatched on display $displayId")
+    }
+
+    /**
+     * A silent capture of [displayId], with no flash, sound or consent prompt, as a software
+     * bitmap; null before Android 11 or when the system refuses, such as within its rate limit.
+     */
+    suspend fun captureDisplay(displayId: Int): Bitmap? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        return suspendCancellableCoroutine { continuation ->
+            takeScreenshot(displayId, mainExecutor, object : TakeScreenshotCallback {
+                override fun onSuccess(screenshot: ScreenshotResult) {
+                    val bitmap = screenshot.hardwareBuffer.use { buffer ->
+                        Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
+                            ?.copy(Bitmap.Config.ARGB_8888, false)
+                    }
+                    continuation.resume(bitmap)
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    Log.w(TAG, "Screenshot of display $displayId refused: $errorCode")
+                    continuation.resume(null)
+                }
+            })
+        }
     }
 
     companion object {

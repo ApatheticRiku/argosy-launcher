@@ -65,6 +65,7 @@ class GameSessionService : Service() {
     @Inject lateinit var gameDao: GameDao
     @Inject lateinit var activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
     @Inject lateinit var screenshotCaptureMonitor: ScreenshotCaptureMonitor
+    @Inject lateinit var saveScreenshotCapture: com.nendo.argosy.hardware.SaveScreenshotCapture
     @Inject lateinit var playSessionTracker: dagger.Lazy<PlaySessionTracker>
     @Inject lateinit var activityReporter:
         com.nendo.argosy.data.social.uploader.RomMActivityReporter
@@ -371,6 +372,7 @@ class GameSessionService : Service() {
                                 playSessionTracker.get().reportSaveWritten()
                             }
                             onSaveDetected(IN_PLACE_WRITE_QUIET_MS)
+                            scheduleSaveScreenshot()
                         }
                         return
                     }
@@ -386,6 +388,7 @@ class GameSessionService : Service() {
                         }
                         playSessionTracker.get().reportSaveWritten()
                         onSaveDetected()
+                        scheduleSaveScreenshot()
                     }
                 }
             }
@@ -408,6 +411,21 @@ class GameSessionService : Service() {
     private fun onSaveDetected(quietMs: Long = CACHE_DEBOUNCE_MS) {
         handler.removeCallbacks(cacheRunnable)
         handler.postDelayed(cacheRunnable, quietMs)
+    }
+
+    private val screenshotRunnable = Runnable { captureSaveScreenshot() }
+
+    private fun scheduleSaveScreenshot() {
+        if (currentEmulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) return
+        handler.removeCallbacks(screenshotRunnable)
+        handler.postDelayed(screenshotRunnable, SAVE_SCREENSHOT_DELAY_MS)
+    }
+
+    private fun captureSaveScreenshot() {
+        val gameId = currentGameId.takeIf { it != -1L } ?: return
+        val displayId = com.nendo.argosy.DualScreenManagerHolder.instance?.emulatorDisplayId
+            ?: android.view.Display.DEFAULT_DISPLAY
+        serviceScope.launch { saveScreenshotCapture.capture(gameId, displayId) }
     }
 
     private fun performCacheAndNotify() {
@@ -739,6 +757,7 @@ class GameSessionService : Service() {
         private const val PRESENCE_MISSES_TO_END = 3
         private const val STARTUP_COOLDOWN_MS = 20000L
         private const val CACHE_DEBOUNCE_MS = 250L
+        private const val SAVE_SCREENSHOT_DELAY_MS = 250L
         private const val IN_PLACE_WRITE_QUIET_MS = 1_500L
         private val IGNORED_DIRECTORY_PATTERNS = setOf(
             "cache",

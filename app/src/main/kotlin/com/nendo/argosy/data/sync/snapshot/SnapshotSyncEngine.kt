@@ -83,7 +83,8 @@ class SnapshotSyncEngine @Inject constructor(
     private val saveArchiver: SaveArchiver,
     private val syncPreferencesRepository: SyncPreferencesRepository,
     private val pusher: SnapshotPusher,
-    private val fileResolver: SnapshotFileResolver
+    private val fileResolver: SnapshotFileResolver,
+    private val saveScreenshots: com.nendo.argosy.hardware.SaveScreenshotCapture
 ) {
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
@@ -328,8 +329,10 @@ class SnapshotSyncEngine @Inject constructor(
             put("emulator", EMULATOR)
             put("emulator_version", BuildConfig.VERSION_NAME)
         }
-        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit)) {
+        val screenshot = saveScreenshots.recentFor(ctx.game.id)
+        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot)) {
             is PushOutcome.Written -> {
+                screenshot?.delete()
                 record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
                 Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${outcome.snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
                 SnapshotSyncResult.Pushed(outcome.snapshot.id)

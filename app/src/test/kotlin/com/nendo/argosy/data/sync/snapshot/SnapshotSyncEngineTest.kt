@@ -96,8 +96,10 @@ class SnapshotSyncEngineTest {
             saveArchiver = archiver,
             syncPreferencesRepository = prefs,
             pusher = SnapshotPusher(moshi),
-            fileResolver = SnapshotFileResolver()
+            fileResolver = SnapshotFileResolver(),
+            saveScreenshots = screenshots
         )
+        every { screenshots.recentFor(any(), any()) } returns null
     }
 
     @get:org.junit.Rule
@@ -106,6 +108,24 @@ class SnapshotSyncEngineTest {
     private val archiver = mockk<com.nendo.argosy.data.sync.SaveArchiver>()
     private val cacheManager = mockk<com.nendo.argosy.data.repository.SaveCacheManager>(relaxed = true)
     private val downloader = mockk<com.nendo.argosy.data.repository.SaveDownloader>()
+    private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>()
+
+    @Test
+    fun `the screen captured at the save travels with the push and is dropped once it landed`() = runBlocking {
+        val shot = tempDir.newFile("5.jpg").apply { writeBytes(byteArrayOf(1, 2)) }
+        every { screenshots.recentFor(GAME_ID, any()) } returns shot
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        val names = parts.captured.map { it.headers?.get("Content-Disposition")?.substringAfter("name=\"")?.substringBefore('"') }
+        assertEquals(listOf("manifest", "save", "save_screenshot"), names)
+        assertTrue(!shot.exists())
+    }
 
     private fun snapshot(id: Long, save: String?) = RomMSnapshot(
         id = id,
