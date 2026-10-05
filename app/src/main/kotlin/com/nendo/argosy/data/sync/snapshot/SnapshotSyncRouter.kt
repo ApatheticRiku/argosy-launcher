@@ -53,6 +53,11 @@ class SnapshotSyncRouter @Inject constructor(
         return toSaveSyncResult(gameId, result)
     }
 
+    suspend fun approveHardcoreDowngrade(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult? {
+        if (!engine.isEligible(gameId)) return null
+        return toSaveSyncResult(gameId, engine.keepLocal(gameId, emulatorId, channelName, approveHardcoreDowngrade = true))
+    }
+
     suspend fun uploadCached(
         gameId: Long,
         emulatorId: String,
@@ -81,8 +86,12 @@ class SnapshotSyncRouter @Inject constructor(
             serverTimestamp = timestampOf(result),
             serverDeviceName = result.current?.device?.takeIf { it.isOwn }?.name
         )
-        is SnapshotSyncResult.HardcoreDowngrade ->
-            SaveSyncResult.Error("the server's save is from a hardcore session; keeping this save needs approval")
+        is SnapshotSyncResult.HardcoreDowngrade -> SaveSyncResult.Conflict(
+            gameId = gameId,
+            localTimestamp = Instant.now(),
+            serverTimestamp = Instant.now(),
+            isHardcoreDowngrade = true
+        )
         is SnapshotSyncResult.Failed -> SaveSyncResult.Error(result.reason)
     }
 

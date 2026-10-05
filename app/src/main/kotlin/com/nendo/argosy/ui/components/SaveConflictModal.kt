@@ -43,7 +43,8 @@ data class SaveConflictInfo(
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
     val serverDeviceName: String? = null,
-    val conflictId: Long? = null
+    val conflictId: Long? = null,
+    val isHardcoreDowngrade: Boolean = false
 )
 
 @Composable
@@ -57,7 +58,9 @@ fun SaveConflictModal(
     val context = LocalContext.current
 
     Modal(
-        title = stringResource(R.string.ui_save_conflict_title),
+        title = stringResource(
+            if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_title else R.string.ui_save_conflict_title
+        ),
         baseWidth = 400.dp,
         onDismiss = onKeepLocal,
         titleContent = {
@@ -84,14 +87,16 @@ fun SaveConflictModal(
         }
     ) {
         Text(
-            text = stringResource(R.string.ui_save_conflict_message),
+            text = stringResource(
+                if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_message else R.string.ui_save_conflict_message
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+        if (!info.isHardcoreDowngrade) Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
             SaveSourceRow(
                 icon = Icons.Default.PhoneAndroid,
                 label = stringResource(R.string.ui_save_conflict_source_local),
@@ -121,7 +126,9 @@ fun SaveConflictModal(
             )
 
             ActionButton(
-                label = stringResource(R.string.ui_save_conflict_overwrite),
+                label = stringResource(
+                    if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_replace else R.string.ui_save_conflict_overwrite
+                ),
                 onClick = onOverwrite,
                 focused = focusedButton == 1,
                 primary = true,

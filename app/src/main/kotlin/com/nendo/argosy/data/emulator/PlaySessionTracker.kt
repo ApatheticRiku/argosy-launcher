@@ -85,7 +85,8 @@ data class SaveConflictEvent(
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
     val serverDeviceName: String? = null,
-    val conflictId: Long? = null
+    val conflictId: Long? = null,
+    val isHardcoreDowngrade: Boolean = false
 )
 
 @Singleton
@@ -840,7 +841,8 @@ class PlaySessionTracker @Inject constructor(
             localTimestamp = conflict.upload.localTimestamp,
             serverTimestamp = conflict.upload.serverTimestamp,
             serverDeviceName = conflict.upload.serverDeviceName,
-            conflictId = outcome.conflictId
+            conflictId = outcome.conflictId,
+            isHardcoreDowngrade = conflict.upload.isHardcoreDowngrade
         )
     }
 

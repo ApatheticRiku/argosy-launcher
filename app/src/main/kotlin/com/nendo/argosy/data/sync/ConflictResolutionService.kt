@@ -42,7 +42,11 @@ class ConflictResolutionService @Inject constructor(
             ConflictResolution.KEEP_LOCAL -> {
                 val emulatorId = resolveEmulator(conflict)
                     ?: return@withContext ConflictResolutionOutcome.Failed("Cannot resolve emulator for conflict ${conflict.id}")
-                val result = uploadLocal(conflict, emulatorId)
+                val result = if (conflict.isHardcoreDowngrade) {
+                    saveSyncRepository.approveHardcoreDowngrade(conflict.gameId, emulatorId, conflict.slot)
+                } else {
+                    uploadLocal(conflict, emulatorId)
+                }
                 Logger.info(TAG, "[Resolve] KEEP_LOCAL gameId=${conflict.gameId} channel=${conflict.slot} emulator=$emulatorId -> $result")
                 settle(conflict, result)
             }

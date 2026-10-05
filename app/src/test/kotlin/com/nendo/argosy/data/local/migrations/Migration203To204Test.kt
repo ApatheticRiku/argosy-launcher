@@ -29,6 +29,11 @@ class Migration203To204Test {
     }
 
     @Test
+    fun `pending conflicts learn whether they are a hardcore downgrade`() {
+        assertTrue(statements().any { it == "ALTER TABLE `pending_conflicts` ADD COLUMN `isHardcoreDowngrade` INTEGER NOT NULL DEFAULT 0" })
+    }
+
+    @Test
     fun `game boy carts lose their stored features so they rescan`() {
         val reset = statements().single { it.startsWith("UPDATE `games` SET `saveFeatures` = NULL") }
         listOf("'gb'", "'gbc'", "'gameboy'", "'game-boy-color'").forEach { assertTrue(it, reset.contains(it)) }

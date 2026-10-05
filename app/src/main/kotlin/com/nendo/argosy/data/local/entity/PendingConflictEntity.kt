@@ -38,7 +38,9 @@ data class PendingConflictEntity(
     val discoveredAt: Instant = Instant.now(),
     val dismissed: Boolean = false,
     @ColumnInfo(defaultValue = "0")
-    val ownerUserId: Long = UNATTRIBUTED
+    val ownerUserId: Long = UNATTRIBUTED,
+    @ColumnInfo(defaultValue = "0")
+    val isHardcoreDowngrade: Boolean = false
 ) {
     companion object {
         const val UNATTRIBUTED = 0L

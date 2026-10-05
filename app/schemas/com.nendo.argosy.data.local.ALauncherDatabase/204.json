@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 204,
-    "identityHash": "7b00fb8f962150e44a6dbdd2f1b12837",
+    "identityHash": "8ea61d6e45e3b4821f6c57abf8b6bb76",
     "entities": [
       {
         "tableName": "platforms",
@@ -5273,7 +5273,7 @@
       },
       {
         "tableName": "pending_conflicts",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `gameId` INTEGER NOT NULL, `rommSaveId` INTEGER, `fileName` TEXT NOT NULL, `slot` TEXT, `emulator` TEXT, `localUpdatedAt` INTEGER, `serverUpdatedAt` INTEGER, `localHash` TEXT, `serverHash` TEXT, `reason` TEXT NOT NULL, `discoveredAt` INTEGER NOT NULL, `dismissed` INTEGER NOT NULL, `ownerUserId` INTEGER NOT NULL DEFAULT 0)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `gameId` INTEGER NOT NULL, `rommSaveId` INTEGER, `fileName` TEXT NOT NULL, `slot` TEXT, `emulator` TEXT, `localUpdatedAt` INTEGER, `serverUpdatedAt` INTEGER, `localHash` TEXT, `serverHash` TEXT, `reason` TEXT NOT NULL, `discoveredAt` INTEGER NOT NULL, `dismissed` INTEGER NOT NULL, `ownerUserId` INTEGER NOT NULL DEFAULT 0, `isHardcoreDowngrade` INTEGER NOT NULL DEFAULT 0)",
         "fields": [
           {
             "fieldPath": "id",
@@ -5349,6 +5349,13 @@
           {
             "fieldPath": "ownerUserId",
             "columnName": "ownerUserId",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "isHardcoreDowngrade",
+            "columnName": "isHardcoreDowngrade",
             "affinity": "INTEGER",
             "notNull": true,
             "defaultValue": "0"
@@ -7472,7 +7479,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7b00fb8f962150e44a6dbdd2f1b12837')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '8ea61d6e45e3b4821f6c57abf8b6bb76')"
     ]
   }
 }

@@ -507,6 +507,13 @@
     <string name="ui_save_conflict_skip">Skip Sync</string>
     <!-- Button replacing the server's copy. Verb. -->
     <string name="ui_save_conflict_overwrite">Overwrite</string>
+    <!-- Heading of the prompt shown when a save made outside RetroAchievements hardcore mode would
+         replace a channel's hardcore save on the server. -->
+    <string name="ui_save_conflict_hardcore_title">Replace a hardcore save?</string>
+    <!-- Body of that prompt. -->
+    <string name="ui_save_conflict_hardcore_message">This channel\'s current save was made in hardcore mode. Keeping this save replaces it as current. The hardcore save stays in the history.</string>
+    <!-- Button replacing the hardcore save with this one. Verb. -->
+    <string name="ui_save_conflict_hardcore_replace">Replace</string>
     <!-- Stands in for a game's name when the library no longer holds it. -->
     <string name="ui_save_conflict_unknown_game">Unknown Game</string>
     <!-- Age of a save whose clock is ahead of this device's. Adverb phrase. -->

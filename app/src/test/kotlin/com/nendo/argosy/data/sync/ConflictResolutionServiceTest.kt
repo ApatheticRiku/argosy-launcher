@@ -48,6 +48,17 @@ class ConflictResolutionServiceTest {
     }
 
     @Test
+    fun `keeping this save over a hardcore one pushes it with the downgrade approved`() = runTest {
+        givenSlot(version(20L, 1, "a"))
+        coEvery { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) } returns SaveSyncResult.Success()
+
+        service.resolve(conflict.copy(slot = null, isHardcoreDowngrade = true), ConflictResolution.KEEP_LOCAL)
+
+        coVerify { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) }
+        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun `versions older than the last synced one stay local`() = runTest {
         givenSlot(version(19L, 1, "old"), version(20L, 2, "synced", rommSaveId = 7L), version(21L, 3, "new"))
 

@@ -4022,6 +4022,7 @@ object Migration_203_204 : Migration(203, 204) {
                 "`heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, " +
                 "PRIMARY KEY(`ownerUserId`, `gameId`, `label`))"
         )
+        db.execSQL("ALTER TABLE `pending_conflicts` ADD COLUMN `isHardcoreDowngrade` INTEGER NOT NULL DEFAULT 0")
         db.execSQL(
             "UPDATE `games` SET `saveFeatures` = NULL WHERE `platformSlug` IN " +
                 "('gb', 'gbc', 'gameboy', 'game_boy', 'game-boy', 'gameboycolor', 'game_boy_color', 'game-boy-color')"

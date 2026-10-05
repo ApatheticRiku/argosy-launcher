@@ -341,7 +341,8 @@ class ArgosyViewModel @Inject constructor(
                     localTimestamp = event.localTimestamp,
                     serverTimestamp = event.serverTimestamp,
                     serverDeviceName = event.serverDeviceName,
-                    conflictId = event.conflictId
+                    conflictId = event.conflictId,
+                    isHardcoreDowngrade = event.isHardcoreDowngrade
                 )
                 _saveConflictButtonIndex.value = 0
             }

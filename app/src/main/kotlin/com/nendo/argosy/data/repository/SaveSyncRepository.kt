@@ -42,7 +42,8 @@ sealed class SaveSyncResult {
         val serverDeviceName: String? = null,
         val serverSaveId: Long? = null,
         val localContentHash: String? = null,
-        val serverContentHash: String? = null
+        val serverContentHash: String? = null,
+        val isHardcoreDowngrade: Boolean = false
     ) : SaveSyncResult()
     data class NeedsHardcoreResolution(
         val tempFilePath: String,
@@ -264,6 +265,10 @@ class SaveSyncRepository @Inject constructor(
     ): SaveSyncResult = uploadMutexes.computeIfAbsent(gameId to channelName) { Mutex() }.withLock {
         apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
     }
+
+    suspend fun approveHardcoreDowngrade(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult =
+        snapshotRouter.get().approveHardcoreDowngrade(gameId, emulatorId, channelName)
+            ?: SaveSyncResult.NotConfigured
 
     suspend fun uploadCacheEntry(
         gameId: Long,
