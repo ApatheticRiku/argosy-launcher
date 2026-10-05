@@ -60,35 +60,35 @@ class SnapshotActionRunner @Inject constructor(
         withContext(Dispatchers.IO) { runCatching { service.isAvailable(gameId) }.getOrDefault(false) }
 
     fun start(scope: CoroutineScope) {
-        holder.snapshotLibrary = null
-        holder.snapshotHistories = emptyMap()
+        holder.snapshotHistories.value = emptyMap()
+        holder.snapshotLibrary.value = null
         pending = null
         holder.state.update { it.copy(snapshot = SnapshotViewState()) }
         scope.launch { reload() }
     }
 
     fun clear() {
-        holder.snapshotLibrary = null
-        holder.snapshotHistories = emptyMap()
+        holder.snapshotHistories.value = emptyMap()
+        holder.snapshotLibrary.value = null
         pending = null
     }
 
     fun entryOf(channelId: String): SnapshotChannelEntry? {
-        val library = holder.snapshotLibrary ?: return null
+        val library = holder.snapshotLibrary.value ?: return null
         return (library.mine + library.community).firstOrNull { it.channel.id == channelId }
     }
 
     fun ownChannels(): List<RomMChannel> {
-        val romFileId = holder.snapshotLibrary?.romFileId ?: return emptyList()
-        return holder.snapshotLibrary?.mine.orEmpty().map { it.channel }.filter { (it.romFileId ?: romFileId) == romFileId }
+        val library = holder.snapshotLibrary.value ?: return emptyList()
+        return library.mine.map { it.channel }.filter { (it.romFileId ?: library.romFileId) == library.romFileId }
     }
 
     fun copyTargets(from: RomMChannel): List<RomMChannel> =
-        holder.snapshotLibrary?.mine.orEmpty().map { it.channel }.filter {
+        holder.snapshotLibrary.value?.mine.orEmpty().map { it.channel }.filter {
             it.id != from.id && it.romFileId != null && it.romFileId == from.romFileId
         }
 
-    fun romFileIdFor(channel: RomMChannel?): Long? = channel?.romFileId ?: holder.snapshotLibrary?.romFileId
+    fun romFileIdFor(channel: RomMChannel?): Long? = channel?.romFileId ?: holder.snapshotLibrary.value?.romFileId
 
     fun loadHistory(scope: CoroutineScope, channelId: String, more: Boolean) {
         scope.launch { fetchHistory(channelId, more) }
@@ -113,7 +113,7 @@ class SnapshotActionRunner @Inject constructor(
     }
 
     fun newChannel(scope: CoroutineScope, label: String, fromBackupId: Long?) {
-        val romFileId = holder.snapshotLibrary?.romFileId ?: return
+        val romFileId = holder.snapshotLibrary.value?.romFileId ?: return
         call(scope, NotificationText.Res(R.string.save_channels_notice_created)) {
             service.newChannel(romFileId, label, fromBackupId)
         }
@@ -145,10 +145,10 @@ class SnapshotActionRunner @Inject constructor(
                 return@launch
             }
             val entry = entryOf(channelId) ?: return@launch
-            val history = holder.snapshotHistories[channelId].orEmpty().map {
+            val history = holder.snapshotHistories.value[channelId].orEmpty().map {
                 if (it.id == snapshotId) it.copy(isPinned = pinned) else it
             }
-            holder.snapshotHistories = holder.snapshotHistories + (channelId to history)
+            holder.snapshotHistories.update { it + (channelId to history) }
             holder.updateSnapshot { state ->
                 val cards = mapper.cards(entry, history)
                 state.copy(
@@ -263,8 +263,8 @@ class SnapshotActionRunner @Inject constructor(
             }
             return
         }
-        holder.snapshotLibrary = library
-        holder.snapshotHistories = emptyMap()
+        holder.snapshotHistories.value = emptyMap()
+        holder.snapshotLibrary.value = library
         holder.updateSnapshot { mapper.applyLibrary(it, library) }
         holder.state.value.snapshot?.expanded?.let { fetchHistory(it.channelId, more = false) }
     }
@@ -275,7 +275,7 @@ class SnapshotActionRunner @Inject constructor(
             holder.updateSnapshot { state -> state.withCards(channelId, mapper.cards(entry, emptyList()), hasMore = false) }
             return
         }
-        val loaded = holder.snapshotHistories[channelId].orEmpty()
+        val loaded = holder.snapshotHistories.value[channelId].orEmpty()
         if (more) {
             holder.updateSnapshot { state ->
                 state.copy(expanded = state.expanded?.takeIf { it.channelId == channelId }?.copy(isLoadingMore = true) ?: state.expanded)
@@ -293,7 +293,7 @@ class SnapshotActionRunner @Inject constructor(
             return
         }
         val history = if (more) loaded + page else page
-        holder.snapshotHistories = holder.snapshotHistories + (channelId to history)
+        holder.snapshotHistories.update { it + (channelId to history) }
         holder.updateSnapshot { state ->
             state.withCards(channelId, mapper.cards(entry, history), hasMore = page.size == SnapshotChannelService.HISTORY_PAGE)
         }

@@ -191,7 +191,8 @@ class GameDetailViewModel @Inject constructor(
         com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewActions(
             saveManagement.saveChannelDelegate.snapshotDelegate,
             viewModelScope,
-            ::handleSaveStatusChanged
+            ::handleSaveStatusChanged,
+            ::openSaveTimeline
         )
     }
 
@@ -200,8 +201,14 @@ class GameDetailViewModel @Inject constructor(
             delegate = saveManagement.saveChannelDelegate.snapshotDelegate,
             saveState = { saveManagement.saveChannelDelegate.state.value },
             scope = viewModelScope,
-            onSaveStatusChanged = ::handleSaveStatusChanged
+            onSaveStatusChanged = ::handleSaveStatusChanged,
+            onOpenTimeline = ::openSaveTimeline
         )
+    }
+
+    private fun openSaveTimeline() {
+        val gameId = currentGameId
+        viewModelScope.launch { _launchEvents.emit(LaunchEvent.OpenSaveTimeline(gameId)) }
     }
 
     private fun routeSnapshotInput(press: (InputHandler) -> InputResult): InputResult? =
@@ -275,6 +282,9 @@ class GameDetailViewModel @Inject constructor(
             saveManagement.saveChannelDelegate.state.collect { saveState ->
                 _uiState.update { it.copy(saveChannel = saveState) }
             }
+        }
+        viewModelScope.launch {
+            saveManagement.saveChannelDelegate.saveStatusEvents.collect { handleSaveStatusChanged(it) }
         }
         viewModelScope.launch {
             gameLaunchDelegate.syncOverlayState.collect { overlayState ->
@@ -2809,6 +2819,7 @@ class GameDetailViewModel @Inject constructor(
             if (hasOpenModal()) InputResult.HANDLED else InputResult.UNHANDLED
 
         override fun onLongConfirm(): InputResult {
+            routeSnapshotInput { it.onLongConfirm() }?.let { return it }
             if (hasOpenModal()) return InputResult.handled(SoundType.BOUNDARY)
             toggleMoreOptions()
             return InputResult.HANDLED

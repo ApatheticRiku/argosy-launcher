@@ -118,6 +118,7 @@ fun GameDetailScreen(
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (platformId: Long) -> Unit = {},
     onNavigateToGame: (gameId: Long) -> Unit = {},
+    onOpenSaveTimeline: (gameId: Long) -> Unit = {},
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -158,6 +159,7 @@ fun GameDetailScreen(
                     }
                 }
                 is LaunchEvent.NavigateBack -> onBack()
+                is LaunchEvent.OpenSaveTimeline -> onOpenSaveTimeline(event.gameId)
             }
         }
     }

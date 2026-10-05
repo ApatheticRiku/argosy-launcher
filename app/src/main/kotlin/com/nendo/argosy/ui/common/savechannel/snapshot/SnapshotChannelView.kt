@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -21,6 +22,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountTree
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,6 +41,7 @@ import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.util.clickableNoFocus
 
 private const val ROW_MINE_HEADER = "mine_header"
 private const val ROW_MINE_PREFIX = "mine_"
@@ -88,7 +93,8 @@ private fun SnapshotSections(
                     title = stringResource(R.string.save_channels_section_mine_title),
                     actionLabel = stringResource(R.string.save_channels_section_mine_new).takeIf { state.canCreateChannel },
                     isActionFocused = state.isStopFocused(SnapshotStop.NewChannel),
-                    onAction = actions::tapNewChannel
+                    onAction = actions::tapNewChannel,
+                    onTimeline = actions::openTimeline
                 )
             }
             if (state.mine.isEmpty()) {
@@ -163,7 +169,8 @@ private fun SectionHeader(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     isActionFocused: Boolean = false,
-    onAction: () -> Unit = {}
+    onAction: () -> Unit = {},
+    onTimeline: (() -> Unit)? = null
 ) {
     val theme = LocalArgosyTheme.current
     Row(
@@ -190,6 +197,18 @@ private fun SectionHeader(
                 restLabelColor = theme.textPrimary,
                 focused = isActionFocused,
                 onClick = onAction
+            )
+        }
+        if (onTimeline != null) {
+            Icon(
+                imageVector = Icons.Filled.AccountTree,
+                contentDescription = stringResource(R.string.save_channels_section_timeline_button),
+                tint = theme.textDim,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(Dimens.radiusMd))
+                    .clickableNoFocus(onClick = onTimeline)
+                    .padding(Dimens.spacingXs)
+                    .size(Dimens.iconMd)
             )
         }
     }

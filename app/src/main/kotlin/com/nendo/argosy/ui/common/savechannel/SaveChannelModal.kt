@@ -861,6 +861,7 @@ private fun buildSnapshotFooterHints(
     if (snapshot.focusedTile != null) {
         add(FooterHintItem(InputButton.X, stringResource(R.string.save_channels_footer_channel_actions)))
     }
+    add(FooterHintItem(InputButton.Y, stringResource(R.string.save_channels_footer_timeline)))
 }
 
 @Composable

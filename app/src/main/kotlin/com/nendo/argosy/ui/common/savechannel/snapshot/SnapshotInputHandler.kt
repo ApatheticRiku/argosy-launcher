@@ -16,7 +16,8 @@ class SnapshotInputHandler(
     private val delegate: SnapshotViewDelegate,
     private val saveState: () -> SaveChannelState,
     private val scope: CoroutineScope,
-    private val onSaveStatusChanged: (SaveStatusEvent) -> Unit
+    private val onSaveStatusChanged: (SaveStatusEvent) -> Unit,
+    private val onOpenTimeline: () -> Unit
 ) : InputHandler {
 
     private val view: SnapshotViewState? get() = saveState().snapshot
@@ -54,7 +55,15 @@ class SnapshotInputHandler(
         return InputResult.HANDLED
     }
 
-    override fun onSecondaryAction(): InputResult = InputResult.HANDLED
+    override fun onLongConfirm(): InputResult {
+        delegate.openChannelActions()
+        return InputResult.HANDLED
+    }
+
+    override fun onSecondaryAction(): InputResult {
+        if (view?.hasOverlay == false) onOpenTimeline()
+        return InputResult.HANDLED
+    }
 
     override fun onPrevSection(): InputResult = sectionSwitch()
 

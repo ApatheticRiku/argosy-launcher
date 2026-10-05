@@ -70,10 +70,21 @@ class SnapshotViewDelegate @Inject constructor(
         return true
     }
 
+    val mapper: SnapshotUiMapper get() = runner.mapper
+
     fun openChannelActions() {
         val state = snapshot ?: return
         if (state.hasOverlay) return
-        val tile = state.focusedTile ?: return
+        state.focusedTile?.let(::openChannelMenu)
+    }
+
+    fun openChannelActions(channelId: String) {
+        val state = snapshot ?: return
+        if (state.hasOverlay) return
+        state.tile(channelId)?.let(::openChannelMenu)
+    }
+
+    private fun openChannelMenu(tile: SnapshotTileUi) {
         val actions = buildList {
             if (!tile.isDeviceChannel) add(SnapshotChannelAction.USE_ON_DEVICE)
             if (tile.isOwn) {
@@ -84,6 +95,33 @@ class SnapshotViewDelegate @Inject constructor(
         }
         if (actions.isEmpty()) return
         holder.updateSnapshot { it.copy(channelMenu = SnapshotChannelMenuUi(tile.channelId, tile.label, actions)) }
+    }
+
+    /**
+     * Closes every overlay and points the view at [channelId]'s tile, so the view shows that
+     * channel when it is next on screen. A null or unknown [channelId] keeps the current focus.
+     */
+    fun returnToChannel(channelId: String?) {
+        runner.dropPending()
+        holder.updateSnapshot { state ->
+            val closed = state.copy(
+                isBusy = false,
+                detail = null,
+                channelMenu = null,
+                copyPicker = null,
+                labelEntry = null,
+                confirm = null
+            )
+            val mineIndex = closed.mine.indexOfFirst { it.channelId == channelId }
+            val communityIndex = closed.community.indexOfFirst { it.channelId == channelId }
+            if (mineIndex < 0 && communityIndex < 0) return@updateSnapshot closed
+            if (closed.expanded?.channelId == channelId && closed.stop == SnapshotStop.Cards) {
+                return@updateSnapshot closed
+            }
+            val collapsed = SnapshotFocus.collapse(closed)
+            if (mineIndex >= 0) collapsed.copy(stop = SnapshotStop.MineTiles, mineIndex = mineIndex)
+            else collapsed.copy(stop = SnapshotStop.CommunityTiles, communityIndex = communityIndex)
+        }
     }
 
     fun tapNewChannel() {
@@ -227,10 +265,13 @@ class SnapshotViewDelegate @Inject constructor(
         runner.loadHistory(scope, tile.channelId, more = false)
     }
 
-    private fun openDetail(channelId: String, card: SnapshotCardUi) {
+    fun openDetail(channelId: String, card: SnapshotCardUi) {
+        if (snapshot?.hasOverlay != false) return
         val entry = runner.entryOf(channelId) ?: return
         val channel = entry.channel
-        val snapshotData = card.snapshotId?.let { id -> holder.snapshotHistories[channelId]?.firstOrNull { it.id == id } }
+        val snapshotData = card.snapshotId?.let { id ->
+            holder.snapshotHistories.value[channelId]?.firstOrNull { it.id == id }
+        }
         val canWrite = channel.isOwn || channel.isPublic
         val actions = if (card.isOlderClient) {
             listOfNotNull(SnapshotDetailAction.MAKE_SNAPSHOT.takeIf { channel.isOwn })
@@ -330,7 +371,7 @@ class SnapshotViewDelegate @Inject constructor(
             SnapshotChannelAction.STOP_SHARING -> runner.setShared(scope, menu.channelId, shared = false)
             SnapshotChannelAction.DELETE -> {
                 val entry = runner.entryOf(menu.channelId) ?: return
-                val pinned = holder.snapshotHistories[menu.channelId].orEmpty().count { it.isPinned }
+                val pinned = holder.snapshotHistories.value[menu.channelId].orEmpty().count { it.isPinned }
                 holder.updateSnapshot {
                     it.copy(
                         confirm = SnapshotConfirmUi.Delete(

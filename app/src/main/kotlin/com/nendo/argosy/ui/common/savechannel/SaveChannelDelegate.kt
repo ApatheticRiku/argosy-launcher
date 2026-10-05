@@ -7,7 +7,9 @@ import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusEvent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +25,8 @@ class SaveChannelDelegate @Inject constructor(
     private val soundManager: SoundFeedbackManager
 ) {
     val state: StateFlow<SaveChannelState> = holder.state.asStateFlow()
+
+    val saveStatusEvents: SharedFlow<SaveStatusEvent> = holder.saveStatusEvents.asSharedFlow()
 
     private val _state get() = holder.state
 

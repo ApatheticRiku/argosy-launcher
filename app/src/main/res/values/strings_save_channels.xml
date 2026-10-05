@@ -41,6 +41,10 @@
     <string name="save_channels_tile_subtitle_empty">Empty</string>
     <!-- Hint on the footer button that opens the focused channel's action list. Noun. -->
     <string name="save_channels_footer_channel_actions">Options</string>
+    <!-- Hint on the footer button that opens the full-screen timeline of every channel. Noun. -->
+    <string name="save_channels_footer_timeline">Timeline</string>
+    <!-- Spoken label of the icon button beside the Mine heading that opens the timeline. Noun. -->
+    <string name="save_channels_section_timeline_button">Timeline</string>
 
     <!-- ============================ Device labels ============================ -->
 
@@ -173,6 +177,27 @@
     <string name="save_channels_delete_confirm_body">Current, %1$d pinned and %2$d legacy saves become backups. The rest are deleted.</string>
     <!-- Button the user holds down to delete the channel. Verb. -->
     <string name="save_channels_delete_confirm_hold">Delete</string>
+
+    <!-- ============================ Timeline ============================ -->
+
+    <!-- Timeline header: the channel this device plays the game on. %1$s is the channel name. -->
+    <string name="save_channels_timeline_header_device">This device: %1$s</string>
+    <!-- Timeline lane subtitle for a channel with nothing in it. -->
+    <string name="save_channels_timeline_lane_empty">Empty</string>
+    <!-- Timeline lane subtitle when the channel's history could not be fetched. -->
+    <string name="save_channels_timeline_lane_failed">Couldn\'t load</string>
+    <!-- Shown in place of the timeline when the channel list could not be fetched. -->
+    <string name="save_channels_timeline_load_failed">Couldn\'t load channels</string>
+    <!-- Shown in place of the timeline when the game has no channels on the server. -->
+    <string name="save_channels_timeline_no_channels">No channels yet</string>
+    <!-- Server id of the focused snapshot in the timeline info panel. %1$d is the id. -->
+    <string name="save_channels_timeline_floater_id">#%1$d</string>
+    <!-- Footer hint on the shoulder buttons that skip several saves along a channel. Verb. -->
+    <string name="save_channels_timeline_footer_jump">Jump</string>
+    <!-- Footer hint on the button that opens the focused channel's action list. Noun. -->
+    <string name="save_channels_timeline_footer_channel">Channel</string>
+    <!-- Notice when older saves of a channel could not be fetched while scrolling the timeline. -->
+    <string name="save_channels_timeline_notice_history_failed">Couldn\'t load older saves</string>
 
     <!-- ============================ Notices ============================ -->
 

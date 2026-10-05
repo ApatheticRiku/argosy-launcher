@@ -124,6 +124,15 @@ object DimensionTokens {
         const val saveChannelTileWidth = 168
         const val saveChannelCardWidth = 136
         const val saveChannelModalWidth = 680
+        const val saveTimelineColumnWidth = 56
+        const val saveTimelineLaneHeight = 64
+        const val saveTimelineLabelWidth = 152
+        const val saveTimelineDot = 12
+        const val saveTimelineDotCurrent = 18
+        const val saveTimelinePinMark = 6
+        const val saveTimelineFloaterWidth = 260
+        const val saveTimelineFloaterThumb = 96
+        const val saveTimelineHeaderCover = 56
     }
 
     object Elevation {

@@ -6,9 +6,12 @@ import kotlinx.coroutines.CoroutineScope
 class SnapshotViewActions(
     private val delegate: SnapshotViewDelegate,
     private val scope: CoroutineScope,
-    private val onSaveStatusChanged: (SaveStatusEvent) -> Unit
+    private val onSaveStatusChanged: (SaveStatusEvent) -> Unit,
+    private val onOpenTimeline: () -> Unit = {}
 ) {
     fun tapNewChannel() = delegate.tapNewChannel()
+
+    fun openTimeline() = onOpenTimeline()
 
     fun tapTile(isMine: Boolean, index: Int) = delegate.tapTile(scope, isMine, index)
 

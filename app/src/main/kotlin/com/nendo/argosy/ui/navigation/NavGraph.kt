@@ -27,6 +27,7 @@ import com.nendo.argosy.ui.screens.library.LibraryScreen
 import com.nendo.argosy.ui.screens.media.MediaDetailScreen
 import com.nendo.argosy.ui.screens.media.MediaLibraryScreen
 import com.nendo.argosy.ui.screens.doodle.DoodleScreen
+import com.nendo.argosy.ui.screens.savetimeline.SaveTimelineScreen
 import com.nendo.argosy.ui.screens.search.SearchScreen
 import com.nendo.argosy.ui.screens.settings.ManagePinsScreen
 import com.nendo.argosy.ui.screens.settings.SettingsScreen
@@ -287,8 +288,18 @@ fun NavGraph(
                 },
                 onNavigateToGame = { relatedGameId ->
                     navController.navigate(Screen.GameDetail.createRoute(relatedGameId))
+                },
+                onOpenSaveTimeline = { timelineGameId ->
+                    navController.navigate(Screen.SaveTimeline.createRoute(timelineGameId))
                 }
             )
+        }
+
+        composable(
+            route = Screen.SaveTimeline.route,
+            arguments = listOf(navArgument("gameId") { type = NavType.LongType })
+        ) {
+            SaveTimelineScreen(onBack = { navController.popBackStack() })
         }
 
         composable(

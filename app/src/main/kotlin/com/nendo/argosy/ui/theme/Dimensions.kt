@@ -62,6 +62,15 @@ object Dimens {
     val saveChannelTileWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelTileWidth.dp * scale
     val saveChannelCardWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelCardWidth.dp * scale
     val saveChannelModalWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelModalWidth.dp * scale
+    val saveTimelineColumnWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineColumnWidth.dp * scale
+    val saveTimelineLaneHeight: Dp @Composable get() = DimensionTokens.Layout.saveTimelineLaneHeight.dp * scale
+    val saveTimelineLabelWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineLabelWidth.dp * scale
+    val saveTimelineDot: Dp @Composable get() = DimensionTokens.Layout.saveTimelineDot.dp * scale
+    val saveTimelineDotCurrent: Dp @Composable get() = DimensionTokens.Layout.saveTimelineDotCurrent.dp * scale
+    val saveTimelinePinMark: Dp @Composable get() = DimensionTokens.Layout.saveTimelinePinMark.dp * scale
+    val saveTimelineFloaterWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterWidth.dp * scale
+    val saveTimelineFloaterThumb: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterThumb.dp * scale
+    val saveTimelineHeaderCover: Dp @Composable get() = DimensionTokens.Layout.saveTimelineHeaderCover.dp * scale
     val dotSm: Dp @Composable get() = DimensionTokens.Dot.sm.dp * scale
     val dotLg: Dp @Composable get() = DimensionTokens.Dot.lg.dp * scale
     val avatarXs: Dp @Composable get() = DimensionTokens.Avatar.xs.dp * scale
