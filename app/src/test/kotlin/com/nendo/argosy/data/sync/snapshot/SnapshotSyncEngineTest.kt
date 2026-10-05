@@ -11,6 +11,7 @@ import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.remote.romm.RomMRom
 import com.nendo.argosy.data.remote.romm.RomMRomFile
+import com.nendo.argosy.data.remote.romm.RomMSave
 import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.remote.romm.RomMSnapshotChannel
 import com.nendo.argosy.data.remote.romm.RomMSnapshotSave
@@ -109,6 +110,7 @@ class SnapshotSyncEngineTest {
     fun `a first save on a file with no channel pushes a new default channel expecting null`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID) } returns null
         coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
+        coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(emptyList())
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
             Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
@@ -126,6 +128,48 @@ class SnapshotSyncEngineTest {
         assertEquals(41L, stored.captured.heldSnapshotId)
         assertEquals("identity-a", stored.captured.heldSaveIdentityHash)
         assertEquals(manifest.getString("channel_id"), stored.captured.channelId)
+    }
+
+    private fun legacySave(channelId: String?, slot: String, updatedAt: String) = RomMSave(
+        id = 1, romId = ROMM_ID, userId = 3, emulator = null, fileName = "x.srm",
+        updatedAt = updatedAt, slot = slot, channelId = channelId
+    )
+
+    @Test
+    fun `a first push joins the channel RomM filed the legacy autosave under`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID) } returns null
+        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
+        coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(listOf(
+            legacySave("legacy-old", "autosave", "2026-01-01T00:00:00Z"),
+            legacySave("legacy-new", "autosave", "2026-06-01T00:00:00Z"),
+            legacySave("speedrun", "Speedrun", "2026-09-01T00:00:00Z")
+        ))
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        assertEquals(SnapshotSyncResult.Pushed(41), engine.sync(GAME_ID, EMULATOR))
+        val manifest = manifestOf(parts.captured)
+        assertEquals("legacy-new", manifest.getString("channel_id"))
+        assertTrue("an existing channel takes no label", !manifest.has("label"))
+        assertTrue(manifest.isNull("expected_current_id"))
+    }
+
+    @Test
+    fun `a legacy channel keyed to another file falls back to a new default channel`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID) } returns null
+        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
+        coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(listOf(legacySave("legacy", "autosave", "2026-06-01T00:00:00Z")))
+        val pushes = mutableListOf<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(pushes)) } returnsMany listOf(
+            Response.error(422, """{"detail":{"rom_file_id":"the ROM file does not match the channel's"}}""".toResponseBody()),
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+        )
+
+        assertEquals(SnapshotSyncResult.Pushed(41), engine.sync(GAME_ID, EMULATOR))
+        val retry = manifestOf(pushes[1])
+        assertTrue(retry.getString("channel_id") != "legacy")
+        assertEquals("Default", retry.getString("label"))
     }
 
     @Test
@@ -209,7 +253,7 @@ class SnapshotSyncEngineTest {
         assertEquals("SINGLE", SigilSaveHandler.unitShape(null, byteArrayOf(1, 2, 3)))
         assertEquals("MULTI", SigilSaveHandler.unitShape(null, zip("backup.ram", "cart.ram")))
         assertEquals("FOLDER", SigilSaveHandler.unitShape(null, zip("0100A/a.bin", "0100A/b.bin")))
-        assertEquals("FOLDERS", SigilSaveHandler.unitShape(null, zip("0100A/a.bin", "device/0100A/b.bin")))
+        assertEquals("FOLDER", SigilSaveHandler.unitShape(null, zip("0100A/a.bin", "device/0100A/b.bin")))
     }
 
     @Test

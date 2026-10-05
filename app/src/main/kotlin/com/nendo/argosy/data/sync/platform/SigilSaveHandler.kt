@@ -60,7 +60,6 @@ sealed class SigilCollect {
         const val SHAPE_SINGLE = "SINGLE"
         const val SHAPE_MULTI = "MULTI"
         const val SHAPE_FOLDER = "FOLDER"
-        const val SHAPE_FOLDERS = "FOLDERS"
     }
 }
 
@@ -174,22 +173,24 @@ class SigilSaveHandler @Inject constructor(
         }
 
         /**
-         * The spec's shape for a unit's bytes. [sigilShape] is what collect reported, or null for a
-         * unit read back from the cache, which is then read from the bytes: not a zip is SINGLE, a
-         * flat zip MULTI, and a zip of folders FOLDER or FOLDERS by how many roots it has.
+         * The shape RomM records for a unit's bytes. [sigilShape] is what collect reported, or null
+         * for a unit read back from the cache, which is then read from the bytes: not a zip is
+         * SINGLE, a flat zip MULTI, and a zip of folders FOLDER.
          */
         fun unitShape(sigilShape: SigilSaveUnit.Shape?, data: ByteArray): String {
             if (sigilShape == SigilSaveUnit.Shape.Single || sigilShape == SigilSaveUnit.Shape.None) return SigilCollect.SHAPE_SINGLE
             if (sigilShape == SigilSaveUnit.Shape.Multi) return SigilCollect.SHAPE_MULTI
+            if (sigilShape == SigilSaveUnit.Shape.Folder) return SigilCollect.SHAPE_FOLDER
             val names = runCatching {
                 java.util.zip.ZipInputStream(data.inputStream()).use { zip ->
                     generateSequence { zip.nextEntry }.map { it.name }.toList()
                 }
             }.getOrDefault(emptyList())
-            if (names.isEmpty()) return SigilCollect.SHAPE_SINGLE
-            if (names.none { '/' in it.trimEnd('/') } && sigilShape == null) return SigilCollect.SHAPE_MULTI
-            val roots = names.map { it.substringBefore('/') }.toSet()
-            return if (roots.size > 1) SigilCollect.SHAPE_FOLDERS else SigilCollect.SHAPE_FOLDER
+            return when {
+                names.isEmpty() -> SigilCollect.SHAPE_SINGLE
+                names.none { '/' in it.trimEnd('/') } -> SigilCollect.SHAPE_MULTI
+                else -> SigilCollect.SHAPE_FOLDER
+            }
         }
 
         fun layoutFor(emulatorId: String, platformSlug: String): String? {

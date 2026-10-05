@@ -77,8 +77,13 @@ class SnapshotSyncEngine @Inject constructor(
         val stored: SnapshotChannelEntity?,
         val current: RomMSnapshot?,
         val channelId: String,
-        val isNewChannel: Boolean
-    )
+        val isNewChannel: Boolean,
+        val joinsLegacyChannel: Boolean = false
+    ) {
+        fun asNewChannel(): ChannelView = ChannelView(
+            api, deviceId, ownerUserId, game, file, null, null, UUID.randomUUID().toString(), isNewChannel = true
+        )
+    }
 
     suspend fun isEligible(gameId: Long, emulatorId: String): Boolean =
         apiClient.get().getCapabilities().supportsSnapshots &&
@@ -177,7 +182,8 @@ class SnapshotSyncEngine @Inject constructor(
             ?.takeIf { it.isSuccessful }?.body() ?: return null
         val current = currents.firstOrNull { it.channel?.id == stored?.channelId }
             ?: if (stored == null) currents.maxByOrNull { it.createdAt.orEmpty() } else null
-        val channelId = current?.channel?.id ?: stored?.channelId ?: UUID.randomUUID().toString()
+        val legacyChannel = if (current == null && stored == null) legacyDefaultChannel(api, rommId) else null
+        val channelId = current?.channel?.id ?: stored?.channelId ?: legacyChannel ?: UUID.randomUUID().toString()
         return ChannelView(
             api = api,
             deviceId = deviceId,
@@ -187,9 +193,16 @@ class SnapshotSyncEngine @Inject constructor(
             stored = stored?.takeIf { it.channelId == channelId },
             current = current,
             channelId = channelId,
-            isNewChannel = current == null && stored == null
+            isNewChannel = current == null && stored == null && legacyChannel == null,
+            joinsLegacyChannel = legacyChannel != null
         )
     }
+
+    private suspend fun legacyDefaultChannel(api: RomMApi, rommId: Long): String? =
+        runCatching { api.getSavesByRom(rommId) }.getOrNull()?.takeIf { it.isSuccessful }?.body().orEmpty()
+            .filter { it.channelId != null && SaveSyncApiClient.syncKeyOf(it.slot) == SaveSyncApiClient.AUTOSAVE_SLOT_NAME }
+            .maxByOrNull { it.updatedAt }
+            ?.channelId
 
     private suspend fun launchedFile(api: RomMApi, game: GameEntity, rommId: Long): RomMRomFile? {
         val files = runCatching { api.getRom(rommId) }.getOrNull()?.body()?.files.orEmpty()
@@ -263,6 +276,12 @@ class SnapshotSyncEngine @Inject constructor(
                     else -> SnapshotSyncResult.Failed("push refused: 409 $body")
                 }
             }
+            422 -> if (ctx.joinsLegacyChannel && body?.contains(FILE_MISMATCH_FIELD) == true) {
+                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | legacy channel ${ctx.channelId} belongs to another file, starting a new one")
+                push(ctx.asNewChannel(), local, null, isHardcore, approveHardcoreDowngrade)
+            } else {
+                SnapshotSyncResult.Failed("push refused: 422 $body")
+            }
             else -> SnapshotSyncResult.Failed("push refused: ${response.code()} $body")
         }
     }
@@ -331,6 +350,7 @@ class SnapshotSyncEngine @Inject constructor(
         private const val DEFAULT_LABEL = "Default"
         private const val FORMAT_NEUTRAL = "neutral"
         private const val EMULATOR = "argosy"
+        private const val FILE_MISMATCH_FIELD = "rom_file_id"
         private val JSON = "application/json".toMediaType()
         private val OCTET_STREAM = "application/octet-stream".toMediaType()
     }
