@@ -426,7 +426,7 @@ internal fun SnapshotBackupRow(
             }
         }
         Text(
-            text = stringResource(R.string.save_channels_backup_action_new_channel),
+            text = stringResource(R.string.save_channels_backup_action_copy_to),
             style = MaterialTheme.typography.labelMedium,
             color = if (isFocused) theme.focusAccent else theme.textDim
         )

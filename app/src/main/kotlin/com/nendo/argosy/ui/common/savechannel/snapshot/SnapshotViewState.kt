@@ -87,8 +87,13 @@ data class SnapshotChannelMenuUi(
 
 data class SnapshotPickTargetUi(val channelId: String, val label: String)
 
+sealed interface SnapshotCopySource {
+    data class Snapshot(val snapshotId: Long) : SnapshotCopySource
+    data class Backup(val saveId: Long) : SnapshotCopySource
+}
+
 data class SnapshotCopyPickerUi(
-    val snapshotId: Long,
+    val source: SnapshotCopySource,
     val targets: List<SnapshotPickTargetUi>,
     val focusIndex: Int = 0
 ) {
@@ -97,19 +102,13 @@ data class SnapshotCopyPickerUi(
 
 enum class SnapshotLabelMode { NEW_CHANNEL, RENAME, FORK }
 
-data class SnapshotStartOptionUi(val saveId: Long?, val fileName: String?)
-
 data class SnapshotLabelEntryUi(
     val mode: SnapshotLabelMode,
     val text: String = "",
     val channelId: String? = null,
     val snapshotId: Long? = null,
-    val romFileId: Long? = null,
-    val startOptions: List<SnapshotStartOptionUi> = emptyList(),
-    val startIndex: Int = 0
-) {
-    val startOption: SnapshotStartOptionUi? get() = startOptions.getOrNull(startIndex)
-}
+    val romFileId: Long? = null
+)
 
 sealed interface SnapshotConfirmUi {
     data class Share(val channelId: String) : SnapshotConfirmUi

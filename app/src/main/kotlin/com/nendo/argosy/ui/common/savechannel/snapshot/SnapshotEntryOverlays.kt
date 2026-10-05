@@ -16,7 +16,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -32,7 +31,6 @@ import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.LocalGamepadInputHandler
 import com.nendo.argosy.ui.input.ModalInputEffect
 import com.nendo.argosy.ui.primitives.ArgosyConfirmModalHost
-import com.nendo.argosy.ui.primitives.EnumValueControl
 import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -90,29 +88,6 @@ private fun SnapshotLabelOverlay(entry: SnapshotLabelEntryUi, isBusy: Boolean, a
                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
             )
         )
-        if (entry.startOptions.size > 1) {
-            Spacer(modifier = Modifier.height(Dimens.spacingSm))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.save_channels_label_start_from),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = theme.textDim,
-                    modifier = Modifier.weight(1f)
-                )
-                EnumValueControl(
-                    value = entry.startOption?.fileName ?: stringResource(R.string.save_channels_label_start_empty),
-                    focused = true,
-                    onPrev = { actions.cycleStartOption(-1) },
-                    onNext = { actions.cycleStartOption(1) },
-                    onOpen = { actions.cycleStartOption(1) },
-                    selectedIndex = entry.startIndex,
-                    optionCount = entry.startOptions.size
-                )
-            }
-        }
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
         Row(
             modifier = Modifier.fillMaxWidth(),

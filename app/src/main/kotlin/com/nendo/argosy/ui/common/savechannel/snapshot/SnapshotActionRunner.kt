@@ -78,6 +78,11 @@ class SnapshotActionRunner @Inject constructor(
         return (library.mine + library.community).firstOrNull { it.channel.id == channelId }
     }
 
+    fun ownChannels(): List<RomMChannel> {
+        val romFileId = holder.snapshotLibrary?.romFileId ?: return emptyList()
+        return holder.snapshotLibrary?.mine.orEmpty().map { it.channel }.filter { (it.romFileId ?: romFileId) == romFileId }
+    }
+
     fun copyTargets(from: RomMChannel): List<RomMChannel> =
         holder.snapshotLibrary?.mine.orEmpty().map { it.channel }.filter {
             it.id != from.id && it.romFileId != null && it.romFileId == from.romFileId
@@ -107,10 +112,10 @@ class SnapshotActionRunner @Inject constructor(
         pending = null
     }
 
-    fun newChannel(scope: CoroutineScope, label: String, fromBackupId: Long?) {
+    fun newChannel(scope: CoroutineScope, label: String) {
         val romFileId = holder.snapshotLibrary?.romFileId ?: return
         call(scope, NotificationText.Res(R.string.save_channels_notice_created)) {
-            service.newChannel(romFileId, label, fromBackupId)
+            service.newChannel(romFileId, label)
         }
     }
 

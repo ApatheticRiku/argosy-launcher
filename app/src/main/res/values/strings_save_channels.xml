@@ -70,8 +70,8 @@
 
     <!-- ============================ Backups ============================ -->
 
-    <!-- Action on a backup row: start a new channel with this save in it. -->
-    <string name="save_channels_backup_action_new_channel">New channel</string>
+    <!-- Action on a backup row: put this save on top of one of the user's channels. -->
+    <string name="save_channels_backup_action_copy_to">Copy to…</string>
 
     <!-- ============================ Snapshot detail ============================ -->
 
@@ -141,10 +141,6 @@
     <string name="save_channels_label_title_fork">Fork</string>
     <!-- Placeholder in the channel name field. Noun. -->
     <string name="save_channels_label_field_placeholder">Name</string>
-    <!-- Label of the picker choosing which backup a new channel starts with. -->
-    <string name="save_channels_label_start_from">Start from</string>
-    <!-- Start-from choice: the new channel begins with no save. Adjective. -->
-    <string name="save_channels_label_start_empty">Empty</string>
     <!-- Name entry button that cancels. -->
     <string name="save_channels_label_cancel">Cancel</string>
     <!-- Name entry confirm button for a new channel. Verb. -->

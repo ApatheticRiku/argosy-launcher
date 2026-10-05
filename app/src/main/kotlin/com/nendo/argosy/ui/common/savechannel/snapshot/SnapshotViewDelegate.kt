@@ -34,7 +34,7 @@ class SnapshotViewDelegate @Inject constructor(
         val state = snapshot ?: return
         when {
             state.confirm != null -> Unit
-            state.labelEntry != null -> holder.updateSnapshot { SnapshotFocus.cycleStartOption(it, delta) }
+            state.labelEntry != null -> Unit
             state.hasOverlay -> holder.updateSnapshot { SnapshotFocus.moveDetailColumn(it, delta) }
             else -> holder.updateSnapshot { SnapshotFocus.moveHorizontal(it, delta) }
         }
@@ -88,7 +88,7 @@ class SnapshotViewDelegate @Inject constructor(
 
     fun tapNewChannel() {
         val state = snapshot ?: return
-        if (state.isStopFocused(SnapshotStop.NewChannel)) openLabelEntry(startFromSaveId = null)
+        if (state.isStopFocused(SnapshotStop.NewChannel)) openLabelEntry()
         else focusStop(SnapshotStop.NewChannel)
     }
 
@@ -126,7 +126,7 @@ class SnapshotViewDelegate @Inject constructor(
     fun tapBackup(index: Int) {
         val state = snapshot ?: return
         val stop = SnapshotStop.Backup(index)
-        if (state.isStopFocused(stop)) openLabelEntry(state.backups.getOrNull(index)?.saveId)
+        if (state.isStopFocused(stop)) openBackupCopy(index)
         else focusStop(stop)
     }
 
@@ -151,17 +151,13 @@ class SnapshotViewDelegate @Inject constructor(
         holder.updateSnapshot { state -> state.copy(labelEntry = state.labelEntry?.copy(text = text)) }
     }
 
-    fun cycleStartOption(delta: Int) {
-        holder.updateSnapshot { SnapshotFocus.cycleStartOption(it, delta) }
-    }
-
     fun confirmLabel(scope: CoroutineScope) {
         val state = snapshot ?: return
         val entry = state.labelEntry ?: return
         val label = entry.text.trim()
         if (label.isEmpty() || state.isBusy) return
         when (entry.mode) {
-            SnapshotLabelMode.NEW_CHANNEL -> runner.newChannel(scope, label, entry.startOption?.saveId)
+            SnapshotLabelMode.NEW_CHANNEL -> runner.newChannel(scope, label)
             SnapshotLabelMode.RENAME -> entry.channelId?.let { runner.rename(scope, it, label) }
             SnapshotLabelMode.FORK -> {
                 val romFileId = entry.romFileId ?: return
@@ -204,7 +200,7 @@ class SnapshotViewDelegate @Inject constructor(
 
     private fun confirmStop(scope: CoroutineScope, state: SnapshotViewState) {
         when (val stop = state.stop) {
-            SnapshotStop.NewChannel -> openLabelEntry(startFromSaveId = null)
+            SnapshotStop.NewChannel -> openLabelEntry()
             SnapshotStop.MineTiles, SnapshotStop.CommunityTiles -> state.focusedTile?.let {
                 toggleExpanded(scope, it, isMine = stop == SnapshotStop.MineTiles)
             }
@@ -216,7 +212,7 @@ class SnapshotViewDelegate @Inject constructor(
                     expanded.focusedCard?.let { openDetail(expanded.channelId, it) }
                 }
             }
-            is SnapshotStop.Backup -> openLabelEntry(state.backups.getOrNull(stop.index)?.saveId)
+            is SnapshotStop.Backup -> openBackupCopy(stop.index)
         }
     }
 
@@ -284,7 +280,7 @@ class SnapshotViewDelegate @Inject constructor(
             SnapshotDetailAction.COPY_OVER -> holder.updateSnapshot {
                 it.copy(
                     copyPicker = SnapshotCopyPickerUi(
-                        snapshotId = snapshotId ?: return@updateSnapshot it,
+                        source = SnapshotCopySource.Snapshot(snapshotId ?: return@updateSnapshot it),
                         targets = runner.copyTargets(channel).map { target -> SnapshotPickTargetUi(target.id, target.label) }
                     )
                 )
@@ -299,7 +295,10 @@ class SnapshotViewDelegate @Inject constructor(
     private fun confirmCopyTarget(scope: CoroutineScope) {
         val picker = snapshot?.copyPicker ?: return
         val target = picker.focusedTarget?.let { runner.entryOf(it.channelId)?.channel } ?: return
-        runner.push(scope, SnapshotPush.CopyOver(picker.snapshotId, target))
+        when (val source = picker.source) {
+            is SnapshotCopySource.Snapshot -> runner.push(scope, SnapshotPush.CopyOver(source.snapshotId, target))
+            is SnapshotCopySource.Backup -> runner.push(scope, SnapshotPush.MakeSnapshot(target, source.saveId))
+        }
     }
 
     private fun runChannelAction(scope: CoroutineScope, onSaveStatusChanged: (SaveStatusEvent) -> Unit) {
@@ -336,20 +335,18 @@ class SnapshotViewDelegate @Inject constructor(
         }
     }
 
-    private fun openLabelEntry(startFromSaveId: Long?) {
+    private fun openLabelEntry() {
         val state = snapshot ?: return
         if (!state.canCreateChannel) return
-        val options = state.backups.map { SnapshotStartOptionUi(it.saveId, it.fileName) } +
-            SnapshotStartOptionUi(saveId = null, fileName = null)
-        val startIndex = options.indexOfFirst { it.saveId == startFromSaveId }.coerceAtLeast(0)
+        holder.updateSnapshot { it.copy(labelEntry = SnapshotLabelEntryUi(mode = SnapshotLabelMode.NEW_CHANNEL)) }
+    }
+
+    private fun openBackupCopy(index: Int) {
+        val backup = snapshot?.backups?.getOrNull(index) ?: return
+        val targets = runner.ownChannels().map { SnapshotPickTargetUi(it.id, it.label) }
+        if (targets.isEmpty()) return
         holder.updateSnapshot {
-            it.copy(
-                labelEntry = SnapshotLabelEntryUi(
-                    mode = SnapshotLabelMode.NEW_CHANNEL,
-                    startOptions = options,
-                    startIndex = startIndex
-                )
-            )
+            it.copy(copyPicker = SnapshotCopyPickerUi(source = SnapshotCopySource.Backup(backup.saveId), targets = targets))
         }
     }
 }

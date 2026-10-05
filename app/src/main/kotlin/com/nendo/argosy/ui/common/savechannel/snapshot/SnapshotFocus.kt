@@ -117,10 +117,4 @@ internal object SnapshotFocus {
         }
         return state.copy(detail = detail.copy(focusIndex = next))
     }
-
-    fun cycleStartOption(state: SnapshotViewState, delta: Int): SnapshotViewState {
-        val entry = state.labelEntry ?: return state
-        if (entry.startOptions.size < 2) return state
-        return state.copy(labelEntry = entry.copy(startIndex = (entry.startIndex + delta).mod(entry.startOptions.size)))
-    }
 }

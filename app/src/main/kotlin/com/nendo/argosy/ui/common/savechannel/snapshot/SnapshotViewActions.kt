@@ -26,8 +26,6 @@ class SnapshotViewActions(
 
     fun updateLabelText(text: String) = delegate.updateLabelText(text)
 
-    fun cycleStartOption(delta: Int) = delegate.cycleStartOption(delta)
-
     fun confirmLabel() = delegate.confirmLabel(scope)
 
     fun dismissLabel() = delegate.dismissLabel()
