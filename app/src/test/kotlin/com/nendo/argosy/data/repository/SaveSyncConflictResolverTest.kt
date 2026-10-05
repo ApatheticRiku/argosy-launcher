@@ -70,6 +70,7 @@ class SaveSyncConflictResolverTest {
         userPreferencesRepository = mockk(relaxed = true)
         fal = mockk(relaxed = true)
         saveHandlerRegistry = mockk(relaxed = true)
+        every { saveHandlerRegistry.sigil } returns com.nendo.argosy.data.sync.fixtures.notRoutedSigil()
         every { fal.exists(any()) } returns true
         every { fal.commitSaveAccess(*anyVararg()) } returns true
         every { fal.getTransformedFile(any()) } answers { java.io.File(firstArg<String>()) }
@@ -243,7 +244,7 @@ class SaveSyncConflictResolverTest {
 
         assertTrue("Expected success, got $result", result is SaveSyncResult.Success)
         io.mockk.coVerify { gciSaveHandler.extractDownload(any(), any()) }
-        io.mockk.coVerify { mockCacheManager.cacheCurrentSave(2L, "dolphin", placed, null, any(), any(), any(), any(), any(), any(), any(), any()) }
+        io.mockk.coVerify { mockCacheManager.cacheCurrentSave(2L, "dolphin", placed, null, any(), any(), any(), any(), any(), any(), any(), any(), any()) }
         io.mockk.coVerify(exactly = 0) { saveArchiver.copyFileToPath(any(), any()) }
     }
 

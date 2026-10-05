@@ -102,6 +102,7 @@ class SaveUploaderTest {
         )
 
         every { saveHandlerRegistry.isValidCachedSavePath(any(), any()) } returns true
+        every { saveHandlerRegistry.sigil } returns com.nendo.argosy.data.sync.fixtures.notRoutedSigil()
         every { conflictDetector.detectUploadConflict(any(), any(), any(), any(), any(), any()) } returns null
         every { conflictDetector.pickLatestServerSave(any(), any(), any(), any()) } returns null
 

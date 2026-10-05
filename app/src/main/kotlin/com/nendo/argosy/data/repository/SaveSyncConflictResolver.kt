@@ -80,12 +80,8 @@ class SaveSyncConflictResolver @Inject constructor(
                     val gciConfig = game?.let { SavePathRegistry.getConfigForPlatform(resolution.emulatorId, it.platformSlug) }
                         ?.takeIf { it.usesGciFormat }
                     var placedPath = resolution.targetPath
-                    val sigilHandler = game?.let { g ->
-                        saveHandlerRegistry.getHandler(
-                            SavePathRegistry.getConfigForPlatform(resolution.emulatorId, g.platformSlug),
-                            g.platformSlug,
-                            resolution.emulatorId
-                        ) as? SigilSaveHandler
+                    val sigilHandler = saveHandlerRegistry.sigil.takeIf { sigil ->
+                        game != null && sigil.route(game.id, resolution.emulatorId) != null
                     }
                     if (game != null && sigilHandler != null) {
                         val restored = sigilHandler.restore(game.id, tempFile, resolution.emulatorId)

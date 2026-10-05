@@ -85,7 +85,7 @@ class SavePathResolver @Inject constructor(
                 selectedMemcardForLog = selectedCard
                 savePathOverrideForLog = override
             }
-        )
+        ) ?: libretroSigilRoot(gameId, emulatorId)?.also { decision = "sigil-volume" }
         if (gameId != null) {
             SaveDebugLogger.logDiscoverPath(
                 gameId = gameId,
@@ -101,6 +101,12 @@ class SavePathResolver @Inject constructor(
             )
         }
         return result
+    }
+
+    private suspend fun libretroSigilRoot(gameId: Long?, emulatorId: String): String? {
+        if (gameId == null) return null
+        val route = saveHandlerRegistry.sigil.route(gameId, emulatorId)?.takeIf { it.libretro } ?: return null
+        return route.root.takeIf { fal.isDirectory(it) }
     }
 
     /**

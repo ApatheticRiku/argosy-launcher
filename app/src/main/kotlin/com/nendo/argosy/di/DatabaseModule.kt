@@ -92,6 +92,10 @@ object DatabaseModule {
     fun provideGameArtDao(database: ALauncherDatabase): GameArtDao = database.gameArtDao()
 
     @Provides
+    fun provideSigilSyncStateDao(database: ALauncherDatabase): com.nendo.argosy.data.local.dao.SigilSyncStateDao =
+        database.sigilSyncStateDao()
+
+    @Provides
     fun provideGameDiscDao(database: ALauncherDatabase): GameDiscDao = database.gameDiscDao()
 
     @Provides

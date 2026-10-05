@@ -1048,7 +1048,8 @@ class PlaySessionTracker @Inject constructor(
                 isHardcore = session.isHardcore,
                 skipDuplicateCheck = false,
                 needsRemoteSync = true,
-                coreName = session.coreName
+                coreName = session.coreName,
+                claimNewSaves = true
             ).also { result ->
                 Logger.debug(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache result=${result::class.simpleName}")
             }

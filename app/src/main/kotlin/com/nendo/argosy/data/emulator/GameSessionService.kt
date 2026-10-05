@@ -441,7 +441,8 @@ class GameSessionService : Service() {
                         isLocked = false,
                         isHardcore = currentIsHardcore,
                         skipDuplicateCheck = false,
-                        needsRemoteSync = true
+                        needsRemoteSync = true,
+                        claimNewSaves = true
                     )
 
                     if (result is SaveCacheManager.CacheResult.Created && previousCacheId > 0) {

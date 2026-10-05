@@ -150,7 +150,8 @@ class SaveUploader @Inject constructor(
         val isFolderBased = config?.usesFolderBasedSaves == true && isDirectory
         val isGciBundle = config?.usesGciFormat == true
 
-        val handler = client.getHandler(config, game.platformSlug, resolvedEmulatorId)
+        val handler = saveHandlerRegistry.sigil.takeIf { it.route(gameId, resolvedEmulatorId) != null }
+            ?: client.getHandler(config, game.platformSlug, resolvedEmulatorId)
         val saveContext = SaveContext(
             config = config ?: SavePathConfig(
                 emulatorId = resolvedEmulatorId,

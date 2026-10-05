@@ -96,7 +96,8 @@ class SessionSaveFinalizer @Inject constructor(
             isLocked = false,
             isHardcore = input.isHardcore,
             skipDuplicateCheck = false,
-            coreName = input.coreName
+            coreName = input.coreName,
+            claimNewSaves = true
         )
         val cacheId = when (cache) {
             is SaveCacheManager.CacheResult.Created -> cache.cacheId

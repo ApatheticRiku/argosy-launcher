@@ -1,7 +1,14 @@
 package com.nendo.argosy.data.sync.platform
 
 import android.content.Context
+import com.nendo.argosy.data.emulator.BuiltinSaveBase
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.data.emulator.RetroArchPathResolver
+import com.nendo.argosy.data.local.dao.SigilSyncStateDao
+import com.nendo.argosy.data.local.entity.SigilSyncStateEntity
+import com.nendo.argosy.data.preferences.SyncPreferencesRepository
+import com.nendo.argosy.data.sync.SaveUnitResolver
+import com.nendo.argosy.util.AppPaths
 import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.SwitchProfileParser
@@ -31,7 +38,9 @@ data class SigilRoute(
     val root: String,
     val emulatorPackage: String?,
     val profile: String?,
-    val options: Map<String, String> = emptyMap()
+    val options: Map<String, String> = emptyMap(),
+    val libretro: Boolean = false,
+    val managed: Boolean = false
 )
 
 sealed class SigilCollect {
@@ -67,7 +76,12 @@ class SigilSaveHandler @Inject constructor(
     private val titleDbRepository: TitleDbRepository,
     private val emulatorConfigDao: EmulatorConfigDao,
     private val fal: FileAccessLayer,
-    private val connectionManager: dagger.Lazy<RomMConnectionManager>
+    private val connectionManager: dagger.Lazy<RomMConnectionManager>,
+    private val saveUnitResolver: SaveUnitResolver,
+    private val builtinSaveBase: BuiltinSaveBase,
+    private val retroArchPathResolver: RetroArchPathResolver,
+    private val sigilSyncStateDao: SigilSyncStateDao,
+    private val syncPreferencesRepository: SyncPreferencesRepository
 ) : PlatformSaveHandler {
 
     companion object {
@@ -111,11 +125,33 @@ class SigilSaveHandler @Inject constructor(
             "lime3ds" to "sdmc"
         )
 
+        private val LIBRETRO_LAYOUTS: Map<String, Set<String>> = mapOf(
+            "saturn" to setOf("mednafen_saturn", "kronos", "yabause", "yabasanshiro"),
+            "scd" to setOf("genesis_plus_gx"),
+            "dreamcast" to setOf("flycast")
+        )
+
+        private const val FLYCAST_LAYOUT = "flycast"
+        private const val FLYCAST_PER_CONTENT_VMUS = "reicast_per_content_vmus"
+        private val FLYCAST_PER_GAME_VALUES = setOf("VMU A1", "All VMUs")
+        private const val FLYCAST_SHARED_DIR = "dc"
+
         private const val PCSX2_SLOT1_OPTION = "Slot1_Filename"
 
         private val CLOSED_EMULATOR_LAYOUTS = setOf("ryujinx", "kenjinx")
 
         private val PROFILE_FROM_EMULATOR_LAYOUTS = setOf("yuzu", "eden", "citron", "sudachi", "lemon")
+
+        /**
+         * The unowned shared-volume saves that were not unowned at the previous collect, given that
+         * collect's newline-joined names. Null [previous] means no collect has seen the volume yet,
+         * and then nothing is new.
+         */
+        fun newlyUnowned(previous: String?, unowned: List<String>): List<String> {
+            if (previous == null) return emptyList()
+            val known = previous.split('\n').filter { it.isNotEmpty() }.toSet()
+            return unowned.filterNot { it in known }
+        }
 
         fun layoutFor(emulatorId: String, platformSlug: String): String? {
             val canonical = PlatformDefinitions.getCanonicalSlug(platformSlug)
@@ -179,6 +215,9 @@ class SigilSaveHandler @Inject constructor(
             ?: emulatorPackage?.let { emulatorResolver.resolveEmulatorId(it) }
             ?: emulatorResolver.getPreferredEmulatorId(game.platformSlug)
             ?: return@withContext null
+        if (effectiveId in PlatformSaveHandlerRegistry.UNIT_EMULATOR_IDS) {
+            return@withContext libretroRoute(game, effectiveId)
+        }
         val config = SavePathRegistry.getConfigForPlatform(effectiveId, game.platformSlug)
             ?: emulatorPackage?.let { SavePathRegistry.getConfigForPlatformByPackage(it, game.platformSlug) }
             ?: return@withContext null
@@ -191,6 +230,48 @@ class SigilSaveHandler @Inject constructor(
             profile = profileFor(layout, emulatorPackage, root),
             options = optionsFor(layout, game.id, config.emulatorId)
         )
+    }
+
+    private suspend fun libretroRoute(game: GameEntity, emulatorId: String): SigilRoute? {
+        val cores = LIBRETRO_LAYOUTS[PlatformDefinitions.getCanonicalSlug(game.platformSlug)] ?: return null
+        val layout = saveUnitResolver.layoutFor(game, emulatorId, null)?.takeIf { it in cores } ?: return null
+        val retroArch = emulatorId in PlatformSaveHandlerRegistry.RETROARCH_EMULATOR_IDS
+        val options = if (retroArch) {
+            emptyMap()
+        } else {
+            saveUnitResolver.optionsFor(layout, game.id.takeIf { game.perGameSettingsEnabled })
+        }
+        val root = if (retroArch) retroArchRoot(game, emulatorId, layout) else builtinRoot(game, layout, options)
+        if (root == null) {
+            Logger.warn(TAG, "[SaveSync] SIGIL | no root for layout=$layout emulator=$emulatorId")
+            return null
+        }
+        return SigilRoute(
+            layout = layout,
+            root = root,
+            emulatorPackage = null,
+            profile = null,
+            options = options,
+            libretro = true,
+            managed = !retroArch
+        )
+    }
+
+    private suspend fun builtinRoot(game: GameEntity, layout: String, options: Map<String, String>): String {
+        val sharedVmus = layout == FLYCAST_LAYOUT &&
+            options[FLYCAST_PER_CONTENT_VMUS]?.let { it !in FLYCAST_PER_GAME_VALUES } == true
+        return if (sharedVmus) {
+            File(AppPaths.libretroSystemDir(context.filesDir), FLYCAST_SHARED_DIR).absolutePath
+        } else {
+            builtinSaveBase.forGame(game)
+        }
+    }
+
+    private suspend fun retroArchRoot(game: GameEntity, emulatorId: String, layout: String): String? {
+        val dirs = retroArchPathResolver.resolveSaveDirectories(
+            RetroArchPathResolver.Request(emulatorId = emulatorId, coreName = layout, romPath = game.localPath)
+        )
+        return dirs.firstOrNull { fal.isDirectory(it) } ?: dirs.firstOrNull()
     }
 
     private suspend fun optionsFor(layout: String, gameId: Long, configEmulatorId: String): Map<String, String> {
@@ -220,28 +301,51 @@ class SigilSaveHandler @Inject constructor(
             runCatching { switchProfileParser.parseActiveProfile(pkg, root) }.getOrNull()
         } else null
 
-    suspend fun collect(gameId: Long, emulatorId: String? = null): SigilCollect = withContext(Dispatchers.IO) {
+    /**
+     * The game's unit as it is on disk now. [claimNewSaves] is for a caller that runs while or
+     * right after this game played: shared-volume saves no game owned that were not there at the
+     * previous collect are given to this game. On the first collect of a volume nothing is claimed.
+     */
+    suspend fun collect(
+        gameId: Long,
+        emulatorId: String? = null,
+        claimNewSaves: Boolean = false
+    ): SigilCollect = withContext(Dispatchers.IO) {
         val route = route(gameId, emulatorId) ?: return@withContext SigilCollect.NotRouted
         val game = gameDao.getById(gameId) ?: return@withContext SigilCollect.NotRouted
-        collect(route, game)
+        collect(route, game, claimNewSaves)
     }
 
-    private suspend fun collect(route: SigilRoute, game: GameEntity): SigilCollect {
+    private suspend fun collect(route: SigilRoute, game: GameEntity, claimNewSaves: Boolean): SigilCollect {
         if (!fal.isDirectory(route.root)) return SigilCollect.Absent
         fal.prepareSaveAccess(route.root)
         val ids = titleIdCandidates(game)
+        val stateKey = stateKey(route, game)
+        val stored = loadState(stateKey)
         return try {
-            val result = Sigil.collect(
+            fun run(claimed: List<String>) = Sigil.collect(
                 game = identity(game, ids),
                 core = route.layout,
                 contentPath = contentName(game),
                 saveRoot = route.root,
                 options = route.options,
                 gameIds = ids,
-                unmanaged = true,
+                state = stored?.state,
+                unmanaged = !route.managed,
+                claimed = claimed,
                 profile = route.profile,
                 fileAccess = fileAccess
             )
+            val first = run(emptyList())
+            val fresh = if (claimNewSaves) newlyUnowned(stored?.unowned, first.unowned) else emptyList()
+            val result = if (fresh.isEmpty()) first else run(fresh)
+            if (fresh.isNotEmpty()) {
+                Logger.info(TAG, "[SaveSync] SIGIL | claimed ${fresh.size} new shared-volume saves for game ${game.id} | $fresh")
+            }
+            if (result.restoreAgain) {
+                Logger.warn(TAG, "[SaveSync] SIGIL | the emulator overwrote the last restore for game ${game.id}")
+            }
+            saveState(stateKey, result.state, result.unowned)
             val data = result.data
             if (data == null || data.isEmpty()) {
                 SigilCollect.Absent
@@ -267,28 +371,70 @@ class SigilSaveHandler @Inject constructor(
             return@withContext SigilRestore.Refused("the emulator must be closed before its saves are restored")
         }
         fal.prepareSaveAccess(route.root)
-        val ids = titleIdCandidates(game)
+        val unit = unitFile.readBytes()
         try {
-            val result = Sigil.restore(
-                unit = unitFile.readBytes(),
-                game = identity(game, ids),
-                core = route.layout,
-                contentPath = contentName(game),
-                saveRoot = route.root,
-                options = route.options,
-                gameIds = ids,
-                unmanaged = true,
-                overwriteLocal = true,
-                profile = route.profile,
-                fileAccess = fileAccess
-            )
-            if (!fal.commitSaveAccess(route.root)) {
-                return@withContext SigilRestore.Refused("the restored files did not reach ${route.root}")
-            }
-            SigilRestore.Restored(result.hardcoreMarker)
+            restore(route, game, unit)
         } catch (e: SigilException) {
-            SigilRestore.Refused(describe(e))
+            if (e.code != SigilException.UNCOLLECTED) return@withContext SigilRestore.Refused(describe(e))
+            Logger.info(TAG, "[SaveSync] SIGIL | shared volume holds uncollected saves, collecting game $gameId before restoring")
+            collect(route, game, claimNewSaves = false)
+            try {
+                restore(route, game, unit)
+            } catch (retry: SigilException) {
+                SigilRestore.Refused(describe(retry))
+            }
         }
+    }
+
+    private suspend fun restore(route: SigilRoute, game: GameEntity, unit: ByteArray): SigilRestore {
+        val ids = titleIdCandidates(game)
+        val stateKey = stateKey(route, game)
+        val result = Sigil.restore(
+            unit = unit,
+            game = identity(game, ids),
+            core = route.layout,
+            contentPath = contentName(game),
+            saveRoot = route.root,
+            options = route.options,
+            gameIds = ids,
+            state = loadState(stateKey)?.state,
+            unmanaged = !route.managed,
+            overwriteLocal = true,
+            profile = route.profile,
+            fileAccess = fileAccess
+        )
+        if (!fal.commitSaveAccess(route.root)) {
+            return SigilRestore.Refused("the restored files did not reach ${route.root}")
+        }
+        saveState(stateKey, result.state, result.unowned)
+        return SigilRestore.Restored(result.hardcoreMarker)
+    }
+
+    private data class StateKey(val ownerUserId: Long, val platformSlug: String, val layout: String, val root: String)
+
+    private suspend fun stateKey(route: SigilRoute, game: GameEntity): StateKey =
+        StateKey(
+            ownerUserId = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER,
+            platformSlug = Sigil.platformSlug(game.platformSlug),
+            layout = route.layout,
+            root = route.root
+        )
+
+    private suspend fun loadState(key: StateKey): SigilSyncStateEntity? =
+        sigilSyncStateDao.get(key.ownerUserId, key.platformSlug, key.layout, key.root)
+
+    private suspend fun saveState(key: StateKey, state: ByteArray, unowned: List<String>) {
+        sigilSyncStateDao.upsert(
+            SigilSyncStateEntity(
+                ownerUserId = key.ownerUserId,
+                platformSlug = key.platformSlug,
+                layout = key.layout,
+                root = key.root,
+                state = state,
+                unowned = unowned.joinToString("\n"),
+                updatedAt = System.currentTimeMillis()
+            )
+        )
     }
 
     private fun emulatorIsClosed(pkg: String?): Boolean {

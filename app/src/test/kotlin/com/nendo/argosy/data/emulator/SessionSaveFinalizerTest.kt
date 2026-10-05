@@ -86,7 +86,7 @@ class SessionSaveFinalizerTest {
             saveSyncRepository.discoverSavePathChecked(any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveLookup.Found(savePath)
         coEvery {
-            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveCacheManager.CacheResult.Created(timestamp = 1L, cacheId = cacheId)
         coEvery { activeSaveRepository.activeOwnerId() } returns owner
     }
@@ -98,7 +98,7 @@ class SessionSaveFinalizerTest {
     @Test
     fun `a failed cache keeps the session unsettled and leaves dirty flags alone`() = runTest {
         coEvery {
-            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns SaveCacheManager.CacheResult.Failed
 
         val outcome = finalizer.finalize(input)
@@ -175,7 +175,7 @@ class SessionSaveFinalizerTest {
     @Test(expected = CancellationException::class)
     fun `cancellation propagates instead of reading as a failed cache`() = runTest {
         coEvery {
-            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } throws CancellationException("ended")
 
         finalizer.finalize(input)
@@ -186,7 +186,7 @@ class SessionSaveFinalizerTest {
         assertEquals(SessionSaveOutcome.Exempt, finalizer.finalize(input.copy(isNetplayGuest = true)))
         assertEquals(SessionSaveOutcome.Exempt, finalizer.finalize(input.copy(variantFileId = 3L)))
         coVerify(exactly = 0) {
-            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+            saveCacheManager.cacheCurrentSave(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         }
     }
 }

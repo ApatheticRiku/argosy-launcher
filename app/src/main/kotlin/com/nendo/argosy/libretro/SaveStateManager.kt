@@ -10,6 +10,7 @@ import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
+import com.nendo.argosy.data.sync.platform.SigilRestore
 import com.swordfish.libretrodroid.GLRetroView
 import java.io.File
 import java.io.FileOutputStream
@@ -322,10 +323,8 @@ class SaveStateManager(
                     if (!isValid) {
                         Log.w(TAG, "Hardcore save missing trailer - save may have been modified externally")
                     }
-                    val bytes = saveCacheManager.getSaveBytesFromEntity(hardcoreSave)
+                    val bytes = placeCachedSave(hardcoreSave)
                     if (bytes != null) {
-                        primarySaveFile.writeBytes(bytes)
-                        materializeUnitMembers(hardcoreSave)
                         Log.d(TAG, "Restored hardcore save (${bytes.size} bytes, valid=$isValid)")
                     }
                     RestoreResult(coreBytes(bytes))
@@ -341,6 +340,24 @@ class SaveStateManager(
             }
             LaunchMode.RESUME -> restoreResumeSave(activeSave)
         }
+    }
+
+    private suspend fun placeCachedSave(entity: SaveCacheEntity): ByteArray? {
+        when (val restored = saveCacheManager.restoreThroughSigil(entity)) {
+            is SigilRestore.Restored -> {
+                Log.i(TAG, "[SRAM] cache=${entity.id} restored through Sigil -> ${savesDir.absolutePath}")
+                return primarySaveFile.takeIf { it.exists() }?.readBytes()
+            }
+            is SigilRestore.Refused -> {
+                Log.w(TAG, "[SRAM] Sigil refused cache=${entity.id}, keeping the save on disk | ${restored.reason}")
+                return primarySaveFile.takeIf { it.exists() }?.readBytes()
+            }
+            SigilRestore.NotRouted -> Unit
+        }
+        val bytes = saveCacheManager.getSaveBytesFromEntity(entity) ?: return null
+        primarySaveFile.writeBytes(bytes)
+        materializeUnitMembers(entity)
+        return bytes
     }
 
     private suspend fun materializeUnitMembers(entity: SaveCacheEntity) {
@@ -369,10 +386,8 @@ class SaveStateManager(
                     Log.w(TAG, "RESUME: Hardcore save missing trailer, loading as casual")
                 }
             }
-            val bytes = saveCacheManager.getSaveBytesFromEntity(targetSave)
+            val bytes = placeCachedSave(targetSave)
             if (bytes != null) {
-                primarySaveFile.writeBytes(bytes)
-                materializeUnitMembers(targetSave)
                 Log.d(TAG, "RESUME: Restored save (${bytes.size} bytes, hardcore=${targetSave.isHardcore}) -> ${primarySaveFile.name}")
             }
             return RestoreResult(coreBytes(bytes), switchToHardcore)

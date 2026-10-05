@@ -4006,6 +4006,18 @@ object Migration_201_202 : Migration(201, 202) {
  * was a remote url and becomes `sourceUrl`. `cachedFromUrl` starts null for the image cache to
  * backfill.
  */
+object Migration_203_204 : Migration(203, 204) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `sigil_sync_state` (" +
+                "`ownerUserId` INTEGER NOT NULL, `platformSlug` TEXT NOT NULL, `layout` TEXT NOT NULL, " +
+                "`root` TEXT NOT NULL, `state` BLOB NOT NULL, `unowned` TEXT NOT NULL, " +
+                "`updatedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`ownerUserId`, `platformSlug`, `layout`, `root`))"
+        )
+    }
+}
+
 object Migration_202_203 : Migration(202, 203) {
     private fun copySlot(
         db: SupportSQLiteDatabase,

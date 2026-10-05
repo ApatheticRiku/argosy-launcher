@@ -103,13 +103,14 @@ class SaveCacheManager @Inject constructor(
         skipDuplicateCheck: Boolean = false,
         needsRemoteSync: Boolean = false,
         precomputedContentHash: String? = null,
-        coreName: String? = null
+        coreName: String? = null,
+        claimNewSaves: Boolean = false
     ): CacheResult = withContext(Dispatchers.IO) {
         @Suppress("NAME_SHADOWING")
         val channelName = resolveDefaultChannel(channelName, isHardcore)
         val secureSaves = syncPreferencesRepository.isSecureSaves()
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        val sigil = when (val collected = sigilSaveHandler.collect(gameId, emulatorId)) {
+        val sigil = when (val collected = sigilSaveHandler.collect(gameId, emulatorId, claimNewSaves)) {
             SigilCollect.NotRouted -> null
             is SigilCollect.Found -> collected
             SigilCollect.Absent -> {
@@ -627,6 +628,12 @@ class SaveCacheManager @Inject constructor(
             tempFile?.delete()
             CacheResult.Failed
         }
+    }
+
+    suspend fun restoreThroughSigil(entity: SaveCacheEntity): SigilRestore = withContext(Dispatchers.IO) {
+        val cacheFile = File(cacheBaseDir, entity.cachePath)
+        if (!cacheFile.exists()) return@withContext SigilRestore.NotRouted
+        sigilSaveHandler.restore(entity.gameId, cacheFile, entity.emulatorId)
     }
 
     suspend fun findCachedByHash(gameId: Long, contentHash: String): com.nendo.argosy.data.local.entity.SaveCacheEntity? =
