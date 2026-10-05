@@ -54,7 +54,7 @@ class SigilSaveRootTest {
     fun `layouts follow the emulator and platform`() {
         assertEquals("dolphin_standalone", SigilSaveHandler.layoutFor("dolphin", "ngc"))
         assertNull(SigilSaveHandler.layoutFor("dolphin", "wii"))
-        assertEquals("pcsx2_standalone", SigilSaveHandler.layoutFor("armsx2", "ps2"))
+        assertNull(SigilSaveHandler.layoutFor("armsx2", "ps2"))
         assertEquals("azahar", SigilSaveHandler.layoutFor("azahar", "n3ds"))
         assertNull(SigilSaveHandler.layoutFor("retroarch_64", "ps2"))
         assertNull(SigilSaveHandler.layoutFor("argosy", "psx"))

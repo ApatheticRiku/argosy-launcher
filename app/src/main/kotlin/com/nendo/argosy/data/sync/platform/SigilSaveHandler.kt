@@ -71,8 +71,6 @@ class SigilSaveHandler @Inject constructor(
         private val LAYOUTS: Map<String, Map<String, String>> = mapOf(
             "gc" to mapOf("dolphin" to "dolphin_standalone", "dolphin_mmjr" to "dolphin_standalone"),
             "psx" to mapOf("duckstation" to "duckstation"),
-            "ps2" to listOf("nethersx2", "aethersx2", "pcsx2", "armsx2_refresh", "armsx2")
-                .associateWith { "pcsx2_standalone" },
             "psp" to mapOf("ppsspp" to "ppsspp_standalone", "ppsspp_gold" to "ppsspp_standalone"),
             "vita" to mapOf("vita3k" to "vita3k", "vita3k-zx" to "vita3k"),
             "ps3" to mapOf("aps3e" to "aps3e", "armsx3" to "armsx3", "armsx3_play" to "armsx3"),

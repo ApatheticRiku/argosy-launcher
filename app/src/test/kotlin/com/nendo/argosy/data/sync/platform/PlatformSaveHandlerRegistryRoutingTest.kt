@@ -120,7 +120,6 @@ class PlatformSaveHandlerRegistryRoutingTest {
             "eden" to "switch",
             "ryujinx" to "switch",
             "dolphin" to "ngc",
-            "nethersx2" to "ps2",
             "duckstation" to "psx",
             "ppsspp" to "psp",
             "vita3k" to "vita",
@@ -131,6 +130,12 @@ class PlatformSaveHandlerRegistryRoutingTest {
             val config = SavePathRegistry.getConfigForPlatform(emulator, platform)
             assertSame("$emulator on $platform", sigilHandler, registry.getHandler(config, platform, emulator))
         }
+    }
+
+    @Test
+    fun `standalone PS2 stays on the folder card handler`() {
+        val config = SavePathRegistry.getConfigForPlatform("nethersx2", "ps2")
+        assertSame(registry.getFolderHandler("ps2"), registry.getHandler(config, "ps2", "nethersx2"))
     }
 
     @Test
