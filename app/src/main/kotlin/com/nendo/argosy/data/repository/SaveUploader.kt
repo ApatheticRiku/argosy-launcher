@@ -18,6 +18,7 @@ import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.platform.SaveContext
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.UnitSaveHandler
 import com.nendo.argosy.data.titledb.TitleDbRepository
 import com.nendo.argosy.util.Logger
@@ -264,7 +265,11 @@ class SaveUploader @Inject constructor(
                 saveArchiver.isZipArchive(fileToUpload)
             val isGciArchive = isGciBundle && saveArchiver.isZipArchive(fileToUpload)
             val uploadFileName = SaveSyncApiClient.computeUploadFileName(
-                localSavePath = if (isUnitBundle || isGciArchive) null else localPath,
+                localSavePath = when {
+                    handler is SigilSaveHandler -> fileToUpload.path
+                    isUnitBundle || isGciArchive -> null
+                    else -> localPath
+                },
                 channelName = channelName,
                 romBaseName = romBaseName
             )

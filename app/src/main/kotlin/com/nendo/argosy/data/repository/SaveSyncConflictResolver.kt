@@ -12,6 +12,8 @@ import com.nendo.argosy.data.sync.ConflictInfo
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.platform.SaveContext
+import com.nendo.argosy.data.sync.platform.SigilRestore
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,7 +80,20 @@ class SaveSyncConflictResolver @Inject constructor(
                     val gciConfig = game?.let { SavePathRegistry.getConfigForPlatform(resolution.emulatorId, it.platformSlug) }
                         ?.takeIf { it.usesGciFormat }
                     var placedPath = resolution.targetPath
-                    if (game != null && gciConfig != null) {
+                    val sigilHandler = game?.let { g ->
+                        saveHandlerRegistry.getHandler(
+                            SavePathRegistry.getConfigForPlatform(resolution.emulatorId, g.platformSlug),
+                            g.platformSlug,
+                            resolution.emulatorId
+                        ) as? SigilSaveHandler
+                    }
+                    if (game != null && sigilHandler != null) {
+                        val restored = sigilHandler.restore(game.id, tempFile, resolution.emulatorId)
+                        if (restored !is SigilRestore.Restored) {
+                            val reason = (restored as? SigilRestore.Refused)?.reason ?: "no Sigil layout"
+                            return@withContext SaveSyncResult.Error("Failed to place save: $reason")
+                        }
+                    } else if (game != null && gciConfig != null) {
                         val placed = gciSaveHandler.extractDownload(
                             tempFile,
                             SaveContext(

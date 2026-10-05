@@ -24,6 +24,7 @@ class PlatformSaveHandlerRegistryRoutingTest {
     private val dreamcastHandler = mockk<DreamcastSaveHandler>(relaxed = true)
     private val defaultHandler = mockk<DefaultSaveHandler>(relaxed = true)
     private val unitHandler = mockk<UnitSaveHandler>(relaxed = true)
+    private val sigilHandler = mockk<SigilSaveHandler>(relaxed = true)
 
     private lateinit var registry: PlatformSaveHandlerRegistry
 
@@ -39,6 +40,7 @@ class PlatformSaveHandlerRegistryRoutingTest {
             dreamcastSaveHandler = dreamcastHandler,
             defaultSaveHandler = defaultHandler,
             unitSaveHandler = unitHandler,
+            sigilSaveHandler = sigilHandler,
         )
     }
 
@@ -113,10 +115,27 @@ class PlatformSaveHandlerRegistryRoutingTest {
     }
 
     @Test
-    fun `standalone Switch emulator routes to SwitchSaveHandler`() {
-        val config = SavePathRegistry.getConfigForPlatform("eden", "switch")
-        val handler = registry.getHandler(config, "switch", "eden")
+    fun `standalone card and profile emulators route to Sigil`() {
+        listOf(
+            "eden" to "switch",
+            "ryujinx" to "switch",
+            "dolphin" to "ngc",
+            "nethersx2" to "ps2",
+            "duckstation" to "psx",
+            "ppsspp" to "psp",
+            "vita3k" to "vita",
+            "aps3e" to "ps3",
+            "cemu" to "wiiu",
+            "azahar" to "3ds"
+        ).forEach { (emulator, platform) ->
+            val config = SavePathRegistry.getConfigForPlatform(emulator, platform)
+            assertSame("$emulator on $platform", sigilHandler, registry.getHandler(config, platform, emulator))
+        }
+    }
 
-        assertSame(switchHandler, handler)
+    @Test
+    fun `dolphin on wii stays on its folder handler`() {
+        val config = SavePathRegistry.getConfigForPlatform("dolphin", "wii")
+        assertSame(registry.getFolderHandler("wii"), registry.getHandler(config, "wii", "dolphin"))
     }
 }

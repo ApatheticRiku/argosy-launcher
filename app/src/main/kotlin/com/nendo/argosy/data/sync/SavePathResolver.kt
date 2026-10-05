@@ -14,6 +14,7 @@ import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SigilCollect
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.data.titledb.TitleDbRepository
 import com.nendo.argosy.util.Logger
@@ -211,6 +212,14 @@ class SavePathResolver @Inject constructor(
             Logger.warn(TAG, "[SaveSync] DISCOVER | No save path config | emulatorId=$emulatorId, emulatorPackage=$emulatorPackage")
             onDecision("noConfig", null, null)
             return@withContext null
+        }
+
+        if (gameId != null && saveHandlerRegistry.isSigilRouted(config, platformSlug, emulatorId)) {
+            val sigil = saveHandlerRegistry.sigil
+            val root = sigil.route(gameId, config.emulatorId)?.root
+            val found = root != null && sigil.collect(gameId, config.emulatorId) is SigilCollect.Found
+            onDecision(if (found) "sigil" else "sigil+none", null, root)
+            return@withContext root.takeIf { found }
         }
 
         val saveIdNames = saveIdFileNames(config, platformSlug, romPath, cachedSaveId, emulatorPackage, gameId)
@@ -844,6 +853,10 @@ class SavePathResolver @Inject constructor(
                 Logger.debug(TAG, "constructSavePath: FAILED - no SavePathConfig | emulatorId=$emulatorId, platformSlug=$platformSlug")
                 return null
             }
+
+        if (gameId != null && saveHandlerRegistry.isSigilRouted(config, platformSlug, emulatorId)) {
+            return saveHandlerRegistry.sigil.route(gameId, config.emulatorId)?.root
+        }
 
         val saveIdNames = saveIdFileNames(config, platformSlug, romPath, cachedSaveId, null, gameId)
 

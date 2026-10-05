@@ -65,6 +65,7 @@ class N3dsExtdataUnitTest {
             retroArchSaveHandler = mockk(relaxed = true),
             defaultSaveHandler = mockk(relaxed = true),
             unitSaveHandler = mockk(relaxed = true),
+            sigilSaveHandler = mockk(relaxed = true),
             dreamcastSaveHandler = mockk(relaxed = true),
         )
         handler = registry.getFolderHandler("3ds") ?: error("3DS handler not registered")

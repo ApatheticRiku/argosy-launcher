@@ -143,8 +143,9 @@ card directory while the archive holds only one game's folders, so every caller 
   beside the ROM) that the launch uses.
 - `GameCubeHeaderParser` reads only ISO and RVZ; other formats yield a garbage game code.
 - No session watcher runs for a game with no `.gci` yet.
-- Argosy builds the GameCube unit itself. Sigil's `dolphin` and `dolphin_standalone` layouts produce
-  the spec's unit, but `GciSaveHandler` doesn't call them yet.
+- Standalone Dolphin goes through `SigilSaveHandler` (Sigil's `dolphin_standalone` layout, raw
+  cards included). The libretro and built-in GameCube cores still build the unit in
+  `GciSaveHandler`.
 
 ### Bulk and server-driven paths
 

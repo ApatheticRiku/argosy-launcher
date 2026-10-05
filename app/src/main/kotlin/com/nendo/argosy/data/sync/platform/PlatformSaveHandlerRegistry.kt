@@ -38,7 +38,8 @@ class PlatformSaveHandlerRegistry @Inject constructor(
     private val retroArchSaveHandler: RetroArchSaveHandler,
     private val dreamcastSaveHandler: DreamcastSaveHandler,
     private val defaultSaveHandler: DefaultSaveHandler,
-    private val unitSaveHandler: UnitSaveHandler
+    private val unitSaveHandler: UnitSaveHandler,
+    private val sigilSaveHandler: SigilSaveHandler
 ) {
     /**
      * Folder-bundle handlers keyed by canonical platform slug. Adding a new platform: drop a
@@ -71,7 +72,7 @@ class PlatformSaveHandlerRegistry @Inject constructor(
         platformSlug: String,
         emulatorId: String
     ): PlatformSaveHandler {
-        // Config-driven format wins before the RetroArch shortcut so libretro cores that bypass SAVE_RAM (ppsspp/citra/dolphin) route to folder/GCI handlers instead of .srm.
+        if (isSigilRouted(config, platformSlug, emulatorId)) return sigilSaveHandler
         if (config?.usesGciFormat == true) return gciSaveHandler
         val canonical = canonicalSlug(platformSlug)
         if (config?.usesFolderBasedSaves == true) {
@@ -85,6 +86,11 @@ class PlatformSaveHandlerRegistry @Inject constructor(
         if (emulatorId in UNIT_EMULATOR_IDS) return unitSaveHandler
         return defaultSaveHandler
     }
+
+    fun isSigilRouted(config: SavePathConfig?, platformSlug: String, emulatorId: String): Boolean =
+        SigilSaveHandler.layoutFor(config?.emulatorId ?: emulatorId, platformSlug) != null
+
+    val sigil: SigilSaveHandler get() = sigilSaveHandler
 
     /**
      * Folder handler for [platformSlug], or null when the platform isn't a per-title folder

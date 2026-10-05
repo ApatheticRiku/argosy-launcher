@@ -23,6 +23,7 @@ import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import com.nendo.argosy.data.sync.platform.SaveContext
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.util.Logger
@@ -368,6 +369,10 @@ class SaveSyncApiClient @Inject constructor(
 
     suspend fun clearSaveAtPath(targetPath: String): Boolean = withContext(Dispatchers.IO) {
         if (!fal.exists(targetPath)) return@withContext true
+        if (SigilSaveHandler.isProtectedSavePath(targetPath)) {
+            Logger.warn(TAG, "clearSaveAtPath: leaving $targetPath in place; it holds other games' saves and Sigil writes this game's itself")
+            return@withContext true
+        }
         val deleted = if (fal.isDirectory(targetPath)) {
             fal.deleteRecursively(targetPath)
         } else {
