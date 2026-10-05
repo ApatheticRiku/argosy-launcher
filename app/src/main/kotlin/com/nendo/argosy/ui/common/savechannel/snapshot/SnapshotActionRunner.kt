@@ -112,10 +112,10 @@ class SnapshotActionRunner @Inject constructor(
         pending = null
     }
 
-    fun newChannel(scope: CoroutineScope, label: String) {
+    fun newChannel(scope: CoroutineScope, label: String, fromBackupId: Long?) {
         val romFileId = holder.snapshotLibrary?.romFileId ?: return
         call(scope, NotificationText.Res(R.string.save_channels_notice_created)) {
-            service.newChannel(romFileId, label)
+            service.newChannel(romFileId, label, fromBackupId)
         }
     }
 

@@ -157,7 +157,7 @@ class SnapshotViewDelegate @Inject constructor(
         val label = entry.text.trim()
         if (label.isEmpty() || state.isBusy) return
         when (entry.mode) {
-            SnapshotLabelMode.NEW_CHANNEL -> runner.newChannel(scope, label)
+            SnapshotLabelMode.NEW_CHANNEL -> runner.newChannel(scope, label, entry.backupSaveId)
             SnapshotLabelMode.RENAME -> entry.channelId?.let { runner.rename(scope, it, label) }
             SnapshotLabelMode.FORK -> {
                 val romFileId = entry.romFileId ?: return
@@ -294,8 +294,18 @@ class SnapshotViewDelegate @Inject constructor(
 
     private fun confirmCopyTarget(scope: CoroutineScope) {
         val picker = snapshot?.copyPicker ?: return
+        val source = picker.source
+        if (picker.isNewChannelFocused && source is SnapshotCopySource.Backup) {
+            holder.updateSnapshot {
+                it.copy(
+                    copyPicker = null,
+                    labelEntry = SnapshotLabelEntryUi(mode = SnapshotLabelMode.NEW_CHANNEL, backupSaveId = source.saveId)
+                )
+            }
+            return
+        }
         val target = picker.focusedTarget?.let { runner.entryOf(it.channelId)?.channel } ?: return
-        when (val source = picker.source) {
+        when (source) {
             is SnapshotCopySource.Snapshot -> runner.push(scope, SnapshotPush.CopyOver(source.snapshotId, target))
             is SnapshotCopySource.Backup -> runner.push(scope, SnapshotPush.MakeSnapshot(target, source.saveId))
         }
@@ -342,9 +352,10 @@ class SnapshotViewDelegate @Inject constructor(
     }
 
     private fun openBackupCopy(index: Int) {
-        val backup = snapshot?.backups?.getOrNull(index) ?: return
+        val state = snapshot ?: return
+        val backup = state.backups.getOrNull(index) ?: return
         val targets = runner.ownChannels().map { SnapshotPickTargetUi(it.id, it.label) }
-        if (targets.isEmpty()) return
+        if (targets.isEmpty() && !state.canCreateChannel) return
         holder.updateSnapshot {
             it.copy(copyPicker = SnapshotCopyPickerUi(source = SnapshotCopySource.Backup(backup.saveId), targets = targets))
         }

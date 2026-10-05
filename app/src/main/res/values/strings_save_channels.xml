@@ -117,6 +117,8 @@
     <string name="save_channels_detail_action_make_snapshot">Make snapshot</string>
     <!-- Title of the list of channels a snapshot can be copied over. -->
     <string name="save_channels_copy_picker_title">Copy to</string>
+    <!-- First row of the copy picker for a backup: put the backup in a channel created for it. -->
+    <string name="save_channels_copy_picker_new_channel">New channel</string>
 
     <!-- ============================ Channel actions ============================ -->
 

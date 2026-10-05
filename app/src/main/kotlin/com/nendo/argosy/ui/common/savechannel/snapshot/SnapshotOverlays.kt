@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Layers
@@ -55,6 +56,7 @@ import java.time.Instant
 import java.time.OffsetDateTime
 
 private val PICKER_MAX_HEIGHT = DimensionTokens.Layout.slotPickerListMaxHeight.dp
+private const val PICKER_NEW_CHANNEL_KEY = "new_channel"
 
 @Composable
 internal fun SnapshotOverlays(state: SnapshotViewState, coverPath: String?, actions: SnapshotViewActions) {
@@ -84,11 +86,22 @@ internal fun SnapshotOverlays(state: SnapshotViewState, coverPath: String?, acti
                 modifier = Modifier.heightIn(max = PICKER_MAX_HEIGHT),
                 verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
             ) {
+                val offset = if (picker.offersNewChannel) 1 else 0
+                if (picker.offersNewChannel) {
+                    item(key = PICKER_NEW_CHANNEL_KEY) {
+                        SnapshotOverlayRow(
+                            label = stringResource(R.string.save_channels_copy_picker_new_channel),
+                            isFocused = state.confirm == null && picker.isNewChannelFocused,
+                            onClick = { actions.tapOverlayRow(0) },
+                            icon = Icons.Filled.Add
+                        )
+                    }
+                }
                 itemsIndexed(picker.targets, key = { _, target -> target.channelId }) { index, target ->
                     SnapshotOverlayRow(
                         label = target.label,
-                        isFocused = state.confirm == null && picker.focusIndex == index,
-                        onClick = { actions.tapOverlayRow(index) }
+                        isFocused = state.confirm == null && picker.focusIndex == index + offset,
+                        onClick = { actions.tapOverlayRow(index + offset) }
                     )
                 }
             }

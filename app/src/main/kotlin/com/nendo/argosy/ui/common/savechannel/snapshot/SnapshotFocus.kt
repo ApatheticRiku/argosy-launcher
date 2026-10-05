@@ -85,8 +85,8 @@ internal object SnapshotFocus {
 
     fun moveOverlay(state: SnapshotViewState, delta: Int): SnapshotViewState {
         state.copyPicker?.let { picker ->
-            if (picker.targets.isEmpty()) return state
-            return state.copy(copyPicker = picker.copy(focusIndex = (picker.focusIndex + delta).mod(picker.targets.size)))
+            if (picker.rowCount == 0) return state
+            return state.copy(copyPicker = picker.copy(focusIndex = (picker.focusIndex + delta).mod(picker.rowCount)))
         }
         state.channelMenu?.let { menu ->
             if (menu.actions.isEmpty()) return state

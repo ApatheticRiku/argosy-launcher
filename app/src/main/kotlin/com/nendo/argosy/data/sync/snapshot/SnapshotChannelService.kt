@@ -131,12 +131,12 @@ class SnapshotChannelService @Inject constructor(
     ): SnapshotActionResult =
         push(intoChannel(channel).put("save", JSONObject().put("copy_of", saveId)), approveHardcoreDowngrade)
 
-    suspend fun newChannel(romFileId: Long, label: String): SnapshotActionResult {
+    suspend fun newChannel(romFileId: Long, label: String, fromBackupId: Long?): SnapshotActionResult {
         val api = apiClient.get().getApi() ?: return SnapshotActionResult.Offline
-        runCatching { api.postChannel(RomMChannelCreate(romFileId, label)) }.getOrNull()
-            ?.takeIf { it.isSuccessful }
+        val channel = runCatching { api.postChannel(RomMChannelCreate(romFileId, label)) }.getOrNull()
+            ?.takeIf { it.isSuccessful }?.body()
             ?: return SnapshotActionResult.Failed("could not create channel $label")
-        return SnapshotActionResult.Done
+        return fromBackupId?.let { makeSnapshot(channel, it) } ?: SnapshotActionResult.Done
     }
 
     suspend fun setPinned(snapshotId: Long, pinned: Boolean): SnapshotActionResult =

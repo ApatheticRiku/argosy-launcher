@@ -97,7 +97,11 @@ data class SnapshotCopyPickerUi(
     val targets: List<SnapshotPickTargetUi>,
     val focusIndex: Int = 0
 ) {
-    val focusedTarget: SnapshotPickTargetUi? get() = targets.getOrNull(focusIndex)
+    val offersNewChannel: Boolean get() = source is SnapshotCopySource.Backup
+    val rowCount: Int get() = targets.size + if (offersNewChannel) 1 else 0
+    val isNewChannelFocused: Boolean get() = offersNewChannel && focusIndex == 0
+    val focusedTarget: SnapshotPickTargetUi?
+        get() = targets.getOrNull(focusIndex - if (offersNewChannel) 1 else 0)
 }
 
 enum class SnapshotLabelMode { NEW_CHANNEL, RENAME, FORK }
@@ -107,7 +111,8 @@ data class SnapshotLabelEntryUi(
     val text: String = "",
     val channelId: String? = null,
     val snapshotId: Long? = null,
-    val romFileId: Long? = null
+    val romFileId: Long? = null,
+    val backupSaveId: Long? = null
 )
 
 sealed interface SnapshotConfirmUi {
