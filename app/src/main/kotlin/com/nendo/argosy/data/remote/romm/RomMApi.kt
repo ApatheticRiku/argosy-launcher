@@ -250,6 +250,25 @@ interface RomMApi {
         @Query("rom_file_id") romFileIds: List<Long>
     ): Response<List<RomMChannel>>
 
+    @POST("api/channels")
+    suspend fun postChannel(@Body body: RomMChannelCreate): Response<RomMChannel>
+
+    @retrofit2.http.PATCH("api/channels/{id}")
+    suspend fun updateChannel(@Path("id") channelId: String, @Body body: RomMChannelUpdate): Response<RomMChannel>
+
+    @DELETE("api/channels/{id}")
+    suspend fun deleteChannel(@Path("id") channelId: String): Response<Unit>
+
+    @GET("api/snapshots")
+    suspend fun listSnapshotHistory(
+        @Query("channel_id") channelId: String,
+        @Query("limit") limit: Int,
+        @Query("cursor") cursor: String? = null
+    ): Response<List<RomMSnapshot>>
+
+    @retrofit2.http.PATCH("api/snapshots/{id}")
+    suspend fun updateSnapshot(@Path("id") snapshotId: Long, @Body body: RomMSnapshotUpdate): Response<RomMSnapshot>
+
     @GET("api/snapshots/{id}")
     suspend fun getSnapshot(
         @Path("id") snapshotId: Long

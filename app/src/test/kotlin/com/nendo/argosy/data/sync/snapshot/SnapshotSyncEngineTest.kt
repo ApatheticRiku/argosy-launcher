@@ -95,7 +95,8 @@ class SnapshotSyncEngineTest {
             emulatorResolver = mockk(relaxed = true),
             saveArchiver = archiver,
             syncPreferencesRepository = prefs,
-            moshi = moshi
+            pusher = SnapshotPusher(moshi),
+            fileResolver = SnapshotFileResolver()
         )
     }
 

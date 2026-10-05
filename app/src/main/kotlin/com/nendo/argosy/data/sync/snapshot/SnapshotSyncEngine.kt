@@ -14,6 +14,7 @@ import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMRomFile
 import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.remote.romm.RomMSnapshotConflict
+import com.nendo.argosy.data.remote.romm.RomMSnapshotSave
 import com.nendo.argosy.data.repository.SaveCacheManager
 import com.nendo.argosy.data.repository.SaveDownloader
 import com.nendo.argosy.data.repository.SaveSyncApiClient
@@ -81,10 +82,9 @@ class SnapshotSyncEngine @Inject constructor(
     private val emulatorResolver: EmulatorResolver,
     private val saveArchiver: SaveArchiver,
     private val syncPreferencesRepository: SyncPreferencesRepository,
-    moshi: Moshi
+    private val pusher: SnapshotPusher,
+    private val fileResolver: SnapshotFileResolver
 ) {
-    private val snapshotAdapter = moshi.adapter(RomMSnapshot::class.java)
-    private val conflictAdapter = moshi.adapter(RomMSnapshotConflict::class.java)
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
     private class ChannelView(
@@ -191,8 +191,7 @@ class SnapshotSyncEngine @Inject constructor(
         val api = client.getApi() ?: return null
         val deviceId = client.getDeviceId() ?: return null
         val game = gameDao.getById(gameId) ?: return null
-        val rommId = game.rommId ?: return null
-        val file = launchedFile(api, game, rommId) ?: run {
+        val file = fileResolver.launchedFile(api, game) ?: run {
             Logger.warn(TAG, "[SaveSync] SNAPSHOT gameId=$gameId | the launched file has no RomM file record")
             return null
         }
@@ -217,18 +216,6 @@ class SnapshotSyncEngine @Inject constructor(
             channelId = channelId,
             isNewChannel = channel == null
         )
-    }
-
-    private suspend fun launchedFile(api: RomMApi, game: GameEntity, rommId: Long): RomMRomFile? {
-        val files = runCatching { api.getRom(rommId) }.getOrNull()?.body()?.files.orEmpty()
-        if (files.isEmpty()) return null
-        val launched = game.localPath?.let { File(it).name }
-        files.firstOrNull { it.fileName == launched }?.let { return it }
-        val games = files
-            .filter { it.category == null || it.category.equals(GAME_FILE_CATEGORY, ignoreCase = true) }
-            .sortedBy { it.fileName.lowercase() }
-        return games.firstOrNull { it.fileName.substringAfterLast('.').lowercase() in LOADER_EXTENSIONS }
-            ?: games.firstOrNull()
     }
 
     private suspend fun localSave(game: GameEntity, emulatorId: String): LocalSave =
@@ -263,7 +250,7 @@ class SnapshotSyncEngine @Inject constructor(
     }
 
     private fun currentPoint(current: RomMSnapshot?): SnapshotPoint? = current?.let { snapshot ->
-        SnapshotPoint(snapshot.id, snapshot.save?.let { SaveHashes(it.contentHash, it.identityHash ?: it.contentHash) })
+        SnapshotPoint(snapshot.id, snapshot.save?.hashes())
     }
 
     private suspend fun pushLocal(
@@ -341,36 +328,20 @@ class SnapshotSyncEngine @Inject constructor(
             put("emulator", EMULATOR)
             put("emulator_version", BuildConfig.VERSION_NAME)
         }
-        val parts = listOf(
-            MultipartBody.Part.createFormData("manifest", null, manifest.toString().toRequestBody(JSON)),
-            MultipartBody.Part.createFormData("save", unit.name, unit.data.toRequestBody(OCTET_STREAM))
-        )
-        val response = runCatching { ctx.api.pushSnapshot(ctx.deviceId, parts) }.getOrElse {
-            return SnapshotSyncResult.Failed("push failed: ${it.message}")
-        }
-        val body = if (response.isSuccessful) response.body()?.string() else response.errorBody()?.string()
-        return when (response.code()) {
-            200, 201 -> {
-                val snapshot = body?.let { runCatching { snapshotAdapter.fromJson(it) }.getOrNull() }
-                    ?: return SnapshotSyncResult.Failed("push answered ${response.code()} without a snapshot")
-                record(ctx, snapshot.id, snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
-                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
-                SnapshotSyncResult.Pushed(snapshot.id)
+        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit)) {
+            is PushOutcome.Written -> {
+                record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
+                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${outcome.snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
+                SnapshotSyncResult.Pushed(outcome.snapshot.id)
             }
-            409 -> {
-                val conflict = body?.let { runCatching { conflictAdapter.fromJson(it) }.getOrNull() }
-                when {
-                    conflict?.hardcoreDowngrade == true -> SnapshotSyncResult.HardcoreDowngrade(expectedCurrentId)
-                    conflict?.current != null -> SnapshotSyncResult.Conflict(null, conflict.current.id)
-                    else -> SnapshotSyncResult.Failed("push refused: 409 $body")
-                }
-            }
-            else -> SnapshotSyncResult.Failed("push refused: ${response.code()} $body")
+            PushOutcome.HardcoreDowngrade -> SnapshotSyncResult.HardcoreDowngrade(expectedCurrentId)
+            is PushOutcome.Conflict -> SnapshotSyncResult.Conflict(null, outcome.currentId)
+            is PushOutcome.Failed -> SnapshotSyncResult.Failed(outcome.reason)
         }
     }
 
     private suspend fun adopt(ctx: ChannelView, current: RomMSnapshot): SnapshotSyncResult {
-        record(ctx, current.id, current.digest, current.save?.let { SaveHashes(it.contentHash, it.identityHash ?: it.contentHash) })
+        record(ctx, current.id, current.digest, current.save?.hashes())
         report(ctx, current.id)
         return SnapshotSyncResult.Applied(current.id)
     }
@@ -393,11 +364,13 @@ class SnapshotSyncEngine @Inject constructor(
                 else -> return SnapshotSyncResult.Failed("save ${save.id} was not placed: ${placed::class.simpleName}")
             }
         }
-        record(ctx, snapshot.id, snapshot.digest, save?.let { SaveHashes(it.contentHash, it.identityHash ?: it.contentHash) })
+        record(ctx, snapshot.id, snapshot.digest, save?.hashes())
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
     }
+
+    private fun RomMSnapshotSave.hashes(): SaveHashes? = contentHash?.let { SaveHashes(it, identityHash ?: it) }
 
     private suspend fun record(ctx: ChannelView, snapshotId: Long, digest: String, save: SaveHashes?) {
         channelDao.upsert(
@@ -428,9 +401,5 @@ class SnapshotSyncEngine @Inject constructor(
         private const val FORMAT_NEUTRAL = "neutral"
         private const val FORMAT_NATIVE = "native"
         private const val EMULATOR = "argosy"
-        private const val GAME_FILE_CATEGORY = "game"
-        private val LOADER_EXTENSIONS = setOf("cue", "gdi", "ccd", "mds", "toc")
-        private val JSON = "application/json".toMediaType()
-        private val OCTET_STREAM = "application/octet-stream".toMediaType()
     }
 }
