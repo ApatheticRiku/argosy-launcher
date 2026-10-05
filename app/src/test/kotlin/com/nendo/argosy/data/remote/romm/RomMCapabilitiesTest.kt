@@ -39,14 +39,14 @@ class RomMCapabilitiesTest {
     }
 
     @Test
-    fun `sigil units start at 5_5_0`() {
+    fun `snapshots start at 5_5_0`() {
         for (version in listOf("5.3.1", "5.4.0", "5.4.9")) {
-            assertFalse(version, RomMCapabilities.from(version).supportsSigilUnits)
+            assertFalse(version, RomMCapabilities.from(version).supportsSnapshots)
         }
         for (version in listOf("5.5.0", "5.5.1", "6.0.0")) {
-            assertTrue(version, RomMCapabilities.from(version).supportsSigilUnits)
+            assertTrue(version, RomMCapabilities.from(version).supportsSnapshots)
         }
-        assertFalse("disconnected", RomMCapabilities.NONE.supportsSigilUnits)
+        assertFalse("disconnected", RomMCapabilities.NONE.supportsSnapshots)
     }
 
     @Test

@@ -245,6 +245,30 @@ interface RomMApi {
         @Path("id") saveId: Long
     ): Response<ResponseBody>
 
+    @GET("api/snapshots")
+    suspend fun listCurrentSnapshots(
+        @Query("rom_file_id") romFileIds: List<Long>,
+        @Query("current") current: Boolean = true
+    ): Response<List<RomMSnapshot>>
+
+    @GET("api/snapshots/{id}")
+    suspend fun getSnapshot(
+        @Path("id") snapshotId: Long
+    ): Response<RomMSnapshot>
+
+    @Multipart
+    @POST("api/snapshots")
+    suspend fun pushSnapshot(
+        @Query("device_id") deviceId: String,
+        @Part parts: List<MultipartBody.Part>
+    ): Response<ResponseBody>
+
+    @PUT("api/snapshots/{id}/devices/{deviceId}")
+    suspend fun reportSnapshotHeld(
+        @Path("id") snapshotId: Long,
+        @Path("deviceId") deviceId: String
+    ): Response<Unit>
+
     @Multipart
     @POST("api/screenshots")
     suspend fun uploadScreenshot(

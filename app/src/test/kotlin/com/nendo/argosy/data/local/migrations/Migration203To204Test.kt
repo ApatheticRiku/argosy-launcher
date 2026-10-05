@@ -23,6 +23,12 @@ class Migration203To204Test {
     }
 
     @Test
+    fun `creates the snapshot channel table keyed by account and game`() {
+        val create = statements().single { it.contains("CREATE TABLE IF NOT EXISTS `snapshot_channels`") }
+        assertTrue(create.contains("PRIMARY KEY(`ownerUserId`, `gameId`)"))
+    }
+
+    @Test
     fun `game boy carts lose their stored features so they rescan`() {
         val reset = statements().single { it.startsWith("UPDATE `games` SET `saveFeatures` = NULL") }
         listOf("'gb'", "'gbc'", "'gameboy'", "'game-boy-color'").forEach { assertTrue(it, reset.contains(it)) }

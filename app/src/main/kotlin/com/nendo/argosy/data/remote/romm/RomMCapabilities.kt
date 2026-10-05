@@ -16,7 +16,7 @@ data class RomMCapabilities(
     val supportsMusicPlaylists: Boolean = false,
     val supportsMusicTrackRomFilter: Boolean = false,
     val supportsMusicGames: Boolean = false,
-    val supportsSigilUnits: Boolean = false,
+    val supportsSnapshots: Boolean = false,
 ) {
     companion object {
         /**
@@ -36,7 +36,7 @@ data class RomMCapabilities(
         const val MUSIC_PLAYLISTS_MIN_VERSION = "5.1.0"
         const val MUSIC_TRACK_ROM_FILTER_MIN_VERSION = "5.1.0"
         const val MUSIC_GAMES_MIN_VERSION = "5.3.0"
-        const val SIGIL_UNITS_MIN_VERSION = "5.5.0"
+        const val SNAPSHOTS_MIN_VERSION = "5.5.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -77,7 +77,7 @@ data class RomMCapabilities(
                 supportsMusicTrackRomFilter =
                     compareVersions(gate, MUSIC_TRACK_ROM_FILTER_MIN_VERSION) >= 0,
                 supportsMusicGames = compareVersions(gate, MUSIC_GAMES_MIN_VERSION) >= 0,
-                supportsSigilUnits = compareVersions(gate, SIGIL_UNITS_MIN_VERSION) >= 0,
+                supportsSnapshots = compareVersions(gate, SNAPSHOTS_MIN_VERSION) >= 0,
             )
         }
 

@@ -96,6 +96,10 @@ object DatabaseModule {
         database.sigilSyncStateDao()
 
     @Provides
+    fun provideSnapshotChannelDao(database: ALauncherDatabase): com.nendo.argosy.data.local.dao.SnapshotChannelDao =
+        database.snapshotChannelDao()
+
+    @Provides
     fun provideGameDiscDao(database: ALauncherDatabase): GameDiscDao = database.gameDiscDao()
 
     @Provides

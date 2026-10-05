@@ -27,6 +27,7 @@ import com.nendo.argosy.util.RootShell
 import com.nendo.sigil.Sigil
 import com.nendo.sigil.SigilException
 import com.nendo.sigil.SigilResult
+import com.nendo.sigil.SigilSaveUnit
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,8 +52,16 @@ sealed class SigilCollect {
         val data: ByteArray,
         val artifact: String,
         val contentHash: String,
-        val identityHash: String
+        val identityHash: String,
+        val shape: String = SHAPE_SINGLE
     ) : SigilCollect()
+
+    companion object {
+        const val SHAPE_SINGLE = "SINGLE"
+        const val SHAPE_MULTI = "MULTI"
+        const val SHAPE_FOLDER = "FOLDER"
+        const val SHAPE_FOLDERS = "FOLDERS"
+    }
 }
 
 sealed class SigilRestore {
@@ -213,7 +222,7 @@ class SigilSaveHandler @Inject constructor(
      * Whether saves travel as Sigil units. Servers before RomM 5.5, and a disconnected client,
      * keep the formats the legacy handlers write, so every device on an older server stays readable.
      */
-    fun unitsEnabled(): Boolean = connectionManager.get().getCapabilities().supportsSigilUnits
+    fun unitsEnabled(): Boolean = connectionManager.get().getCapabilities().supportsSnapshots
 
     fun routes(emulatorId: String, platformSlug: String): Boolean =
         unitsEnabled() && layoutFor(emulatorId, platformSlug) != null
@@ -362,7 +371,7 @@ class SigilSaveHandler @Inject constructor(
             if (data == null || data.isEmpty()) {
                 SigilCollect.Absent
             } else {
-                SigilCollect.Found(data, result.artifact, result.contentHash, result.identityHash)
+                SigilCollect.Found(data, result.artifact, result.contentHash, result.identityHash, shapeOf(result.shape, data))
             }
         } catch (e: SigilException) {
             when (e.code) {
@@ -440,6 +449,17 @@ class SigilSaveHandler @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
         )
+    }
+
+    private fun shapeOf(shape: SigilSaveUnit.Shape, data: ByteArray): String = when (shape) {
+        SigilSaveUnit.Shape.Multi -> SigilCollect.SHAPE_MULTI
+        SigilSaveUnit.Shape.Folder -> {
+            val roots = java.util.zip.ZipInputStream(data.inputStream()).use { zip ->
+                generateSequence { zip.nextEntry }.map { it.name.substringBefore('/') }.toSet()
+            }
+            if (roots.size > 1) SigilCollect.SHAPE_FOLDERS else SigilCollect.SHAPE_FOLDER
+        }
+        else -> SigilCollect.SHAPE_SINGLE
     }
 
     private fun emulatorIsClosed(pkg: String?): Boolean {

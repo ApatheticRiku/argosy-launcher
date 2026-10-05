@@ -121,7 +121,8 @@ class SaveSyncRepository @Inject constructor(
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val strategySelector: SaveSyncStrategySelector,
     private val negotiateInventory: NegotiateInventory,
-    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate
+    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     private val PRE_LAUNCH_TAG = "SaveSyncRepository"
     private val PRE_LAUNCH_ACTION_PRIORITY = listOf(
@@ -261,7 +262,9 @@ class SaveSyncRepository @Inject constructor(
         isHardcore: Boolean = false,
         uploadedCacheId: Long? = null
     ): SaveSyncResult = uploadMutexes.computeIfAbsent(gameId to channelName) { Mutex() }.withLock {
-        apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
+        snapshotRouter.get().upload(gameId, emulatorId, channelName, forceOverwrite, isHardcore)
+            ?.also { if (it is SaveSyncResult.Success) entityManager.clearDirtyFlags(gameId) }
+            ?: apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
     }
 
     suspend fun uploadCacheEntry(
@@ -283,7 +286,8 @@ class SaveSyncRepository @Inject constructor(
         channelName: String? = null,
         skipBackup: Boolean = false,
         knownServerSaveId: Long? = null
-    ): SaveSyncResult = apiClient.downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+    ): SaveSyncResult = snapshotRouter.get().download(gameId, emulatorId, channelName)
+        ?: apiClient.downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
     suspend fun downloadToCache(serverSaveId: Long, gameId: Long, channelName: String?): Long? =
         apiClient.downloadToCache(serverSaveId, gameId, channelName)
@@ -394,6 +398,11 @@ class SaveSyncRepository @Inject constructor(
         if (existing?.userSelectedRestorePoint == true) {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | userSelectedRestorePoint=true | decision=LocalIsNewer")
             return@withContext PreLaunchSyncResult.LocalIsNewer
+        }
+
+        snapshotRouter.get().preLaunch(gameId, emulatorId, channelName)?.let { decision ->
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | snapshot sync | decision=${decision::class.simpleName}")
+            return@withContext decision
         }
 
         apiClient.flushPendingDeviceSync(gameId)

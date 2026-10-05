@@ -195,7 +195,8 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.ManagedInstallerEntity::class,
         com.nendo.argosy.data.local.entity.GameGroupPickEntity::class,
         com.nendo.argosy.data.local.entity.GameArtEntity::class,
-        com.nendo.argosy.data.local.entity.SigilSyncStateEntity::class
+        com.nendo.argosy.data.local.entity.SigilSyncStateEntity::class,
+        com.nendo.argosy.data.local.entity.SnapshotChannelEntity::class
     ],
     version = 204,
     exportSchema = true
@@ -269,5 +270,6 @@ abstract class ALauncherDatabase : RoomDatabase() {
     abstract fun gameGroupPickDao(): com.nendo.argosy.data.local.dao.GameGroupPickDao
     abstract fun gameArtDao(): com.nendo.argosy.data.local.dao.GameArtDao
     abstract fun sigilSyncStateDao(): com.nendo.argosy.data.local.dao.SigilSyncStateDao
+    abstract fun snapshotChannelDao(): com.nendo.argosy.data.local.dao.SnapshotChannelDao
 
 }

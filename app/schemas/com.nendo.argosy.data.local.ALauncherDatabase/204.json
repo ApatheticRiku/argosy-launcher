@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 204,
-    "identityHash": "cb1e2ba853d231d0a509eacb12a98101",
+    "identityHash": "0dc1e0e918ae7345e23b515abef84eb3",
     "entities": [
       {
         "tableName": "platforms",
@@ -7398,11 +7398,74 @@
             "root"
           ]
         }
+      },
+      {
+        "tableName": "snapshot_channels",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `channelId` TEXT NOT NULL, `romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, `heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`ownerUserId`, `gameId`))",
+        "fields": [
+          {
+            "fieldPath": "ownerUserId",
+            "columnName": "ownerUserId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gameId",
+            "columnName": "gameId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelId",
+            "columnName": "channelId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "romFileId",
+            "columnName": "romFileId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "heldSnapshotId",
+            "columnName": "heldSnapshotId",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "heldDigest",
+            "columnName": "heldDigest",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "heldSaveHash",
+            "columnName": "heldSaveHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "heldSaveIdentityHash",
+            "columnName": "heldSaveIdentityHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "ownerUserId",
+            "gameId"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cb1e2ba853d231d0a509eacb12a98101')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0dc1e0e918ae7345e23b515abef84eb3')"
     ]
   }
 }
