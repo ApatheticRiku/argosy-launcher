@@ -87,7 +87,7 @@ internal fun saveTimelineLaneColors(): List<Color> {
     }
 }
 
-private val LANE_HUE_STEPS = listOf(0f, 180f, 90f, 270f)
+private val LANE_HUE_STEPS = listOf(0f, 180f, 90f, 270f, 45f, 225f)
 private const val LANE_MIN_SATURATION = 0.55f
 private const val LANE_LIGHTNESS = 0.62f
 

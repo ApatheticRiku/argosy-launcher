@@ -130,8 +130,8 @@ object DimensionTokens {
         const val saveTimelineDot = 16
         const val saveTimelineDotCurrent = 24
         const val saveTimelinePinMark = 8
-        const val saveTimelineFloaterWidth = 260
-        const val saveTimelineFloaterThumb = 96
+        const val saveTimelineFloaterWidth = 360
+        const val saveTimelineFloaterThumb = 152
         const val saveTimelineHeaderCover = 56
     }
 
