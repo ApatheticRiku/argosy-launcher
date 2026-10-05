@@ -25,6 +25,7 @@ import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import com.nendo.argosy.data.sync.platform.SigilCollect
 import com.nendo.argosy.data.sync.platform.SigilRestore
+import com.nendo.argosy.data.sync.platform.SigilRoute
 import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.domain.model.SaveSlotClassifier
@@ -68,6 +69,9 @@ class SaveCacheManager @Inject constructor(
     companion object {
         private const val TAG = "SaveCacheManager"
         const val UNIT_CACHE_SUFFIX = ".unit.zip"
+        private const val NO_GAME_ID = -1L
+        private const val RECENT_GAMES_CHECKED = 5
+        private val RZIP_MAGIC = "#RZIPv".toByteArray(Charsets.US_ASCII)
 
         /**
          * Platforms whose save is a set of sibling folders sharing a prefix rather than one
@@ -633,7 +637,40 @@ class SaveCacheManager @Inject constructor(
     suspend fun restoreThroughSigil(entity: SaveCacheEntity): SigilRestore = withContext(Dispatchers.IO) {
         val cacheFile = File(cacheBaseDir, entity.cachePath)
         if (!cacheFile.exists()) return@withContext SigilRestore.NotRouted
-        sigilSaveHandler.restore(entity.gameId, cacheFile, entity.emulatorId)
+        restoreViaSigil(entity.gameId, cacheFile, entity.emulatorId)
+    }
+
+    /**
+     * Sigil's restore of [unitFile] for [gameId]. When a shared volume still holds the last
+     * session's saves, the game that last played on that save root under [collectAs] (default
+     * [emulatorId]) is collected into the cache first, marked for upload, and the restore runs
+     * once more.
+     */
+    suspend fun restoreViaSigil(
+        gameId: Long,
+        unitFile: File,
+        emulatorId: String?,
+        collectAs: String? = emulatorId
+    ): SigilRestore =
+        withContext(Dispatchers.IO) {
+            val first = sigilSaveHandler.restore(gameId, unitFile, emulatorId)
+            if (first !is SigilRestore.Uncollected) return@withContext first
+            val collector = collectAs
+                ?: return@withContext SigilRestore.Refused("the save volume holds saves from a session that was never collected")
+            val lastGameId = lastPlayedOnRoot(gameId, collector, first.route)
+                ?: return@withContext SigilRestore.Refused("the save volume holds saves from a session that was never collected")
+            Logger.info(TAG, "[SaveSync] SIGIL | collecting game $lastGameId before restoring game $gameId | root=${first.route.root}")
+            cacheCurrentSave(lastGameId, collector, first.route.root, needsRemoteSync = true, claimNewSaves = true)
+            when (val retry = sigilSaveHandler.restore(gameId, unitFile, emulatorId)) {
+                is SigilRestore.Uncollected -> SigilRestore.Refused("the save volume still holds saves no collect has passed on")
+                else -> retry
+            }
+        }
+
+    private suspend fun lastPlayedOnRoot(gameId: Long, emulatorId: String, route: SigilRoute): Long? {
+        val game = gameDao.getById(gameId) ?: return null
+        return gameDao.getRecentlyPlayedIdsOnPlatform(game.platformId, excludeId = NO_GAME_ID, limit = RECENT_GAMES_CHECKED)
+            .firstOrNull { sigilSaveHandler.sharesRoot(it, emulatorId, route) }
     }
 
     suspend fun findCachedByHash(gameId: Long, contentHash: String): com.nendo.argosy.data.local.entity.SaveCacheEntity? =
@@ -656,12 +693,13 @@ class SaveCacheManager @Inject constructor(
         fal.prepareSaveAccess(targetPath)
         var placedGciMembers: List<String>? = null
         try {
-            when (val sigilRestore = sigilSaveHandler.restore(entity.gameId, cacheFile)) {
+            when (val sigilRestore = restoreViaSigil(entity.gameId, cacheFile, null, entity.emulatorId)) {
                 SigilRestore.NotRouted -> Unit
                 is SigilRestore.Refused -> {
                     Logger.warn(TAG, "Restore of cache $cacheId refused: ${sigilRestore.reason}")
                     return@withContext false
                 }
+                is SigilRestore.Uncollected -> return@withContext false
                 is SigilRestore.Restored -> {
                     Log.d(TAG, "Restored save from cache $cacheId through Sigil (legacy hardcore marker=${sigilRestore.hardcoreMarker})")
                     if (!secureSaves && !entity.isHardcore) {
@@ -1314,14 +1352,29 @@ class SaveCacheManager @Inject constructor(
         val resolvedEmulatorId = emulatorId ?: owner?.emulatorId ?: return null
         if (resolvedEmulatorId !in PlatformSaveHandlerRegistry.UNIT_EMULATOR_IDS) return null
         val game = gameDao.getById(resolvedGameId) ?: return null
-        val unit = saveUnitResolver.resolveForSavePath(savePath, game, resolvedEmulatorId, null, hash = true)
+        val resolved = saveUnitResolver.resolveForSavePath(savePath, game, resolvedEmulatorId, null, hash = true)
             ?.takeIf { it.isMulti && it.unit.contentHash.isNotEmpty() }
-            ?.unit ?: return null
-        if (unit.identityHash.isEmpty() || unit.identityHash == unit.contentHash) return unit.contentHash
+            ?: return null
+        val unit = resolved.unit
+        val contentHash = if (resolved.memberPaths.any { isRetroArchCompressed(it) }) {
+            saveArchiver.calculateFilesAsZipHash(resolved.memberPaths)
+        } else {
+            unit.contentHash
+        }
+        if (unit.identityHash.isEmpty() || unit.identityHash == unit.contentHash) return contentHash
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         return saveCacheDao.getLatestByGameAndIdentity(resolvedGameId, ownerUserId, unit.identityHash)?.contentHash
             ?: saveCacheDao.getByGameAndHash(resolvedGameId, ownerUserId, unit.identityHash)?.contentHash
-            ?: unit.contentHash
+            ?: contentHash
+    }
+
+    private fun isRetroArchCompressed(path: String): Boolean = try {
+        fal.getTransformedFile(path).inputStream().use { input ->
+            val head = ByteArray(RZIP_MAGIC.size)
+            input.read(head) == head.size && head.contentEquals(RZIP_MAGIC)
+        }
+    } catch (e: java.io.IOException) {
+        false
     }
 
     private suspend fun recordLocalWriteAnchor(

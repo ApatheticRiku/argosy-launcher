@@ -49,8 +49,7 @@ class SaveDownloaderTest {
         saveUploader = dagger.Lazy { mockk(relaxed = true) },
         emulatorSaveConfigRepository = mockk(relaxed = true),
         unitSaveHandler = mockk(relaxed = true),
-        saveUnitResolver = mockk(relaxed = true),
-        sigilSaveHandler = com.nendo.argosy.data.sync.fixtures.notRoutedSigil()
+        saveUnitResolver = mockk(relaxed = true)
     )
 
     @Test

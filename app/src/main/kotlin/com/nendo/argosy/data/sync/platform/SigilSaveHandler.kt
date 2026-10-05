@@ -59,6 +59,7 @@ sealed class SigilRestore {
     data object NotRouted : SigilRestore()
     data class Restored(val hardcoreMarker: Boolean) : SigilRestore()
     data class Refused(val reason: String) : SigilRestore()
+    data class Uncollected(val route: SigilRoute) : SigilRestore()
 }
 
 /**
@@ -135,6 +136,7 @@ class SigilSaveHandler @Inject constructor(
         private const val FLYCAST_PER_CONTENT_VMUS = "reicast_per_content_vmus"
         private val FLYCAST_PER_GAME_VALUES = setOf("VMU A1", "All VMUs")
         private const val FLYCAST_SHARED_DIR = "dc"
+        private const val HOLDING_DIR = "sigil_holding"
 
         private const val PCSX2_SLOT1_OPTION = "Slot1_Filename"
 
@@ -345,6 +347,7 @@ class SigilSaveHandler @Inject constructor(
             if (result.restoreAgain) {
                 Logger.warn(TAG, "[SaveSync] SIGIL | the emulator overwrote the last restore for game ${game.id}")
             }
+            result.holding?.let { keepHolding(stateKey, it) }
             saveState(stateKey, result.state, result.unowned)
             val data = result.data
             if (data == null || data.isEmpty()) {
@@ -375,16 +378,16 @@ class SigilSaveHandler @Inject constructor(
         try {
             restore(route, game, unit)
         } catch (e: SigilException) {
-            if (e.code != SigilException.UNCOLLECTED) return@withContext SigilRestore.Refused(describe(e))
-            Logger.info(TAG, "[SaveSync] SIGIL | shared volume holds uncollected saves, collecting game $gameId before restoring")
-            collect(route, game, claimNewSaves = false)
-            try {
-                restore(route, game, unit)
-            } catch (retry: SigilException) {
-                SigilRestore.Refused(describe(retry))
-            }
+            if (e.code == SigilException.UNCOLLECTED) SigilRestore.Uncollected(route) else SigilRestore.Refused(describe(e))
         }
     }
+
+    /**
+     * Whether [gameId]'s saves sit on the same save root under the same layout as [route], so a
+     * collect for it passes on what that root's shared volumes hold.
+     */
+    suspend fun sharesRoot(gameId: Long, emulatorId: String?, route: SigilRoute): Boolean =
+        route(gameId, emulatorId)?.let { it.layout == route.layout && it.root == route.root } == true
 
     private suspend fun restore(route: SigilRoute, game: GameEntity, unit: ByteArray): SigilRestore {
         val ids = titleIdCandidates(game)
@@ -419,6 +422,20 @@ class SigilSaveHandler @Inject constructor(
             layout = route.layout,
             root = route.root
         )
+
+    private fun keepHolding(key: StateKey, holding: ByteArray) {
+        val dir = File(
+            context.filesDir,
+            "$HOLDING_DIR/${key.ownerUserId}/${key.platformSlug}/${key.layout}"
+        )
+        val digest = java.security.MessageDigest.getInstance("MD5").digest(holding)
+            .joinToString("") { "%02x".format(it) }
+        val file = File(dir, "$digest.zip")
+        if (file.exists()) return
+        dir.mkdirs()
+        file.writeBytes(holding)
+        Logger.info(TAG, "[SaveSync] SIGIL | kept unowned shared-volume saves | ${file.absolutePath}")
+    }
 
     private suspend fun loadState(key: StateKey): SigilSyncStateEntity? =
         sigilSyncStateDao.get(key.ownerUserId, key.platformSlug, key.layout, key.root)
@@ -474,6 +491,7 @@ class SigilSaveHandler @Inject constructor(
         when (val restored = restore(context.gameId, tempFile, context.emulatorId)) {
             is SigilRestore.Restored -> ExtractResult(true, route(context.gameId, context.emulatorId)?.root)
             is SigilRestore.Refused -> ExtractResult(false, null, restored.reason)
+            is SigilRestore.Uncollected -> ExtractResult(false, null, "the save volume holds saves not yet collected")
             SigilRestore.NotRouted -> ExtractResult(false, null, "no Sigil layout for ${context.emulatorId}")
         }
 }
