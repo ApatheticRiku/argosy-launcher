@@ -30,6 +30,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,7 +54,6 @@ import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
-import com.nendo.argosy.ui.theme.LocalLauncherTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -72,10 +73,23 @@ internal class SaveTimelineGraphActions(
 
 @Composable
 internal fun saveTimelineLaneColors(): List<Color> {
-    val theme = LocalArgosyTheme.current
-    val semantic = LocalLauncherTheme.current.semanticColors
-    return listOf(theme.focusAccent, semantic.success, semantic.info, semantic.warning)
+    val accent = LocalArgosyTheme.current.focusAccent
+    return remember(accent) {
+        val hsl = FloatArray(3)
+        androidx.core.graphics.ColorUtils.colorToHSL(accent.toArgb(), hsl)
+        LANE_HUE_STEPS.map { step ->
+            Color(
+                androidx.core.graphics.ColorUtils.HSLToColor(
+                    floatArrayOf((hsl[0] + step) % 360f, hsl[1].coerceAtLeast(LANE_MIN_SATURATION), LANE_LIGHTNESS)
+                )
+            )
+        }
+    }
 }
+
+private val LANE_HUE_STEPS = listOf(0f, 180f, 90f, 270f)
+private const val LANE_MIN_SATURATION = 0.55f
+private const val LANE_LIGHTNESS = 0.62f
 
 @Composable
 internal fun SaveTimelineGraph(
@@ -439,7 +453,7 @@ private fun SaveTimelineFloaterHost(
     val columnWidthPx = with(density) { Dimens.saveTimelineColumnWidth.toPx() }
     val laneHeightPx = with(density) { Dimens.saveTimelineLaneHeight.toPx() }
     val marginPx = with(density) { Dimens.spacingMd.toPx() }
-    val gapPx = with(density) { (Dimens.saveTimelineDotCurrent / 2 + Dimens.spacingSm).toPx() }
+    val gapPx = laneHeightPx / 2f + with(density) { Dimens.spacingXs.toPx() }
     val info = listState.layoutInfo
     val item = info.visibleItemsInfo.firstOrNull { it.index == node.column }
     val anchor = item?.let {

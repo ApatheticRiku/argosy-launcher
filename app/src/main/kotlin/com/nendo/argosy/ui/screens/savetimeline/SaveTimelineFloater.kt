@@ -89,11 +89,18 @@ private fun floaterTarget(
     viewportWidthPx: Int,
     viewportHeightPx: Int
 ): IntOffset {
-    val right = anchor.x + gapPx
-    val left = anchor.x - gapPx - size.width
-    val x = if (right + size.width <= viewportWidthPx - marginPx || left < marginPx) right else left
-    val maxY = max(marginPx, viewportHeightPx - marginPx - size.height)
-    val y = (anchor.y - size.height / 2f).coerceIn(marginPx, maxY)
+    val maxX = max(marginPx, viewportWidthPx - marginPx - size.width)
+    val x = (anchor.x - size.width / 2f).coerceIn(marginPx, maxX)
+    val below = anchor.y + gapPx
+    val above = anchor.y - gapPx - size.height
+    val spareBelow = viewportHeightPx - marginPx - below - size.height
+    val spareAbove = above - marginPx
+    val y = when {
+        spareBelow >= 0 && spareAbove >= 0 -> if (spareBelow >= spareAbove) below else above
+        spareBelow >= 0 -> below
+        spareAbove >= 0 -> above
+        else -> below.coerceIn(marginPx, max(marginPx, viewportHeightPx - marginPx - size.height))
+    }
     return IntOffset(x.toInt(), y.toInt())
 }
 
