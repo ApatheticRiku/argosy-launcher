@@ -97,13 +97,8 @@ class SnapshotSyncEngine @Inject constructor(
         val stored: SnapshotChannelEntity?,
         val current: RomMSnapshot?,
         val channelId: String,
-        val isNewChannel: Boolean,
-        val joinsLegacyChannel: Boolean = false
-    ) {
-        fun asNewChannel(): ChannelView = ChannelView(
-            api, deviceId, ownerUserId, game, file, label, null, null, UUID.randomUUID().toString(), isNewChannel = true
-        )
-    }
+        val isNewChannel: Boolean
+    )
 
     private sealed class LocalSave {
         data object None : LocalSave()
@@ -204,14 +199,12 @@ class SnapshotSyncEngine @Inject constructor(
         val label = labelOf(channelName)
         val ownerUserId = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER
         val stored = channelDao.get(ownerUserId, gameId, label)?.takeIf { it.romFileId == file.id }
-        val currents = runCatching { api.listCurrentSnapshots(listOf(file.id)) }.getOrNull()
+        val channels = runCatching { api.listChannels(listOf(file.id)) }.getOrNull()
             ?.takeIf { it.isSuccessful }?.body() ?: return null
-        val current = currents.firstOrNull { it.channel?.id == stored?.channelId }
-            ?: if (stored == null) {
-                currents.filter { it.channel?.label.equals(label, ignoreCase = true) }.maxByOrNull { it.createdAt.orEmpty() }
-            } else null
-        val legacyChannel = if (current == null && stored == null) legacyChannel(api, rommId, channelName) else null
-        val channelId = current?.channel?.id ?: stored?.channelId ?: legacyChannel ?: UUID.randomUUID().toString()
+        val channel = channels.firstOrNull { it.id == stored?.channelId }
+            ?: channels.filter { it.isOwn && it.label.equals(label, ignoreCase = true) }
+                .maxByOrNull { it.current?.createdAt.orEmpty() }
+        val channelId = channel?.id ?: UUID.randomUUID().toString()
         return ChannelView(
             api = api,
             deviceId = deviceId,
@@ -220,19 +213,10 @@ class SnapshotSyncEngine @Inject constructor(
             file = file,
             label = label,
             stored = stored?.takeIf { it.channelId == channelId },
-            current = current,
+            current = channel?.current,
             channelId = channelId,
-            isNewChannel = current == null && stored == null && legacyChannel == null,
-            joinsLegacyChannel = legacyChannel != null
+            isNewChannel = channel == null
         )
-    }
-
-    private suspend fun legacyChannel(api: RomMApi, rommId: Long, channelName: String?): String? {
-        val key = SaveSyncApiClient.syncKeyOf(channelName)
-        return runCatching { api.getSavesByRom(rommId) }.getOrNull()?.takeIf { it.isSuccessful }?.body().orEmpty()
-            .filter { it.channelId != null && it.slot != null && SaveSyncApiClient.equalsNormalized(SaveSyncApiClient.syncKeyOf(it.slot), key) }
-            .maxByOrNull { it.updatedAt }
-            ?.channelId
     }
 
     private suspend fun launchedFile(api: RomMApi, game: GameEntity, rommId: Long): RomMRomFile? {
@@ -381,12 +365,6 @@ class SnapshotSyncEngine @Inject constructor(
                     else -> SnapshotSyncResult.Failed("push refused: 409 $body")
                 }
             }
-            422 -> if (ctx.joinsLegacyChannel && body?.contains(FILE_MISMATCH_FIELD) == true) {
-                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | legacy channel ${ctx.channelId} belongs to another file, starting a new one")
-                push(ctx.asNewChannel(), unit, null, isHardcore, approveHardcoreDowngrade)
-            } else {
-                SnapshotSyncResult.Failed("push refused: 422 $body")
-            }
             else -> SnapshotSyncResult.Failed("push refused: ${response.code()} $body")
         }
     }
@@ -450,7 +428,6 @@ class SnapshotSyncEngine @Inject constructor(
         private const val FORMAT_NEUTRAL = "neutral"
         private const val FORMAT_NATIVE = "native"
         private const val EMULATOR = "argosy"
-        private const val FILE_MISMATCH_FIELD = "rom_file_id"
         private const val GAME_FILE_CATEGORY = "game"
         private val LOADER_EXTENSIONS = setOf("cue", "gdi", "ccd", "mds", "toc")
         private val JSON = "application/json".toMediaType()

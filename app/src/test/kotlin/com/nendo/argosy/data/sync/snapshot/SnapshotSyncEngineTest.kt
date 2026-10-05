@@ -11,7 +11,7 @@ import com.nendo.argosy.data.remote.romm.RomMApi
 import com.nendo.argosy.data.remote.romm.RomMCapabilities
 import com.nendo.argosy.data.remote.romm.RomMRom
 import com.nendo.argosy.data.remote.romm.RomMRomFile
-import com.nendo.argosy.data.remote.romm.RomMSave
+import com.nendo.argosy.data.remote.romm.RomMChannel
 import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.remote.romm.RomMSnapshotChannel
 import com.nendo.argosy.data.remote.romm.RomMSnapshotSave
@@ -123,7 +123,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `a first save on a file with no channel pushes a new default channel expecting null`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
         coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(emptyList())
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
@@ -144,19 +144,18 @@ class SnapshotSyncEngineTest {
         assertEquals(manifest.getString("channel_id"), stored.captured.channelId)
     }
 
-    private fun legacySave(channelId: String?, slot: String, updatedAt: String) = RomMSave(
-        id = 1, romId = ROMM_ID, userId = 3, emulator = null, fileName = "x.srm",
-        updatedAt = updatedAt, slot = slot, channelId = channelId
-    )
+    private fun channelsOf(snapshots: List<RomMSnapshot>): Response<List<RomMChannel>> =
+        Response.success(snapshots.map { snap ->
+            RomMChannel(id = snap.channel!!.id, label = snap.channel!!.label, currentSnapshotId = snap.id, romFileId = FILE_ID, current = snap)
+        })
 
     @Test
-    fun `a first push joins the channel RomM filed the legacy autosave under`() = runBlocking {
+    fun `a first push joins the file's empty default channel instead of creating one`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
-        coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(listOf(
-            legacySave("legacy-old", "autosave", "2026-01-01T00:00:00Z"),
-            legacySave("legacy-new", "autosave", "2026-06-01T00:00:00Z"),
-            legacySave("speedrun", "Speedrun", "2026-09-01T00:00:00Z")
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(listOf(
+            RomMChannel(id = "migrated", label = "default", romFileId = FILE_ID),
+            RomMChannel(id = "speedrun", label = "Speedrun", romFileId = FILE_ID),
+            RomMChannel(id = "someone-else", label = "default", isOwn = false, isPublic = true, romFileId = FILE_ID)
         ))
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
@@ -164,32 +163,15 @@ class SnapshotSyncEngineTest {
 
         assertEquals(SnapshotSyncResult.Pushed(41), engine.sync(GAME_ID, EMULATOR, null))
         val manifest = manifestOf(parts.captured)
-        assertEquals("legacy-new", manifest.getString("channel_id"))
+        assertEquals("migrated", manifest.getString("channel_id"))
         assertTrue("an existing channel takes no label", !manifest.has("label"))
         assertTrue(manifest.isNull("expected_current_id"))
     }
 
     @Test
-    fun `a legacy channel keyed to another file falls back to a new default channel`() = runBlocking {
-        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
-        coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(listOf(legacySave("legacy", "autosave", "2026-06-01T00:00:00Z")))
-        val pushes = mutableListOf<List<MultipartBody.Part>>()
-        coEvery { api.pushSnapshot(DEVICE, capture(pushes)) } returnsMany listOf(
-            Response.error(422, """{"detail":{"rom_file_id":"the ROM file does not match the channel's"}}""".toResponseBody()),
-            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
-        )
-
-        assertEquals(SnapshotSyncResult.Pushed(41), engine.sync(GAME_ID, EMULATOR, null))
-        val retry = manifestOf(pushes[1])
-        assertTrue(retry.getString("channel_id") != "legacy")
-        assertEquals("default", retry.getString("label"))
-    }
-
-    @Test
     fun `a dirty save on top of the held current pushes expecting it`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(41, "old")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
             Response.success(201, snapshotJson.toJson(snapshot(42, "content-a")).toResponseBody())
@@ -204,7 +186,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `another device moving the channel first comes back as a conflict`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(41, "old")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
         coEvery { api.pushSnapshot(DEVICE, any()) } returns
             Response.error(409, """{"current":{"id":43,"digest":"sha256:43"}}""".toResponseBody())
 
@@ -215,7 +197,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `holding current with the same save does nothing`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(41, "content-a")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "content-a")))
 
         assertEquals(SnapshotSyncResult.UpToDate, engine.sync(GAME_ID, EMULATOR, null))
         coVerify(exactly = 0) { api.pushSnapshot(any(), any()) }
@@ -224,7 +206,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `a hardcore current refuses a softcore push until approved`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(41, "old")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
         coEvery { api.pushSnapshot(DEVICE, any()) } returns
             Response.error(409, """{"hardcore_downgrade":true}""".toResponseBody())
 
@@ -238,9 +220,9 @@ class SnapshotSyncEngineTest {
             SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old", 0),
             heldAfterFirst
         )
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returnsMany listOf(
-            Response.success(listOf(snapshot(43, "theirs"))),
-            Response.success(listOf(snapshot(44, "c1")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returnsMany listOf(
+            channelsOf(listOf(snapshot(43, "theirs"))),
+            channelsOf(listOf(snapshot(44, "c1")))
         )
         val pushes = mutableListOf<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(pushes)) } returnsMany listOf(
@@ -289,7 +271,7 @@ class SnapshotSyncEngineTest {
     fun `a save Sigil doesn't route pushes as the emulator wrote it, labelled native`() = runBlocking {
         stubNativeSave(ByteArray(131072))
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(emptyList())
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
         coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(emptyList())
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
@@ -306,7 +288,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `a named Argosy channel syncs as the spec channel with its label`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "Speedrun") } returns null
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(41, "other")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "other")))
         coEvery { api.getSavesByRom(ROMM_ID) } returns Response.success(emptyList())
         val parts = slot<List<MultipartBody.Part>>()
         coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
@@ -322,7 +304,7 @@ class SnapshotSyncEngineTest {
     @Test
     fun `a newer current on a clean device is placed by the legacy downloader and reported`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
-        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returns Response.success(listOf(snapshot(42, "theirs")))
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
         coEvery { api.getSnapshot(42) } returns Response.success(snapshot(42, "theirs"))
         coEvery {
             downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
@@ -339,7 +321,7 @@ class SnapshotSyncEngineTest {
         every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.4.0")
 
         assertEquals(SnapshotSyncResult.NotEligible, engine.sync(GAME_ID, EMULATOR, null))
-        coVerify(exactly = 0) { api.listCurrentSnapshots(any(), any()) }
+        coVerify(exactly = 0) { api.listChannels(any()) }
     }
 
     private companion object {

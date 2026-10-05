@@ -245,11 +245,10 @@ interface RomMApi {
         @Path("id") saveId: Long
     ): Response<ResponseBody>
 
-    @GET("api/snapshots")
-    suspend fun listCurrentSnapshots(
-        @Query("rom_file_id") romFileIds: List<Long>,
-        @Query("current") current: Boolean = true
-    ): Response<List<RomMSnapshot>>
+    @GET("api/channels")
+    suspend fun listChannels(
+        @Query("rom_file_id") romFileIds: List<Long>
+    ): Response<List<RomMChannel>>
 
     @GET("api/snapshots/{id}")
     suspend fun getSnapshot(

@@ -28,6 +28,19 @@ data class RomMSnapshotChannel(
 )
 
 @JsonClass(generateAdapter = true)
+data class RomMChannel(
+    @Json(name = "id") val id: String,
+    @Json(name = "label") val label: String,
+    @Json(name = "is_public") val isPublic: Boolean = false,
+    @Json(name = "is_hardcore") val isHardcore: Boolean = false,
+    @Json(name = "is_own") val isOwn: Boolean = true,
+    @Json(name = "current_snapshot_id") val currentSnapshotId: Long? = null,
+    @Json(name = "rom_file_id") val romFileId: Long? = null,
+    @Json(name = "current") val current: RomMSnapshot? = null,
+    @Json(name = "snapshot_count") val snapshotCount: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
 data class RomMSnapshotDevice(
     @Json(name = "id") val id: String? = null,
     @Json(name = "name") val name: String? = null,
