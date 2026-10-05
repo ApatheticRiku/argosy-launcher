@@ -4006,6 +4006,26 @@ object Migration_201_202 : Migration(201, 202) {
  * was a remote url and becomes `sourceUrl`. `cachedFromUrl` starts null for the image cache to
  * backfill.
  */
+object Migration_204_205 : Migration(204, 205) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `snapshot_channels`")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `snapshot_channels` (" +
+                "`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `label` TEXT NOT NULL, " +
+                "`channelId` TEXT NOT NULL, `romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, " +
+                "`heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`ownerUserId`, `gameId`, `label`))"
+        )
+        val hasFlag = db.query("PRAGMA table_info(`pending_conflicts`)").use { cursor ->
+            val name = cursor.getColumnIndex("name")
+            generateSequence { if (cursor.moveToNext()) cursor.getString(name) else null }.any { it == "isHardcoreDowngrade" }
+        }
+        if (!hasFlag) {
+            db.execSQL("ALTER TABLE `pending_conflicts` ADD COLUMN `isHardcoreDowngrade` INTEGER NOT NULL DEFAULT 0")
+        }
+    }
+}
+
 object Migration_203_204 : Migration(203, 204) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
