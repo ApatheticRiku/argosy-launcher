@@ -44,9 +44,12 @@ class SnapshotChannelServiceTest {
             apiClient = dagger.Lazy { apiClient },
             engine = mockk(relaxed = true),
             pusher = SnapshotPusher(moshi),
-            fileResolver = SnapshotFileResolver()
+            fileResolver = SnapshotFileResolver(),
+            saveScreenshots = screenshots
         )
     }
+
+    private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>(relaxed = true)
 
     private fun manifest(): JSONObject {
         assertEquals("a manifest-only push carries no file part", 1, parts.captured.size)
@@ -74,12 +77,14 @@ class SnapshotChannelServiceTest {
         assertTrue(!m.has("channel_id"))
         assertTrue(m.isNull("expected_current_id"))
         assertEquals(39L, m.getLong("parent_snapshot_id"))
+        io.mockk.verify { screenshots.carrySnapshotThumb(39, 50) }
     }
 
     @Test
     fun `an older client's save becomes a snapshot by copy_of`() = runBlocking {
         assertEquals(SnapshotActionResult.Done, service.makeSnapshot(channel, 1907))
         assertEquals(1907L, manifest().getJSONObject("save").getLong("copy_of"))
+        io.mockk.verify(exactly = 0) { screenshots.carrySnapshotThumb(any(), any()) }
     }
 
     @Test

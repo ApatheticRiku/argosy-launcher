@@ -15,6 +15,7 @@ import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.remote.romm.RomMSnapshotUpdate
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncApiClient
+import com.nendo.argosy.hardware.SaveScreenshotCapture
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,7 +55,8 @@ class SnapshotChannelService @Inject constructor(
     private val apiClient: Lazy<SaveSyncApiClient>,
     private val engine: SnapshotSyncEngine,
     private val pusher: SnapshotPusher,
-    private val fileResolver: SnapshotFileResolver
+    private val fileResolver: SnapshotFileResolver,
+    private val saveScreenshots: SaveScreenshotCapture
 ) {
     suspend fun isAvailable(gameId: Long): Boolean = engine.isEligible(gameId)
 
@@ -93,7 +95,7 @@ class SnapshotChannelService @Inject constructor(
         snapshotId: Long,
         approveHardcoreDowngrade: Boolean = false
     ): SnapshotActionResult {
-        val result = push(intoChannel(channel).put("parent_snapshot_id", snapshotId), approveHardcoreDowngrade)
+        val result = push(intoChannel(channel).put(PARENT_KEY, snapshotId), approveHardcoreDowngrade)
         if (result == SnapshotActionResult.Done && isDeviceChannel(gameId, channel)) {
             engine.keepServer(gameId, emulatorId, argosyChannelOf(channel))
         }
@@ -111,7 +113,7 @@ class SnapshotChannelService @Inject constructor(
                 .put("rom_file_id", romFileId)
                 .put("label", label)
                 .put("expected_current_id", JSONObject.NULL)
-                .put("parent_snapshot_id", snapshotId),
+                .put(PARENT_KEY, snapshotId),
             approveHardcoreDowngrade
         )
 
@@ -120,7 +122,7 @@ class SnapshotChannelService @Inject constructor(
         target: RomMChannel,
         approveHardcoreDowngrade: Boolean = false
     ): SnapshotActionResult =
-        push(intoChannel(target).put("parent_snapshot_id", snapshotId), approveHardcoreDowngrade)
+        push(intoChannel(target).put(PARENT_KEY, snapshotId), approveHardcoreDowngrade)
 
     suspend fun makeSnapshot(
         channel: RomMChannel,
@@ -178,7 +180,11 @@ class SnapshotChannelService @Inject constructor(
         manifest.put("emulator", EMULATOR).put("emulator_version", BuildConfig.VERSION_NAME)
         if (approveHardcoreDowngrade) manifest.put("approve_hardcore_downgrade", true)
         return when (val outcome = pusher.push(api, deviceId, manifest)) {
-            is PushOutcome.Written -> SnapshotActionResult.Done
+            is PushOutcome.Written -> {
+                manifest.optLong(PARENT_KEY, NO_PARENT).takeIf { it != NO_PARENT }
+                    ?.let { saveScreenshots.carrySnapshotThumb(it, outcome.snapshot.id) }
+                SnapshotActionResult.Done
+            }
             is PushOutcome.Conflict -> SnapshotActionResult.Stale
             PushOutcome.HardcoreDowngrade -> SnapshotActionResult.HardcoreDowngrade
             is PushOutcome.Failed -> SnapshotActionResult.Failed(outcome.reason)
@@ -215,5 +221,7 @@ class SnapshotChannelService @Inject constructor(
         const val HISTORY_PAGE = 20
         private const val DEFAULT_LABEL = "default"
         private const val EMULATOR = "argosy"
+        private const val PARENT_KEY = "parent_snapshot_id"
+        private const val NO_PARENT = -1L
     }
 }

@@ -70,6 +70,12 @@ class SaveScreenshotCapture @Inject constructor(
         return written
     }
 
+    fun carrySnapshotThumb(fromSnapshotId: Long, toSnapshotId: Long) {
+        val source = snapshotThumbFor(fromSnapshotId) ?: return
+        runCatching { source.copyTo(File(snapshotDir, "$toSnapshotId$EXTENSION"), overwrite = true) }
+        pruneSnapshotThumbs()
+    }
+
     private val snapshotDir: File get() = File(context.filesDir, SNAPSHOT_DIR).apply { mkdirs() }
 
     private fun pruneSnapshotThumbs() {
