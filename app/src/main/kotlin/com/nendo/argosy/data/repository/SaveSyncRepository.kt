@@ -361,15 +361,16 @@ class SaveSyncRepository @Inject constructor(
         channelName: String?,
         secureSaves: Boolean
     ): PreLaunchSyncResult = withContext(Dispatchers.IO) {
+        val syncChannel = snapshotRouter.get().launchChannel(gameId, channelName)
         val myDeviceId = apiClient.getDeviceId() ?: run {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | No deviceId (pre-4.7 server or sync disabled) | decision=NoConnection")
             return@withContext PreLaunchSyncResult.NoConnection
         }
-        val effectiveChannel = SaveSyncApiClient.syncKeyOf(channelName)
+        val effectiveChannel = SaveSyncApiClient.syncKeyOf(syncChannel)
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         saveRecoveryGate.awaitSettled()
-        val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, channelName, secureSaves, ownerUserId)
+        val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, syncChannel, secureSaves, ownerUserId)
         Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | disk=${disk::class.simpleName}")
         if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable) {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | save folder unreadable; skipping sync decision | decision=LocalIsNewer")
@@ -402,7 +403,7 @@ class SaveSyncRepository @Inject constructor(
             return@withContext PreLaunchSyncResult.LocalIsNewer
         }
 
-        snapshotRouter.get().preLaunch(gameId, emulatorId, channelName)?.let { decision ->
+        snapshotRouter.get().preLaunch(gameId, emulatorId, syncChannel)?.let { decision ->
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | snapshot sync | decision=${decision::class.simpleName}")
             return@withContext decision
         }

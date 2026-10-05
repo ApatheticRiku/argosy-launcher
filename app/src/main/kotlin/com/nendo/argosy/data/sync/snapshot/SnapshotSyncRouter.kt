@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.sync.snapshot
 
+import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.PreLaunchSyncResult
 import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncResult
@@ -16,8 +17,17 @@ import javax.inject.Singleton
  */
 @Singleton
 class SnapshotSyncRouter @Inject constructor(
-    private val engine: SnapshotSyncEngine
+    private val engine: SnapshotSyncEngine,
+    private val activeSaveRepository: ActiveSaveRepository
 ) {
+    /**
+     * The channel a launch syncs: the one asked for, else on a snapshot server the game's active
+     * channel, since every channel syncs there. Older servers keep syncing autosave at launch.
+     */
+    suspend fun launchChannel(gameId: Long, requested: String?): String? =
+        if (requested != null || !engine.isEligible(gameId)) requested
+        else activeSaveRepository.getActiveChannel(gameId)
+
     suspend fun preLaunch(gameId: Long, emulatorId: String, channelName: String?): PreLaunchSyncResult? {
         if (!engine.isEligible(gameId)) return null
         return when (val result = engine.sync(gameId, emulatorId, channelName)) {

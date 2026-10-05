@@ -11,7 +11,24 @@ import org.junit.Test
 class SnapshotSyncRouterTest {
 
     private val engine = mockk<SnapshotSyncEngine>()
-    private val router = SnapshotSyncRouter(engine)
+    private val activeSaves = mockk<com.nendo.argosy.data.repository.ActiveSaveRepository>()
+    private val router = SnapshotSyncRouter(engine, activeSaves)
+
+    @Test
+    fun `a launch with no channel asked for syncs the active channel on a snapshot server`() = runBlocking {
+        coEvery { engine.isEligible(5) } returns true
+        coEvery { activeSaves.getActiveChannel(5) } returns "speedrun"
+
+        org.junit.Assert.assertEquals("speedrun", router.launchChannel(5, null))
+        org.junit.Assert.assertEquals("slot1", router.launchChannel(5, "slot1"))
+    }
+
+    @Test
+    fun `a launch on an older server keeps syncing autosave`() = runBlocking {
+        coEvery { engine.isEligible(5) } returns false
+
+        org.junit.Assert.assertEquals(null, router.launchChannel(5, null))
+    }
 
     @Test
     fun `a refused softcore push over a hardcore current parks as a hardcore conflict`() = runBlocking {
