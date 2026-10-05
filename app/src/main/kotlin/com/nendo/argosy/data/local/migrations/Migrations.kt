@@ -4017,10 +4017,10 @@ object Migration_203_204 : Migration(203, 204) {
         )
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS `snapshot_channels` (" +
-                "`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `channelId` TEXT NOT NULL, " +
-                "`romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, `heldDigest` TEXT, " +
-                "`heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, " +
-                "PRIMARY KEY(`ownerUserId`, `gameId`))"
+                "`ownerUserId` INTEGER NOT NULL, `gameId` INTEGER NOT NULL, `label` TEXT NOT NULL, " +
+                "`channelId` TEXT NOT NULL, `romFileId` INTEGER NOT NULL, `heldSnapshotId` INTEGER, " +
+                "`heldDigest` TEXT, `heldSaveHash` TEXT, `heldSaveIdentityHash` TEXT, `updatedAt` INTEGER NOT NULL, " +
+                "PRIMARY KEY(`ownerUserId`, `gameId`, `label`))"
         )
         db.execSQL(
             "UPDATE `games` SET `saveFeatures` = NULL WHERE `platformSlug` IN " +

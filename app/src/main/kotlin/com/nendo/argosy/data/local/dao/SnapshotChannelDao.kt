@@ -7,8 +7,11 @@ import com.nendo.argosy.data.local.entity.SnapshotChannelEntity
 
 @Dao
 interface SnapshotChannelDao {
-    @Query("SELECT * FROM snapshot_channels WHERE ownerUserId = :ownerUserId AND gameId = :gameId")
-    suspend fun get(ownerUserId: Long, gameId: Long): SnapshotChannelEntity?
+    @Query(
+        "SELECT * FROM snapshot_channels WHERE ownerUserId = :ownerUserId AND gameId = :gameId " +
+            "AND label = :label COLLATE NOCASE"
+    )
+    suspend fun get(ownerUserId: Long, gameId: Long, label: String): SnapshotChannelEntity?
 
     @Upsert
     suspend fun upsert(entity: SnapshotChannelEntity)

@@ -9,5 +9,6 @@ fun legacySnapshotRouter(): dagger.Lazy<SnapshotSyncRouter> {
     coEvery { router.preLaunch(any(), any(), any()) } returns null
     coEvery { router.upload(any(), any(), any(), any(), any()) } returns null
     coEvery { router.download(any(), any(), any()) } returns null
+    coEvery { router.uploadCached(any(), any(), any(), any(), any()) } returns null
     return dagger.Lazy { router }
 }

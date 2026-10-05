@@ -23,9 +23,9 @@ class Migration203To204Test {
     }
 
     @Test
-    fun `creates the snapshot channel table keyed by account and game`() {
+    fun `creates the snapshot channel table keyed by account, game and channel label`() {
         val create = statements().single { it.contains("CREATE TABLE IF NOT EXISTS `snapshot_channels`") }
-        assertTrue(create.contains("PRIMARY KEY(`ownerUserId`, `gameId`)"))
+        assertTrue(create.contains("PRIMARY KEY(`ownerUserId`, `gameId`, `label`)"))
     }
 
     @Test

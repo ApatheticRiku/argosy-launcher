@@ -4,11 +4,12 @@ import androidx.room.Entity
 
 @Entity(
     tableName = "snapshot_channels",
-    primaryKeys = ["ownerUserId", "gameId"]
+    primaryKeys = ["ownerUserId", "gameId", "label"]
 )
 data class SnapshotChannelEntity(
     val ownerUserId: Long,
     val gameId: Long,
+    val label: String,
     val channelId: String,
     val romFileId: Long,
     val heldSnapshotId: Long? = null,

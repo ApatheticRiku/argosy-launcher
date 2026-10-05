@@ -3,32 +3,28 @@ package com.nendo.argosy.data.sync.snapshot
 import com.nendo.argosy.data.repository.PreLaunchSyncResult
 import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncResult
-import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.util.Logger
+import java.io.File
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Hands a game's default save channel to [SnapshotSyncEngine] when the server speaks the snapshot
- * API and Sigil collects the game, translating the outcome into what the save sync facade returns.
- * Each call answers null when the game stays on the legacy endpoints.
+ * Hands every save to [SnapshotSyncEngine] when the server speaks the snapshot API, translating
+ * the outcome into what the save sync facade returns. Each call answers null when the server
+ * doesn't, so the legacy endpoints take the save.
  */
 @Singleton
 class SnapshotSyncRouter @Inject constructor(
-    private val engine: SnapshotSyncEngine,
-    private val sigilSaveHandler: SigilSaveHandler
+    private val engine: SnapshotSyncEngine
 ) {
-    private suspend fun handles(gameId: Long, emulatorId: String, channelName: String?): Boolean =
-        SaveSyncApiClient.namedChannelOrNull(channelName) == null && engine.isEligible(gameId, emulatorId)
-
     suspend fun preLaunch(gameId: Long, emulatorId: String, channelName: String?): PreLaunchSyncResult? {
-        if (!handles(gameId, emulatorId, channelName)) return null
-        return when (val result = engine.sync(gameId, emulatorId)) {
+        if (!engine.isEligible(gameId)) return null
+        return when (val result = engine.sync(gameId, emulatorId, channelName)) {
             SnapshotSyncResult.NotEligible -> null
             SnapshotSyncResult.NoConnection -> PreLaunchSyncResult.NoConnection
             is SnapshotSyncResult.Conflict -> PreLaunchSyncResult.LocalModified(
-                localSavePath = sigilSaveHandler.route(gameId, emulatorId)?.root.orEmpty(),
+                localSavePath = "",
                 serverTimestamp = timestampOf(result),
                 channelName = channelName
             )
@@ -48,11 +44,11 @@ class SnapshotSyncRouter @Inject constructor(
         keepLocal: Boolean,
         isHardcore: Boolean
     ): SaveSyncResult? {
-        if (!handles(gameId, emulatorId, channelName)) return null
+        if (!engine.isEligible(gameId)) return null
         val result = if (keepLocal) {
-            engine.keepLocal(gameId, emulatorId, isHardcore)
+            engine.keepLocal(gameId, emulatorId, channelName, isHardcore)
         } else {
-            engine.sync(gameId, emulatorId, isHardcore)
+            engine.sync(gameId, emulatorId, channelName, isHardcore)
         }
         return toSaveSyncResult(gameId, result)
     }
@@ -61,17 +57,16 @@ class SnapshotSyncRouter @Inject constructor(
         gameId: Long,
         emulatorId: String,
         channelName: String?,
-        cacheFile: java.io.File,
-        contentHash: String?,
+        cacheFile: File,
         onTopOfCurrent: Boolean
     ): SaveSyncResult? {
-        if (contentHash == null || !handles(gameId, emulatorId, channelName)) return null
-        return toSaveSyncResult(gameId, engine.pushCached(gameId, emulatorId, cacheFile, contentHash, null, onTopOfCurrent))
+        if (!engine.isEligible(gameId)) return null
+        return toSaveSyncResult(gameId, engine.pushCached(gameId, emulatorId, channelName, cacheFile, onTopOfCurrent))
     }
 
     suspend fun download(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult? {
-        if (!handles(gameId, emulatorId, channelName)) return null
-        return toSaveSyncResult(gameId, engine.keepServer(gameId, emulatorId))
+        if (!engine.isEligible(gameId)) return null
+        return toSaveSyncResult(gameId, engine.keepServer(gameId, emulatorId, channelName))
     }
 
     private fun toSaveSyncResult(gameId: Long, result: SnapshotSyncResult): SaveSyncResult? = when (result) {

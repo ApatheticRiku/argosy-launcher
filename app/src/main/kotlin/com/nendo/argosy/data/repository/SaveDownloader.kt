@@ -122,9 +122,10 @@ class SaveDownloader @Inject constructor(
         emulatorId: String,
         channelName: String? = null,
         skipBackup: Boolean = false,
-        knownServerSaveId: Long? = null
+        knownServerSaveId: Long? = null,
+        fromSnapshot: Boolean = false
     ): SaveSyncResult = downloadMutexes.computeIfAbsent(gameId) { kotlinx.coroutines.sync.Mutex() }.withLock {
-        downloadSaveLocked(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+        downloadSaveLocked(gameId, emulatorId, channelName, skipBackup, knownServerSaveId, fromSnapshot)
     }
 
     private suspend fun downloadSaveLocked(
@@ -132,7 +133,8 @@ class SaveDownloader @Inject constructor(
         emulatorId: String,
         channelName: String?,
         skipBackup: Boolean,
-        knownServerSaveId: Long?
+        knownServerSaveId: Long?,
+        fromSnapshot: Boolean
     ): SaveSyncResult = withContext(Dispatchers.IO) {
         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId emulator=$emulatorId channel=$channelName | Starting download")
         val secureSaves = syncPreferencesRepository.isSecureSaves()
@@ -186,7 +188,7 @@ class SaveDownloader @Inject constructor(
             return@withContext SaveSyncResult.Error("No save tracking found")
         }
 
-        val saveId = syncEntity.rommSaveId
+        val saveId = (if (fromSnapshot) knownServerSaveId else null) ?: syncEntity.rommSaveId
         if (saveId == null) {
             Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | No server save ID in sync entity")
             return@withContext SaveSyncResult.Error("No server save ID")
@@ -476,7 +478,7 @@ class SaveDownloader @Inject constructor(
                     }
                 }
 
-                val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                 val downloadedHasTrailer = saveArchiver.hasHardcoreTrailer(tempZipFile)
                 Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Hardcore check | localHardcore=$hasLocalHardcore, downloadedTrailer=$downloadedHasTrailer")
                 if (hasLocalHardcore && !downloadedHasTrailer) {
@@ -616,7 +618,7 @@ class SaveDownloader @Inject constructor(
                             emulatorPackage = emulatorPackage,
                             gameId = gameId
                         )
-                    val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                    val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                     val resolutionTarget = if (hasLocalHardcore && !saveArchiver.hasHardcoreTrailer(tempGciFile)) {
                         existingMember ?: savePathResolver.constructSavePath(
                             resolvedEmulatorId, game.title, game.platformSlug, game.localPath, preferredCore,
@@ -681,7 +683,7 @@ class SaveDownloader @Inject constructor(
                     }
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Saved temp file | path=${tempSaveFile!!.absolutePath}, size=${tempSaveFile!!.length()}bytes")
 
-                    val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                    val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                     val downloadedHasTrailer = saveArchiver.hasHardcoreTrailer(tempSaveFile!!)
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Hardcore check | localHardcore=$hasLocalHardcore, downloadedTrailer=$downloadedHasTrailer")
                     if (hasLocalHardcore && !downloadedHasTrailer) {
