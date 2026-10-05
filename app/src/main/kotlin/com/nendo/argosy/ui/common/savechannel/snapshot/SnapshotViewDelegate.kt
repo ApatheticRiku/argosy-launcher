@@ -35,7 +35,7 @@ class SnapshotViewDelegate @Inject constructor(
         when {
             state.confirm != null -> Unit
             state.labelEntry != null -> holder.updateSnapshot { SnapshotFocus.cycleStartOption(it, delta) }
-            state.hasOverlay -> Unit
+            state.hasOverlay -> holder.updateSnapshot { SnapshotFocus.moveDetailColumn(it, delta) }
             else -> holder.updateSnapshot { SnapshotFocus.moveHorizontal(it, delta) }
         }
     }
@@ -240,10 +240,9 @@ class SnapshotViewDelegate @Inject constructor(
             listOfNotNull(SnapshotDetailAction.MAKE_SNAPSHOT.takeIf { channel.isOwn })
         } else {
             buildList {
-                if (card.isCurrent && snapshot?.tile(channelId)?.isDeviceChannel == false) {
-                    add(SnapshotDetailAction.USE_ON_DEVICE)
-                }
-                if (!card.isCurrent && canWrite) add(SnapshotDetailAction.RESTORE)
+                val isDeviceChannel = snapshot?.tile(channelId)?.isDeviceChannel == true
+                if (card.isCurrent && !isDeviceChannel) add(SnapshotDetailAction.ACTIVATE)
+                if (!card.isCurrent && canWrite) add(SnapshotDetailAction.APPLY)
                 if (runner.romFileIdFor(channel) != null) add(SnapshotDetailAction.FORK)
                 if (runner.copyTargets(channel).isNotEmpty()) add(SnapshotDetailAction.COPY_OVER)
                 if (canWrite) add(if (card.isPinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN)
@@ -268,8 +267,8 @@ class SnapshotViewDelegate @Inject constructor(
         val channel = runner.entryOf(detail.channelId)?.channel ?: return
         val snapshotId = detail.card.snapshotId
         when (detail.focusedAction ?: return) {
-            SnapshotDetailAction.USE_ON_DEVICE -> runner.useOnDevice(scope, detail.channelId, onSaveStatusChanged)
-            SnapshotDetailAction.RESTORE -> {
+            SnapshotDetailAction.ACTIVATE -> runner.useOnDevice(scope, detail.channelId, onSaveStatusChanged)
+            SnapshotDetailAction.APPLY -> {
                 val emulatorId = holder.state.value.emulatorId ?: return
                 runner.push(scope, SnapshotPush.Restore(channel, snapshotId ?: return, emulatorId))
             }

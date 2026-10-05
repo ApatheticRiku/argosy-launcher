@@ -4,9 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -156,16 +160,35 @@ private fun SnapshotDetailOverlay(
                     }
                 }
             }
-            Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
-                HorizontalDivider(color = theme.hairlineLow)
-                detail.actions.forEachIndexed { index, action ->
-                    SnapshotOverlayRow(
-                        label = action.label(),
-                        isFocused = isActive && detail.focusIndex == index,
-                        onClick = { actions.tapOverlayRow(index) },
-                        icon = action.icon
-                    )
+            HorizontalDivider(color = theme.hairlineLow)
+            val actionRows: @Composable (Int) -> Unit = { from ->
+                Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+                    detail.actions.forEachIndexed { index, action ->
+                        if (index >= from) {
+                            SnapshotOverlayRow(
+                                label = action.label(),
+                                isFocused = isActive && detail.focusIndex == index,
+                                onClick = { actions.tapOverlayRow(index) },
+                                icon = action.icon
+                            )
+                        }
+                    }
                 }
+            }
+            if (detail.hasActivate && detail.actions.size > 1) {
+                Row(
+                    modifier = Modifier.height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+                ) {
+                    ActivateButton(
+                        isFocused = isActive && detail.focusIndex == 0,
+                        onClick = { actions.tapOverlayRow(0) },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+                    Box(modifier = Modifier.weight(1f)) { actionRows(1) }
+                }
+            } else {
+                actionRows(0)
             }
         }
     }
@@ -255,10 +278,38 @@ internal fun SnapshotOverlayRow(
     }
 }
 
+@Composable
+private fun ActivateButton(isFocused: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusLg)
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(theme.surfaceRaised)
+            .argosyFocusIndicators(focused = isFocused, indicators = FocusIndicators.ListRow, shape = shape)
+            .clickableNoFocus(onClick = onClick)
+            .padding(Dimens.spacingMd),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs, Alignment.CenterVertically)
+    ) {
+        Icon(
+            imageVector = SnapshotDetailAction.ACTIVATE.icon,
+            contentDescription = null,
+            tint = theme.focusAccent,
+            modifier = Modifier.size(Dimens.iconLg)
+        )
+        Text(
+            text = SnapshotDetailAction.ACTIVATE.label(),
+            style = MaterialTheme.typography.titleSmall,
+            color = theme.textPrimary
+        )
+    }
+}
+
 private val SnapshotDetailAction.icon: ImageVector
     get() = when (this) {
-        SnapshotDetailAction.USE_ON_DEVICE -> Icons.Filled.PlayArrow
-        SnapshotDetailAction.RESTORE -> Icons.Filled.Restore
+        SnapshotDetailAction.ACTIVATE -> Icons.Filled.PlayArrow
+        SnapshotDetailAction.APPLY -> Icons.Filled.Restore
         SnapshotDetailAction.FORK -> Icons.AutoMirrored.Filled.CallSplit
         SnapshotDetailAction.COPY_OVER -> Icons.Filled.ContentCopy
         SnapshotDetailAction.PIN -> Icons.Filled.PushPin
@@ -269,8 +320,8 @@ private val SnapshotDetailAction.icon: ImageVector
 @Composable
 private fun SnapshotDetailAction.label(): String = stringResource(
     when (this) {
-        SnapshotDetailAction.USE_ON_DEVICE -> R.string.save_channels_detail_action_use_on_device
-        SnapshotDetailAction.RESTORE -> R.string.save_channels_detail_action_restore
+        SnapshotDetailAction.ACTIVATE -> R.string.save_channels_detail_action_activate
+        SnapshotDetailAction.APPLY -> R.string.save_channels_detail_action_apply
         SnapshotDetailAction.FORK -> R.string.save_channels_detail_action_fork
         SnapshotDetailAction.COPY_OVER -> R.string.save_channels_detail_action_copy_over
         SnapshotDetailAction.PIN -> R.string.save_channels_detail_action_pin

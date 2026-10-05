@@ -94,9 +94,28 @@ internal object SnapshotFocus {
         }
         state.detail?.let { detail ->
             if (detail.actions.isEmpty()) return state
-            return state.copy(detail = detail.copy(focusIndex = (detail.focusIndex + delta).mod(detail.actions.size)))
+            if (!detail.hasActivate) {
+                return state.copy(detail = detail.copy(focusIndex = (detail.focusIndex + delta).mod(detail.actions.size)))
+            }
+            val column = detail.actions.size - 1
+            if (detail.focusIndex == 0 || column == 0) return state
+            return state.copy(detail = detail.copy(focusIndex = 1 + (detail.focusIndex - 1 + delta).mod(column)))
         }
         return state
+    }
+
+    /**
+     * Left and right between a detail sheet's Activate button and the column of its other actions.
+     */
+    fun moveDetailColumn(state: SnapshotViewState, delta: Int): SnapshotViewState {
+        val detail = state.detail?.takeIf { it.hasActivate && it.actions.size > 1 } ?: return state
+        if (state.channelMenu != null || state.copyPicker != null) return state
+        val next = when {
+            delta < 0 -> 0
+            detail.focusIndex == 0 -> 1
+            else -> detail.focusIndex
+        }
+        return state.copy(detail = detail.copy(focusIndex = next))
     }
 
     fun cycleStartOption(state: SnapshotViewState, delta: Int): SnapshotViewState {

@@ -101,14 +101,14 @@
     <string name="save_channels_detail_state_slot_auto">Auto</string>
     <!-- Numbered save state slot. %1$s is the slot number. -->
     <string name="save_channels_detail_state_slot_numbered">Slot %1$s</string>
-    <!-- Detail action: make this snapshot the channel's current save. -->
-    <string name="save_channels_detail_action_restore">Make current</string>
+    <!-- Detail action on a channel's current save: play this channel on this device. Verb. -->
+    <string name="save_channels_detail_action_activate">Activate</string>
+    <!-- Detail action: make this older snapshot the channel's current save. Verb. -->
+    <string name="save_channels_detail_action_apply">Apply</string>
     <!-- Detail action: start a new channel from this snapshot. Verb. -->
     <string name="save_channels_detail_action_fork">Fork</string>
     <!-- Detail action: put this snapshot on top of another of the user's channels. -->
     <string name="save_channels_detail_action_copy_over">Copy to…</string>
-    <!-- Detail action on a channel's current save: sync this channel on this device. -->
-    <string name="save_channels_detail_action_use_on_device">Use here</string>
     <!-- Detail action: keep this snapshot from ever being cleaned up. Verb. -->
     <string name="save_channels_detail_action_pin">Pin</string>
     <!-- Detail action: undo Pin. Verb. -->
@@ -121,7 +121,7 @@
     <!-- ============================ Channel actions ============================ -->
 
     <!-- Channel action: make this channel the one the game syncs with on this device. -->
-    <string name="save_channels_menu_action_use_on_device">Use here</string>
+    <string name="save_channels_menu_action_use_on_device">Activate</string>
     <!-- Channel action: give the channel a new name. Verb. -->
     <string name="save_channels_menu_action_rename">Rename</string>
     <!-- Channel action: let other users on the server see the channel. Verb. -->
@@ -178,7 +178,7 @@
 
     <!-- ============================ Notices ============================ -->
 
-    <string name="save_channels_notice_restored">Made current</string>
+    <string name="save_channels_notice_restored">Applied</string>
     <string name="save_channels_notice_forked">Forked</string>
     <string name="save_channels_notice_copied">Copied</string>
     <string name="save_channels_notice_made_snapshot">Snapshot made</string>
@@ -188,7 +188,7 @@
     <string name="save_channels_notice_unshared">Unshared</string>
     <string name="save_channels_notice_deleted">Deleted</string>
     <!-- %1$s is the channel name now synced on this device. -->
-    <string name="save_channels_notice_used_on_device">Using %1$s</string>
+    <string name="save_channels_notice_used_on_device">Activated %1$s</string>
     <!-- Another device moved the channel first; the view reloaded. -->
     <string name="save_channels_notice_stale">Changed elsewhere, refreshed</string>
     <!-- %1$s is the server's reason. -->

@@ -59,7 +59,7 @@ data class SnapshotBackupUi(
 
 data class SnapshotCoreStatesUi(val core: String, val slots: List<String>)
 
-enum class SnapshotDetailAction { USE_ON_DEVICE, RESTORE, FORK, COPY_OVER, PIN, UNPIN, MAKE_SNAPSHOT }
+enum class SnapshotDetailAction { ACTIVATE, APPLY, FORK, COPY_OVER, PIN, UNPIN, MAKE_SNAPSHOT }
 
 data class SnapshotDetailUi(
     val channelId: String,
@@ -71,6 +71,7 @@ data class SnapshotDetailUi(
     val focusIndex: Int = 0
 ) {
     val focusedAction: SnapshotDetailAction? get() = actions.getOrNull(focusIndex)
+    val hasActivate: Boolean get() = actions.firstOrNull() == SnapshotDetailAction.ACTIVATE
 }
 
 enum class SnapshotChannelAction { USE_ON_DEVICE, RENAME, SHARE, STOP_SHARING, DELETE }
