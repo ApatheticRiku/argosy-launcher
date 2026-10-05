@@ -39,6 +39,17 @@ class RomMCapabilitiesTest {
     }
 
     @Test
+    fun `sigil units start at 5_5_0`() {
+        for (version in listOf("5.3.1", "5.4.0", "5.4.9")) {
+            assertFalse(version, RomMCapabilities.from(version).supportsSigilUnits)
+        }
+        for (version in listOf("5.5.0", "5.5.1", "6.0.0")) {
+            assertTrue(version, RomMCapabilities.from(version).supportsSigilUnits)
+        }
+        assertFalse("disconnected", RomMCapabilities.NONE.supportsSigilUnits)
+    }
+
+    @Test
     fun `the three supported minors are all supported`() {
         for (version in listOf("4.9.2", "5.0.0", "5.1.0")) {
             assertTrue(version, RomMCapabilities.from(version).isSupportedVersion)

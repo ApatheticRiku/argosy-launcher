@@ -5,6 +5,7 @@ import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -115,7 +116,29 @@ class PlatformSaveHandlerRegistryRoutingTest {
     }
 
     @Test
+    fun `standalone card and profile emulators keep their legacy handlers before RomM 5_5`() {
+        every { sigilHandler.routes(any(), any()) } returns false
+        mapOf(
+            ("eden" to "switch") to switchHandler,
+            ("dolphin" to "ngc") to gciHandler,
+            ("nethersx2" to "ps2") to registry.getFolderHandler("ps2"),
+            ("ppsspp" to "psp") to registry.getFolderHandler("psp"),
+            ("vita3k" to "vita") to registry.getFolderHandler("vita"),
+            ("aps3e" to "ps3") to registry.getFolderHandler("ps3"),
+            ("cemu" to "wiiu") to registry.getFolderHandler("wiiu"),
+            ("azahar" to "3ds") to registry.getFolderHandler("3ds")
+        ).forEach { (key, expected) ->
+            val (emulator, platform) = key
+            val config = SavePathRegistry.getConfigForPlatform(emulator, platform)
+            assertSame("$emulator on $platform", expected, registry.getHandler(config, platform, emulator))
+        }
+    }
+
+    @Test
     fun `standalone card and profile emulators route to Sigil`() {
+        every { sigilHandler.routes(any(), any()) } answers {
+            SigilSaveHandler.layoutFor(firstArg(), secondArg()) != null
+        }
         listOf(
             "eden" to "switch",
             "ryujinx" to "switch",
@@ -135,6 +158,9 @@ class PlatformSaveHandlerRegistryRoutingTest {
 
     @Test
     fun `dolphin on wii stays on its folder handler`() {
+        every { sigilHandler.routes(any(), any()) } answers {
+            SigilSaveHandler.layoutFor(firstArg(), secondArg()) != null
+        }
         val config = SavePathRegistry.getConfigForPlatform("dolphin", "wii")
         assertSame(registry.getFolderHandler("wii"), registry.getHandler(config, "wii", "dolphin"))
     }

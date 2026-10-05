@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.platform.PlatformDefinitions
+import com.nendo.argosy.data.remote.romm.RomMConnectionManager
 import com.nendo.argosy.data.repository.EmulatorSaveConfigRepository
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.FalSigilFileAccess
@@ -65,7 +66,8 @@ class SigilSaveHandler @Inject constructor(
     private val switchProfileParser: SwitchProfileParser,
     private val titleDbRepository: TitleDbRepository,
     private val emulatorConfigDao: EmulatorConfigDao,
-    private val fal: FileAccessLayer
+    private val fal: FileAccessLayer,
+    private val connectionManager: dagger.Lazy<RomMConnectionManager>
 ) : PlatformSaveHandler {
 
     companion object {
@@ -160,7 +162,17 @@ class SigilSaveHandler @Inject constructor(
 
     private val fileAccess = FalSigilFileAccess(fal)
 
+    /**
+     * Whether saves travel as Sigil units. Servers before RomM 5.5, and a disconnected client,
+     * keep the formats the legacy handlers write, so every device on an older server stays readable.
+     */
+    fun unitsEnabled(): Boolean = connectionManager.get().getCapabilities().supportsSigilUnits
+
+    fun routes(emulatorId: String, platformSlug: String): Boolean =
+        unitsEnabled() && layoutFor(emulatorId, platformSlug) != null
+
     suspend fun route(gameId: Long, emulatorId: String? = null): SigilRoute? = withContext(Dispatchers.IO) {
+        if (!unitsEnabled()) return@withContext null
         val game = gameDao.getById(gameId) ?: return@withContext null
         val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(game.id, game.platformId, game.platformSlug)
         val effectiveId = emulatorId?.takeIf { it.isNotBlank() && it != "default" }

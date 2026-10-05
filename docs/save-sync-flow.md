@@ -143,9 +143,11 @@ card directory while the archive holds only one game's folders, so every caller 
   beside the ROM) that the launch uses.
 - `GameCubeHeaderParser` reads only ISO and RVZ; other formats yield a garbage game code.
 - No session watcher runs for a game with no `.gci` yet.
-- Standalone Dolphin goes through `SigilSaveHandler` (Sigil's `dolphin_standalone` layout, raw
-  cards included). The libretro and built-in GameCube cores still build the unit in
-  `GciSaveHandler`.
+- On RomM 5.5 and later (`RomMCapabilities.supportsSigilUnits`), standalone Dolphin goes through
+  `SigilSaveHandler` (Sigil's `dolphin_standalone` layout, raw cards included), as do the other
+  standalone card and profile emulators. On older servers, and while disconnected, every one of
+  them keeps its legacy handler and format. The libretro and built-in GameCube cores build the unit
+  in `GciSaveHandler` on every server.
 
 ### Bulk and server-driven paths
 

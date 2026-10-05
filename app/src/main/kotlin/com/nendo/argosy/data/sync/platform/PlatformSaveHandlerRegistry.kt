@@ -88,7 +88,7 @@ class PlatformSaveHandlerRegistry @Inject constructor(
     }
 
     fun isSigilRouted(config: SavePathConfig?, platformSlug: String, emulatorId: String): Boolean =
-        SigilSaveHandler.layoutFor(config?.emulatorId ?: emulatorId, platformSlug) != null
+        sigilSaveHandler.routes(config?.emulatorId ?: emulatorId, platformSlug)
 
     val sigil: SigilSaveHandler get() = sigilSaveHandler
 
