@@ -143,7 +143,8 @@ card directory while the archive holds only one game's folders, so every caller 
   beside the ROM) that the launch uses.
 - `GameCubeHeaderParser` reads only ISO and RVZ; other formats yield a garbage game code.
 - No session watcher runs for a game with no `.gci` yet.
-- Sigil has no GameCube layout, so `Sigil.locateSaves` cannot produce the spec's unit.
+- Argosy builds the GameCube unit itself. Sigil's `dolphin` and `dolphin_standalone` layouts produce
+  the spec's unit, but `GciSaveHandler` doesn't call them yet.
 
 ### Bulk and server-driven paths
 
