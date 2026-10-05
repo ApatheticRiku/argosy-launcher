@@ -68,7 +68,5 @@ class SnapshotInputHandler(
 
     override fun onRightStickClick(): InputResult = InputResult.HANDLED
 
-    private fun sectionSwitch(): InputResult =
-        if (view?.hasOverlay == true || !saveState().supportsStates) InputResult.HANDLED
-        else InputResult.UNHANDLED
+    private fun sectionSwitch(): InputResult = InputResult.HANDLED
 }

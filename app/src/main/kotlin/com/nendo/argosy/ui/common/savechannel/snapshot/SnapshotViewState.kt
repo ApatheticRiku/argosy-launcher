@@ -151,10 +151,8 @@ data class SnapshotViewState(
         get() = buildList {
             if (canCreateChannel) add(SnapshotStop.NewChannel)
             if (mine.isNotEmpty()) add(SnapshotStop.MineTiles)
-            if (expanded?.isMine == true) add(SnapshotStop.Cards)
             backups.indices.forEach { add(SnapshotStop.Backup(it)) }
             if (community.isNotEmpty()) add(SnapshotStop.CommunityTiles)
-            if (expanded?.isMine == false) add(SnapshotStop.Cards)
         }
 
     val hasOverlay: Boolean

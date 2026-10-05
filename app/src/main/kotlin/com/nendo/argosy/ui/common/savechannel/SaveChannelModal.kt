@@ -147,10 +147,10 @@ fun SaveChannelModal(
                         )
                     }
                 }
-                ActiveSaveIndicator(activeChannel = state.activeChannel)
+                if (state.snapshot == null) ActiveSaveIndicator(activeChannel = state.activeChannel)
             }
 
-            if (state.supportsStates) {
+            if (state.showsStatesTab) {
                 Spacer(modifier = Modifier.height(Dimens.spacingSm))
                 TabRow(
                     selectedTab = state.selectedTab,
@@ -808,9 +808,6 @@ private fun buildSnapshotFooterHints(
     if (snapshot.hasOverlay) return@buildList
     if (snapshot.focusedTile != null) {
         add(FooterHintItem(InputButton.X, stringResource(R.string.save_channels_footer_channel_actions)))
-    }
-    if (state.supportsStates) {
-        add(FooterHintItem(InputButton.RB, stringResource(R.string.ui_save_channel_footer_tab_states)))
     }
 }
 

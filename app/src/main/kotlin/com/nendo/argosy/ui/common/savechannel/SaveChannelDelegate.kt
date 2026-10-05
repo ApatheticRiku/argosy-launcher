@@ -96,7 +96,7 @@ class SaveChannelDelegate @Inject constructor(
                     saveSlots = localSlots,
                     statesEntries = states,
                     supportsStates = stateConfigExists,
-                    selectedTab = if (savePath == null && stateConfigExists) {
+                    selectedTab = if (savePath == null && stateConfigExists && it.snapshot == null) {
                         SaveTab.STATES
                     } else {
                         SaveTab.SAVES
@@ -150,7 +150,7 @@ class SaveChannelDelegate @Inject constructor(
     fun switchTab(tab: SaveTab) {
         val state = _state.value
         if (state.showSlotPicker) return
-        if (tab == SaveTab.STATES && !state.supportsStates) return
+        if (tab == SaveTab.STATES && !state.showsStatesTab) return
         if (tab == state.selectedTab) return
 
         _state.update {

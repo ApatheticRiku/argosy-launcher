@@ -37,15 +37,17 @@ class SaveScreenshotCapture @Inject constructor(
             Logger.debug(TAG, "No screenshot for game $gameId: no silent capture route on display $displayId")
             return@withContext false
         }
-        val scaled = scale(bitmap)
-        val target = fileFor(gameId)
+        store(gameId, bitmap).also { bitmap.recycle() }
+    }
+
+    fun store(gameId: Long, frame: Bitmap): Boolean {
+        val scaled = scale(frame)
         val written = runCatching {
-            target.outputStream().use { scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+            fileFor(gameId).outputStream().use { scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
         }.isSuccess
-        if (scaled !== bitmap) scaled.recycle()
-        bitmap.recycle()
-        Logger.debug(TAG, "Save screenshot for game $gameId on display $displayId | written=$written")
-        written
+        if (scaled !== frame) scaled.recycle()
+        Logger.debug(TAG, "Save screenshot for game $gameId | written=$written")
+        return written
     }
 
     private fun rootCapture(displayId: Int): Bitmap? {

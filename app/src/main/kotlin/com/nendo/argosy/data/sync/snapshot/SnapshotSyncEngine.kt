@@ -2,7 +2,9 @@ package com.nendo.argosy.data.sync.snapshot
 
 import android.content.Context
 import com.nendo.argosy.BuildConfig
+import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
+import com.nendo.argosy.libretro.LibretroStateSlots
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SnapshotChannelDao
@@ -84,7 +86,9 @@ class SnapshotSyncEngine @Inject constructor(
     private val syncPreferencesRepository: SyncPreferencesRepository,
     private val pusher: SnapshotPusher,
     private val fileResolver: SnapshotFileResolver,
-    private val saveScreenshots: com.nendo.argosy.hardware.SaveScreenshotCapture
+    private val saveScreenshots: com.nendo.argosy.hardware.SaveScreenshotCapture,
+    private val builtinCoreResolver: com.nendo.argosy.data.emulator.BuiltinCoreResolver,
+    private val statePaths: com.nendo.argosy.data.emulator.LibretroStatePathResolver
 ) {
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
@@ -167,7 +171,7 @@ class SnapshotSyncEngine @Inject constructor(
         val format = if (sigilSaveHandler.route(gameId, emulatorId) != null) FORMAT_NEUTRAL else FORMAT_NATIVE
         val unit = unitFromCache(cacheFile, format) ?: return@locked SnapshotSyncResult.Failed("cached save ${cacheFile.name} is empty")
         val expected = if (onTopOfCurrent) ctx.current?.id else ctx.stored?.heldSnapshotId ?: ctx.current?.id
-        push(ctx, unit, expected, isHardcore, false)
+        push(ctx, unit, emulatorId, expected, isHardcore, false)
     }
 
     suspend fun keepServer(gameId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult = locked(gameId) {
@@ -273,7 +277,7 @@ class SnapshotSyncEngine @Inject constructor(
             is LocalSave.Unreadable -> return SnapshotSyncResult.Failed(local.reason)
             LocalSave.None -> return SnapshotSyncResult.Failed("no local save to push")
         }
-        return push(ctx, unit, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
+        return push(ctx, unit, emulatorId, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
     }
 
     private suspend fun nativeUnit(
@@ -307,14 +311,45 @@ class SnapshotSyncEngine @Inject constructor(
         return SnapshotUnit(data, file.name, hash, hash, SigilSaveHandler.unitShape(null, data), format)
     }
 
+    private suspend fun autoStates(ctx: ChannelView, emulatorId: String, isHardcore: Boolean): List<StatePart> {
+        if (isHardcore || emulatorId != EmulatorRegistry.BUILTIN_ID) return emptyList()
+        val romBaseName = ctx.game.localPath?.let { File(it).nameWithoutExtension } ?: return emptyList()
+        val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug)
+            ?: return emptyList()
+        val dir = statePaths.liveStateBaseDir(ctx.game.id)
+        val file = statePaths.liveStateFile(dir, romBaseName, LibretroStateSlots.AUTO_SLOT)
+            .takeIf { it.isFile && it.length() > 0 } ?: return emptyList()
+        val hash = saveArchiver.calculateContentHash(file)
+        val known = ctx.current?.states?.get(core)?.get(AUTO_SLOT)?.contentHash
+        return listOf(
+            StatePart(
+                core = core,
+                slot = AUTO_SLOT,
+                file = file,
+                hash = hash,
+                screenshot = File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION").takeIf { it.isFile },
+                serverHasIt = known == hash
+            )
+        )
+    }
+
     private suspend fun push(
         ctx: ChannelView,
         unit: SnapshotUnit,
+        emulatorId: String,
         expectedCurrentId: Long?,
         isHardcore: Boolean,
         approveHardcoreDowngrade: Boolean
     ): SnapshotSyncResult {
+        val states = autoStates(ctx, emulatorId, isHardcore)
         val manifest = JSONObject().apply {
+            if (states.isNotEmpty()) {
+                put("states", JSONObject().apply {
+                    states.groupBy { it.core }.forEach { (core, slots) ->
+                        put(core, JSONObject().apply { slots.forEach { put(it.slot, it.hash) } })
+                    }
+                })
+            }
             put("rom_file_id", ctx.file.id)
             put("channel_id", ctx.channelId)
             if (ctx.isNewChannel) put("label", ctx.label)
@@ -330,7 +365,7 @@ class SnapshotSyncEngine @Inject constructor(
             put("emulator_version", BuildConfig.VERSION_NAME)
         }
         val screenshot = saveScreenshots.recentFor(ctx.game.id)
-        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot)) {
+        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot, states)) {
             is PushOutcome.Written -> {
                 screenshot?.delete()
                 record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
@@ -404,5 +439,7 @@ class SnapshotSyncEngine @Inject constructor(
         private const val FORMAT_NEUTRAL = "neutral"
         private const val FORMAT_NATIVE = "native"
         private const val EMULATOR = "argosy"
+        private const val AUTO_SLOT = "auto"
+        private const val STATE_SCREENSHOT_EXTENSION = ".png"
     }
 }

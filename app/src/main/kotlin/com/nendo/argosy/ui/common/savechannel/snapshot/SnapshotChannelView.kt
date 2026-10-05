@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,12 +40,10 @@ import com.nendo.argosy.ui.theme.LocalArgosyTheme
 private const val ROW_MINE_HEADER = "mine_header"
 private const val ROW_MINE_TILES = "mine_tiles"
 private const val ROW_MINE_EMPTY = "mine_empty"
-private const val ROW_MINE_CARDS = "mine_cards"
 private const val ROW_BACKUPS_HEADER = "backups_header"
 private const val ROW_BACKUP_PREFIX = "backup_"
 private const val ROW_COMMUNITY_HEADER = "community_header"
 private const val ROW_COMMUNITY_TILES = "community_tiles"
-private const val ROW_COMMUNITY_CARDS = "community_cards"
 private const val SKELETON_COUNT = 3
 
 @Composable
@@ -99,9 +99,6 @@ private fun SnapshotSections(
                     TileStrip(state.mine, state, isMine = true, coverPath = coverPath, actions = actions)
                 }
             }
-            state.expanded?.takeIf { it.isMine }?.let { open ->
-                item(key = ROW_MINE_CARDS) { CardStrip(open, state, coverPath, actions) }
-            }
             if (state.backups.isNotEmpty()) {
                 item(key = ROW_BACKUPS_HEADER) {
                     SectionHeader(title = stringResource(R.string.save_channels_section_backups_title))
@@ -122,9 +119,6 @@ private fun SnapshotSections(
                 item(key = ROW_COMMUNITY_TILES) {
                     TileStrip(state.community, state, isMine = false, coverPath = coverPath, actions = actions)
                 }
-                state.expanded?.takeIf { !it.isMine }?.let { open ->
-                    item(key = ROW_COMMUNITY_CARDS) { CardStrip(open, state, coverPath, actions) }
-                }
             }
         }
     }
@@ -133,7 +127,6 @@ private fun SnapshotSections(
 private fun rowKeys(state: SnapshotViewState): List<String> = buildList {
     add(ROW_MINE_HEADER)
     add(if (state.mine.isEmpty()) ROW_MINE_EMPTY else ROW_MINE_TILES)
-    if (state.expanded?.isMine == true) add(ROW_MINE_CARDS)
     if (state.backups.isNotEmpty()) {
         add(ROW_BACKUPS_HEADER)
         state.backups.forEach { add("$ROW_BACKUP_PREFIX${it.saveId}") }
@@ -141,7 +134,6 @@ private fun rowKeys(state: SnapshotViewState): List<String> = buildList {
     if (state.community.isNotEmpty()) {
         add(ROW_COMMUNITY_HEADER)
         add(ROW_COMMUNITY_TILES)
-        if (state.expanded?.isMine == false) add(ROW_COMMUNITY_CARDS)
     }
 }
 
@@ -150,7 +142,7 @@ private fun stopKey(state: SnapshotViewState): String? =
         SnapshotStop.NewChannel -> ROW_MINE_HEADER
         SnapshotStop.MineTiles -> ROW_MINE_TILES
         SnapshotStop.CommunityTiles -> ROW_COMMUNITY_TILES
-        SnapshotStop.Cards -> if (state.expanded?.isMine == false) ROW_COMMUNITY_CARDS else ROW_MINE_CARDS
+        SnapshotStop.Cards -> if (state.expanded?.isMine == false) ROW_COMMUNITY_TILES else ROW_MINE_TILES
         is SnapshotStop.Backup -> state.backups.getOrNull(stop.index)?.let { "$ROW_BACKUP_PREFIX${it.saveId}" }
     }
 
@@ -193,59 +185,78 @@ private fun TileStrip(
     actions: SnapshotViewActions
 ) {
     val stripState = rememberLazyListState()
-    val focusedIndex = if (isMine) state.mineIndex else state.communityIndex
-    val stop = if (isMine) SnapshotStop.MineTiles else SnapshotStop.CommunityTiles
-    LaunchedEffect(focusedIndex) { stripState.animateScrollToItemCentered(focusedIndex) }
+    val tileFocus = if (isMine) state.mineIndex else state.communityIndex
+    val tileStop = if (isMine) SnapshotStop.MineTiles else SnapshotStop.CommunityTiles
+    val open = state.expanded?.takeIf { it.isMine == isMine }
+    val openIndex = open?.let { expanded -> tiles.indexOfFirst { it.channelId == expanded.channelId } } ?: -1
+    val inlineCount = open?.let(::inlineItemCount) ?: 0
+    val focusedItem = if (open != null && state.isStopFocused(SnapshotStop.Cards)) {
+        openIndex + 1 + open.focusIndex
+    } else {
+        tileFocus + if (openIndex in 0 until tileFocus) inlineCount else 0
+    }
+    LaunchedEffect(focusedItem) { stripState.animateScrollToItemCentered(focusedItem) }
     LazyRow(
         state = stripState,
         contentPadding = PaddingValues(horizontal = Dimens.spacingXs),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
+        verticalAlignment = Alignment.Top
     ) {
-        itemsIndexed(tiles, key = { _, tile -> tile.channelId }) { index, tile ->
-            SnapshotChannelTile(
-                tile = tile,
-                coverPath = coverPath,
-                isFocused = state.isStopFocused(stop) && index == focusedIndex,
-                isExpanded = state.expanded?.channelId == tile.channelId,
-                onClick = { actions.tapTile(isMine, index) },
-                onLongClick = { actions.longPressTile(isMine, index) }
-            )
+        tiles.forEachIndexed { index, tile ->
+            item(key = tile.channelId) {
+                SnapshotChannelTile(
+                    tile = tile,
+                    coverPath = coverPath,
+                    isFocused = state.isStopFocused(tileStop) && index == tileFocus,
+                    isExpanded = index == openIndex,
+                    onClick = { actions.tapTile(isMine, index) },
+                    onLongClick = { actions.longPressTile(isMine, index) }
+                )
+            }
+            if (index == openIndex && open != null) {
+                inlineCards(open, state.isStopFocused(SnapshotStop.Cards), coverPath, actions)
+            }
         }
     }
 }
 
-@Composable
-private fun CardStrip(
-    expanded: SnapshotExpandedUi,
-    state: SnapshotViewState,
+private fun inlineItemCount(open: SnapshotExpandedUi): Int = when {
+    open.isLoading -> SKELETON_COUNT
+    open.cards.isEmpty() -> 1
+    else -> open.stopCount
+}
+
+private fun LazyListScope.inlineCards(
+    open: SnapshotExpandedUi,
+    focused: Boolean,
     coverPath: String?,
     actions: SnapshotViewActions
 ) {
-    val stripState = rememberLazyListState()
-    val focused = state.isStopFocused(SnapshotStop.Cards)
-    LaunchedEffect(expanded.focusIndex) { stripState.animateScrollToItemCentered(expanded.focusIndex) }
     when {
-        expanded.isLoading -> CardSkeletons()
-        expanded.cards.isEmpty() -> SnapshotMessage(stringResource(R.string.save_channels_cards_empty))
-        else -> LazyRow(
-            state = stripState,
-            contentPadding = PaddingValues(horizontal = Dimens.spacingXs),
-            horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-        ) {
-            itemsIndexed(expanded.cards, key = { _, card -> card.key }) { index, card ->
+        open.isLoading -> items(SKELETON_COUNT, key = { "${open.channelId}_skeleton_$it" }) { CardSkeleton() }
+        open.cards.isEmpty() -> item(key = "${open.channelId}_empty") {
+            Text(
+                text = stringResource(R.string.save_channels_cards_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                color = LocalArgosyTheme.current.textDim,
+                modifier = Modifier.width(Dimens.saveChannelCardWidth).padding(Dimens.spacingMd)
+            )
+        }
+        else -> {
+            itemsIndexed(open.cards, key = { _, card -> "${open.channelId}_${card.key}" }) { index, card ->
                 SnapshotCard(
                     card = card,
                     coverPath = coverPath,
-                    isFocused = focused && expanded.focusIndex == index,
+                    isFocused = focused && open.focusIndex == index,
                     onClick = { actions.tapCard(index) }
                 )
             }
-            if (expanded.hasMore) {
-                item(key = "load_more") {
+            if (open.hasMore) {
+                item(key = "${open.channelId}_load_more") {
                     SnapshotLoadMoreCard(
-                        isFocused = focused && expanded.isLoadMoreFocused,
-                        isLoading = expanded.isLoadingMore,
-                        onClick = { actions.tapCard(expanded.cards.size) }
+                        isFocused = focused && open.isLoadMoreFocused,
+                        isLoading = open.isLoadingMore,
+                        onClick = { actions.tapCard(open.cards.size) }
                     )
                 }
             }
@@ -254,22 +265,14 @@ private fun CardStrip(
 }
 
 @Composable
-private fun CardSkeletons() {
-    val theme = LocalArgosyTheme.current
-    Row(
-        modifier = Modifier.padding(horizontal = Dimens.spacingXs),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
-    ) {
-        repeat(SKELETON_COUNT) {
-            Box(
-                modifier = Modifier
-                    .width(Dimens.saveChannelCardWidth)
-                    .aspectRatio(THUMB_ASPECT)
-                    .clip(RoundedCornerShape(Dimens.radiusLg))
-                    .background(theme.surfaceRaised)
-            )
-        }
-    }
+private fun CardSkeleton() {
+    Box(
+        modifier = Modifier
+            .width(Dimens.saveChannelCardWidth)
+            .aspectRatio(THUMB_ASPECT)
+            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .background(LocalArgosyTheme.current.surfaceRaised)
+    )
 }
 
 @Composable

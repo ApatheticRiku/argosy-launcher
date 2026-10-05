@@ -97,8 +97,11 @@ class SnapshotSyncEngineTest {
             syncPreferencesRepository = prefs,
             pusher = SnapshotPusher(moshi),
             fileResolver = SnapshotFileResolver(),
-            saveScreenshots = screenshots
+            saveScreenshots = screenshots,
+            builtinCoreResolver = coreResolver,
+            statePaths = statePaths
         )
+        coEvery { coreResolver.resolveCoreId(any(), any(), any()) } returns null
         every { screenshots.recentFor(any(), any()) } returns null
     }
 
@@ -109,6 +112,43 @@ class SnapshotSyncEngineTest {
     private val cacheManager = mockk<com.nendo.argosy.data.repository.SaveCacheManager>(relaxed = true)
     private val downloader = mockk<com.nendo.argosy.data.repository.SaveDownloader>()
     private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>()
+    private val coreResolver = mockk<com.nendo.argosy.data.emulator.BuiltinCoreResolver>()
+    private val statePaths = mockk<com.nendo.argosy.data.emulator.LibretroStatePathResolver>()
+
+    @Test
+    fun `a built-in push carries the auto state and its screenshot in the bank`() = runBlocking {
+        val dir = tempDir.newFolder("states")
+        val auto = java.io.File(dir, "Lunar (USA).state.auto").apply { writeBytes(ByteArray(64)) }
+        java.io.File(dir, "Lunar (USA).state.auto.png").writeBytes(byteArrayOf(7))
+        coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
+        coEvery { statePaths.liveStateBaseDir(GAME_ID) } returns dir
+        every { statePaths.liveStateFile(dir, "Lunar (USA)", -1) } returns auto
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        val names = parts.captured.map { it.headers?.get("Content-Disposition")?.substringAfter("name=\"")?.substringBefore('"') }
+        assertTrue(names.containsAll(listOf("state:genesis_plus_gx:auto", "state:genesis_plus_gx:auto:screenshot")))
+        assertEquals("md5-of-64", manifestOf(parts.captured).getJSONObject("states").getJSONObject("genesis_plus_gx").getString("auto"))
+    }
+
+    @Test
+    fun `a hardcore push carries no states`() = runBlocking {
+        coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null, isHardcore = true)
+
+        assertTrue(!manifestOf(parts.captured).has("states"))
+    }
 
     @Test
     fun `the screen captured at the save travels with the push and is dropped once it landed`() = runBlocking {

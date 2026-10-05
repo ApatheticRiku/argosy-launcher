@@ -194,6 +194,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var verifyRAGameIdUseCase: com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
     @Inject lateinit var achievementUpdateBus: AchievementUpdateBus
     @Inject lateinit var saveCacheManager: SaveCacheManager
+    @Inject lateinit var saveScreenshotCapture: com.nendo.argosy.hardware.SaveScreenshotCapture
     @Inject lateinit var saveUnitResolver: com.nendo.argosy.data.sync.SaveUnitResolver
     @Inject lateinit var activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
     @Inject lateinit var ambientLedManager: AmbientLedManager
@@ -2463,7 +2464,23 @@ class LibretroActivity : ComponentActivity() {
 
     private fun reportNewlyWrittenSaves() {
         if (coreDestroyed || isGuestJoinedSession) return
-        if (saveStateManager.takeNewlyWrittenSaves()) playSessionTracker.reportSaveWritten()
+        if (saveStateManager.takeNewlyWrittenSaves()) {
+            playSessionTracker.reportSaveWritten()
+            captureSaveScreenshot()
+        }
+    }
+
+    private fun captureSaveScreenshot() {
+        val game = gameId.takeIf { it > 0 } ?: return
+        lifecycleScope.launch {
+            delay(SAVE_SCREENSHOT_DELAY_MS)
+            if (coreDestroyed) return@launch
+            val frame = runCatching { retroView.captureRawFrame() }.getOrNull() ?: return@launch
+            withContext(Dispatchers.IO) {
+                saveScreenshotCapture.store(game, frame)
+                frame.recycle()
+            }
+        }
     }
 
     private fun stopRollingSave() {
@@ -3763,6 +3780,7 @@ class LibretroActivity : ComponentActivity() {
         private const val CORE_INPUT_PULSE_MS = 50L
 
         private const val ROLLING_SAVE_INTERVAL_MS = 30_000L
+        private const val SAVE_SCREENSHOT_DELAY_MS = 250L
         private const val SAVE_WRITE_CHECK_INTERVAL_MS = 5_000L
         private const val SAVE_INDICATOR_MERGE_MS = 5_000L
 

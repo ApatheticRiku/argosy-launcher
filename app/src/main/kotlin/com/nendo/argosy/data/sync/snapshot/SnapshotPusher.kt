@@ -13,6 +13,15 @@ import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class StatePart(
+    val core: String,
+    val slot: String,
+    val file: File,
+    val hash: String,
+    val screenshot: File?,
+    val serverHasIt: Boolean
+)
+
 sealed class PushOutcome {
     data class Written(val snapshot: RomMSnapshot) : PushOutcome()
     data class Conflict(val currentId: Long) : PushOutcome()
@@ -34,7 +43,8 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
         deviceId: String,
         manifest: JSONObject,
         save: SnapshotUnit? = null,
-        screenshot: File? = null
+        screenshot: File? = null,
+        states: List<StatePart> = emptyList()
     ): PushOutcome {
         val parts = buildList {
             add(MultipartBody.Part.createFormData(MANIFEST_PART, null, manifest.toString().toRequestBody(JSON)))
@@ -42,6 +52,13 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
                 add(MultipartBody.Part.createFormData(SAVE_PART, save.name, save.data.toRequestBody(OCTET_STREAM)))
                 screenshot?.takeIf { it.isFile }?.let {
                     add(MultipartBody.Part.createFormData(SAVE_SCREENSHOT_PART, it.name, it.asRequestBody(JPEG)))
+                }
+            }
+            states.filterNot { it.serverHasIt }.forEach { state ->
+                val name = "$STATE_PART_PREFIX${state.core}:${state.slot}"
+                add(MultipartBody.Part.createFormData(name, state.file.name, state.file.asRequestBody(OCTET_STREAM)))
+                state.screenshot?.takeIf { it.isFile }?.let {
+                    add(MultipartBody.Part.createFormData("$name$SCREENSHOT_SUFFIX", it.name, it.asRequestBody(PNG)))
                 }
             }
         }
@@ -69,6 +86,9 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
         const val MANIFEST_PART = "manifest"
         const val SAVE_PART = "save"
         const val SAVE_SCREENSHOT_PART = "save_screenshot"
+        const val STATE_PART_PREFIX = "state:"
+        const val SCREENSHOT_SUFFIX = ":screenshot"
+        val PNG = "image/png".toMediaType()
         val JSON = "application/json".toMediaType()
         val JPEG = "image/jpeg".toMediaType()
         val OCTET_STREAM = "application/octet-stream".toMediaType()

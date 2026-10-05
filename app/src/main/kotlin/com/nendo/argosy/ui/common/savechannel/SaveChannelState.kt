@@ -64,6 +64,7 @@ data class SaveChannelState(
 
     val hasSaveSlots: Boolean get() = saveSlots.any { !it.isCreateAction }
     val hasStates: Boolean get() = supportsStates
+    val showsStatesTab: Boolean get() = supportsStates && snapshot == null
 
     val currentTabSize: Int
         get() = when (selectedTab) {
