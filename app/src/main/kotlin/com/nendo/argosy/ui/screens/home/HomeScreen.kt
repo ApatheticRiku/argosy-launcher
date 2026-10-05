@@ -176,6 +176,7 @@ fun HomeScreen(
     onNavigateToSettings: (String) -> Unit = {},
     onPlayMedia: (itemId: String, startOver: Boolean) -> Unit = { _, _ -> },
     onMediaSelect: (String) -> Unit = {},
+    videoPreviewBlocked: Boolean = false,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -400,14 +401,26 @@ fun HomeScreen(
         }
     }
 
-    LaunchedEffect(uiState.focusedGameIndex, uiState.focusedGame?.youtubeVideoId, uiState.videoWallpaperEnabled) {
+    val previewBlocked = videoPreviewBlocked || uiState.showGameMenu ||
+        uiState.discPickerState != null || uiState.memcardPickerState != null ||
+        uiState.syncOverlayState != null || uiState.changelogEntry != null || siblingChoiceOpen
+    val currentPreviewBlocked by rememberUpdatedState(previewBlocked)
+
+    LaunchedEffect(
+        uiState.focusedGame?.id,
+        uiState.focusedGame?.youtubeVideoId,
+        uiState.videoWallpaperEnabled,
+        uiState.videoWallpaperDelayMs,
+        uiState.layoutKind,
+        previewBlocked,
+        suppressVideoPreview
+    ) {
         viewModel.deactivateVideoPreview()
         if (!uiState.videoWallpaperEnabled) return@LaunchedEffect
         if (uiState.layoutKind != HomeLayoutKind.CAROUSEL) return@LaunchedEffect
         val game = uiState.focusedGame ?: return@LaunchedEffect
         val videoId = game.youtubeVideoId ?: return@LaunchedEffect
-        val shouldSkip = uiState.showGameMenu ||
-            uiState.discPickerState != null ||
+        val shouldSkip = previewBlocked ||
             suppressVideoPreview ||
             videoPlayedForGameId == game.id
         if (shouldSkip) {
@@ -417,8 +430,8 @@ fun HomeScreen(
         val isResumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
         val stillValid = isResumed &&
             uiState.videoWallpaperEnabled &&
+            !currentPreviewBlocked &&
             !suppressVideoPreview &&
-            uiState.discPickerState == null &&
             videoPlayedForGameId != game.id
         if (stillValid) {
             videoPlayedForGameId = game.id
@@ -579,7 +592,7 @@ fun HomeScreen(
                 }
             }
 
-            if (uiState.isVideoPreviewLoading || uiState.isVideoPreviewActive) {
+            if (!previewBlocked && (uiState.isVideoPreviewLoading || uiState.isVideoPreviewActive)) {
                 val videoAlpha by animateFloatAsState(
                     targetValue = if (uiState.isVideoPreviewActive) 1f else 0f,
                     animationSpec = tween(500),
@@ -594,8 +607,20 @@ fun HomeScreen(
                         YouTubeVideoPlayer(
                             videoId = videoId,
                             muted = uiState.muteVideoPreview,
-                            onReady = { viewModel.activateVideoPreview() },
-                            onError = { viewModel.cancelVideoPreviewLoading() }
+                            onReady = {
+                                val current = viewModel.uiState.value
+                                if (!currentPreviewBlocked && current.isVideoPreviewLoading &&
+                                    current.videoPreviewId == videoId &&
+                                    lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                                ) {
+                                    viewModel.activateVideoPreview()
+                                }
+                            },
+                            onError = {
+                                if (viewModel.uiState.value.videoPreviewId == videoId) {
+                                    viewModel.cancelVideoPreviewLoading()
+                                }
+                            }
                         )
                     }
                 }
