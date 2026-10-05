@@ -83,6 +83,7 @@ data class RomMSnapshotState(
     @Json(name = "id") val id: Long,
     @Json(name = "content_hash") val contentHash: String? = null,
     @Json(name = "file_name") val fileName: String? = null,
+    @Json(name = "download_path") val downloadPath: String? = null,
     @Json(name = "screenshot") val screenshot: RomMScreenshotRef? = null
 )
 

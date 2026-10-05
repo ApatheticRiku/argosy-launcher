@@ -382,6 +382,41 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
+    fun `applying a snapshot places its banked auto state and screenshot for the built-in core`() = runBlocking {
+        val dir = tempDir.newFolder("applied")
+        val auto = java.io.File(dir, "Lunar (USA).state.auto").apply { writeBytes(byteArrayOf(1)) }
+        coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
+        coEvery { statePaths.liveStateBaseDir(GAME_ID) } returns dir
+        every { statePaths.liveStateFile(dir, "Lunar (USA)", -1) } returns auto
+        every { archiver.calculateContentHash(auto) } returns "old-state"
+        val banked = snapshot(42, "theirs").copy(
+            states = mapOf(
+                "genesis_plus_gx" to mapOf(
+                    "auto" to com.nendo.argosy.data.remote.romm.RomMSnapshotState(
+                        id = 7,
+                        contentHash = "new-state",
+                        downloadPath = "/api/states/7/content",
+                        screenshot = com.nendo.argosy.data.remote.romm.RomMScreenshotRef(9, "/api/screenshots/9/content")
+                    )
+                )
+            )
+        )
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(banked))
+        coEvery { api.getSnapshot(42) } returns Response.success(banked)
+        coEvery {
+            downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
+        } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
+        coEvery { api.reportSnapshotHeld(42, DEVICE) } returns Response.success(Unit)
+        coEvery { api.downloadRaw("api/states/7/content") } returns Response.success(byteArrayOf(5, 5, 5).toResponseBody())
+        coEvery { api.downloadRaw("api/screenshots/9/content") } returns Response.success(byteArrayOf(8).toResponseBody())
+
+        assertEquals(SnapshotSyncResult.Applied(42), engine.sync(GAME_ID, EMULATOR, null))
+        assertTrue(byteArrayOf(5, 5, 5).contentEquals(auto.readBytes()))
+        assertTrue(byteArrayOf(8).contentEquals(java.io.File(dir, "Lunar (USA).state.auto.png").readBytes()))
+    }
+
+    @Test
     fun `before RomM 5_5 nothing goes through the snapshot API`() = runBlocking {
         every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.4.0")
 

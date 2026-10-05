@@ -404,10 +404,38 @@ class SnapshotSyncEngine @Inject constructor(
                 else -> return SnapshotSyncResult.Failed("save ${save.id} was not placed: ${placed::class.simpleName}")
             }
         }
+        applyAutoState(ctx, snapshot, emulatorId)
         record(ctx, snapshot.id, snapshot.digest, save?.hashes())
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
+    }
+
+    private suspend fun applyAutoState(ctx: ChannelView, snapshot: RomMSnapshot, emulatorId: String) {
+        if (emulatorId != EmulatorRegistry.BUILTIN_ID || snapshot.isHardcore) return
+        val romBaseName = ctx.game.localPath?.let { File(it).nameWithoutExtension } ?: return
+        val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug) ?: return
+        val banked = snapshot.states[core]?.get(AUTO_SLOT) ?: return
+        val path = banked.downloadPath ?: return
+        val dir = statePaths.liveStateBaseDir(ctx.game.id)
+        val file = statePaths.liveStateFile(dir, romBaseName, LibretroStateSlots.AUTO_SLOT)
+        if (file.isFile && banked.contentHash != null && saveArchiver.calculateContentHash(file) == banked.contentHash) return
+        val written = fetchTo(ctx.api, path, file)
+        val shot = File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION")
+        if (written) banked.screenshot?.downloadPath?.let { fetchTo(ctx.api, it, shot) } ?: shot.delete()
+        Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | auto state from #${snapshot.id} ($core) written=$written")
+    }
+
+    private suspend fun fetchTo(api: RomMApi, downloadPath: String, target: File): Boolean = withContext(Dispatchers.IO) {
+        val response = runCatching { api.downloadRaw(downloadPath.trimStart('/')) }.getOrNull()
+            ?.takeIf { it.isSuccessful } ?: return@withContext false
+        val body = response.body() ?: return@withContext false
+        val temp = File(target.parentFile, "${target.name}.part")
+        runCatching {
+            target.parentFile?.mkdirs()
+            body.byteStream().use { input -> temp.outputStream().use { input.copyTo(it) } }
+            temp.renameTo(target) || run { temp.copyTo(target, overwrite = true); temp.delete() }
+        }.getOrElse { temp.delete(); false }
     }
 
     private fun RomMSnapshotSave.hashes(): SaveHashes? = contentHash?.let { SaveHashes(it, identityHash ?: it) }
