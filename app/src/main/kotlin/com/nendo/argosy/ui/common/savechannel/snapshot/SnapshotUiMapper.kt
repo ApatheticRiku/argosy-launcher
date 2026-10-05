@@ -7,7 +7,13 @@ import com.nendo.argosy.data.remote.romm.RomMSnapshotDevice
 import com.nendo.argosy.data.sync.snapshot.SnapshotChannelEntry
 import com.nendo.argosy.data.sync.snapshot.SnapshotLibrary
 
-class SnapshotUiMapper(private val mediaUrl: (String?) -> String?) {
+class SnapshotUiMapper(
+    private val mediaUrl: (String?) -> String?,
+    private val localThumb: (Long) -> String? = { null }
+) {
+
+    private fun snapshotThumb(snapshot: RomMSnapshot?, serverPath: String?): String? =
+        snapshot?.id?.let(localThumb) ?: mediaUrl(serverPath)
 
     fun tile(entry: SnapshotChannelEntry, deviceChannelId: String?): SnapshotTileUi {
         val channel = entry.channel
@@ -16,7 +22,8 @@ class SnapshotUiMapper(private val mediaUrl: (String?) -> String?) {
         return SnapshotTileUi(
             channelId = channel.id,
             label = channel.label,
-            thumbnailUrl = mediaUrl(
+            thumbnailUrl = snapshotThumb(
+                current,
                 current?.thumbnail?.downloadPath
                     ?: current?.save?.screenshot?.downloadPath
                     ?: newestOlder?.screenshot?.downloadPath
@@ -48,7 +55,7 @@ class SnapshotUiMapper(private val mediaUrl: (String?) -> String?) {
             savedAt = snapshot.createdAt,
             device = device(snapshot.device),
             fileName = snapshot.save?.fileName,
-            thumbnailUrl = mediaUrl(snapshot.thumbnail?.downloadPath ?: snapshot.save?.screenshot?.downloadPath),
+            thumbnailUrl = snapshotThumb(snapshot, snapshot.thumbnail?.downloadPath ?: snapshot.save?.screenshot?.downloadPath),
             isCurrent = snapshot.id == channel.currentSnapshotId,
             isBranch = snapshot.isBranch,
             isPinned = snapshot.isPinned,

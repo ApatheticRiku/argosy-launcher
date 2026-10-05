@@ -25,6 +25,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody.Companion.toResponseBody
@@ -103,6 +104,7 @@ class SnapshotSyncEngineTest {
         )
         coEvery { coreResolver.resolveCoreId(any(), any(), any()) } returns null
         every { screenshots.recentFor(any(), any()) } returns null
+        every { screenshots.keepForSnapshot(any(), any()) } returns true
     }
 
     @get:org.junit.Rule
@@ -119,7 +121,7 @@ class SnapshotSyncEngineTest {
     fun `a built-in push carries the auto state and its screenshot in the bank`() = runBlocking {
         val dir = tempDir.newFolder("states")
         val auto = java.io.File(dir, "Lunar (USA).state.auto").apply { writeBytes(ByteArray(64)) }
-        java.io.File(dir, "Lunar (USA).state.auto.png").writeBytes(byteArrayOf(7))
+        val autoShot = java.io.File(dir, "Lunar (USA).state.auto.png").apply { writeBytes(byteArrayOf(7)) }
         coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
         coEvery { statePaths.liveStateBaseDir(GAME_ID) } returns dir
         every { statePaths.liveStateFile(dir, "Lunar (USA)", -1) } returns auto
@@ -134,6 +136,7 @@ class SnapshotSyncEngineTest {
         val names = parts.captured.map { it.headers?.get("Content-Disposition")?.substringAfter("name=\"")?.substringBefore('"') }
         assertTrue(names.containsAll(listOf("state:genesis_plus_gx:auto", "state:genesis_plus_gx:auto:screenshot")))
         assertEquals("md5-of-64", manifestOf(parts.captured).getJSONObject("states").getJSONObject("genesis_plus_gx").getString("auto"))
+        verify { screenshots.keepForSnapshot(41, autoShot) }
     }
 
     @Test
@@ -164,6 +167,7 @@ class SnapshotSyncEngineTest {
 
         val names = parts.captured.map { it.headers?.get("Content-Disposition")?.substringAfter("name=\"")?.substringBefore('"') }
         assertEquals(listOf("manifest", "save", "save_screenshot"), names)
+        verify { screenshots.keepForSnapshot(41, shot) }
         assertTrue(!shot.exists())
     }
 

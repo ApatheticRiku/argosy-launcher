@@ -13,6 +13,7 @@ import com.nendo.argosy.data.sync.snapshot.SnapshotActionResult
 import com.nendo.argosy.data.sync.snapshot.SnapshotChannelEntry
 import com.nendo.argosy.data.sync.snapshot.SnapshotChannelService
 import com.nendo.argosy.domain.usecase.savechannel.UseSnapshotChannelOnDeviceUseCase
+import com.nendo.argosy.hardware.SaveScreenshotCapture
 import com.nendo.argosy.ui.common.savechannel.SaveChannelStateHolder
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusEvent
 import kotlinx.coroutines.CoroutineScope
@@ -47,9 +48,12 @@ class SnapshotActionRunner @Inject constructor(
     private val service: SnapshotChannelService,
     private val useChannelOnDevice: UseSnapshotChannelOnDeviceUseCase,
     romMRepository: RomMRepository,
+    saveScreenshots: SaveScreenshotCapture,
     private val notificationManager: NotificationManager
 ) {
-    val mapper = SnapshotUiMapper(romMRepository::buildMediaUrlPublic)
+    val mapper = SnapshotUiMapper(romMRepository::buildMediaUrlPublic) { snapshotId ->
+        saveScreenshots.snapshotThumbFor(snapshotId)?.absolutePath
+    }
     private var pending: SnapshotPush? = null
 
     suspend fun isAvailable(gameId: Long): Boolean =

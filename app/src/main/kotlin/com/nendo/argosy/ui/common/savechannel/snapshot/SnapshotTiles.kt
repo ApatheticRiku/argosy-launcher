@@ -23,7 +23,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,7 +67,8 @@ internal fun SnapshotDeviceUi.label(): String = when (this) {
 @Composable
 internal fun SnapshotThumb(url: String?, fallbackPath: String?, modifier: Modifier = Modifier) {
     val theme = LocalArgosyTheme.current
-    val model = rememberFileImageModel(url ?: fallbackPath)
+    var serverFailed by remember(url) { mutableStateOf(false) }
+    val model = rememberFileImageModel(url?.takeUnless { serverFailed } ?: fallbackPath)
     Box(
         modifier = modifier
             .aspectRatio(THUMB_ASPECT)
@@ -77,6 +81,7 @@ internal fun SnapshotThumb(url: String?, fallbackPath: String?, modifier: Modifi
                 model = model,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
+                onError = { if (url != null && !serverFailed) serverFailed = true },
                 modifier = Modifier.fillMaxSize()
             )
         } else {
