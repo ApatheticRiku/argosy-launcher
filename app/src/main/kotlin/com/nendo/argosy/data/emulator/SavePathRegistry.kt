@@ -284,7 +284,7 @@ object SavePathRegistry {
         "ryujinx" to SavePathConfig(
             emulatorId = "ryujinx",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/bis/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -302,7 +302,7 @@ object SavePathRegistry {
         "strato" to SavePathConfig(
             emulatorId = "strato",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/switch/nand/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -329,7 +329,7 @@ object SavePathRegistry {
         "skyline" to SavePathConfig(
             emulatorId = "skyline",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/switch/nand/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -347,7 +347,7 @@ object SavePathRegistry {
         "kenjinx" to SavePathConfig(
             emulatorId = "kenjinx",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/bis/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,

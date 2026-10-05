@@ -24,7 +24,6 @@ class GciSaveHandler @Inject constructor(
 ) : PlatformSaveHandler {
     companion object {
         private const val TAG = "GciSaveHandler"
-        private val REGIONS = listOf("USA", "EUR", "JAP", "KOR")
     }
 
     override suspend fun prepareForUpload(localPath: String, context: SaveContext): PreparedSave? =
@@ -373,7 +372,7 @@ class GciSaveHandler @Inject constructor(
     fun findGciFilesInPath(basePath: String, gameId: String): List<String> {
         val results = mutableListOf<String>()
 
-        for (region in REGIONS) {
+        for (region in GameCubeHeaderParser.REGION_FOLDERS) {
             val regionPath = "$basePath/$region"
             if (!fal.exists(regionPath) || !fal.isDirectory(regionPath)) continue
 
