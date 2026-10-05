@@ -57,6 +57,18 @@ class SnapshotSyncRouter @Inject constructor(
         return toSaveSyncResult(gameId, result)
     }
 
+    suspend fun uploadCached(
+        gameId: Long,
+        emulatorId: String,
+        channelName: String?,
+        cacheFile: java.io.File,
+        contentHash: String?,
+        onTopOfCurrent: Boolean
+    ): SaveSyncResult? {
+        if (contentHash == null || !handles(gameId, emulatorId, channelName)) return null
+        return toSaveSyncResult(gameId, engine.pushCached(gameId, emulatorId, cacheFile, contentHash, null, onTopOfCurrent))
+    }
+
     suspend fun download(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult? {
         if (!handles(gameId, emulatorId, channelName)) return null
         return toSaveSyncResult(gameId, engine.keepServer(gameId, emulatorId))

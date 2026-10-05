@@ -82,6 +82,7 @@ class SnapshotSyncEngineTest {
             context = mockk<Context>(relaxed = true),
             gameDao = gameDao,
             channelDao = channelDao,
+            saveCacheDao = mockk(relaxed = true),
             sigilSaveHandler = sigil,
             saveCacheManager = dagger.Lazy { mockk(relaxed = true) },
             apiClient = dagger.Lazy { apiClient },
@@ -170,6 +171,45 @@ class SnapshotSyncEngineTest {
             Response.error(409, """{"hardcore_downgrade":true}""".toResponseBody())
 
         assertEquals(SnapshotSyncResult.HardcoreDowngrade(41), engine.sync(GAME_ID, EMULATOR))
+    }
+
+    @Test
+    fun `an offline chain pushes each cached save on top of the one before`(): Unit = runBlocking {
+        val heldAfterFirst = SnapshotChannelEntity(3L, GAME_ID, CHANNEL, FILE_ID, 44, "d", "c1", "c1", 0)
+        coEvery { channelDao.get(3L, GAME_ID) } returnsMany listOf(
+            SnapshotChannelEntity(3L, GAME_ID, CHANNEL, FILE_ID, 41, "d", "old", "old", 0),
+            heldAfterFirst
+        )
+        coEvery { api.listCurrentSnapshots(listOf(FILE_ID), true) } returnsMany listOf(
+            Response.success(listOf(snapshot(43, "theirs"))),
+            Response.success(listOf(snapshot(44, "c1")))
+        )
+        val pushes = mutableListOf<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(pushes)) } returnsMany listOf(
+            Response.success(201, snapshotJson.toJson(snapshot(44, "c1")).toResponseBody()),
+            Response.success(201, snapshotJson.toJson(snapshot(45, "c2")).toResponseBody())
+        )
+        val unit = kotlin.io.path.createTempFile(suffix = ".ram").toFile().apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, unit, "c1", null, onTopOfCurrent = true)
+        engine.pushCached(GAME_ID, EMULATOR, unit, "c2", null, onTopOfCurrent = false)
+
+        assertEquals(43L, manifestOf(pushes[0]).getLong("expected_current_id"))
+        assertEquals(44L, manifestOf(pushes[1]).getLong("expected_current_id"))
+        unit.delete()
+    }
+
+    @Test
+    fun `a cached unit's shape is read from its bytes`() {
+        fun zip(vararg names: String): ByteArray {
+            val out = java.io.ByteArrayOutputStream()
+            java.util.zip.ZipOutputStream(out).use { zip -> names.forEach { zip.putNextEntry(java.util.zip.ZipEntry(it)); zip.write(1); zip.closeEntry() } }
+            return out.toByteArray()
+        }
+        assertEquals("SINGLE", SigilSaveHandler.unitShape(null, byteArrayOf(1, 2, 3)))
+        assertEquals("MULTI", SigilSaveHandler.unitShape(null, zip("backup.ram", "cart.ram")))
+        assertEquals("FOLDER", SigilSaveHandler.unitShape(null, zip("0100A/a.bin", "0100A/b.bin")))
+        assertEquals("FOLDERS", SigilSaveHandler.unitShape(null, zip("0100A/a.bin", "device/0100A/b.bin")))
     }
 
     @Test

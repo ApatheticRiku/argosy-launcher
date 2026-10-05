@@ -3,6 +3,7 @@ package com.nendo.argosy.data.sync.snapshot
 import android.content.Context
 import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SnapshotChannelDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.SigilSyncStateEntity
@@ -56,6 +57,7 @@ class SnapshotSyncEngine @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
     private val channelDao: SnapshotChannelDao,
+    private val saveCacheDao: SaveCacheDao,
     private val sigilSaveHandler: SigilSaveHandler,
     private val saveCacheManager: Lazy<SaveCacheManager>,
     private val apiClient: Lazy<SaveSyncApiClient>,
@@ -116,6 +118,33 @@ class SnapshotSyncEngine @Inject constructor(
         val local = sigilSaveHandler.collect(gameId, emulatorId) as? SigilCollect.Found
             ?: return@locked SnapshotSyncResult.Failed("no local save to keep")
         push(ctx, local, ctx.current?.id, isHardcore, approveHardcoreDowngrade)
+    }
+
+    /**
+     * Pushes one cached unit from an offline chain. The first push of a chain the user chose to
+     * keep goes on top of the channel's current ([onTopOfCurrent]); every later one expects the
+     * snapshot the push before it made, so the chain lands in order or stops at the first conflict.
+     */
+    suspend fun pushCached(
+        gameId: Long,
+        emulatorId: String,
+        unitFile: File,
+        contentHash: String,
+        identityHash: String?,
+        onTopOfCurrent: Boolean,
+        isHardcore: Boolean = false
+    ): SnapshotSyncResult = locked(gameId) {
+        val ctx = load(gameId, emulatorId) ?: return@locked notReady(gameId, emulatorId)
+        val data = unitFile.readBytes()
+        val unit = SigilCollect.Found(
+            data = data,
+            artifact = unitFile.name,
+            contentHash = contentHash,
+            identityHash = identityHash ?: contentHash,
+            shape = SigilSaveHandler.unitShape(null, data)
+        )
+        val expected = if (onTopOfCurrent) ctx.current?.id else ctx.stored?.heldSnapshotId ?: ctx.current?.id
+        push(ctx, unit, expected, isHardcore, false)
     }
 
     suspend fun keepServer(gameId: Long, emulatorId: String): SnapshotSyncResult = locked(gameId) {
@@ -289,6 +318,7 @@ class SnapshotSyncEngine @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
         )
+        saveCacheDao.clearAllDirtyFlags(ctx.game.id, syncPreferencesRepository.getRommUserId())
     }
 
     private suspend fun report(ctx: ChannelView, snapshotId: Long) {

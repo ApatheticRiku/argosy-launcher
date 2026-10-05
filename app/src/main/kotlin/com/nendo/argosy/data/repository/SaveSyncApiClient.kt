@@ -54,7 +54,8 @@ class SaveSyncApiClient @Inject constructor(
     private val conflictDetector: ConflictDetector,
     private val saveUploader: dagger.Lazy<SaveUploader>,
     private val saveDownloader: dagger.Lazy<SaveDownloader>,
-    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
+    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     private var api: RomMApi? = null
     private var deviceId: String? = null
@@ -318,7 +319,8 @@ class SaveSyncApiClient @Inject constructor(
         forceOverwrite: Boolean = false,
         isHardcore: Boolean = false,
         uploadedCacheId: Long? = null
-    ): SaveSyncResult = saveUploader.get().uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
+    ): SaveSyncResult = snapshotRouter.get().upload(gameId, emulatorId, channelName, forceOverwrite, isHardcore)
+        ?: saveUploader.get().uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
 
     suspend fun uploadCacheEntry(
         gameId: Long,
@@ -330,8 +332,10 @@ class SaveSyncApiClient @Inject constructor(
         overwrite: Boolean = false,
         uploadedCacheId: Long? = null,
         ownerApi: AccountApi? = null
-    ): SaveSyncResult = saveUploader.get()
-        .uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
+    ): SaveSyncResult = snapshotRouter.get().takeIf { ownerApi == null }
+        ?.uploadCached(gameId, emulatorId, channelName, cacheFile, contentHash, onTopOfCurrent = overwrite)
+        ?: saveUploader.get()
+            .uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
 
     suspend fun downloadSave(
         gameId: Long,
@@ -339,7 +343,8 @@ class SaveSyncApiClient @Inject constructor(
         channelName: String? = null,
         skipBackup: Boolean = false,
         knownServerSaveId: Long? = null
-    ): SaveSyncResult = saveDownloader.get().downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+    ): SaveSyncResult = snapshotRouter.get().download(gameId, emulatorId, channelName)
+        ?: saveDownloader.get().downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
     suspend fun downloadToCache(
         serverSaveId: Long,

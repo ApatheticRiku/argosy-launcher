@@ -262,9 +262,7 @@ class SaveSyncRepository @Inject constructor(
         isHardcore: Boolean = false,
         uploadedCacheId: Long? = null
     ): SaveSyncResult = uploadMutexes.computeIfAbsent(gameId to channelName) { Mutex() }.withLock {
-        snapshotRouter.get().upload(gameId, emulatorId, channelName, forceOverwrite, isHardcore)
-            ?.also { if (it is SaveSyncResult.Success) entityManager.clearDirtyFlags(gameId) }
-            ?: apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
+        apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
     }
 
     suspend fun uploadCacheEntry(
@@ -286,8 +284,7 @@ class SaveSyncRepository @Inject constructor(
         channelName: String? = null,
         skipBackup: Boolean = false,
         knownServerSaveId: Long? = null
-    ): SaveSyncResult = snapshotRouter.get().download(gameId, emulatorId, channelName)
-        ?: apiClient.downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+    ): SaveSyncResult = apiClient.downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
     suspend fun downloadToCache(serverSaveId: Long, gameId: Long, channelName: String?): Long? =
         apiClient.downloadToCache(serverSaveId, gameId, channelName)

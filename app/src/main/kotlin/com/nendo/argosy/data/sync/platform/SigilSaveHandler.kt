@@ -173,6 +173,25 @@ class SigilSaveHandler @Inject constructor(
             return unowned.filterNot { it in known }
         }
 
+        /**
+         * The spec's shape for a unit's bytes. [sigilShape] is what collect reported, or null for a
+         * unit read back from the cache, which is then read from the bytes: not a zip is SINGLE, a
+         * flat zip MULTI, and a zip of folders FOLDER or FOLDERS by how many roots it has.
+         */
+        fun unitShape(sigilShape: SigilSaveUnit.Shape?, data: ByteArray): String {
+            if (sigilShape == SigilSaveUnit.Shape.Single || sigilShape == SigilSaveUnit.Shape.None) return SigilCollect.SHAPE_SINGLE
+            if (sigilShape == SigilSaveUnit.Shape.Multi) return SigilCollect.SHAPE_MULTI
+            val names = runCatching {
+                java.util.zip.ZipInputStream(data.inputStream()).use { zip ->
+                    generateSequence { zip.nextEntry }.map { it.name }.toList()
+                }
+            }.getOrDefault(emptyList())
+            if (names.isEmpty()) return SigilCollect.SHAPE_SINGLE
+            if (names.none { '/' in it.trimEnd('/') } && sigilShape == null) return SigilCollect.SHAPE_MULTI
+            val roots = names.map { it.substringBefore('/') }.toSet()
+            return if (roots.size > 1) SigilCollect.SHAPE_FOLDERS else SigilCollect.SHAPE_FOLDER
+        }
+
         fun layoutFor(emulatorId: String, platformSlug: String): String? {
             val canonical = PlatformDefinitions.getCanonicalSlug(platformSlug)
             val platform = if (canonical == "n3ds") "3ds" else canonical
@@ -371,7 +390,7 @@ class SigilSaveHandler @Inject constructor(
             if (data == null || data.isEmpty()) {
                 SigilCollect.Absent
             } else {
-                SigilCollect.Found(data, result.artifact, result.contentHash, result.identityHash, shapeOf(result.shape, data))
+                SigilCollect.Found(data, result.artifact, result.contentHash, result.identityHash, unitShape(result.shape, data))
             }
         } catch (e: SigilException) {
             when (e.code) {
@@ -449,17 +468,6 @@ class SigilSaveHandler @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
         )
-    }
-
-    private fun shapeOf(shape: SigilSaveUnit.Shape, data: ByteArray): String = when (shape) {
-        SigilSaveUnit.Shape.Multi -> SigilCollect.SHAPE_MULTI
-        SigilSaveUnit.Shape.Folder -> {
-            val roots = java.util.zip.ZipInputStream(data.inputStream()).use { zip ->
-                generateSequence { zip.nextEntry }.map { it.name.substringBefore('/') }.toSet()
-            }
-            if (roots.size > 1) SigilCollect.SHAPE_FOLDERS else SigilCollect.SHAPE_FOLDER
-        }
-        else -> SigilCollect.SHAPE_SINGLE
     }
 
     private fun emulatorIsClosed(pkg: String?): Boolean {
