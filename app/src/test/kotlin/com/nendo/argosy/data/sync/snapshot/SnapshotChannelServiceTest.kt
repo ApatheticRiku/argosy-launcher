@@ -37,7 +37,7 @@ class SnapshotChannelServiceTest {
         coEvery { api.pushSnapshot("d-1", capture(parts)) } returns
             Response.success(201, moshi.adapter(RomMSnapshot::class.java).toJson(RomMSnapshot(50, "sha256:50")).toResponseBody())
         service = SnapshotChannelService(
-            gameDao = mockk(relaxed = true),
+            gameDao = gameDao,
             channelDao = mockk(relaxed = true),
             activeSaveRepository = mockk(relaxed = true),
             syncPreferencesRepository = mockk(relaxed = true),
@@ -50,6 +50,34 @@ class SnapshotChannelServiceTest {
     }
 
     private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>(relaxed = true)
+    private val gameDao = mockk<com.nendo.argosy.data.local.dao.GameDao>(relaxed = true)
+
+    @Test
+    fun `a channel's own snapshot saves are not listed as older-client saves`() = runBlocking {
+        coEvery { gameDao.getById(3) } returns com.nendo.argosy.data.local.entity.GameEntity(
+            id = 3, platformId = 1, title = "Emerald", sortTitle = "emerald",
+            localPath = "/roms/emerald.gba", rommId = 7, igdbId = null,
+            source = com.nendo.argosy.data.model.GameSource.ROMM_SYNCED, platformSlug = "gba"
+        )
+        val rom = mockk<com.nendo.argosy.data.remote.romm.RomMRom>()
+        io.mockk.every { rom.files } returns listOf(
+            com.nendo.argosy.data.remote.romm.RomMRomFile(99, 7, "emerald.gba", "p", 1L, "p/emerald.gba")
+        )
+        coEvery { api.getRom(7) } returns Response.success(rom)
+        coEvery { api.listChannels(listOf(99L)) } returns Response.success(listOf(channel.copy(isOwn = true)))
+        fun save(id: Long, slot: String?, channelId: String?) = com.nendo.argosy.data.remote.romm.RomMSave(
+            id = id, romId = 7, userId = 1, emulator = "argosy", fileName = "s$id.srm",
+            updatedAt = "2026-10-06T00:00:0${id}Z", slot = slot, channelId = channelId
+        )
+        coEvery { api.getSavesByRom(7) } returns Response.success(
+            listOf(save(1, null, "c-default"), save(2, "autosave", "c-default"), save(3, null, null))
+        )
+
+        val library = service.load(3)!!
+
+        assertEquals(listOf(2L), library.mine.single().olderClientSaves.map { it.id })
+        assertEquals(listOf(3L), library.backups.map { it.id })
+    }
 
     private fun manifest(): JSONObject {
         assertEquals("a manifest-only push carries no file part", 1, parts.captured.size)

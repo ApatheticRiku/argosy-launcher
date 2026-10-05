@@ -71,7 +71,7 @@ class SnapshotChannelService @Inject constructor(
         val ownSaves = saves.filter { save -> channels.none { it.id == save.channelId && !it.isOwn } }
         fun entry(channel: RomMChannel) = SnapshotChannelEntry(
             channel,
-            ownSaves.filter { it.channelId == channel.id }.sortedByDescending { it.updatedAt }
+            ownSaves.filter { it.channelId == channel.id && it.slot != null }.sortedByDescending { it.updatedAt }
         )
         SnapshotLibrary(
             romFileId = file.id,
