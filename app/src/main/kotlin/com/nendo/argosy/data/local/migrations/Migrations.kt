@@ -4015,6 +4015,10 @@ object Migration_203_204 : Migration(203, 204) {
                 "`updatedAt` INTEGER NOT NULL, " +
                 "PRIMARY KEY(`ownerUserId`, `platformSlug`, `layout`, `root`))"
         )
+        db.execSQL(
+            "UPDATE `games` SET `saveFeatures` = NULL WHERE `platformSlug` IN " +
+                "('gb', 'gbc', 'gameboy', 'game_boy', 'game-boy', 'gameboycolor', 'game_boy_color', 'game-boy-color')"
+        )
     }
 }
 

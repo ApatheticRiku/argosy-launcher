@@ -84,7 +84,7 @@ class SaveSyncConflictResolver @Inject constructor(
                         game != null && sigil.route(game.id, resolution.emulatorId) != null
                     }
                     if (game != null && sigilHandler != null) {
-                        val restored = saveCacheManager.get().restoreViaSigil(game.id, tempFile, resolution.emulatorId)
+                        val restored = sigilHandler.restore(game.id, tempFile, resolution.emulatorId)
                         if (restored !is SigilRestore.Restored) {
                             val reason = (restored as? SigilRestore.Refused)?.reason ?: "no Sigil layout"
                             return@withContext SaveSyncResult.Error("Failed to place save: $reason")

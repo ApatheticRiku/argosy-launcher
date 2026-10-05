@@ -60,7 +60,8 @@ class SaveDownloader @Inject constructor(
     private val saveUploader: dagger.Lazy<SaveUploader>,
     private val emulatorSaveConfigRepository: EmulatorSaveConfigRepository,
     private val unitSaveHandler: UnitSaveHandler,
-    private val saveUnitResolver: SaveUnitResolver
+    private val saveUnitResolver: SaveUnitResolver,
+    private val sigilSaveHandler: SigilSaveHandler
 ) {
 
     private suspend fun unitPrimaryTarget(
@@ -703,18 +704,16 @@ class SaveDownloader @Inject constructor(
                         return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                     }
 
-                    val sigilRestore = saveCacheManager.get().restoreViaSigil(gameId, tempSaveFile!!, resolvedEmulatorId)
-                    val sigilPlaced = sigilRestore is SigilRestore.Restored ||
-                        sigilRestore is SigilRestore.Refused || sigilRestore is SigilRestore.Uncollected
+                    val sigilRestore = sigilSaveHandler.restore(gameId, tempSaveFile!!, resolvedEmulatorId)
+                    val sigilPlaced = sigilRestore is SigilRestore.Restored || sigilRestore is SigilRestore.Refused
                     val bundleResult = if (sigilPlaced) {
                         null
                     } else {
                         unitBundleResult(tempSaveFile!!, targetPath, config, game, resolvedEmulatorId, emulatorPackage, preferredCore)
                     }
-                    if (sigilRestore is SigilRestore.Refused || sigilRestore is SigilRestore.Uncollected) {
-                        val reason = (sigilRestore as? SigilRestore.Refused)?.reason ?: "uncollected saves on the volume"
-                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Sigil refused the restore | reason=$reason")
-                        return@withContext SaveSyncResult.Error("Failed to place save: $reason")
+                    if (sigilRestore is SigilRestore.Refused) {
+                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Sigil refused the restore | reason=${sigilRestore.reason}")
+                        return@withContext SaveSyncResult.Error("Failed to place save: ${sigilRestore.reason}")
                     } else if (sigilRestore is SigilRestore.Restored) {
                         targetPath = unitPrimaryTarget(targetPath, game, resolvedEmulatorId, preferredCore) ?: targetPath
                         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Restored through Sigil | primary=$targetPath")

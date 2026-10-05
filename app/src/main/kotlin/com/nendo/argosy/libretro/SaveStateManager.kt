@@ -352,10 +352,6 @@ class SaveStateManager(
                 Log.w(TAG, "[SRAM] Sigil refused cache=${entity.id}, keeping the save on disk | ${restored.reason}")
                 return primarySaveFile.takeIf { it.exists() }?.readBytes()
             }
-            is SigilRestore.Uncollected -> {
-                Log.w(TAG, "[SRAM] cache=${entity.id} not restored, the volume holds uncollected saves; keeping the save on disk")
-                return primarySaveFile.takeIf { it.exists() }?.readBytes()
-            }
             SigilRestore.NotRouted -> Unit
         }
         val bytes = saveCacheManager.getSaveBytesFromEntity(entity) ?: return null

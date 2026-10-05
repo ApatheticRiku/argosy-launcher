@@ -450,13 +450,6 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE id = :id")
     suspend fun getById(id: Long): GameEntity?
-
-    @Query(
-        "SELECT id FROM games WHERE platformId = :platformId AND id != :excludeId AND lastPlayed IS NOT NULL " +
-            "ORDER BY lastPlayed DESC LIMIT :limit"
-    )
-    suspend fun getRecentlyPlayedIdsOnPlatform(platformId: Long, excludeId: Long, limit: Int): List<Long>
-
     @Query("SELECT * FROM games WHERE id = :id")
     fun observeById(id: Long): Flow<GameEntity?>
 
