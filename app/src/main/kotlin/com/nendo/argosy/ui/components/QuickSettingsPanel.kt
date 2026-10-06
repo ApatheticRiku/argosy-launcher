@@ -44,6 +44,8 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
@@ -55,6 +57,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.ui.primitives.FocusIndicators
+import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -211,8 +214,36 @@ private fun QuickSettingsRail(
                 )
             }
         }
+        if (pages.size > 1) {
+            Spacer(modifier = Modifier.weight(1f))
+            PagingHint()
+        }
     }
 }
+
+@Composable
+private fun PagingHint() {
+    val mute = LocalArgosyTheme.current.textMute
+    val strokeWidth = Dimens.borderThin
+    Box(
+        modifier = Modifier
+            .size(Dimens.quickPanelRailWidth - Dimens.spacingSm)
+            .drawBehind {
+                val inset = size.width * PAGING_SLASH_INSET
+                drawLine(
+                    color = mute,
+                    start = Offset(size.width - inset, inset),
+                    end = Offset(inset, size.height - inset),
+                    strokeWidth = strokeWidth.toPx()
+                )
+            }
+    ) {
+        InputGlyph(button = InputButton.LB, tint = mute, size = Dimens.iconMd, modifier = Modifier.align(Alignment.TopStart))
+        InputGlyph(button = InputButton.RB, tint = mute, size = Dimens.iconMd, modifier = Modifier.align(Alignment.BottomEnd))
+    }
+}
+
+private const val PAGING_SLASH_INSET = 0.3f
 
 @Composable
 private fun QuickSettingsRailItem(
