@@ -1167,6 +1167,12 @@
     <!-- Row of that panel that swaps the confirm and back buttons on the controller. "A" and
          "B" are the controller button names; keep them as letters. -->
     <string name="ui_quick_settings_swap_ab">Swap A/B</string>
+    <!-- Row of that panel that swaps the X and Y buttons on the controller. "X" and "Y" are the
+         controller button names; keep them as letters. -->
+    <string name="ui_quick_settings_swap_xy">Swap X/Y</string>
+    <!-- Row of that panel that swaps the Start and Select buttons on the controller. "Start"
+         and "Select" are the controller button names. -->
+    <string name="ui_quick_settings_swap_start_select">Swap Start/Select</string>
     <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
          other's role. -->
     <string name="ui_quick_settings_swap_displays">Swap screens</string>

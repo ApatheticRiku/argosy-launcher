@@ -407,6 +407,24 @@ private fun QuickSettingsItemRow(
             onToggle = controller::setSwapAB
         )
 
+        QuickSettingsItem.SwapXY -> QuickToggleRow(
+            icon = Icons.Default.SportsEsports,
+            label = stringResource(R.string.ui_quick_settings_swap_xy),
+            checked = state.swapXY,
+            isFocused = isFocused,
+            onFocus = focus,
+            onToggle = controller::setSwapXY
+        )
+
+        QuickSettingsItem.SwapStartSelect -> QuickToggleRow(
+            icon = Icons.Default.SportsEsports,
+            label = stringResource(R.string.ui_quick_settings_swap_start_select),
+            checked = state.swapStartSelect,
+            isFocused = isFocused,
+            onFocus = focus,
+            onToggle = controller::setSwapStartSelect
+        )
+
         QuickSettingsItem.DeviceAccess -> QuickNoticeRow(
             message = stringResource(R.string.ui_quick_settings_device_access_notice),
             actionLabel = stringResource(R.string.ui_quick_settings_device_access_allow),

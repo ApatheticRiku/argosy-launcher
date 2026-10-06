@@ -57,6 +57,8 @@ data class QuickSettingsState(
     val hapticEnabled: Boolean = true,
     val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
     val swapAB: Boolean = false,
+    val swapXY: Boolean = false,
+    val swapStartSelect: Boolean = false,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = FanController.SPORT_DUTY,
     val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
@@ -125,6 +127,8 @@ sealed class QuickSettingsItem(
     data object UISounds : QuickSettingsItem("uiSounds", QuickSettingsPage.QUICK, QuickSettingsGroup.SOUND)
     data object Haptic : QuickSettingsItem("haptic", QuickSettingsPage.QUICK, QuickSettingsGroup.CONTROLS)
     data object SwapAB : QuickSettingsItem("swapAB", QuickSettingsPage.QUICK, QuickSettingsGroup.CONTROLS)
+    data object SwapXY : QuickSettingsItem("swapXY", QuickSettingsPage.QUICK, QuickSettingsGroup.CONTROLS)
+    data object SwapStartSelect : QuickSettingsItem("swapStartSelect", QuickSettingsPage.QUICK, QuickSettingsGroup.CONTROLS)
 
     data object DeviceAccess : QuickSettingsItem(
         "deviceAccess", QuickSettingsPage.PERFORMANCE,
@@ -174,7 +178,7 @@ sealed class QuickSettingsItem(
                 FriendsPage,
                 DisplayHeader, Theme, ScreenBrightness, SecondScreenBrightness, SwapDisplays,
                 SoundHeader, SystemVolume, UISounds,
-                ControlsHeader, Haptic, SwapAB,
+                ControlsHeader, Haptic, SwapAB, SwapXY, SwapStartSelect,
                 DeviceAccess,
                 PerformanceHeader, Performance, Refresh,
                 FanHeader, Fan, FanSpeed,

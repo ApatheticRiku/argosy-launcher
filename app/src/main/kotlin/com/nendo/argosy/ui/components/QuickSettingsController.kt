@@ -113,6 +113,8 @@ class QuickSettingsController(
             hapticEnabled = prefs.hapticEnabled,
             vibrationStrength = prefs.hapticStrength,
             swapAB = prefs.swapAB,
+            swapXY = prefs.swapXY,
+            swapStartSelect = prefs.swapStartSelect,
             fanMode = deviceSettings.fanMode,
             fanSpeed = deviceSettings.fanSpeed,
             performanceMode = deviceSettings.performanceMode,
@@ -214,6 +216,14 @@ class QuickSettingsController(
 
     fun setSwapAB(enabled: Boolean) {
         scope.launch { preferencesRepository.setSwapAB(enabled) }
+    }
+
+    fun setSwapXY(enabled: Boolean) {
+        scope.launch { preferencesRepository.setSwapXY(enabled) }
+    }
+
+    fun setSwapStartSelect(enabled: Boolean) {
+        scope.launch { preferencesRepository.setSwapStartSelect(enabled) }
     }
 
     fun setHudEnabled(enabled: Boolean) {
@@ -398,6 +408,10 @@ class QuickSettingsController(
             QuickSettingsItem.Haptic -> stepHaptic(snapshot, delta)
             QuickSettingsItem.SwapAB ->
                 toggleLeftRight(delta, snapshot.swapAB, ::setSwapAB)
+            QuickSettingsItem.SwapXY ->
+                toggleLeftRight(delta, snapshot.swapXY, ::setSwapXY)
+            QuickSettingsItem.SwapStartSelect ->
+                toggleLeftRight(delta, snapshot.swapStartSelect, ::setSwapStartSelect)
             QuickSettingsItem.Performance ->
                 stepOption(PerformanceMode.entries, snapshot.performanceMode, delta, ::setPerformanceMode)
             QuickSettingsItem.Refresh -> snapshot.refreshRate?.let { current ->
@@ -428,6 +442,16 @@ class QuickSettingsController(
             QuickSettingsItem.SwapAB -> {
                 val enabled = !snapshot.swapAB
                 setSwapAB(enabled)
+                InputResult.toggled(enabled)
+            }
+            QuickSettingsItem.SwapXY -> {
+                val enabled = !snapshot.swapXY
+                setSwapXY(enabled)
+                InputResult.toggled(enabled)
+            }
+            QuickSettingsItem.SwapStartSelect -> {
+                val enabled = !snapshot.swapStartSelect
+                setSwapStartSelect(enabled)
                 InputResult.toggled(enabled)
             }
             QuickSettingsItem.HudOverlay -> {
