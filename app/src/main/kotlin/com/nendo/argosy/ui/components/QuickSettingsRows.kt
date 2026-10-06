@@ -92,18 +92,29 @@ internal fun QuickRowFrame(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     twoLine: Boolean = false,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val shape = RoundedCornerShape(Dimens.radiusControl)
+    val click = if (onLongClick != null && enabled) {
+        Modifier.clickableNoFocus(onClick = onClick, onLongClick = onLongClick)
+    } else {
+        Modifier.clickableNoFocus(enabled = enabled, onClick = onClick)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = Dimens.spacingSm)
             .heightIn(min = if (twoLine) Dimens.menuRowHeightLg else Dimens.menuRowHeight)
-            .argosyFocusIndicators(focused = isFocused && enabled, indicators = QuickRowFocus, shape = shape)
+            .argosyFocusIndicators(
+                focused = isFocused && enabled,
+                indicators = QuickRowFocus,
+                shape = shape,
+                ringThickness = Dimens.borderThin
+            )
             .clip(shape)
             .alpha(if (enabled) 1f else ComponentDefaults.QuickPanel.disabledContentAlpha)
-            .clickableNoFocus(enabled = enabled, onClick = onClick)
+            .then(click)
             .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
         verticalArrangement = Arrangement.Center,
         content = content

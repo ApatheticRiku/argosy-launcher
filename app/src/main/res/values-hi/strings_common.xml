@@ -586,8 +586,8 @@
     <string name="ui_quick_settings_music_notice_no_tracks">इस चयन में चलाने लायक कुछ नहीं है</string>
     <string name="ui_quick_settings_music_notice_sign_in_playlists">सर्वर प्लेलिस्ट देखने के लिए RomM में फिर से साइन इन करें</string>
     <string name="ui_quick_settings_music_hint_sign_in">फिर से साइन इन करें</string>
-    <string name="ui_quick_settings_friends_hint_favorite">पसंदीदा</string>
-    <string name="ui_quick_settings_friends_hint_unfavorite">पसंदीदा हटाएं</string>
+    <string name="ui_quick_friends_options_favorite">पसंदीदा</string>
+    <string name="ui_quick_friends_options_unfavorite">पसंदीदा हटाएं</string>
     <string name="ui_quick_settings_music_queue_empty">शुरू करने के लिए कोई प्लेलिस्ट या साउंडट्रैक चुनें</string>
     <string name="ui_quick_settings_music_playlist_owner">%1$s द्वारा</string>
     <string name="ui_quick_settings_music_now_playing">अभी चल रहा है</string>

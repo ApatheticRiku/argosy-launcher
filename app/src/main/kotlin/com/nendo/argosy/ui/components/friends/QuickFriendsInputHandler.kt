@@ -49,16 +49,27 @@ class QuickFriendsInputHandler(
         return if (isToggle) InputResult.handled(SoundType.TOGGLE) else InputResult.HANDLED
     }
 
-    override fun onSecondaryAction(): InputResult {
-        if (!controller.state.value.socialConnected) return InputResult.UNHANDLED
-        (focusedRow() as? QuickFriendsRow.Entry)?.let { controller.toggleFavorite(it.friend.id) }
-        return InputResult.HANDLED
+    override fun onLongConfirm(): InputResult {
+        val entry = focusedRow() as? QuickFriendsRow.Entry ?: return onConfirm()
+        controller.showFriendOptions(entry.friend.id)
+        return InputResult.handled(SoundType.OPEN_MODAL)
     }
 
     fun tapRow(index: Int) {
         val row = rows().getOrNull(index) ?: return
         controller.setFocus(index)
         activate(row)
+    }
+
+    fun longPressRow(index: Int) {
+        val entry = rows().getOrNull(index) as? QuickFriendsRow.Entry ?: return
+        controller.setFocus(index)
+        controller.showFriendOptions(entry.friend.id)
+    }
+
+    fun openProfile(friend: Friend) {
+        controller.dismissModal()
+        onOpenProfile(friend)
     }
 
     fun tapAction(index: Int, action: QuickFriendsAction) {

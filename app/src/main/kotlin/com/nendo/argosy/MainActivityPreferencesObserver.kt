@@ -5,6 +5,8 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.audio.BgmPlaylistCoordinator
+import com.nendo.argosy.ui.screens.settings.delegates.VolumeLevels
+import com.nendo.argosy.ui.screens.settings.delegates.levelIn
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SaveDebugLogger
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +44,7 @@ class MainActivityPreferencesObserver(
                     enabled = prefs.saveDebugLoggingEnabled
                 )
                 ambientAudioManager.setEnabled(prefs.ambientAudioEnabled)
-                ambientAudioManager.setVolume(prefs.ambientAudioVolume)
+                ambientAudioManager.setVolume(levelIn(prefs.ambientAudioVolume, VolumeLevels.AMBIENT_AUDIO))
                 ambientAudioManager.setShuffle(prefs.ambientAudioShuffle)
                 bgmPlaylistCoordinator.activate()
                 if (prefs.ambientAudioEnabled && hasWindowFocus()) {

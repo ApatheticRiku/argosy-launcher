@@ -315,7 +315,8 @@ private fun SourceTiles(state: MusicPlayerUiState, onSelect: (MusicBrowseKind) -
                     .argosyFocusIndicators(
                         focused = focused,
                         indicators = FocusIndicators(fill = true, ring = true),
-                        shape = shape
+                        shape = shape,
+                        ringThickness = Dimens.borderThin
                     )
                     .clickableNoFocus(onClick = { onSelect(source.kind) })
                     .padding(Dimens.spacingMd),
@@ -651,7 +652,12 @@ private fun PlayPauseButton(isPlaying: Boolean, isFocused: Boolean, onClick: () 
     Box(
         modifier = Modifier
             .size(ComponentDefaults.MusicPlayer.playButtonDp.dp)
-            .argosyFocusIndicators(focused = isFocused, indicators = PlayFocus, shape = CircleShape)
+            .argosyFocusIndicators(
+                focused = isFocused,
+                indicators = PlayFocus,
+                shape = CircleShape,
+                ringThickness = Dimens.borderThin
+            )
             .clip(CircleShape)
             .background(theme.focusAccent)
             .clickableNoFocus(onClick = onClick),
@@ -933,7 +939,12 @@ private fun MusicSearchField(
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
             .clip(shape)
             .background(theme.surfaceRaised)
-            .argosyFocusIndicators(focused = isFocused, indicators = FocusIndicators(fill = true, ring = true), shape = shape)
+            .argosyFocusIndicators(
+                focused = isFocused,
+                indicators = FocusIndicators(fill = true, ring = true),
+                shape = shape,
+                ringThickness = Dimens.borderThin
+            )
             .clickableNoFocus(onClick = onTap)
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
         verticalAlignment = Alignment.CenterVertically

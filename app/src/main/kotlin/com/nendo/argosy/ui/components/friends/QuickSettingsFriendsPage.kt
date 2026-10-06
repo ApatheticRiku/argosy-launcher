@@ -51,6 +51,7 @@ fun QuickSettingsFriendsPage(
     showQuayPass: Boolean,
     quayPassEnabled: Boolean,
     onRowClick: (Int) -> Unit,
+    onRowLongClick: (Int) -> Unit,
     onActionClick: (Int, QuickFriendsAction) -> Unit
 ) {
     val rows = remember(showQuayPass, state) { quickFriendsRows(showQuayPass, state) }
@@ -100,7 +101,8 @@ fun QuickSettingsFriendsPage(
                         FriendRow(
                             friend = row.friend,
                             isFocused = isFocused,
-                            onClick = { onRowClick(index) }
+                            onClick = { onRowClick(index) },
+                            onLongClick = { onRowLongClick(index) }
                         )
                     }
                 }
@@ -223,12 +225,13 @@ private fun FriendSectionLabel(position: Int, onlineCount: Int, offlineCount: In
 private fun FriendRow(
     friend: Friend,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
 ) {
     val theme = LocalArgosyTheme.current
     val online = friend.isOnlineNow
     val presenceColor = presenceOnlineColor()
-    QuickRowFrame(isFocused = isFocused, onClick = onClick) {
+    QuickRowFrame(isFocused = isFocused, onClick = onClick, onLongClick = onLongClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SocialAvatar(
                 displayName = friend.displayName,

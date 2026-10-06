@@ -25,6 +25,7 @@ sealed class FriendsModal {
     data object None : FriendsModal()
     data object FriendCode : FriendsModal()
     data object AddFriend : FriendsModal()
+    data class FriendOptions(val friendId: String, val openedAtPosition: Int) : FriendsModal()
 }
 
 enum class QuickFriendsAction { MY_CODE, ADD_FRIEND }
@@ -95,7 +96,7 @@ class QuickFriendsController(
             friendCode = code?.code,
             friendCodeUrl = code?.url,
             modal = openModal,
-            focusIndex = focused.index,
+            focusIndex = pinnedFocusIndex(openModal, sorted, focused.index),
             action = focused.action,
             appearOnline = online
         )
@@ -151,8 +152,23 @@ class QuickFriendsController(
         modal.update { FriendsModal.AddFriend }
     }
 
+    fun showFriendOptions(friendId: String) {
+        val position = state.value.friends.indexOfFirst { it.id == friendId }
+        if (position < 0) return
+        modal.update { FriendsModal.FriendOptions(friendId, position) }
+    }
+
     fun dismissModal() {
+        val pinnedIndex = state.value.focusIndex
+        if (modal.value is FriendsModal.FriendOptions) focus.update { it.copy(index = pinnedIndex) }
         modal.update { FriendsModal.None }
+    }
+
+    private fun pinnedFocusIndex(openModal: FriendsModal, friends: List<Friend>, index: Int): Int {
+        val pinned = openModal as? FriendsModal.FriendOptions ?: return index
+        val position = friends.indexOfFirst { it.id == pinned.friendId }
+        if (position < 0) return index
+        return index + position - pinned.openedAtPosition
     }
 
     fun regenerateFriendCode() {

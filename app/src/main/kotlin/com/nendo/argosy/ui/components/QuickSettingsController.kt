@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private const val LEVEL_STEP = 0.05f
 private const val DEFAULT_BRIGHTNESS = 0.5f
@@ -244,10 +245,24 @@ class QuickSettingsController(
     }
 
     fun setSystemVolume(volume: Float) {
-        val coerced = volume.coerceIn(0f, 1f)
+        val steps = volumeController.maxVolume
+        setVolumeStep((volume.coerceIn(0f, 1f) * steps).roundToInt(), steps)
+    }
+
+    private fun setVolumeStep(step: Int, steps: Int) {
+        val level = if (steps > 0) step.toFloat() / steps else 0f
         volumeInputTimestamp = System.currentTimeMillis()
-        levels.update { it.copy(volume = coerced) }
-        volumeController.setPrimaryVolume(coerced)
+        levels.update { it.copy(volume = level) }
+        volumeController.setPrimaryVolume(level)
+    }
+
+    private fun stepVolume(current: Float, delta: Int): InputResult {
+        val steps = volumeController.maxVolume
+        val step = (current * steps).roundToInt()
+        val next = (step + delta).coerceIn(0, steps)
+        if (next == step) return InputResult.handled(SoundType.BOUNDARY)
+        setVolumeStep(next, steps)
+        return InputResult.HANDLED
     }
 
     fun setScreenBrightness(brightness: Float) {
@@ -425,7 +440,7 @@ class QuickSettingsController(
             QuickSettingsItem.SwapDisplays ->
                 toggleLeftRight(delta, snapshot.isRolesSwapped) { swapDisplays() }
             QuickSettingsItem.SystemVolume ->
-                stepLevel(snapshot.systemVolume, delta, ::setSystemVolume)
+                stepVolume(snapshot.systemVolume, delta)
             QuickSettingsItem.UISounds ->
                 toggleLeftRight(delta, snapshot.soundEnabled, ::setSoundEnabled)
             QuickSettingsItem.Haptic -> stepHaptic(snapshot, delta)
