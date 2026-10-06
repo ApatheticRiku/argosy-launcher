@@ -248,6 +248,7 @@ private fun ChannelRow(
     ) {
         LazyRow(
             state = rowState,
+            modifier = Modifier.height(Dimens.saveChannelRowHeight),
             contentPadding = PaddingValues(Dimens.spacingSm),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm),
             verticalAlignment = Alignment.Top

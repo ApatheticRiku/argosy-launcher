@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -163,6 +164,7 @@ internal fun SnapshotChannelTile(
     Column(
         modifier = Modifier
             .width(Dimens.saveChannelTileWidth)
+            .fillMaxHeight()
             .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
             .clip(shape)
             .clickableNoFocus(onClick = onClick, onLongClick = onLongClick)
@@ -283,6 +285,7 @@ internal fun SnapshotCard(
     Column(
         modifier = Modifier
             .width(Dimens.saveChannelCardWidth)
+            .fillMaxHeight()
             .clip(shape)
             .background(theme.surfaceElevated)
             .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
@@ -373,7 +376,7 @@ internal fun SnapshotLoadMoreCard(isFocused: Boolean, isLoading: Boolean, onClic
     Box(
         modifier = Modifier
             .width(Dimens.saveChannelCardWidth)
-            .aspectRatio(THUMB_ASPECT)
+            .fillMaxHeight()
             .clip(shape)
             .background(theme.surfaceElevated)
             .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
