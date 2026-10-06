@@ -2,7 +2,6 @@ package com.nendo.argosy.ui.components.friends
 
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.preferences.MenuWrapMode
-import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.settings.sections.input.toggleLeftRight
@@ -13,7 +12,8 @@ class QuickFriendsInputHandler(
     private val quayPassEnabled: () -> Boolean,
     private val wrapMode: () -> MenuWrapMode,
     private val onToggleQuayPass: () -> Unit,
-    private val onOpenProfile: (Friend) -> Unit
+    private val onOpenProfile: (userId: String) -> Unit,
+    private val onEditAvatar: () -> Unit
 ) : InputHandler {
 
     private fun rows(): List<QuickFriendsRow> = quickFriendsRows(showQuayPass(), controller.state.value)
@@ -50,8 +50,8 @@ class QuickFriendsInputHandler(
     }
 
     override fun onLongConfirm(): InputResult {
-        val entry = focusedRow() as? QuickFriendsRow.Entry ?: return onConfirm()
-        controller.showFriendOptions(entry.friend.id)
+        val row = focusedRow() ?: return InputResult.UNHANDLED
+        if (!showOptions(row)) return onConfirm()
         return InputResult.handled(SoundType.OPEN_MODAL)
     }
 
@@ -62,14 +62,19 @@ class QuickFriendsInputHandler(
     }
 
     fun longPressRow(index: Int) {
-        val entry = rows().getOrNull(index) as? QuickFriendsRow.Entry ?: return
+        val row = rows().getOrNull(index) ?: return
         controller.setFocus(index)
-        controller.showFriendOptions(entry.friend.id)
+        showOptions(row)
     }
 
-    fun openProfile(friend: Friend) {
+    fun openProfile(userId: String) {
         controller.dismissModal()
-        onOpenProfile(friend)
+        onOpenProfile(userId)
+    }
+
+    fun editAvatar() {
+        controller.dismissModal()
+        onEditAvatar()
     }
 
     fun tapAction(index: Int, action: QuickFriendsAction) {
@@ -78,12 +83,25 @@ class QuickFriendsInputHandler(
         controller.openAction(action)
     }
 
+    private fun showOptions(row: QuickFriendsRow): Boolean = when (row) {
+        QuickFriendsRow.Profile -> {
+            controller.showProfileOptions()
+            true
+        }
+        is QuickFriendsRow.Entry -> {
+            controller.showFriendOptions(row.friend.id)
+            true
+        }
+        else -> false
+    }
+
     private fun activate(row: QuickFriendsRow) {
         when (row) {
+            QuickFriendsRow.Profile -> controller.state.value.localUser?.let { onOpenProfile(it.id) }
             QuickFriendsRow.QuayPass -> onToggleQuayPass()
             QuickFriendsRow.AppearOnline -> controller.toggleAppearOnline()
             QuickFriendsRow.Actions -> controller.openAction(controller.state.value.action)
-            is QuickFriendsRow.Entry -> onOpenProfile(row.friend)
+            is QuickFriendsRow.Entry -> onOpenProfile(row.friend.id)
         }
     }
 }

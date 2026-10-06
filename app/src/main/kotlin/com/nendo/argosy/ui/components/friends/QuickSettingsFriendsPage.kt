@@ -62,7 +62,6 @@ fun QuickSettingsFriendsPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        state.localUser?.let { ProfileBlock(user = it, online = state.socialConnected && state.appearOnline) }
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -72,6 +71,15 @@ fun QuickSettingsFriendsPage(
             items(rows.size, key = { rows[it].key }) { index ->
                 val isFocused = index == state.focusIndex
                 when (val row = rows[index]) {
+                    QuickFriendsRow.Profile -> state.localUser?.let { user ->
+                        ProfileBlock(
+                            user = user,
+                            online = state.socialConnected && state.appearOnline,
+                            isFocused = isFocused,
+                            onClick = { onRowClick(index) },
+                            onLongClick = { onRowLongClick(index) }
+                        )
+                    }
                     QuickFriendsRow.QuayPass -> QuickToggleRow(
                         icon = if (quayPassEnabled) QuayPassIcons.On else QuayPassIcons.Off,
                         label = stringResource(R.string.ui_quick_settings_quaypass),
@@ -122,38 +130,41 @@ fun QuickSettingsFriendsPage(
 }
 
 @Composable
-private fun ProfileBlock(user: SocialUser, online: Boolean) {
+private fun ProfileBlock(
+    user: SocialUser,
+    online: Boolean,
+    isFocused: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     val theme = LocalArgosyTheme.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SocialAvatar(
-            displayName = user.displayName,
-            avatarColor = user.avatarColor,
-            size = Dimens.avatarMd,
-            showOnlineDot = online,
-            avatarUrl = user.avatarUrl,
-            userId = user.id
-        )
-        Spacer(modifier = Modifier.width(Dimens.spacingMd))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = user.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                color = theme.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+    QuickRowFrame(isFocused = isFocused, onClick = onClick, twoLine = true, onLongClick = onLongClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SocialAvatar(
+                displayName = user.displayName,
+                avatarColor = user.avatarColor,
+                size = Dimens.avatarMd,
+                showOnlineDot = online,
+                avatarUrl = user.avatarUrl,
+                userId = user.id
             )
-            Text(
-                text = stringResource(
-                    if (online) R.string.ui_quick_friends_status_online else R.string.ui_quick_friends_status_offline
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = if (online) presenceOnlineColor() else theme.textDim
-            )
+            Spacer(modifier = Modifier.width(Dimens.spacingMd))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = user.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = theme.textPrimary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = stringResource(
+                        if (online) R.string.ui_quick_friends_status_online else R.string.ui_quick_friends_status_offline
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (online) presenceOnlineColor() else theme.textDim
+                )
+            }
         }
     }
 }

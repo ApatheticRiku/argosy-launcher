@@ -26,6 +26,7 @@ sealed class FriendsModal {
     data object FriendCode : FriendsModal()
     data object AddFriend : FriendsModal()
     data class FriendOptions(val friendId: String, val openedAtPosition: Int) : FriendsModal()
+    data object ProfileOptions : FriendsModal()
 }
 
 enum class QuickFriendsAction { MY_CODE, ADD_FRIEND }
@@ -44,6 +45,7 @@ data class QuickFriendsState(
 )
 
 sealed class QuickFriendsRow(val key: String) {
+    data object Profile : QuickFriendsRow("profile")
     data object QuayPass : QuickFriendsRow("quaypass")
     data object AppearOnline : QuickFriendsRow("appear_online")
     data object Actions : QuickFriendsRow("actions")
@@ -55,6 +57,7 @@ sealed class QuickFriendsRow(val key: String) {
  * [QuickFriendsState.focusIndex] indexes this list.
  */
 fun quickFriendsRows(showQuayPass: Boolean, state: QuickFriendsState): List<QuickFriendsRow> = buildList {
+    if (state.localUser != null) add(QuickFriendsRow.Profile)
     if (showQuayPass) add(QuickFriendsRow.QuayPass)
     if (state.socialConnected) {
         add(QuickFriendsRow.AppearOnline)
@@ -150,6 +153,11 @@ class QuickFriendsController(
 
     fun showAddFriend() {
         modal.update { FriendsModal.AddFriend }
+    }
+
+    fun showProfileOptions() {
+        if (state.value.localUser == null) return
+        modal.update { FriendsModal.ProfileOptions }
     }
 
     fun showFriendOptions(friendId: String) {

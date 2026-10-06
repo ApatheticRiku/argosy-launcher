@@ -1308,6 +1308,8 @@
     <string name="ui_quick_friends_options_unfavorite">Remove favorite</string>
     <!-- Row in a friend's options on the quick panel: opens that friend's profile. -->
     <string name="ui_quick_friends_options_profile">View profile</string>
+    <!-- Row in the reader's own options on the quick panel: opens the avatar drawing editor. -->
+    <string name="ui_quick_friends_options_edit_avatar">Edit avatar</string>
     <!-- Shown where the track list of the Music page would be when nothing is queued. -->
     <string name="ui_quick_settings_music_queue_empty">Pick a playlist or soundtrack to start</string>
     <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->

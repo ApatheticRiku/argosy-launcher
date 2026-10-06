@@ -467,10 +467,15 @@ fun ArgosyApp(
             quayPassEnabled = { viewModel.quickSettings.state.value.quayPassEnabled },
             wrapMode = { viewModel.uiState.value.menuWrapMode },
             onToggleQuayPass = { viewModel.quickSettings.toggleQuayPass() },
-            onOpenProfile = { friend ->
+            onOpenProfile = { userId ->
                 inputDispatcher.unsubscribeDrawer()
                 viewModel.quickSettings.setOpen(false)
-                navigateFromDrawer(Screen.UserProfile.createRoute(friend.id))
+                navigateFromDrawer(Screen.UserProfile.createRoute(userId))
+            },
+            onEditAvatar = {
+                inputDispatcher.unsubscribeDrawer()
+                viewModel.quickSettings.setOpen(false)
+                navigateFromDrawer(Screen.AvatarDoodle.route)
             }
         )
     }
@@ -1340,7 +1345,8 @@ fun ArgosyApp(
             QuickFriendsModals(
                 state = quickFriendsState,
                 controller = viewModel.quickFriends,
-                onOpenProfile = quickFriendsInputHandler::openProfile
+                onOpenProfile = quickFriendsInputHandler::openProfile,
+                onEditAvatar = quickFriendsInputHandler::editAvatar
             )
 
             saveConflictInfo?.let { info ->
