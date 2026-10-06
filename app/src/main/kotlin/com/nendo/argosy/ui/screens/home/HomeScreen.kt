@@ -401,7 +401,13 @@ fun HomeScreen(
         }
     }
 
-    val previewBlocked = videoPreviewBlocked || uiState.showGameMenu ||
+    val dsmForFocus = com.nendo.argosy.DualScreenManagerHolder.instance
+    val focusPickerOpen by (
+        dsmForFocus?.focusPickerOpen
+            ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+        ).collectAsState()
+    val previewBlocked = videoPreviewBlocked || focusPickerOpen || uiState.showGameMenu ||
+        uiState.appDrawer != null || uiState.appBarMenu != null ||
         uiState.showAddToCollectionModal || uiState.showCreateCollectionDialog ||
         uiState.discPickerState != null || uiState.memcardPickerState != null ||
         uiState.syncOverlayState != null || uiState.changelogEntry != null || siblingChoiceOpen
@@ -1223,11 +1229,6 @@ fun HomeScreen(
 
         val hasPresentationScreen by (
             com.nendo.argosy.DualScreenManagerHolder.instance?.hasPresentationScreen
-                ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-            ).collectAsState()
-        val dsmForFocus = com.nendo.argosy.DualScreenManagerHolder.instance
-        val focusPickerOpen by (
-            dsmForFocus?.focusPickerOpen
                 ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
             ).collectAsState()
         val focusPickerIndex by (
