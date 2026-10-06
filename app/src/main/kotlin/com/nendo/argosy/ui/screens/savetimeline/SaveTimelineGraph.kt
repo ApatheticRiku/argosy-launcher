@@ -87,6 +87,11 @@ internal fun saveTimelineLaneColors(): List<Color> {
     }
 }
 
+@Composable
+internal fun saveTimelinePanelColor(): Color = LocalArgosyTheme.current.surfaceBase.copy(alpha = PANEL_ALPHA)
+
+private const val PANEL_ALPHA = 0.55f
+
 private val LANE_HUE_STEPS = listOf(0f, 180f, 90f, 270f, 45f, 225f)
 private const val LANE_MIN_SATURATION = 0.55f
 private const val LANE_LIGHTNESS = 0.62f
@@ -115,6 +120,12 @@ internal fun SaveTimelineGraph(
             val target = (laneCenter - viewportHeightPx / 2f).roundToInt().coerceIn(0, verticalScroll.maxValue)
             verticalScroll.animateScrollTo(target)
         }
+        Box(
+            modifier = Modifier
+                .width(Dimens.saveTimelineLabelWidth)
+                .fillMaxHeight()
+                .background(saveTimelinePanelColor())
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()

@@ -133,6 +133,7 @@ object DimensionTokens {
         const val saveTimelineFloaterWidth = 360
         const val saveTimelineFloaterThumb = 152
         const val saveTimelineHeaderCover = 56
+        const val saveTimelineBackdropBlur = 48
     }
 
     object Elevation {

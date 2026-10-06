@@ -71,6 +71,7 @@ object Dimens {
     val saveTimelineFloaterWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterWidth.dp * scale
     val saveTimelineFloaterThumb: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterThumb.dp * scale
     val saveTimelineHeaderCover: Dp @Composable get() = DimensionTokens.Layout.saveTimelineHeaderCover.dp * scale
+    val saveTimelineBackdropBlur: Dp @Composable get() = DimensionTokens.Layout.saveTimelineBackdropBlur.dp
     val dotSm: Dp @Composable get() = DimensionTokens.Dot.sm.dp * scale
     val dotLg: Dp @Composable get() = DimensionTokens.Dot.lg.dp * scale
     val avatarXs: Dp @Composable get() = DimensionTokens.Avatar.xs.dp * scale
