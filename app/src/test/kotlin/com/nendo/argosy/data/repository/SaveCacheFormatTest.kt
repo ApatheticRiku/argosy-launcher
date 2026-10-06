@@ -126,6 +126,17 @@ class SaveCacheFormatTest {
     }
 
     @Test
+    fun `a neutral cache no Sigil layout covers is refused and nothing is written`() = runTest {
+        routed()
+        cacheLiveSave()
+        coEvery { sigil.restore(any(), any(), any()) } returns SigilRestore.NotRouted
+        val target = File(tempDir, "restored/backup.ram")
+
+        assertEquals(false, manager.restoreSave(ROW_ID, target.absolutePath))
+        assertTrue(!target.exists())
+    }
+
+    @Test
     fun `a neutral cache restores through Sigil`() = runTest {
         routed()
         cacheLiveSave()

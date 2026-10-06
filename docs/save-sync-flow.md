@@ -154,7 +154,9 @@ card directory while the archive holds only one game's folders, so every caller 
   for a unit Sigil built, `native` for the files the emulator wrote. An offline-chain push
   (`SnapshotSyncEngine.pushCached`) labels the save with the row's format, and a cache restore
   (`SaveCacheManager.restoreSave`, `restoreThroughSigil`) hands only a non-native row to Sigil, so
-  neither depends on the route at the time it runs. A null `saveFormat` marks a row written before
+  neither depends on the route at the time it runs. A `neutral` row that no Sigil layout covers at
+  restore time (after a move to an older server, a sign-out, or an emulator change) is refused and
+  nothing is written; a Sigil unit is never placed as raw files. A null `saveFormat` marks a row written before
   schema 206, or a server download whose format the server did not report: a push treats it as
   `native`, a restore follows the live route.
 

@@ -643,12 +643,15 @@ class SaveCacheManager @Inject constructor(
     private fun formatOf(sigil: SigilCollect.Found?): String =
         if (sigil != null) SaveCacheEntity.FORMAT_NEUTRAL else SaveCacheEntity.FORMAT_NATIVE
 
-    private suspend fun restoreUnlessNative(entity: SaveCacheEntity, cacheFile: File, emulatorId: String?): SigilRestore =
-        if (entity.saveFormat == SaveCacheEntity.FORMAT_NATIVE) {
-            SigilRestore.NotRouted
+    private suspend fun restoreUnlessNative(entity: SaveCacheEntity, cacheFile: File, emulatorId: String?): SigilRestore {
+        if (entity.saveFormat == SaveCacheEntity.FORMAT_NATIVE) return SigilRestore.NotRouted
+        val restored = sigilSaveHandler.restore(entity.gameId, cacheFile, emulatorId)
+        return if (restored == SigilRestore.NotRouted && entity.saveFormat == SaveCacheEntity.FORMAT_NEUTRAL) {
+            SigilRestore.Refused("cache ${entity.id} holds a Sigil unit and no Sigil layout covers this emulator now")
         } else {
-            sigilSaveHandler.restore(entity.gameId, cacheFile, emulatorId)
+            restored
         }
+    }
 
     suspend fun findCachedByHash(gameId: Long, contentHash: String): com.nendo.argosy.data.local.entity.SaveCacheEntity? =
         withContext(Dispatchers.IO) { saveCacheDao.getByGameAndHash(gameId, syncPreferencesRepository.getRommUserId(), contentHash) }
