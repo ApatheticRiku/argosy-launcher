@@ -51,7 +51,7 @@ import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.ui.util.clickableNoFocus
 import kotlin.math.roundToInt
 
-private val QuickRowFocus = FocusIndicators(fill = true, ring = true)
+private val QuickRowFocus = FocusIndicators.ListRow
 
 @Composable
 private fun leadingSlotWidth(): Dp =
@@ -106,12 +106,7 @@ internal fun QuickRowFrame(
             .fillMaxWidth()
             .padding(horizontal = Dimens.spacingSm)
             .heightIn(min = if (twoLine) Dimens.menuRowHeightLg else Dimens.menuRowHeight)
-            .argosyFocusIndicators(
-                focused = isFocused && enabled,
-                indicators = QuickRowFocus,
-                shape = shape,
-                ringThickness = Dimens.borderThin
-            )
+            .argosyFocusIndicators(focused = isFocused && enabled, indicators = QuickRowFocus, shape = shape)
             .clip(shape)
             .alpha(if (enabled) 1f else ComponentDefaults.QuickPanel.disabledContentAlpha)
             .then(click)

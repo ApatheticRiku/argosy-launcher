@@ -55,7 +55,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.primitives.ArgosyToggle
@@ -98,18 +97,12 @@ internal fun preferenceModifier(
         animationSpec = Motion.focusColorSpec,
         label = "pref-bg"
     )
-    val borderAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.8f else 0f,
-        animationSpec = Motion.focusSpring,
-        label = "pref-border"
-    )
 
     return Modifier
         .fillMaxWidth()
         .heightIn(min = Dimens.settingsItemMinHeight)
         .clip(preferenceShape)
         .background(background)
-        .border(Dimens.borderThin, accent.copy(alpha = borderAlpha), preferenceShape)
         .then(
             when {
                 onClick != null -> Modifier.clickableNoFocus(onClick = onClick)

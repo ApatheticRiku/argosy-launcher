@@ -298,10 +298,9 @@ internal fun RecomputeRow(
             .pressScale(interaction)
             .argosyFocusIndicators(
                 focused = isFocused,
-                indicators = FocusIndicators(fill = true, ring = true),
+                indicators = FocusIndicators.ListRow,
                 tint = theme.focusAccent,
-                shape = shape,
-                ringThickness = Dimens.borderThin
+                shape = shape
             )
             .clip(shape)
             .clickableNoFocus(

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -97,7 +98,7 @@ import kotlinx.coroutines.isActive
 import java.util.Locale
 
 private const val LOAD_MORE_LOOKAHEAD = 4
-private const val EXPANDED_COVER_WEIGHT = 2f
+private const val PLAYER_MAX_HEIGHT_FRACTION = 2f / 3f
 
 private val TransportFocus = FocusIndicators(fill = true)
 private val PlayFocus = FocusIndicators(ring = true)
@@ -133,59 +134,64 @@ private fun MusicPlayerMain(state: MusicPlayerUiState, viewModel: MusicPlayerVie
         viewModel.focusSource(kind)
         viewModel.openBrowse(kind)
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        if (state.hasQueue) {
-            val coverPath = state.playback.coverPath.takeIf { state.playback.overrideTitle == null }
-            val expanded = state.showsFullPlayer && coverPath != null
-            Box(modifier = Modifier.weight(EXPANDED_COVER_WEIGHT, fill = false)) {
-                if (expanded) CoverBloom(coverPath = coverPath, modifier = Modifier.matchParentSize())
-                Column {
-                    AnimatedVisibility(
-                        visible = expanded,
-                        enter = expandVertically(tween(Motion.durationContent)) + fadeIn(tween(Motion.durationContent)),
-                        exit = shrinkVertically(tween(Motion.durationContent)) + fadeOut(tween(Motion.durationContent)),
-                        modifier = Modifier.weight(1f, fill = false)
-                    ) {
-                        ExpandedCover(
-                            coverPath = coverPath,
-                            modifier = Modifier.padding(
-                                start = Dimens.spacingLg,
-                                end = Dimens.spacingLg,
-                                top = Dimens.spacingSm
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val playerMaxHeight = maxHeight * PLAYER_MAX_HEIGHT_FRACTION
+        Column(modifier = Modifier.fillMaxSize()) {
+            if (state.hasQueue) {
+                val coverPath = state.playback.coverPath.takeIf { state.playback.overrideTitle == null }
+                val expanded = state.showsFullPlayer && coverPath != null
+                Box(modifier = Modifier.heightIn(max = playerMaxHeight)) {
+                    if (expanded) CoverBloom(coverPath = coverPath, modifier = Modifier.matchParentSize())
+                    Column {
+                        AnimatedVisibility(
+                            visible = expanded,
+                            enter = expandVertically(tween(Motion.durationContent)) +
+                                fadeIn(tween(Motion.durationContent)),
+                            exit = shrinkVertically(tween(Motion.durationContent)) +
+                                fadeOut(tween(Motion.durationContent)),
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            ExpandedCover(
+                                coverPath = coverPath,
+                                modifier = Modifier.padding(
+                                    start = Dimens.spacingLg,
+                                    end = Dimens.spacingLg,
+                                    top = Dimens.spacingSm
+                                )
                             )
+                        }
+                        NowPlayingHeader(state = state, launcherLabel = launcherLabel, expanded = expanded)
+                        TransportRow(
+                            state = state,
+                            onButton = { button ->
+                                viewModel.focusTransport(button)
+                                viewModel.activateTransport(button)
+                            }
                         )
                     }
-                    NowPlayingHeader(state = state, launcherLabel = launcherLabel, expanded = expanded)
-                    TransportRow(
-                        state = state,
-                        onButton = { button ->
-                            viewModel.focusTransport(button)
-                            viewModel.activateTransport(button)
-                        }
-                    )
                 }
+                QuickSwitchedSliderRow(
+                    icon = Icons.Default.MusicNote,
+                    label = stringResource(R.string.ui_quick_settings_music_volume),
+                    on = state.launcherEnabled,
+                    fraction = state.volumeFraction,
+                    valueText = quickPercentLabel(state.volumeFraction),
+                    isFocused = state.focusedRow == MusicPlayerRow.VOLUME,
+                    onFocus = viewModel::focusVolume,
+                    onToggle = viewModel::setMusicEnabled,
+                    onFractionChange = viewModel::setVolumeFraction
+                )
+                SourceButtons(state = state, onSelect = openSource)
+            } else {
+                EmptyNowPlaying()
+                SourceTiles(state = state, onSelect = openSource)
             }
-            QuickSwitchedSliderRow(
-                icon = Icons.Default.MusicNote,
-                label = stringResource(R.string.ui_quick_settings_music_volume),
-                on = state.launcherEnabled,
-                fraction = state.volumeFraction,
-                valueText = quickPercentLabel(state.volumeFraction),
-                isFocused = state.focusedRow == MusicPlayerRow.VOLUME,
-                onFocus = viewModel::focusVolume,
-                onToggle = viewModel::setMusicEnabled,
-                onFractionChange = viewModel::setVolumeFraction
+            TrackList(
+                state = state,
+                onPlay = { position -> viewModel.playTrack(position) },
+                modifier = Modifier.weight(1f)
             )
-            SourceButtons(state = state, onSelect = openSource)
-        } else {
-            EmptyNowPlaying()
-            SourceTiles(state = state, onSelect = openSource)
         }
-        TrackList(
-            state = state,
-            onPlay = { position -> viewModel.playTrack(position) },
-            modifier = Modifier.weight(1f)
-        )
     }
 }
 
@@ -948,12 +954,7 @@ private fun MusicSearchField(
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingXs)
             .clip(shape)
             .background(theme.surfaceRaised)
-            .argosyFocusIndicators(
-                focused = isFocused,
-                indicators = FocusIndicators(fill = true, ring = true),
-                shape = shape,
-                ringThickness = Dimens.borderThin
-            )
+            .argosyFocusIndicators(focused = isFocused, indicators = FocusIndicators.ListRow, shape = shape)
             .clickableNoFocus(onClick = onTap)
             .padding(horizontal = Dimens.spacingMd, vertical = Dimens.spacingSm),
         verticalAlignment = Alignment.CenterVertically

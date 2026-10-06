@@ -196,11 +196,7 @@ private fun AccountRow(
             .fillMaxWidth()
             .clip(shape)
             .background(background)
-            .border(
-                width = Dimens.borderThin,
-                color = if (isFocused) theme.focusAccent else theme.hairlineLow,
-                shape = shape
-            )
+            .border(width = Dimens.borderThin, color = theme.hairlineLow, shape = shape)
             .padding(Dimens.spacingMd),
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {

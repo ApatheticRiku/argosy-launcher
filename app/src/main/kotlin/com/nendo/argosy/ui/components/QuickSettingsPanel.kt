@@ -164,8 +164,8 @@ private fun quickPanelWidthFor(page: QuickSettingsPage): Dp {
     val cap = LocalConfiguration.current.screenWidthDp.dp * WIDE_PAGE_MAX_SCREEN_FRACTION
     val width = when (page) {
         QuickSettingsPage.MUSIC -> Dimens.quickPanelWidthMedia
-        QuickSettingsPage.FRIENDS -> Dimens.quickPanelWidthWide
-        QuickSettingsPage.QUICK, QuickSettingsPage.PERFORMANCE -> Dimens.quickPanelWidth
+        QuickSettingsPage.FRIENDS, QuickSettingsPage.QUICK, QuickSettingsPage.PERFORMANCE ->
+            Dimens.quickPanelWidthWide
     }
     return min(width, cap)
 }

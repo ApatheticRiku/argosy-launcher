@@ -516,7 +516,7 @@
     <string name="ui_home_layout_lanes_columns">列数</string>
     <string name="ui_home_layout_lanes_rows">行数</string>
 
-    <string name="ui_quick_settings_title">快捷设置</string>
+    <string name="ui_quick_settings_title">设置</string>
     <string name="ui_quick_settings_performance">性能</string>
     <string name="ui_quick_settings_fan">风扇</string>
     <string name="ui_quick_settings_fan_quiet">静音</string>

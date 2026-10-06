@@ -458,7 +458,7 @@ private fun ScopeToggleRow(
 ) {
     val theme = LocalArgosyTheme.current
     val backgroundColor = if (isFocused) theme.focusAccent.copy(alpha = 0.15f) else Color.Transparent
-    val borderColor = if (isFocused) theme.focusAccent else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     val contentColor = if (isFocused) lerp(theme.focusAccent, Color.White, 0.45f) else MaterialTheme.colorScheme.onSurface
 
     Row(
@@ -545,7 +545,6 @@ private fun HotkeyRow(
     val borderColor = when {
         isConflicting -> MaterialTheme.colorScheme.error
         showWarning -> warningColor
-        isFocused -> theme.focusAccent
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     }
     val contentColor = when {

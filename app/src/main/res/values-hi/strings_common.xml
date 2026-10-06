@@ -539,7 +539,7 @@
 
     <!-- Quick settings panel (ui/components/QuickSettingsPanel.kt) -->
 
-    <string name="ui_quick_settings_title">क्विक सेटिंग्स</string>
+    <string name="ui_quick_settings_title">सेटिंग्स</string>
     <string name="ui_quick_settings_performance">परफॉर्मेंस</string>
     <string name="ui_quick_settings_fan">फैन</string>
     <string name="ui_quick_settings_fan_quiet">शांत</string>

@@ -526,7 +526,7 @@
 
     <!-- Quick settings panel (ui/components/QuickSettingsPanel.kt) -->
 
-    <string name="ui_quick_settings_title">快速設定</string>
+    <string name="ui_quick_settings_title">設定</string>
     <string name="ui_quick_settings_performance">效能</string>
     <string name="ui_quick_settings_fan">風扇</string>
     <string name="ui_quick_settings_fan_quiet">靜音</string>

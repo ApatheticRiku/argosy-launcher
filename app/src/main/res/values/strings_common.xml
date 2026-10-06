@@ -1104,7 +1104,7 @@
 
     <!-- Title of the main page of the panel that slides in from the side, holding display, audio
          and haptic rows. Noun phrase. -->
-    <string name="ui_quick_settings_title">Quick Settings</string>
+    <string name="ui_quick_settings_title">Settings</string>
     <!-- Row of that panel: how hard the device is allowed to work. Noun. -->
     <string name="ui_quick_settings_performance">Performance</string>
     <!-- Row of that panel: how the cooling fan runs. Noun. -->

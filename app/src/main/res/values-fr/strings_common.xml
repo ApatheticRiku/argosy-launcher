@@ -563,7 +563,7 @@
 
     <!-- Quick settings panel (ui/components/QuickSettingsPanel.kt) -->
 
-    <string name="ui_quick_settings_title">Réglages rapides</string>
+    <string name="ui_quick_settings_title">Réglages</string>
     <string name="ui_quick_settings_performance">Performance</string>
     <string name="ui_quick_settings_fan">Ventilateur</string>
     <string name="ui_quick_settings_fan_quiet">Silencieux</string>

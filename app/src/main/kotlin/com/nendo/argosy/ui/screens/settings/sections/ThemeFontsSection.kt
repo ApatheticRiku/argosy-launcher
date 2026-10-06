@@ -277,7 +277,6 @@ private fun FontPreviewFocusedRow() {
             .height(Dimens.menuRowHeight)
             .clip(shape)
             .background(accent.copy(alpha = 0.15f).compositeOver(surface))
-            .border(Dimens.borderThin, accent.copy(alpha = 0.8f), shape)
             .padding(horizontal = Dimens.spacingMd),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically

@@ -555,7 +555,7 @@
     <string name="ui_home_layout_lanes_columns">Столбцы</string>
     <string name="ui_home_layout_lanes_rows">Строки</string>
 
-    <string name="ui_quick_settings_title">Быстрые настройки</string>
+    <string name="ui_quick_settings_title">Настройки</string>
     <string name="ui_quick_settings_performance">Производительность</string>
     <string name="ui_quick_settings_fan">Вентилятор</string>
     <string name="ui_quick_settings_fan_quiet">Тихий</string>
