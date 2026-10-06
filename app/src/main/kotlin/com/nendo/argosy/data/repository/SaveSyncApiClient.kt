@@ -331,9 +331,10 @@ class SaveSyncApiClient @Inject constructor(
         contentHash: String?,
         overwrite: Boolean = false,
         uploadedCacheId: Long? = null,
-        ownerApi: AccountApi? = null
+        ownerApi: AccountApi? = null,
+        approveHardcoreDowngrade: Boolean = false
     ): SaveSyncResult = snapshotRouter.get().takeIf { ownerApi == null }
-        ?.uploadCached(gameId, emulatorId, channelName, cacheFile, onTopOfCurrent = overwrite)
+        ?.uploadCached(gameId, emulatorId, channelName, cacheFile, onTopOfCurrent = overwrite, approveHardcoreDowngrade = approveHardcoreDowngrade)
         ?: saveUploader.get()
             .uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
 

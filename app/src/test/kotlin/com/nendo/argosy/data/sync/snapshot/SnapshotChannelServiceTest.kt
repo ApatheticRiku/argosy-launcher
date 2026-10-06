@@ -52,8 +52,7 @@ class SnapshotChannelServiceTest {
     private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>(relaxed = true)
     private val gameDao = mockk<com.nendo.argosy.data.local.dao.GameDao>(relaxed = true)
 
-    @Test
-    fun `a channel's own snapshot saves are not listed as older-client saves`() = runBlocking {
+    private fun stubEmerald() {
         coEvery { gameDao.getById(3) } returns com.nendo.argosy.data.local.entity.GameEntity(
             id = 3, platformId = 1, title = "Emerald", sortTitle = "emerald",
             localPath = "/roms/emerald.gba", rommId = 7, igdbId = null,
@@ -65,6 +64,38 @@ class SnapshotChannelServiceTest {
         )
         coEvery { api.getRom(7) } returns Response.success(rom)
         coEvery { api.listChannels(listOf(99L)) } returns Response.success(listOf(channel.copy(isOwn = true)))
+    }
+
+    @Test
+    fun `a failed save listing fails the load instead of reading as no saves`() = runBlocking {
+        stubEmerald()
+        coEvery { api.getSavesByRom(7) } returns Response.error(500, "boom".toResponseBody())
+
+        assertEquals(null, service.load(3))
+    }
+
+    @Test
+    fun `a refused push reports a reason kind, never the server body`() = runBlocking {
+        coEvery { api.pushSnapshot("d-1", any()) } returns Response.error(403, "secret detail".toResponseBody())
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.REFUSED), service.copyOver(39, channel))
+
+        coEvery { api.pushSnapshot("d-1", any()) } returns Response.error(404, "gone".toResponseBody())
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.NOT_FOUND), service.copyOver(39, channel))
+
+        coEvery { api.pushSnapshot("d-1", any()) } throws java.io.IOException("no route")
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.OFFLINE), service.copyOver(39, channel))
+    }
+
+    @Test
+    fun `a refused rename reports a reason kind`() = runBlocking {
+        coEvery { api.updateChannel("c-default", any()) } returns Response.error(422, "bad".toResponseBody())
+
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.REFUSED), service.rename("c-default", "Speedrun"))
+    }
+
+    @Test
+    fun `a channel's own snapshot saves are not listed as older-client saves`() = runBlocking {
+        stubEmerald()
         fun save(id: Long, slot: String?, channelId: String?) = com.nendo.argosy.data.remote.romm.RomMSave(
             id = id, romId = 7, userId = 1, emulator = "argosy", fileName = "s$id.srm",
             updatedAt = "2026-10-06T00:00:0${id}Z", slot = slot, channelId = channelId

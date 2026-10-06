@@ -43,7 +43,9 @@ import com.nendo.argosy.ui.common.savechannel.snapshot.snapshotRelativeTime
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalLauncherTheme
+import com.nendo.argosy.ui.theme.LocalMotionTier
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.MotionTier
 import com.nendo.argosy.ui.util.clickableNoFocus
 import kotlin.math.max
 
@@ -59,13 +61,14 @@ internal fun SaveTimelineFloaterPlacement(
     var measured by remember { mutableStateOf(IntSize.Zero) }
     var placed by remember { mutableStateOf(false) }
     val position = remember { Animatable(IntOffset.Zero, IntOffset.VectorConverter) }
+    val animate = LocalMotionTier.current != MotionTier.Reduced
     if (anchor == null) {
         SideEffect { placed = false }
         return
     }
     val target = floaterTarget(anchor, measured, gapPx, marginPx, viewportWidthPx, viewportHeightPx)
     LaunchedEffect(target, measured) {
-        if (!placed || measured == IntSize.Zero) {
+        if (!animate || !placed || measured == IntSize.Zero) {
             position.snapTo(target)
             placed = measured != IntSize.Zero
         } else {

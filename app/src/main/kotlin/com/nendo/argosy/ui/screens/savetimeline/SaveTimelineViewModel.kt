@@ -213,7 +213,7 @@ class SaveTimelineViewModel @Inject constructor(
 
     private fun loadOlder(channelId: String) {
         val load = loads.value[channelId] ?: return
-        if (!load.hasMore || load.isLoading || load.isLoadingMore) return
+        if (!load.hasMore || load.isLoading || load.isLoadingMore || load.olderFailed) return
         loads.update { it + (channelId to load.copy(isLoadingMore = true)) }
         viewModelScope.launch { fetchPage(channelId, more = true) }
     }
@@ -269,7 +269,8 @@ class SaveTimelineViewModel @Inject constructor(
                 current + (channelId to TimelineLaneLoad(
                     isLoading = false,
                     hasMore = more && current[channelId]?.hasMore == true,
-                    failed = !more
+                    failed = !more,
+                    olderFailed = more
                 ))
             }
             return

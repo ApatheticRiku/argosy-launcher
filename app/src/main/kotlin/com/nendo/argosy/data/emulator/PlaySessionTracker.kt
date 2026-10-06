@@ -322,8 +322,8 @@ class PlaySessionTracker @Inject constructor(
             } else {
                 Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
             }
-            val saved = recoverOrphanedSave(orphaned)
             recoverOrphanedStates(orphaned)
+            val saved = recoverOrphanedSave(orphaned)
             releaseSession(keepRecord = !saved.isSettled)
         } finally {
             saveRecoveryGate.releaseSessionEnd()
@@ -403,8 +403,8 @@ class PlaySessionTracker @Inject constructor(
             Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short for play session (${Duration.between(orphaned.startTime, endTime).seconds}s)")
         }
 
-        val saved = recoverOrphanedSave(orphaned)
         recoverOrphanedStates(orphaned)
+        val saved = recoverOrphanedSave(orphaned)
         releaseSession(keepRecord = !saved.isSettled)
         if (stopService) GameSessionService.stop(application)
         return longEnough
@@ -759,11 +759,14 @@ class PlaySessionTracker @Inject constructor(
                     async {
                         recordPlayTime(session, Duration.ofMillis(activePlayMs))
                         markGameIncompleteIfNeeded(session, sessionDuration)
-                        if (effectiveSkipSaveSync) SessionSaveOutcome.Exempt else finalizeSave(session.toSaveInput())
+                        if (effectiveSkipSaveSync) {
+                            SessionSaveOutcome.Exempt
+                        } else {
+                            syncStateDataLogged(session.gameId, session.emulatorPackage, "SESSION")
+                            finalizeSave(session.toSaveInput())
+                        }
                     }.await()
                 }
-
-                if (!effectiveSkipSaveSync) syncStateDataLogged(session.gameId, session.emulatorPackage, "SESSION")
 
                 if (saveOutcome is SessionSaveOutcome.Synced) {
                     handleSaveSyncResult(session, gameDao.getById(session.gameId), saveOutcome.sync)

@@ -729,17 +729,17 @@ class SyncCoordinator @Inject constructor(
         return true
     }
 
-    /**
-     * The second, cache-driven upload queue. Each dirty cache row is drained under the account
-     * that owns it: a row owned by an absent account uploads from its own cached bytes through
-     * that account's client, and never through the live connection or the live save path.
-     */
     private suspend fun clearChainDirtyFlags(cache: SaveCacheEntity) {
         val channel = cache.channelName
         if (channel == null) saveCacheDao.clearDirtyFlagForNoChannel(cache.gameId, cache.ownerUserId)
         else saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, channel, excludeId = -1)
     }
 
+    /**
+     * The second, cache-driven upload queue. Each dirty cache row is drained under the account
+     * that owns it: a row owned by an absent account uploads from its own cached bytes through
+     * that account's client, and never through the live connection or the live save path.
+     */
     private suspend fun processDirtySaveCaches(signedInUserId: Long?): Int {
         kotlinx.coroutines.withTimeoutOrNull(ORPHAN_RECOVERY_TIMEOUT_MS) { saveRecoveryGate.await() }
             ?: Logger.warn(TAG, "processDirtySaveCaches: orphan-recovery gate timed out, draining anyway")

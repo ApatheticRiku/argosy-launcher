@@ -48,12 +48,18 @@ sealed class SigilCollect {
     data object NotRouted : SigilCollect()
     data object Absent : SigilCollect()
     data class Unreadable(val reason: String) : SigilCollect()
+    /**
+     * [root] is the save root the unit was collected from. [pending] is the Sigil sync state this
+     * collect produced; it is stored through [SigilSaveHandler.commit] once the unit reached RomM.
+     */
     data class Found(
         val data: ByteArray,
         val artifact: String,
         val contentHash: String,
         val identityHash: String,
-        val shape: String = SHAPE_SINGLE
+        val shape: String = SHAPE_SINGLE,
+        val root: String? = null,
+        val pending: SigilPendingState? = null
     ) : SigilCollect()
 
     companion object {
@@ -62,6 +68,8 @@ sealed class SigilCollect {
         const val SHAPE_FOLDER = "FOLDER"
     }
 }
+
+class SigilPendingState internal constructor(internal val row: SigilSyncStateEntity)
 
 sealed class SigilRestore {
     data object NotRouted : SigilRestore()
@@ -172,6 +180,16 @@ class SigilSaveHandler @Inject constructor(
             return unowned.filterNot { it in known }
         }
 
+        private val NO_STATE = ByteArray(0)
+
+        fun collectRow(stored: SigilSyncStateEntity?, collected: SigilSyncStateEntity, claimed: Boolean): SigilSyncStateEntity =
+            if (claimed) collected else collected.copy(state = stored?.state ?: NO_STATE)
+
+        fun commitRow(stored: SigilSyncStateEntity?, pending: SigilSyncStateEntity, now: Long): SigilSyncStateEntity =
+            pending.copy(unowned = stored?.unowned ?: pending.unowned, updatedAt = now)
+
+        fun committedState(stored: SigilSyncStateEntity?): ByteArray? = stored?.state?.takeIf { it.isNotEmpty() }
+
         /**
          * The shape RomM records for a unit's bytes. [sigilShape] is what collect reported, or null
          * for a unit read back from the cache, which is then read from the bytes: not a zip is
@@ -239,10 +257,10 @@ class SigilSaveHandler @Inject constructor(
     private val fileAccess = FalSigilFileAccess(fal)
 
     /**
-     * Whether saves travel as Sigil units. Servers before RomM 5.5, and a disconnected client,
-     * keep the formats the legacy handlers write, so every device on an older server stays readable.
+     * Whether saves travel as Sigil units: on a RomM 5.5+ server, and while disconnected from a
+     * server last seen at 5.5+. Older servers, and a server never reached, keep the legacy formats.
      */
-    fun unitsEnabled(): Boolean = connectionManager.get().getCapabilities().supportsSnapshots
+    fun unitsEnabled(): Boolean = connectionManager.get().snapshotsEnabled()
 
     fun routes(emulatorId: String, platformSlug: String): Boolean =
         unitsEnabled() && layoutFor(emulatorId, platformSlug) != null
@@ -371,7 +389,7 @@ class SigilSaveHandler @Inject constructor(
                 saveRoot = route.root,
                 options = route.options,
                 gameIds = ids,
-                state = stored?.state,
+                state = committedState(stored),
                 unmanaged = true,
                 claimed = claimed,
                 profile = route.profile,
@@ -386,12 +404,17 @@ class SigilSaveHandler @Inject constructor(
             if (result.restoreAgain) {
                 Logger.warn(TAG, "[SaveSync] SIGIL | the emulator overwrote the last restore for game ${game.id}")
             }
-            saveState(stateKey, result.state, result.unowned)
+            val collected = row(stateKey, result.state, result.unowned)
+            sigilSyncStateDao.upsert(collectRow(stored, collected, claimed = fresh.isNotEmpty()))
             val data = result.data
             if (data == null || data.isEmpty()) {
                 SigilCollect.Absent
             } else {
-                SigilCollect.Found(data, result.artifact, result.contentHash, result.identityHash, unitShape(result.shape, data))
+                SigilCollect.Found(
+                    data, result.artifact, result.contentHash, result.identityHash, unitShape(result.shape, data),
+                    root = route.root,
+                    pending = SigilPendingState(collected)
+                )
             }
         } catch (e: SigilException) {
             when (e.code) {
@@ -431,7 +454,7 @@ class SigilSaveHandler @Inject constructor(
             saveRoot = route.root,
             options = route.options,
             gameIds = ids,
-            state = loadState(stateKey)?.state,
+            state = committedState(loadState(stateKey)),
             unmanaged = true,
             overwriteLocal = true,
             profile = route.profile,
@@ -440,8 +463,18 @@ class SigilSaveHandler @Inject constructor(
         if (!fal.commitSaveAccess(route.root)) {
             return SigilRestore.Refused("the restored files did not reach ${route.root}")
         }
-        saveState(stateKey, result.state, result.unowned)
+        sigilSyncStateDao.upsert(row(stateKey, result.state, result.unowned))
         return SigilRestore.Restored(result.hardcoreMarker)
+    }
+
+    /**
+     * Stores the Sigil sync state a collect produced. Called once the collected unit reached RomM,
+     * either pushed or found already there.
+     */
+    suspend fun commit(pending: SigilPendingState): Unit = withContext(Dispatchers.IO) {
+        val key = pending.row
+        val stored = sigilSyncStateDao.get(key.ownerUserId, key.platformSlug, key.layout, key.root)
+        sigilSyncStateDao.upsert(commitRow(stored, pending.row, System.currentTimeMillis()))
     }
 
     private data class StateKey(val ownerUserId: Long, val platformSlug: String, val layout: String, val root: String)
@@ -457,19 +490,16 @@ class SigilSaveHandler @Inject constructor(
     private suspend fun loadState(key: StateKey): SigilSyncStateEntity? =
         sigilSyncStateDao.get(key.ownerUserId, key.platformSlug, key.layout, key.root)
 
-    private suspend fun saveState(key: StateKey, state: ByteArray, unowned: List<String>) {
-        sigilSyncStateDao.upsert(
-            SigilSyncStateEntity(
-                ownerUserId = key.ownerUserId,
-                platformSlug = key.platformSlug,
-                layout = key.layout,
-                root = key.root,
-                state = state,
-                unowned = unowned.joinToString("\n"),
-                updatedAt = System.currentTimeMillis()
-            )
+    private fun row(key: StateKey, state: ByteArray, unowned: List<String>): SigilSyncStateEntity =
+        SigilSyncStateEntity(
+            ownerUserId = key.ownerUserId,
+            platformSlug = key.platformSlug,
+            layout = key.layout,
+            root = key.root,
+            state = state,
+            unowned = unowned.joinToString("\n"),
+            updatedAt = System.currentTimeMillis()
         )
-    }
 
     private fun emulatorIsClosed(pkg: String?): Boolean {
         if (pkg == null || !RootShell.isAvailable) return false
@@ -501,7 +531,7 @@ class SigilSaveHandler @Inject constructor(
         val dir = File(this.context.cacheDir, "sigil_upload_${System.nanoTime()}").apply { mkdirs() }
         val file = File(dir, collected.artifact)
         file.writeBytes(collected.data)
-        return PreparedSave(file, isTemporary = true, originalPaths = listOf(localPath))
+        return PreparedSave(file, isTemporary = true, originalPaths = listOf(localPath), sigilState = collected.pending)
     }
 
     override suspend fun extractDownload(tempFile: File, context: SaveContext): ExtractResult =

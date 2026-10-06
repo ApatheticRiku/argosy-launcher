@@ -49,11 +49,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import com.nendo.argosy.R
-import com.nendo.argosy.ui.components.animateScrollToItemCentered
+import com.nendo.argosy.ui.components.scrollToItemCentered
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalMotionTier
+import com.nendo.argosy.ui.theme.MotionTier
 import com.nendo.argosy.ui.util.clickableNoFocus
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -111,14 +113,16 @@ internal fun SaveTimelineGraph(
     val isDraggingRow by listState.interactionSource.collectIsDraggedAsState()
     val isDraggingColumn by verticalScroll.interactionSource.collectIsDraggedAsState()
 
+    val animate = LocalMotionTier.current != MotionTier.Reduced
+
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val viewportHeightPx = constraints.maxHeight
         LaunchedEffect(state.recenterTick) {
             val node = state.focusedNode ?: return@LaunchedEffect
-            launch { listState.animateScrollToItemCentered(node.column) }
+            launch { listState.scrollToItemCentered(node.column, animate) }
             val laneCenter = state.focusLane * laneHeightPx + laneHeightPx / 2f
             val target = (laneCenter - viewportHeightPx / 2f).roundToInt().coerceIn(0, verticalScroll.maxValue)
-            verticalScroll.animateScrollTo(target)
+            if (animate) verticalScroll.animateScrollTo(target) else verticalScroll.scrollTo(target)
         }
         Box(
             modifier = Modifier

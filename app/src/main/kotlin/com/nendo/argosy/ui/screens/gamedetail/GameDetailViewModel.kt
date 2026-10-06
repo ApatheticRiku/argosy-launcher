@@ -145,6 +145,7 @@ class GameDetailViewModel @Inject constructor(
 
     private val companionOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("game.detail", this)
     private var isDescribing = false
+    private var heldForTimeline = false
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
 
@@ -208,6 +209,7 @@ class GameDetailViewModel @Inject constructor(
 
     private fun openSaveTimeline() {
         val gameId = currentGameId
+        heldForTimeline = true
         viewModelScope.launch { _launchEvents.emit(LaunchEvent.OpenSaveTimeline(gameId)) }
     }
 
@@ -220,7 +222,8 @@ class GameDetailViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        clearCompanionDetail()
+        isDescribing = false
+        releaseCompanionSlot()
         imageCacheManager.resumeBackgroundCaching()
         gameThemeAudio.exit(currentGameId)
     }
@@ -2430,11 +2433,21 @@ class GameDetailViewModel @Inject constructor(
 
     fun republishCompanionDetail() {
         isDescribing = true
+        heldForTimeline = false
         publishCompanionDetail(_uiState.value.game)
     }
 
+    /**
+     * Stops describing the game on the presentation screen. While the save timeline covers this
+     * screen the slot stays published until the timeline returns here or this ViewModel is cleared.
+     */
     fun clearCompanionDetail() {
         isDescribing = false
+        if (heldForTimeline) return
+        releaseCompanionSlot()
+    }
+
+    private fun releaseCompanionSlot() {
         com.nendo.argosy.DualScreenManagerHolder.instance?.releaseSlot(companionOwner)
     }
 
@@ -2750,6 +2763,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onMenu(): InputResult {
+            routeSnapshotInput { it.onMenu() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2809,6 +2823,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onSelect(): InputResult {
+            routeSnapshotInput { it.onSelect() }?.let { return it }
             if (_uiState.value.reviewEditor != null) { submitReview(); return InputResult.HANDLED }
             if (hasOpenModal()) { dismissAllModals(); return InputResult.HANDLED }
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED

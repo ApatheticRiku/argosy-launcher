@@ -20,10 +20,6 @@ class SnapshotSyncRouter @Inject constructor(
     private val engine: SnapshotSyncEngine,
     private val activeSaveRepository: ActiveSaveRepository
 ) {
-    /**
-     * The channel a launch syncs: the one asked for, else on a snapshot server the game's active
-     * channel, since every channel syncs there. Older servers keep syncing autosave at launch.
-     */
     suspend fun handles(gameId: Long): Boolean = engine.isEligible(gameId)
 
     /**
@@ -33,6 +29,10 @@ class SnapshotSyncRouter @Inject constructor(
     suspend fun sessionChannel(gameId: Long, isHardcore: Boolean, activeChannel: String?): String? =
         if (isHardcore && !handles(gameId)) null else activeChannel
 
+    /**
+     * The channel a launch syncs: the one asked for, else on a snapshot server the game's active
+     * channel, since every channel syncs there. Older servers keep syncing autosave at launch.
+     */
     suspend fun launchChannel(gameId: Long, requested: String?): String? =
         if (requested != null || !engine.isEligible(gameId)) requested
         else activeSaveRepository.getActiveChannel(gameId)
@@ -43,7 +43,7 @@ class SnapshotSyncRouter @Inject constructor(
             SnapshotSyncResult.NotEligible -> null
             SnapshotSyncResult.NoConnection -> PreLaunchSyncResult.NoConnection
             is SnapshotSyncResult.Conflict -> PreLaunchSyncResult.LocalModified(
-                localSavePath = "",
+                localSavePath = result.localSavePath.orEmpty(),
                 serverTimestamp = timestampOf(result),
                 channelName = channelName
             )
@@ -82,10 +82,15 @@ class SnapshotSyncRouter @Inject constructor(
         emulatorId: String,
         channelName: String?,
         cacheFile: File,
-        onTopOfCurrent: Boolean
+        onTopOfCurrent: Boolean,
+        approveHardcoreDowngrade: Boolean = false
     ): SaveSyncResult? {
         if (!engine.isEligible(gameId)) return null
-        return toSaveSyncResult(gameId, engine.pushCached(gameId, emulatorId, channelName, cacheFile, onTopOfCurrent))
+        val pushed = engine.pushCached(
+            gameId, emulatorId, channelName, cacheFile, onTopOfCurrent,
+            approveHardcoreDowngrade = approveHardcoreDowngrade
+        )
+        return toSaveSyncResult(gameId, pushed)
     }
 
     suspend fun download(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult? {

@@ -1,5 +1,7 @@
 package com.nendo.argosy.ui.common.savechannel.snapshot
 
+import androidx.annotation.StringRes
+
 sealed interface SnapshotDeviceUi {
     data object Unknown : SnapshotDeviceUi
     data object OtherUser : SnapshotDeviceUi
@@ -112,7 +114,8 @@ data class SnapshotLabelEntryUi(
     val channelId: String? = null,
     val snapshotId: Long? = null,
     val romFileId: Long? = null,
-    val backupSaveId: Long? = null
+    val backupSaveId: Long? = null,
+    @StringRes val error: Int? = null
 )
 
 sealed interface SnapshotConfirmUi {

@@ -88,7 +88,7 @@ class SnapshotSyncEngineTest {
             context = context,
             gameDao = gameDao,
             channelDao = channelDao,
-            saveCacheDao = mockk(relaxed = true),
+            saveCacheDao = saveCacheDao,
             sigilSaveHandler = sigil,
             saveCacheManager = dagger.Lazy { cacheManager },
             saveDownloader = dagger.Lazy { downloader },
@@ -116,6 +116,7 @@ class SnapshotSyncEngineTest {
     private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>()
     private val coreResolver = mockk<com.nendo.argosy.data.emulator.BuiltinCoreResolver>()
     private val statePaths = mockk<com.nendo.argosy.data.emulator.LibretroStatePathResolver>()
+    private val saveCacheDao = mockk<com.nendo.argosy.data.local.dao.SaveCacheDao>(relaxed = true)
 
     @Test
     fun `a built-in push carries the auto state and its screenshot in the bank`() = runBlocking {
@@ -418,6 +419,154 @@ class SnapshotSyncEngineTest {
         assertTrue(byteArrayOf(5, 5, 5).contentEquals(auto.readBytes()))
         assertTrue(byteArrayOf(8).contentEquals(java.io.File(dir, "Lunar (USA).state.auto.png").readBytes()))
         assertTrue("a slot the bank lacks is removed", !stray.exists() && !strayShot.exists())
+    }
+
+    private class LiveStates(val dir: java.io.File, val auto: java.io.File, val stray: java.io.File, val strayShot: java.io.File)
+
+    private fun stubBankedApply(): LiveStates {
+        val dir = tempDir.newFolder("bank")
+        val live = LiveStates(
+            dir,
+            java.io.File(dir, "Lunar (USA).state.auto").apply { writeBytes(byteArrayOf(1)) },
+            java.io.File(dir, "Lunar (USA).state3").apply { writeBytes(byteArrayOf(2)) },
+            java.io.File(dir, "Lunar (USA).state3.png").apply { writeBytes(byteArrayOf(3)) }
+        )
+        every { archiver.calculateContentHash(live.stray) } returns "stray"
+        every { archiver.calculateContentHash(live.auto) } returns "old-state"
+        coEvery { coreResolver.resolveCoreId(GAME_ID, any(), any()) } returns "genesis_plus_gx"
+        coEvery { statePaths.liveStateBaseDir(GAME_ID) } returns dir
+        every { statePaths.liveStateFile(dir, "Lunar (USA)", -1) } returns live.auto
+        val banked = snapshot(42, "theirs").copy(
+            states = mapOf(
+                "genesis_plus_gx" to mapOf(
+                    "auto" to com.nendo.argosy.data.remote.romm.RomMSnapshotState(
+                        id = 7,
+                        contentHash = "new-state",
+                        downloadPath = "/api/states/7/content",
+                        screenshot = com.nendo.argosy.data.remote.romm.RomMScreenshotRef(9, "/api/screenshots/9/content")
+                    )
+                )
+            )
+        )
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(banked))
+        coEvery { api.getSnapshot(42) } returns Response.success(banked)
+        coEvery {
+            downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
+        } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
+        coEvery { api.reportSnapshotHeld(42, DEVICE) } returns Response.success(Unit)
+        coEvery { api.downloadRaw("api/screenshots/9/content") } returns Response.success(byteArrayOf(8).toResponseBody())
+        return live
+    }
+
+    @Test
+    fun `a state that fails to download leaves the live states and the held snapshot alone`() = runBlocking {
+        val live = stubBankedApply()
+        coEvery { api.downloadRaw("api/states/7/content") } returns Response.error(500, "down".toResponseBody())
+
+        val result = engine.sync(GAME_ID, EMULATOR, null)
+
+        assertTrue("apply fails: $result", result is SnapshotSyncResult.Failed)
+        assertTrue(byteArrayOf(1).contentEquals(live.auto.readBytes()))
+        assertTrue(live.stray.exists() && live.strayShot.exists())
+        coVerify(exactly = 0) { channelDao.upsert(any()) }
+        coVerify(exactly = 0) { downloader.downloadSave(any(), any(), any(), any(), any(), any()) }
+        assertEquals(listOf("Lunar (USA).state.auto", "Lunar (USA).state3", "Lunar (USA).state3.png"), live.dir.list()!!.sorted())
+    }
+
+    @Test
+    fun `a bank screenshot that fails to download also leaves the live states alone`() = runBlocking {
+        val live = stubBankedApply()
+        coEvery { api.downloadRaw("api/states/7/content") } returns Response.success(byteArrayOf(5, 5, 5).toResponseBody())
+        coEvery { api.downloadRaw("api/screenshots/9/content") } throws java.io.IOException("reset")
+
+        assertTrue(engine.sync(GAME_ID, EMULATOR, null) is SnapshotSyncResult.Failed)
+        assertTrue(byteArrayOf(1).contentEquals(live.auto.readBytes()))
+        assertTrue(live.stray.exists())
+        coVerify(exactly = 0) { channelDao.upsert(any()) }
+    }
+
+    @Test
+    fun `a bank applied in full replaces the held states, clears untapped slots and leaves no staging behind`() = runBlocking {
+        val live = stubBankedApply()
+        coEvery { api.downloadRaw("api/states/7/content") } returns Response.success(byteArrayOf(5, 5, 5).toResponseBody())
+
+        assertEquals(SnapshotSyncResult.Applied(42), engine.sync(GAME_ID, EMULATOR, null))
+        assertTrue(byteArrayOf(5, 5, 5).contentEquals(live.auto.readBytes()))
+        assertTrue(!live.stray.exists() && !live.strayShot.exists())
+        assertEquals(listOf("Lunar (USA).state.auto", "Lunar (USA).state.auto.png"), live.dir.list()!!.sorted())
+        assertEquals(42L, stored.captured.heldSnapshotId)
+    }
+
+    @Test
+    fun `applying a snapshot leaves unsynced cached saves flagged`() = runBlocking {
+        stubBankedApply()
+        coEvery { api.downloadRaw("api/states/7/content") } returns Response.success(byteArrayOf(5).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        coVerify(exactly = 0) { saveCacheDao.clearDirtyFlagForNoChannel(any(), any()) }
+        coVerify(exactly = 0) { saveCacheDao.clearDirtyFlagForChannel(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { saveCacheDao.clearAllDirtyFlags(any(), any()) }
+    }
+
+    @Test
+    fun `a push to the default channel clears only the default channel's dirty flags`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        coVerify { saveCacheDao.clearDirtyFlagForNoChannel(GAME_ID, 3L) }
+        coVerify { saveCacheDao.clearDirtyFlagForChannel(GAME_ID, 3L, "autosave", any()) }
+        coVerify(exactly = 0) { saveCacheDao.clearAllDirtyFlags(any(), any()) }
+    }
+
+    @Test
+    fun `a push to a named channel clears only that channel's dirty flags`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "Speedrun") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(50, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, "Speedrun")
+
+        coVerify { saveCacheDao.clearDirtyFlagForChannel(GAME_ID, 3L, "Speedrun", any()) }
+        coVerify(exactly = 0) { saveCacheDao.clearDirtyFlagForNoChannel(any(), any()) }
+        coVerify(exactly = 0) { saveCacheDao.clearAllDirtyFlags(any(), any()) }
+    }
+
+    @Test
+    fun `a conflict carries the save's path so keep-local can cache it`() = runBlocking {
+        stubNativeSave(ByteArray(131072))
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "theirs")))
+
+        val result = engine.sync(GAME_ID, EMULATOR, null)
+
+        assertEquals("/saves/Emerald.srm", (result as SnapshotSyncResult.Conflict).localSavePath)
+    }
+
+    @Test
+    fun `a Sigil unit's state is stored only once the push landed`() = runBlocking {
+        val pending = com.nendo.argosy.data.sync.platform.SigilPendingState(
+            com.nendo.argosy.data.local.entity.SigilSyncStateEntity(3L, "scd", "genesis_plus_gx", "/saves", byteArrayOf(4), "", 0L)
+        )
+        coEvery { sigil.collect(GAME_ID, EMULATOR, any()) } returns local.copy(root = "/saves", pending = pending)
+        coEvery { sigil.commit(pending) } returns Unit
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns Response.error(500, "down".toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+        coVerify(exactly = 0) { sigil.commit(any()) }
+
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(42, "content-a")).toResponseBody())
+        engine.sync(GAME_ID, EMULATOR, null)
+        coVerify(exactly = 1) { sigil.commit(pending) }
     }
 
     @Test

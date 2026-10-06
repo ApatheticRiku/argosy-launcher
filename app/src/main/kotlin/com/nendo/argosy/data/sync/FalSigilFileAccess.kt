@@ -3,6 +3,7 @@ package com.nendo.argosy.data.sync
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.sigil.SigilFileEntry
 import com.nendo.sigil.SigilFileAccess
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,7 +18,9 @@ class FalSigilFileAccess @Inject constructor(private val fal: FileAccessLayer) :
     override fun list(root: String, path: String): List<SigilFileEntry>? {
         val dir = resolve(root, path)
         if (!fal.isDirectory(dir)) return null
-        return fal.listFilesUnion(dir).mapNotNull { info ->
+        val entries = fal.listFilesUnion(dir)
+        if (entries.isEmpty() && fal.listFiles(dir) == null) throw IOException("can't list $dir")
+        return entries.mapNotNull { info ->
             when {
                 info.isDirectory -> SigilFileEntry(info.name, true)
                 info.isFile -> SigilFileEntry(info.name, false)

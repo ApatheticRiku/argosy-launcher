@@ -98,10 +98,15 @@ data class SaveContext(
     val basePathOverride: String? = null
 )
 
+/**
+ * [sigilState] is set for a unit Sigil collected; the uploader commits it once the unit reached
+ * the server.
+ */
 data class PreparedSave(
     val file: File,
     val isTemporary: Boolean,
-    val originalPaths: List<String> = emptyList()
+    val originalPaths: List<String> = emptyList(),
+    val sigilState: SigilPendingState? = null
 )
 
 data class ExtractResult(

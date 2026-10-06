@@ -30,7 +30,7 @@ class ConflictResolutionServiceTest {
         coEvery { gameDao.getById(1L) } returns mockk(relaxed = true) { io.mockk.every { rommId } returns 100L }
         coEvery { saveCacheManager.getCachesForGameOnce(1L) } returns versions.toList()
         versions.forEach { v -> io.mockk.every { saveCacheManager.getCacheFile(v) } returns java.io.File("/cache/${v.id}") }
-        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success(rommSaveId = 11L)
+        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success(rommSaveId = 11L)
     }
 
     @Test
@@ -48,14 +48,35 @@ class ConflictResolutionServiceTest {
     }
 
     @Test
-    fun `keeping this save over a hardcore one pushes it with the downgrade approved`() = runTest {
-        givenSlot(version(20L, 1, "a"))
+    fun `keeping saves over a hardcore one uploads the unsynced chain with the approval on the first push`() = runTest {
+        givenSlot(
+            version(19L, 1, "pushed", channel = "autosave").copy(lastSyncedAt = java.time.Instant.parse("2026-10-01T00:00:00Z")),
+            version(20L, 2, "a", channel = "autosave"),
+            version(21L, 3, "b", channel = "autosave")
+        )
+
+        assertTrue(
+            service.resolve(conflict.copy(slot = null, rommSaveId = null, isHardcoreDowngrade = true), ConflictResolution.KEEP_LOCAL)
+                is ConflictResolutionOutcome.Resolved
+        )
+
+        io.mockk.coVerifyOrder {
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "autosave", java.io.File("/cache/20"), "a", true, 20L, any(), true)
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "autosave", java.io.File("/cache/21"), "b", false, 21L, any(), false)
+        }
+        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 19L, any(), any()) }
+        coVerify(exactly = 0) { saveSyncRepository.approveHardcoreDowngrade(any(), any(), any()) }
+        coVerify(exactly = 0) { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a hardcore approval with nothing cached pushes the live save approved`() = runTest {
+        givenSlot()
         coEvery { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) } returns SaveSyncResult.Success()
 
         service.resolve(conflict.copy(slot = null, isHardcoreDowngrade = true), ConflictResolution.KEEP_LOCAL)
 
         coVerify { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) }
-        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test

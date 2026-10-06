@@ -155,6 +155,8 @@
     <string name="save_channels_label_confirm_rename">Rename</string>
     <!-- Name entry confirm button when forking. Verb. -->
     <string name="save_channels_label_confirm_fork">Fork</string>
+    <!-- Error under the name field when the typed name belongs to the default channel. -->
+    <string name="save_channels_label_error_reserved">Name taken</string>
 
     <!-- ============================ Confirmations ============================ -->
 
@@ -214,8 +216,16 @@
     <string name="save_channels_notice_used_on_device">Activated %1$s</string>
     <!-- Another device moved the channel first; the view reloaded. -->
     <string name="save_channels_notice_stale">Changed elsewhere, refreshed</string>
-    <!-- %1$s is the server's reason. -->
-    <string name="save_channels_notice_failed">Failed: %1$s</string>
+    <!-- A channel action could not reach the server. -->
+    <string name="save_channels_notice_failed_offline">Server unreachable</string>
+    <!-- The server turned down a channel action. -->
+    <string name="save_channels_notice_failed_refused">Server refused the change</string>
+    <!-- The channel or snapshot an action named is gone from the server. -->
+    <string name="save_channels_notice_failed_not_found">No longer on the server</string>
+    <!-- The server rejected a channel action because the channel changed meanwhile. -->
+    <string name="save_channels_notice_failed_conflict">Changed elsewhere, try again</string>
+    <!-- A channel action failed for a reason the app cannot name. -->
+    <string name="save_channels_notice_failed_unknown">Couldn\'t complete that</string>
     <!-- The server refused to let a softcore save replace a hardcore one and nothing changed. -->
     <string name="save_channels_notice_hardcore_kept">Hardcore save kept</string>
     <string name="save_channels_notice_offline">Server unreachable</string>

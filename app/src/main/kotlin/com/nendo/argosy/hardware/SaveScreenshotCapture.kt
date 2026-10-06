@@ -29,7 +29,9 @@ class SaveScreenshotCapture @Inject constructor(
      * The screenshot taken for [gameId]'s save, when one was captured within [maxAgeMs].
      */
     fun recentFor(gameId: Long, maxAgeMs: Long = MAX_AGE_MS): File? =
-        fileFor(gameId).takeIf { it.isFile && System.currentTimeMillis() - it.lastModified() <= maxAgeMs }
+        fileFor(gameId).takeIf {
+            it.isFile && it.length() > 0 && System.currentTimeMillis() - it.lastModified() <= maxAgeMs
+        }
 
     suspend fun capture(gameId: Long, displayId: Int): Boolean = withContext(Dispatchers.IO) {
         val bitmap = FocusAccessibilityService.instance?.captureDisplay(displayId) ?: rootCapture(displayId)
@@ -42,9 +44,7 @@ class SaveScreenshotCapture @Inject constructor(
 
     fun store(gameId: Long, frame: Bitmap): Boolean {
         val scaled = scale(frame)
-        val written = runCatching {
-            fileFor(gameId).outputStream().use { scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
-        }.isSuccess
+        val written = writeJpeg(fileFor(gameId), scaled)
         if (scaled !== frame) scaled.recycle()
         Logger.debug(TAG, "Save screenshot for game $gameId | written=$written")
         return written
@@ -55,15 +55,16 @@ class SaveScreenshotCapture @Inject constructor(
      * shows it without fetching from the server.
      */
     fun snapshotThumbFor(snapshotId: Long): File? =
-        File(snapshotDir, "$snapshotId$EXTENSION").takeIf { it.isFile }
+        File(snapshotDir, "$snapshotId$EXTENSION").takeIf { it.isFile && it.length() > 0 }
 
     fun keepForSnapshot(snapshotId: Long, frame: File): Boolean {
-        val bitmap = BitmapFactory.decodeFile(frame.absolutePath) ?: return false
+        val bitmap = BitmapFactory.decodeFile(frame.absolutePath)
+        if (bitmap == null) {
+            Logger.warn(TAG, "Snapshot $snapshotId frame unreadable: ${frame.name}")
+            return false
+        }
         val scaled = scale(bitmap)
-        val written = runCatching {
-            File(snapshotDir, "$snapshotId$EXTENSION").outputStream()
-                .use { scaled.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
-        }.isSuccess
+        val written = writeJpeg(File(snapshotDir, "$snapshotId$EXTENSION"), scaled)
         if (scaled !== bitmap) scaled.recycle()
         bitmap.recycle()
         pruneSnapshotThumbs()
@@ -72,14 +73,31 @@ class SaveScreenshotCapture @Inject constructor(
 
     fun carrySnapshotThumb(fromSnapshotId: Long, toSnapshotId: Long) {
         val source = snapshotThumbFor(fromSnapshotId) ?: return
-        runCatching { source.copyTo(File(snapshotDir, "$toSnapshotId$EXTENSION"), overwrite = true) }
+        writeAtomically(File(snapshotDir, "$toSnapshotId$EXTENSION")) { temp -> source.copyTo(temp, overwrite = true) }
         pruneSnapshotThumbs()
     }
 
     private val snapshotDir: File get() = File(context.filesDir, SNAPSHOT_DIR).apply { mkdirs() }
 
+    private fun writeJpeg(target: File, bitmap: Bitmap): Boolean = writeAtomically(target) { temp ->
+        val encoded = temp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
+        check(encoded) { "JPEG encoder refused the frame" }
+    }
+
+    private fun writeAtomically(target: File, write: (File) -> Unit): Boolean {
+        val temp = File(target.parentFile, "${target.name}$TEMP_SUFFIX")
+        return runCatching {
+            write(temp)
+            check(temp.renameTo(target)) { "rename to ${target.name} failed" }
+        }.onFailure {
+            temp.delete()
+            Logger.warn(TAG, "Writing ${target.name} failed: ${it.message}")
+        }.isSuccess
+    }
+
     private fun pruneSnapshotThumbs() {
-        val files = snapshotDir.listFiles()?.takeIf { it.size > MAX_SNAPSHOT_THUMBS } ?: return
+        val files = snapshotDir.listFiles { file -> file.name.endsWith(EXTENSION) }
+            ?.takeIf { it.size > MAX_SNAPSHOT_THUMBS } ?: return
         files.sortedByDescending { it.lastModified() }.drop(MAX_SNAPSHOT_THUMBS).forEach { it.delete() }
     }
 
@@ -106,6 +124,7 @@ class SaveScreenshotCapture @Inject constructor(
         const val SNAPSHOT_DIR = "snapshot_thumbs"
         const val MAX_SNAPSHOT_THUMBS = 500
         const val EXTENSION = ".jpg"
+        const val TEMP_SUFFIX = ".tmp"
         const val ROOT_SHOT = "save_screenshot_root.png"
         const val MAX_WIDTH = 640
         const val JPEG_QUALITY = 85

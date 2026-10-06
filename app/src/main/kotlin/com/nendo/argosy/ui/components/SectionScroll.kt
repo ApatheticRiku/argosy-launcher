@@ -84,7 +84,13 @@ suspend fun LazyStaggeredGridState.fastAnimateScrollToItem(index: Int, scrollOff
  * item is not yet laid out, its height is estimated from the average visible item, so
  * rows of differing heights settle within one estimate of true centre.
  */
-suspend fun LazyListState.animateScrollToItemCentered(index: Int) {
+suspend fun LazyListState.animateScrollToItemCentered(index: Int) = scrollToItemCentered(index, animate = true)
+
+/**
+ * [animateScrollToItemCentered] with the motion optional: [animate] false jumps straight to the
+ * centred position, for reduced motion.
+ */
+suspend fun LazyListState.scrollToItemCentered(index: Int, animate: Boolean) {
     if (index < 0) return
     if (layoutInfo.totalItemsCount == 0) {
         snapshotFlow { layoutInfo.totalItemsCount }.first { it > 0 }
@@ -94,14 +100,14 @@ suspend fun LazyListState.animateScrollToItemCentered(index: Int) {
     if (!canScrollForward && !canScrollBackward) return
     val visible = info.visibleItemsInfo
     if (visible.isEmpty()) {
-        animateScrollToItem(index)
+        if (animate) animateScrollToItem(index) else scrollToItem(index)
         return
     }
     val viewportHeight = info.viewportEndOffset - info.viewportStartOffset
     val itemHeight = visible.firstOrNull { it.index == index }?.size
         ?: (visible.sumOf { it.size } / visible.size)
     val centerOffset = (viewportHeight - itemHeight) / 2
-    animateScrollToItem(index, -centerOffset)
+    if (animate) animateScrollToItem(index, -centerOffset) else scrollToItem(index, -centerOffset)
 }
 
 /**

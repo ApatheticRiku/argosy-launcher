@@ -16,6 +16,7 @@ import com.nendo.argosy.data.remote.romm.RomMSnapshotUpdate
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.hardware.SaveScreenshotCapture
+import com.nendo.argosy.util.Logger
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -33,12 +34,29 @@ data class SnapshotLibrary(
     val deviceChannelId: String?
 )
 
+enum class SnapshotFailure {
+    OFFLINE,
+    REFUSED,
+    NOT_FOUND,
+    CONFLICT,
+    UNKNOWN;
+
+    companion object {
+        fun ofStatus(code: Int): SnapshotFailure = when (code) {
+            404 -> NOT_FOUND
+            409 -> CONFLICT
+            in 400..499 -> REFUSED
+            else -> UNKNOWN
+        }
+    }
+}
+
 sealed class SnapshotActionResult {
     data object Done : SnapshotActionResult()
     data object Stale : SnapshotActionResult()
     data object HardcoreDowngrade : SnapshotActionResult()
     data object Offline : SnapshotActionResult()
-    data class Failed(val reason: String) : SnapshotActionResult()
+    data class Failed(val failure: SnapshotFailure) : SnapshotActionResult()
 }
 
 /**
@@ -67,7 +85,8 @@ class SnapshotChannelService @Inject constructor(
         val file = fileResolver.launchedFile(api, game) ?: return@withContext null
         val channels = runCatching { api.listChannels(listOf(file.id)) }.getOrNull()
             ?.takeIf { it.isSuccessful }?.body() ?: return@withContext null
-        val saves = runCatching { api.getSavesByRom(rommId) }.getOrNull()?.takeIf { it.isSuccessful }?.body().orEmpty()
+        val saves = runCatching { api.getSavesByRom(rommId) }.getOrNull()?.takeIf { it.isSuccessful }?.body()
+            ?: return@withContext null
         val ownSaves = saves.filter { save -> channels.none { it.id == save.channelId && !it.isOwn } }
         fun entry(channel: RomMChannel) = SnapshotChannelEntry(
             channel,
@@ -133,33 +152,37 @@ class SnapshotChannelService @Inject constructor(
 
     suspend fun newChannel(romFileId: Long, label: String, fromBackupId: Long?): SnapshotActionResult {
         val api = apiClient.get().getApi() ?: return SnapshotActionResult.Offline
-        val channel = runCatching { api.postChannel(RomMChannelCreate(romFileId, label)) }.getOrNull()
-            ?.takeIf { it.isSuccessful }?.body()
-            ?: return SnapshotActionResult.Failed("could not create channel $label")
+        val response = runCatching { api.postChannel(RomMChannelCreate(romFileId, label)) }.getOrElse {
+            Logger.warn(TAG, "[SaveSync] SNAPSHOT | creating channel $label failed: ${it.message}")
+            return SnapshotActionResult.Failed(SnapshotFailure.OFFLINE)
+        }
+        val channel = response.takeIf { it.isSuccessful }?.body() ?: run {
+            Logger.warn(TAG, "[SaveSync] SNAPSHOT | creating channel $label answered ${response.code()}")
+            return SnapshotActionResult.Failed(SnapshotFailure.ofStatus(response.code()))
+        }
         return fromBackupId?.let { makeSnapshot(channel, it) } ?: SnapshotActionResult.Done
     }
 
     suspend fun setPinned(snapshotId: Long, pinned: Boolean): SnapshotActionResult =
-        call { it.updateSnapshot(snapshotId, RomMSnapshotUpdate(isPinned = pinned)).isSuccessful }
+        call("pin #$snapshotId") { it.updateSnapshot(snapshotId, RomMSnapshotUpdate(isPinned = pinned)).code() }
 
     suspend fun rename(channelId: String, label: String): SnapshotActionResult =
-        call { it.updateChannel(channelId, RomMChannelUpdate(label = label)).isSuccessful }
+        call("rename $channelId") { it.updateChannel(channelId, RomMChannelUpdate(label = label)).code() }
 
     suspend fun setShared(channelId: String, shared: Boolean): SnapshotActionResult =
-        call { it.updateChannel(channelId, RomMChannelUpdate(isPublic = shared)).isSuccessful }
+        call("share $channelId") { it.updateChannel(channelId, RomMChannelUpdate(isPublic = shared)).code() }
 
     suspend fun delete(channelId: String): SnapshotActionResult =
-        call { it.deleteChannel(channelId).isSuccessful }
+        call("delete $channelId") { it.deleteChannel(channelId).code() }
 
-    fun argosyChannelOf(channel: RomMChannel): String? =
-        channel.label.takeUnless { it.equals(DEFAULT_LABEL, ignoreCase = true) }
+    fun argosyChannelOf(channel: RomMChannel): String? = SnapshotChannels.argosyChannelOf(channel.label)
 
     suspend fun rememberDeviceChannel(gameId: Long, argosyChannel: String?, channelId: String, romFileId: Long) {
         channelDao.upsert(
             SnapshotChannelEntity(
                 ownerUserId = ownerUserId(),
                 gameId = gameId,
-                label = labelKeyOf(argosyChannel),
+                label = SnapshotChannels.labelOf(argosyChannel),
                 channelId = channelId,
                 romFileId = romFileId,
                 updatedAt = System.currentTimeMillis()
@@ -177,7 +200,7 @@ class SnapshotChannelService @Inject constructor(
         val client = apiClient.get()
         val api = client.getApi() ?: return SnapshotActionResult.Offline
         val deviceId = client.getDeviceId() ?: return SnapshotActionResult.Offline
-        manifest.put("emulator", EMULATOR).put("emulator_version", BuildConfig.VERSION_NAME)
+        manifest.put("emulator", SnapshotChannels.EMULATOR).put("emulator_version", BuildConfig.VERSION_NAME)
         if (approveHardcoreDowngrade) manifest.put("approve_hardcore_downgrade", true)
         return when (val outcome = pusher.push(api, deviceId, manifest)) {
             is PushOutcome.Written -> {
@@ -187,18 +210,26 @@ class SnapshotChannelService @Inject constructor(
             }
             is PushOutcome.Conflict -> SnapshotActionResult.Stale
             PushOutcome.HardcoreDowngrade -> SnapshotActionResult.HardcoreDowngrade
-            is PushOutcome.Failed -> SnapshotActionResult.Failed(outcome.reason)
+            is PushOutcome.Failed -> {
+                Logger.warn(TAG, "[SaveSync] SNAPSHOT | channel push failed: ${outcome.reason}")
+                SnapshotActionResult.Failed(outcome.failure)
+            }
         }
     }
 
-    private suspend fun call(block: suspend (RomMApi) -> Boolean): SnapshotActionResult {
+    private suspend fun call(action: String, block: suspend (RomMApi) -> Int): SnapshotActionResult {
         val api = apiClient.get().getApi() ?: return SnapshotActionResult.Offline
-        return if (runCatching { block(api) }.getOrDefault(false)) SnapshotActionResult.Done
-        else SnapshotActionResult.Failed("the server refused the change")
+        val code = runCatching { block(api) }.getOrElse {
+            Logger.warn(TAG, "[SaveSync] SNAPSHOT | $action failed: ${it.message}")
+            return SnapshotActionResult.Failed(SnapshotFailure.OFFLINE)
+        }
+        if (code in 200..299) return SnapshotActionResult.Done
+        Logger.warn(TAG, "[SaveSync] SNAPSHOT | $action answered $code")
+        return SnapshotActionResult.Failed(SnapshotFailure.ofStatus(code))
     }
 
     private suspend fun deviceChannelId(gameId: Long, romFileId: Long, channels: List<RomMChannel>): String? {
-        val label = labelKeyOf(activeSaveRepository.getActiveChannel(gameId))
+        val label = SnapshotChannels.labelOf(activeSaveRepository.getActiveChannel(gameId))
         channelDao.get(ownerUserId(), gameId, label)
             ?.takeIf { stored -> stored.romFileId == romFileId && channels.any { it.id == stored.channelId } }
             ?.let { return it.channelId }
@@ -207,20 +238,16 @@ class SnapshotChannelService @Inject constructor(
     }
 
     private suspend fun isDeviceChannel(gameId: Long, channel: RomMChannel): Boolean {
-        val stored = channelDao.get(ownerUserId(), gameId, labelKeyOf(activeSaveRepository.getActiveChannel(gameId)))
-        return stored?.channelId == channel.id ||
-            (stored == null && channel.label.equals(labelKeyOf(activeSaveRepository.getActiveChannel(gameId)), ignoreCase = true))
+        val label = SnapshotChannels.labelOf(activeSaveRepository.getActiveChannel(gameId))
+        val stored = channelDao.get(ownerUserId(), gameId, label)
+        return stored?.channelId == channel.id || (stored == null && channel.label.equals(label, ignoreCase = true))
     }
-
-    private fun labelKeyOf(argosyChannel: String?): String =
-        SaveSyncApiClient.namedChannelOrNull(argosyChannel) ?: DEFAULT_LABEL
 
     private suspend fun ownerUserId(): Long = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER
 
     companion object {
         const val HISTORY_PAGE = 20
-        private const val DEFAULT_LABEL = "default"
-        private const val EMULATOR = "argosy"
+        private const val TAG = "SnapshotChannelService"
         private const val PARENT_KEY = "parent_snapshot_id"
         private const val NO_PARENT = -1L
     }

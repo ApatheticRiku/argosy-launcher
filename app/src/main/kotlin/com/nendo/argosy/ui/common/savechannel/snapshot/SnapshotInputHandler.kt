@@ -8,9 +8,10 @@ import kotlinx.coroutines.CoroutineScope
 
 /**
  * Gamepad routing for the snapshot channel view, delegated to by the save modal's host while
- * [SaveChannelState.isSnapshotSavesView] holds. UNHANDLED hands the press back to the host:
- * Back with nothing open closes the modal, LB/RB switch tabs, Menu and Select keep the host's
- * modal behavior.
+ * [SaveChannelState.isSnapshotSavesView] holds. LB/RB are swallowed, the States tab being hidden
+ * on snapshot servers. UNHANDLED hands the press back to the host: Back with nothing open closes
+ * the modal, and Menu and Select keep the host's modal behavior unless an overlay or label entry
+ * is open, where they are swallowed.
  */
 class SnapshotInputHandler(
     private val delegate: SnapshotViewDelegate,
@@ -65,6 +66,10 @@ class SnapshotInputHandler(
         return InputResult.HANDLED
     }
 
+    override fun onMenu(): InputResult = overlayGuard()
+
+    override fun onSelect(): InputResult = overlayGuard()
+
     override fun onPrevSection(): InputResult = sectionSwitch()
 
     override fun onNextSection(): InputResult = sectionSwitch()
@@ -78,4 +83,7 @@ class SnapshotInputHandler(
     override fun onRightStickClick(): InputResult = InputResult.HANDLED
 
     private fun sectionSwitch(): InputResult = InputResult.HANDLED
+
+    private fun overlayGuard(): InputResult =
+        if (view?.hasOverlay == true) InputResult.HANDLED else InputResult.UNHANDLED
 }

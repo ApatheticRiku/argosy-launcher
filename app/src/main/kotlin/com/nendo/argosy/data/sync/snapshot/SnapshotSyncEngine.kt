@@ -25,6 +25,7 @@ import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.platform.SigilCollect
+import com.nendo.argosy.data.sync.platform.SigilPendingState
 import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.util.Logger
 import com.squareup.moshi.Moshi
@@ -50,7 +51,7 @@ sealed class SnapshotSyncResult {
     data object UpToDate : SnapshotSyncResult()
     data class Pushed(val snapshotId: Long) : SnapshotSyncResult()
     data class Applied(val snapshotId: Long) : SnapshotSyncResult()
-    data class Conflict(val current: RomMSnapshot?, val currentId: Long) : SnapshotSyncResult()
+    data class Conflict(val current: RomMSnapshot?, val currentId: Long, val localSavePath: String? = null) : SnapshotSyncResult()
     data class HardcoreDowngrade(val currentId: Long?) : SnapshotSyncResult()
     data class Failed(val reason: String) : SnapshotSyncResult()
 }
@@ -119,6 +120,16 @@ class SnapshotSyncEngine @Inject constructor(
                 is Native -> SaveHashes(contentHash, contentHash)
                 else -> null
             }
+
+        val path: String?
+            get() = when (this) {
+                is Sigil -> unit.root
+                is Native -> savePath
+                else -> null
+            }
+
+        val pending: SigilPendingState?
+            get() = (this as? Sigil)?.unit?.pending
     }
 
     suspend fun isEligible(gameId: Long): Boolean =
@@ -132,11 +143,18 @@ class SnapshotSyncEngine @Inject constructor(
             val action = SnapshotDecision.decide(held(ctx), currentPoint(ctx.current), local.hashes)
             Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=$gameId channel=${ctx.label}/${ctx.channelId} held=${ctx.stored?.heldSnapshotId} current=${ctx.current?.id} | $action")
             when (action) {
-                SnapshotAction.Nothing -> SnapshotSyncResult.UpToDate
+                SnapshotAction.Nothing -> {
+                    commitSigilState(local)
+                    SnapshotSyncResult.UpToDate
+                }
                 is SnapshotAction.Push -> pushLocal(ctx, local, emulatorId, channelName, action.expectedCurrentId, isHardcore, false)
-                is SnapshotAction.Adopt -> adopt(ctx, ctx.current ?: return@locked SnapshotSyncResult.UpToDate)
+                is SnapshotAction.Adopt -> {
+                    val result = adopt(ctx, ctx.current ?: return@locked SnapshotSyncResult.UpToDate)
+                    commitSigilState(local)
+                    result
+                }
                 is SnapshotAction.Download -> apply(ctx, action.snapshotId, emulatorId, channelName)
-                is SnapshotAction.Conflict -> SnapshotSyncResult.Conflict(ctx.current, action.currentId)
+                is SnapshotAction.Conflict -> SnapshotSyncResult.Conflict(ctx.current, action.currentId, local.path)
             }
         }
 
@@ -167,13 +185,14 @@ class SnapshotSyncEngine @Inject constructor(
         channelName: String?,
         cacheFile: File,
         onTopOfCurrent: Boolean,
-        isHardcore: Boolean = false
+        isHardcore: Boolean = false,
+        approveHardcoreDowngrade: Boolean = false
     ): SnapshotSyncResult = locked(gameId) {
         val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
         val format = if (sigilSaveHandler.route(gameId, emulatorId) != null) FORMAT_NEUTRAL else FORMAT_NATIVE
         val unit = unitFromCache(cacheFile, format) ?: return@locked SnapshotSyncResult.Failed("cached save ${cacheFile.name} is empty")
         val expected = if (onTopOfCurrent) ctx.current?.id else ctx.stored?.heldSnapshotId ?: ctx.current?.id
-        push(ctx, unit, emulatorId, expected, isHardcore, false)
+        push(ctx, unit, PushSource(emulatorId), expected, isHardcore, approveHardcoreDowngrade)
     }
 
     suspend fun keepServer(gameId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult = locked(gameId) {
@@ -189,9 +208,6 @@ class SnapshotSyncEngine @Inject constructor(
     private suspend fun notReady(gameId: Long): SnapshotSyncResult =
         if (!isEligible(gameId)) SnapshotSyncResult.NotEligible else SnapshotSyncResult.NoConnection
 
-    private fun labelOf(channelName: String?): String =
-        SaveSyncApiClient.namedChannelOrNull(channelName) ?: DEFAULT_LABEL
-
     private suspend fun load(gameId: Long, channelName: String?): ChannelView? {
         if (!isEligible(gameId)) return null
         val client = apiClient.get()
@@ -202,7 +218,7 @@ class SnapshotSyncEngine @Inject constructor(
             Logger.warn(TAG, "[SaveSync] SNAPSHOT gameId=$gameId | the launched file has no RomM file record")
             return null
         }
-        val label = labelOf(channelName)
+        val label = SnapshotChannels.labelOf(channelName)
         val ownerUserId = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER
         val stored = channelDao.get(ownerUserId, gameId, label)?.takeIf { it.romFileId == file.id }
         val channels = runCatching { api.listChannels(listOf(file.id)) }.getOrNull()
@@ -279,7 +295,8 @@ class SnapshotSyncEngine @Inject constructor(
             is LocalSave.Unreadable -> return SnapshotSyncResult.Failed(local.reason)
             LocalSave.None -> return SnapshotSyncResult.Failed("no local save to push")
         }
-        return push(ctx, unit, emulatorId, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
+        val source = PushSource(emulatorId, local.path, local.pending)
+        return push(ctx, unit, source, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
     }
 
     private suspend fun nativeUnit(
@@ -335,15 +352,21 @@ class SnapshotSyncEngine @Inject constructor(
         )
     }
 
+    private class PushSource(
+        val emulatorId: String,
+        val localSavePath: String? = null,
+        val sigilState: SigilPendingState? = null
+    )
+
     private suspend fun push(
         ctx: ChannelView,
         unit: SnapshotUnit,
-        emulatorId: String,
+        source: PushSource,
         expectedCurrentId: Long?,
         isHardcore: Boolean,
         approveHardcoreDowngrade: Boolean
     ): SnapshotSyncResult {
-        val states = autoStates(ctx, emulatorId, isHardcore)
+        val states = autoStates(ctx, source.emulatorId, isHardcore)
         val manifest = JSONObject().apply {
             if (states.isNotEmpty()) {
                 put("states", JSONObject().apply {
@@ -363,7 +386,7 @@ class SnapshotSyncEngine @Inject constructor(
             })
             put("is_hardcore", isHardcore)
             if (approveHardcoreDowngrade) put("approve_hardcore_downgrade", true)
-            put("emulator", EMULATOR)
+            put("emulator", SnapshotChannels.EMULATOR)
             put("emulator_version", BuildConfig.VERSION_NAME)
         }
         val screenshot = saveScreenshots.recentFor(ctx.game.id)
@@ -373,13 +396,19 @@ class SnapshotSyncEngine @Inject constructor(
                     ?.let { saveScreenshots.keepForSnapshot(outcome.snapshot.id, it) }
                 screenshot?.delete()
                 record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
+                clearPushedDirtyFlags(ctx)
+                source.sigilState?.let { sigilSaveHandler.commit(it) }
                 Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${outcome.snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
                 SnapshotSyncResult.Pushed(outcome.snapshot.id)
             }
             PushOutcome.HardcoreDowngrade -> SnapshotSyncResult.HardcoreDowngrade(expectedCurrentId)
-            is PushOutcome.Conflict -> SnapshotSyncResult.Conflict(null, outcome.currentId)
+            is PushOutcome.Conflict -> SnapshotSyncResult.Conflict(null, outcome.currentId, source.localSavePath)
             is PushOutcome.Failed -> SnapshotSyncResult.Failed(outcome.reason)
         }
+    }
+
+    private suspend fun commitSigilState(local: LocalSave) {
+        local.pending?.let { sigilSaveHandler.commit(it) }
     }
 
     private suspend fun adopt(ctx: ChannelView, current: RomMSnapshot): SnapshotSyncResult {
@@ -391,22 +420,36 @@ class SnapshotSyncEngine @Inject constructor(
     private suspend fun apply(ctx: ChannelView, snapshotId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult {
         val snapshot = runCatching { ctx.api.getSnapshot(snapshotId) }.getOrNull()?.takeIf { it.isSuccessful }?.body()
             ?: return SnapshotSyncResult.Failed("could not read snapshot #$snapshotId")
-        val save = snapshot.save
-        if (save != null) {
-            val placed = saveDownloader.get().downloadSave(
-                gameId = ctx.game.id,
-                emulatorId = emulatorId,
-                channelName = channelName,
-                knownServerSaveId = save.id,
-                fromSnapshot = true
-            )
-            when (placed) {
-                is SaveSyncResult.Success -> Unit
-                is SaveSyncResult.Error -> return SnapshotSyncResult.Failed(placed.message)
-                else -> return SnapshotSyncResult.Failed("save ${save.id} was not placed: ${placed::class.simpleName}")
-            }
+        val staged = when (val stage = stageBank(ctx, snapshot, emulatorId)) {
+            BankStage.None -> null
+            is BankStage.Failed -> return SnapshotSyncResult.Failed(stage.reason)
+            is BankStage.Staged -> stage.bank
         }
-        applyBank(ctx, snapshot, emulatorId)
+        val save = snapshot.save
+        try {
+            if (save != null) {
+                val placed = saveDownloader.get().downloadSave(
+                    gameId = ctx.game.id,
+                    emulatorId = emulatorId,
+                    channelName = channelName,
+                    knownServerSaveId = save.id,
+                    fromSnapshot = true
+                )
+                when (placed) {
+                    is SaveSyncResult.Success -> Unit
+                    is SaveSyncResult.Error -> return SnapshotSyncResult.Failed(placed.message)
+                    else -> return SnapshotSyncResult.Failed("save ${save.id} was not placed: ${placed::class.simpleName}")
+                }
+            }
+            if (staged != null && !commitBank(staged)) {
+                return SnapshotSyncResult.Failed("the states of snapshot #${snapshot.id} could not be moved into place")
+            }
+        } finally {
+            staged?.staging?.deleteRecursively()
+        }
+        staged?.let {
+            Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | bank of #${snapshot.id}: kept=${it.kept.size} written=${it.written} of ${it.size}")
+        }
         record(ctx, snapshot.id, snapshot.digest, save?.hashes())
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
@@ -419,38 +462,74 @@ class SnapshotSyncEngine @Inject constructor(
     private fun bankSlot(key: String): Int? =
         if (key == AUTO_SLOT) LibretroStateSlots.AUTO_SLOT else key.toIntOrNull()?.takeIf { it in 0..LibretroStateSlots.MAX_SLOT }
 
-    private suspend fun applyBank(ctx: ChannelView, snapshot: RomMSnapshot, emulatorId: String) {
-        if (emulatorId != EmulatorRegistry.BUILTIN_ID) return
-        val romBaseName = liveBaseName(ctx.game) ?: return
-        val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug) ?: return
+    private class StagedBank(
+        val dir: File,
+        val romBaseName: String,
+        val kept: Set<Int>,
+        val staging: File,
+        val placements: List<Pair<File, File>>,
+        val written: Int,
+        val size: Int
+    )
+
+    private sealed class BankStage {
+        data object None : BankStage()
+        class Staged(val bank: StagedBank) : BankStage()
+        class Failed(val reason: String) : BankStage()
+    }
+
+    private fun liveSlots(dir: File, romBaseName: String): Map<Int, File> =
+        dir.listFiles().orEmpty().filter { it.isFile }.mapNotNull { file ->
+            LibretroStateSlots.parseSlotNumber(romBaseName, file.name)?.let { it to file }
+        }.toMap()
+
+    private suspend fun stageBank(ctx: ChannelView, snapshot: RomMSnapshot, emulatorId: String): BankStage {
+        if (emulatorId != EmulatorRegistry.BUILTIN_ID) return BankStage.None
+        val romBaseName = liveBaseName(ctx.game) ?: return BankStage.None
+        val core = builtinCoreResolver.resolveCoreId(ctx.game.id, ctx.game.platformId, ctx.game.platformSlug)
+            ?: return BankStage.None
         val dir = statePaths.liveStateBaseDir(ctx.game.id)
         val bank: Map<Int, RomMSnapshotState> = if (snapshot.isHardcore) {
             emptyMap()
         } else {
             snapshot.states[core].orEmpty().mapNotNull { (key, state) -> bankSlot(key)?.let { it to state } }.toMap()
         }
-        val kept = mutableSetOf<Int>()
-        withContext(Dispatchers.IO) {
-            dir.listFiles().orEmpty().forEach { file ->
-                val slot = LibretroStateSlots.parseSlotNumber(romBaseName, file.name) ?: return@forEach
-                val banked = bank[slot]
-                if (banked?.contentHash != null && saveArchiver.calculateContentHash(file) == banked.contentHash) {
-                    kept += slot
-                    return@forEach
-                }
-                file.delete()
-                File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION").delete()
-            }
-        }
+        val kept = liveSlots(dir, romBaseName).filter { (slot, file) ->
+            val banked = bank[slot]?.contentHash
+            banked != null && saveArchiver.calculateContentHash(file) == banked
+        }.keys
+        val staging = File(dir, "$STAGING_PREFIX${System.nanoTime()}")
+        val placements = mutableListOf<Pair<File, File>>()
         var written = 0
-        bank.filterKeys { it !in kept }.forEach { (slot, banked) ->
-            val path = banked.downloadPath ?: return@forEach
-            val file = statePaths.liveStateFile(dir, romBaseName, slot)
-            if (!fetchTo(ctx.api, path, file)) return@forEach
+        for ((slot, banked) in bank) {
+            if (slot in kept) continue
+            val path = banked.downloadPath ?: continue
+            val target = statePaths.liveStateFile(dir, romBaseName, slot)
+            val wanted = listOfNotNull(
+                path to target,
+                banked.screenshot?.downloadPath?.let { it to File(dir, "${target.name}$STATE_SCREENSHOT_EXTENSION") }
+            )
+            for ((download, destination) in wanted) {
+                val temp = File(staging, destination.name)
+                if (!fetchTo(ctx.api, download, temp)) {
+                    staging.deleteRecursively()
+                    return BankStage.Failed("could not fetch $download for slot $slot of snapshot #${snapshot.id} ($core)")
+                }
+                placements += temp to destination
+            }
             written++
-            banked.screenshot?.downloadPath?.let { fetchTo(ctx.api, it, File(dir, "${file.name}$STATE_SCREENSHOT_EXTENSION")) }
         }
-        Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | bank of #${snapshot.id} ($core): kept=${kept.size} written=$written of ${bank.size}")
+        return BankStage.Staged(StagedBank(dir, romBaseName, kept, staging, placements, written, bank.size))
+    }
+
+    private fun commitBank(staged: StagedBank): Boolean {
+        liveSlots(staged.dir, staged.romBaseName).filterKeys { it !in staged.kept }.values.forEach { file ->
+            file.delete()
+            File(staged.dir, "${file.name}$STATE_SCREENSHOT_EXTENSION").delete()
+        }
+        return staged.placements.all { (temp, target) ->
+            temp.renameTo(target) || runCatching { temp.copyTo(target, overwrite = true); true }.getOrDefault(false)
+        }
     }
 
     private suspend fun fetchTo(api: RomMApi, downloadPath: String, target: File): Boolean = withContext(Dispatchers.IO) {
@@ -482,7 +561,16 @@ class SnapshotSyncEngine @Inject constructor(
                 updatedAt = System.currentTimeMillis()
             )
         )
-        saveCacheDao.clearAllDirtyFlags(ctx.game.id, syncPreferencesRepository.getRommUserId())
+    }
+
+    private suspend fun clearPushedDirtyFlags(ctx: ChannelView) {
+        val owner = ctx.ownerUserId.takeUnless { it == SigilSyncStateEntity.NO_OWNER }
+        if (SnapshotChannels.isDefaultLabel(ctx.label)) {
+            saveCacheDao.clearDirtyFlagForNoChannel(ctx.game.id, owner)
+            saveCacheDao.clearDirtyFlagForChannel(ctx.game.id, owner, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, NO_CACHE_ID)
+        } else {
+            saveCacheDao.clearDirtyFlagForChannel(ctx.game.id, owner, ctx.label, NO_CACHE_ID)
+        }
     }
 
     private suspend fun report(ctx: ChannelView, snapshotId: Long) {
@@ -492,11 +580,11 @@ class SnapshotSyncEngine @Inject constructor(
 
     companion object {
         private const val TAG = "SnapshotSyncEngine"
-        private const val DEFAULT_LABEL = "default"
         private const val FORMAT_NEUTRAL = "neutral"
         private const val FORMAT_NATIVE = "native"
-        private const val EMULATOR = "argosy"
         private const val AUTO_SLOT = "auto"
         private const val STATE_SCREENSHOT_EXTENSION = ".png"
+        private const val STAGING_PREFIX = ".snapshot-bank-"
+        private const val NO_CACHE_ID = -1L
     }
 }

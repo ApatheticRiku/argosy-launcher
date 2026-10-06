@@ -249,7 +249,7 @@ class SnapshotActionRunner @Inject constructor(
             SnapshotActionResult.Offline ->
                 notificationManager.showError(NotificationText.Res(R.string.save_channels_notice_offline))
             is SnapshotActionResult.Failed ->
-                notificationManager.showError(NotificationText.Res(R.string.save_channels_notice_failed, listOf(result.reason)))
+                notificationManager.showError(NotificationText.Res(result.failure.messageRes))
             SnapshotActionResult.Done, SnapshotActionResult.Stale -> Unit
         }
     }

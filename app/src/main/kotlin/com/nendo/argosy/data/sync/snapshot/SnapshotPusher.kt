@@ -26,7 +26,7 @@ sealed class PushOutcome {
     data class Written(val snapshot: RomMSnapshot) : PushOutcome()
     data class Conflict(val currentId: Long) : PushOutcome()
     data object HardcoreDowngrade : PushOutcome()
-    data class Failed(val reason: String) : PushOutcome()
+    data class Failed(val reason: String, val failure: SnapshotFailure) : PushOutcome()
 }
 
 /**
@@ -63,22 +63,22 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
             }
         }
         val response = runCatching { api.pushSnapshot(deviceId, parts) }.getOrElse {
-            return PushOutcome.Failed("push failed: ${it.message}")
+            return PushOutcome.Failed("push failed: ${it.message}", SnapshotFailure.OFFLINE)
         }
         val body = if (response.isSuccessful) response.body()?.string() else response.errorBody()?.string()
-        return when (response.code()) {
+        return when (val code = response.code()) {
             200, 201 -> body?.let { runCatching { snapshotAdapter.fromJson(it) }.getOrNull() }
                 ?.let { PushOutcome.Written(it) }
-                ?: PushOutcome.Failed("push answered ${response.code()} without a snapshot")
+                ?: PushOutcome.Failed("push answered $code without a snapshot", SnapshotFailure.UNKNOWN)
             409 -> {
                 val conflict = body?.let { runCatching { conflictAdapter.fromJson(it) }.getOrNull() }
                 when {
                     conflict?.hardcoreDowngrade == true -> PushOutcome.HardcoreDowngrade
                     conflict?.current != null -> PushOutcome.Conflict(conflict.current.id)
-                    else -> PushOutcome.Failed("push refused: 409 $body")
+                    else -> PushOutcome.Failed("push refused: 409 $body", SnapshotFailure.CONFLICT)
                 }
             }
-            else -> PushOutcome.Failed("push refused: ${response.code()} $body")
+            else -> PushOutcome.Failed("push refused: $code $body", SnapshotFailure.ofStatus(code))
         }
     }
 

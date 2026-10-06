@@ -1,5 +1,7 @@
 package com.nendo.argosy.ui.common.savechannel.snapshot
 
+import com.nendo.argosy.R
+import com.nendo.argosy.data.sync.snapshot.SnapshotChannels
 import com.nendo.argosy.ui.common.savechannel.SaveChannelStateHolder
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusEvent
 import kotlinx.coroutines.CoroutineScope
@@ -186,7 +188,7 @@ class SnapshotViewDelegate @Inject constructor(
     }
 
     fun updateLabelText(text: String) {
-        holder.updateSnapshot { state -> state.copy(labelEntry = state.labelEntry?.copy(text = text)) }
+        holder.updateSnapshot { state -> state.copy(labelEntry = state.labelEntry?.copy(text = text, error = null)) }
     }
 
     fun confirmLabel(scope: CoroutineScope) {
@@ -194,6 +196,10 @@ class SnapshotViewDelegate @Inject constructor(
         val entry = state.labelEntry ?: return
         val label = entry.text.trim()
         if (label.isEmpty() || state.isBusy) return
+        if (SnapshotChannels.isReservedLabel(label)) {
+            holder.updateSnapshot { it.copy(labelEntry = it.labelEntry?.copy(error = R.string.save_channels_label_error_reserved)) }
+            return
+        }
         when (entry.mode) {
             SnapshotLabelMode.NEW_CHANNEL -> runner.newChannel(scope, label, entry.backupSaveId)
             SnapshotLabelMode.RENAME -> entry.channelId?.let { runner.rename(scope, it, label) }

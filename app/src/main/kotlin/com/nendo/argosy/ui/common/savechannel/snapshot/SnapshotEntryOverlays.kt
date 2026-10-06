@@ -82,6 +82,12 @@ private fun SnapshotLabelOverlay(entry: SnapshotLabelEntryUi, isBusy: Boolean, a
             onValueChange = actions::updateLabelText,
             modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
             placeholder = { Text(stringResource(R.string.save_channels_label_field_placeholder)) },
+            isError = entry.error != null,
+            supportingText = if (entry.error != null) {
+                { Text(stringResource(entry.error)) }
+            } else {
+                null
+            },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,

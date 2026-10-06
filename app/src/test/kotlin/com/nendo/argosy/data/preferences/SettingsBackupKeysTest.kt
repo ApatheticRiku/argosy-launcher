@@ -18,7 +18,7 @@ class SettingsBackupKeysTest {
     private val credentialsAndIdentity = setOf(
         "romm_token", "romm_url", "romm_username", "romm_user_id", "romm_avatar_path",
         "romm_device_id",
-        "romm_device_client_version", "ra_token", "ra_username", "ra_proxy_enabled",
+        "romm_device_client_version", "romm_snapshots_server", "romm_snapshots_supported", "ra_token", "ra_username", "ra_proxy_enabled",
         "ra_proxy_address", "social_session_token", "social_user_id", "social_username",
         "social_display_name", "jellyfin_access_token", "jellyfin_device_id",
         "jellyfin_server_url", "jellyfin_user_id", "jellyfin_user_name", "quaypass_credential",

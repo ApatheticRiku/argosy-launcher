@@ -14,7 +14,8 @@ internal data class TimelineLaneLoad(
     val isLoading: Boolean,
     val hasMore: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val failed: Boolean = false
+    val failed: Boolean = false,
+    val olderFailed: Boolean = false
 )
 
 internal data class SaveTimelineLayout(

@@ -43,7 +43,7 @@ class ConflictResolutionService @Inject constructor(
                 val emulatorId = resolveEmulator(conflict)
                     ?: return@withContext ConflictResolutionOutcome.Failed("Cannot resolve emulator for conflict ${conflict.id}")
                 val result = if (conflict.isHardcoreDowngrade) {
-                    saveSyncRepository.approveHardcoreDowngrade(conflict.gameId, emulatorId, conflict.slot)
+                    uploadChain(conflict, emulatorId, SaveSyncApiClient.namedChannelOrNull(conflict.slot), approveHardcoreDowngrade = true)
                 } else {
                     uploadLocal(conflict, emulatorId)
                 }
@@ -73,6 +73,15 @@ class ConflictResolutionService @Inject constructor(
                 channelName = conflict.slot,
                 forceOverwrite = true
             )
+        return uploadChain(conflict, emulatorId, slot, approveHardcoreDowngrade = false)
+    }
+
+    private suspend fun uploadChain(
+        conflict: PendingConflictEntity,
+        emulatorId: String,
+        slot: String?,
+        approveHardcoreDowngrade: Boolean
+    ): SaveSyncResult {
         val owner = conflict.ownerUserId.takeIf { it != PendingConflictEntity.UNATTRIBUTED }
         val rommId = gameDao.getById(conflict.gameId)?.rommId
             ?: return SaveSyncResult.Error("Game ${conflict.gameId} is not on the server")
@@ -80,23 +89,31 @@ class ConflictResolutionService @Inject constructor(
             .filter { (it.ownerUserId == null || it.ownerUserId == owner) && !it.isRollback }
             .filter { SaveSyncApiClient.syncKeyOf(it.channelName) == SaveSyncApiClient.syncKeyOf(slot) }
         val chain = unsyncedChain(versions)
-        if (chain.isEmpty()) return SaveSyncResult.Error("Slot $slot holds no cached version")
+        if (chain.isEmpty()) {
+            return if (approveHardcoreDowngrade) {
+                saveSyncRepository.approveHardcoreDowngrade(conflict.gameId, emulatorId, conflict.slot)
+            } else {
+                SaveSyncResult.Error("Slot $slot holds no cached version")
+            }
+        }
         conflict.rommSaveId?.let { serverSaveId ->
             if (!saveSyncRepository.downloadAndCacheSave(serverSaveId, conflict.gameId, slot, activate = false)) {
                 Logger.warn(TAG, "[Resolve] could not keep server save $serverSaveId in history before keeping local")
             }
         }
-        var result: SaveSyncResult = SaveSyncResult.Error("Slot $slot uploaded nothing")
+        val channelName = slot ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME
+        var result: SaveSyncResult = SaveSyncResult.Error("Slot $channelName uploaded nothing")
         chain.forEachIndexed { index, cache ->
             result = saveSyncRepository.uploadCacheEntry(
                 gameId = conflict.gameId,
                 rommId = rommId,
                 emulatorId = emulatorId,
-                channelName = slot,
+                channelName = channelName,
                 cacheFile = saveCacheManager.get().getCacheFile(cache),
                 contentHash = cache.contentHash,
                 overwrite = index == 0,
-                uploadedCacheId = cache.id
+                uploadedCacheId = cache.id,
+                approveHardcoreDowngrade = approveHardcoreDowngrade && index == 0
             )
             if (result !is SaveSyncResult.Success) return result
         }
@@ -104,12 +121,15 @@ class ConflictResolutionService @Inject constructor(
     }
 
     private fun unsyncedChain(versions: List<SaveCacheEntity>): List<SaveCacheEntity> {
-        val lastSynced = versions.filter { it.rommSaveId != null }.maxOfOrNull { it.cachedAt }
+        val lastSynced = versions.filter { it.reachedServer }.maxOfOrNull { it.cachedAt }
         val pending = versions
-            .filter { it.rommSaveId == null && (lastSynced == null || it.cachedAt > lastSynced) }
+            .filter { !it.reachedServer && (lastSynced == null || it.cachedAt > lastSynced) }
             .sortedBy { it.cachedAt }
         return pending.ifEmpty { listOfNotNull(versions.maxByOrNull { it.cachedAt }) }
     }
+
+    private val SaveCacheEntity.reachedServer: Boolean
+        get() = rommSaveId != null || lastSyncedAt != null
 
     private suspend fun settle(conflict: PendingConflictEntity, result: SaveSyncResult): ConflictResolutionOutcome =
         when (result) {

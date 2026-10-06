@@ -143,6 +143,7 @@ class RomMConnectionManager @Inject constructor(
         private set
 
     @Volatile private var lastTokenVerifiedAt = 0L
+    @Volatile private var rememberedSnapshots: Boolean? = null
     @Volatile private var lastConnectedAt = 0L
 
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -169,6 +170,26 @@ class RomMConnectionManager @Inject constructor(
     fun getCapabilities(): RomMCapabilities {
         return (_connectionState.value as? ConnectionState.Connected)?.capabilities
             ?: RomMCapabilities.NONE
+    }
+
+    /**
+     * Whether saves sync through snapshots: the live server's capability while connected, else
+     * what the stored server last reported. False for a server never reached.
+     */
+    fun snapshotsEnabled(): Boolean =
+        (_connectionState.value as? ConnectionState.Connected)?.capabilities?.supportsSnapshots
+            ?: rememberedSnapshots
+            ?: false
+
+    private suspend fun loadRememberedSnapshots(candidates: List<String>) {
+        rememberedSnapshots = candidates.firstNotNullOfOrNull {
+            userPreferencesRepository.getRommSnapshotSupport(serverInstanceKey(it))
+        }
+    }
+
+    private suspend fun rememberSnapshots(url: String, capabilities: RomMCapabilities) {
+        rememberedSnapshots = capabilities.supportsSnapshots
+        userPreferencesRepository.setRommSnapshotSupport(serverInstanceKey(url), capabilities.supportsSnapshots)
     }
 
     fun isVersionAtLeast(minVersion: String): Boolean {
@@ -200,6 +221,7 @@ class RomMConnectionManager @Inject constructor(
         }
         if (stored.candidates.isEmpty()) return false
         if (!reprobe && isConnected() && stored == connectedWith) return false
+        loadRememberedSnapshots(stored.candidates)
         registerNetworkCallback()
         val result = attemptConnection(stored.candidates, stored.token)
         Logger.info(TAG, "initialize: connect result=$result, state=${_connectionState.value}")
@@ -481,6 +503,7 @@ class RomMConnectionManager @Inject constructor(
             val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
             _connectionState.value = ConnectionState.Connected(version, capabilities)
             saveSyncRepository.get().setCapabilities(capabilities)
+            rememberSnapshots(normalizedUrl, capabilities)
             reconnectPending = false
             lastConnectedAt = SystemClock.elapsedRealtime()
             Logger.info(TAG, "connect: success at $normalizedUrl, version=$version, capabilities=$capabilities")
@@ -699,6 +722,7 @@ class RomMConnectionManager @Inject constructor(
         saveSyncRepository.get().setCapabilities(capabilities)
         saveSyncRepository.get().setDeviceId(body.deviceId)
         _connectionState.value = ConnectionState.Connected(version, capabilities)
+        rememberSnapshots(base, capabilities)
 
         deviceAuthApi = null
         deviceAuthBaseUrl = null
@@ -756,6 +780,7 @@ class RomMConnectionManager @Inject constructor(
             ?: run {
                 disconnect()
                 userPreferencesRepository.clearRomMCredentials()
+                rememberedSnapshots = null
                 return AccountRemovalResult.UnknownAccount
             }
         val drained = syncCoordinator.get().processQueue()
@@ -772,6 +797,7 @@ class RomMConnectionManager @Inject constructor(
         }
         disconnect()
         userPreferencesRepository.clearRomMCredentials()
+        rememberedSnapshots = null
         retroAchievementsRepository.get().syncRetroArchCredentials()
         Logger.info(TAG, "signOut: removed user ${active.rommUserId} and cleared the stored identity")
         return result
@@ -793,6 +819,7 @@ class RomMConnectionManager @Inject constructor(
         }
         cachedDeviceId = stored.deviceId
         saveSyncRepository.get().setDeviceId(cachedDeviceId)
+        loadRememberedSnapshots(stored.candidates)
         val result = attemptConnection(stored.candidates, stored.token)
         if (result is RomMResult.Error) {
             Logger.info(TAG, "rebindToActiveAccount: offline after swap, scheduling reconnect")
@@ -857,6 +884,7 @@ class RomMConnectionManager @Inject constructor(
                 val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
                 _connectionState.value = ConnectionState.Connected(version, capabilities)
                 saveSyncRepository.get().setCapabilities(capabilities)
+                rememberSnapshots(baseUrl, capabilities)
                 reconnectPending = false
                 Logger.info(TAG, "checkConnection: connected, version=$version")
             } else {

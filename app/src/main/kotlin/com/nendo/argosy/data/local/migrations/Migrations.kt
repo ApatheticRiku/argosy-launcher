@@ -4000,12 +4000,6 @@ object Migration_201_202 : Migration(201, 202) {
     }
 }
 
-/**
- * Moves every game's art into `game_art`, one row per slot, and rebuilds `games` without the art
- * columns. A stored path starting with `/` was a cached file and becomes `cachedPath`; anything else
- * was a remote url and becomes `sourceUrl`. `cachedFromUrl` starts null for the image cache to
- * backfill.
- */
 object Migration_204_205 : Migration(204, 205) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("DROP TABLE IF EXISTS `snapshot_channels`")
@@ -4050,6 +4044,12 @@ object Migration_203_204 : Migration(203, 204) {
     }
 }
 
+/**
+ * Moves every game's art into `game_art`, one row per slot, and rebuilds `games` without the art
+ * columns. A stored path starting with `/` was a cached file and becomes `cachedPath`; anything else
+ * was a remote url and becomes `sourceUrl`. `cachedFromUrl` starts null for the image cache to
+ * backfill.
+ */
 object Migration_202_203 : Migration(202, 203) {
     private fun copySlot(
         db: SupportSQLiteDatabase,

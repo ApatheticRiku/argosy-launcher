@@ -8,6 +8,8 @@ import android.graphics.Path
 import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
@@ -54,13 +56,16 @@ class FocusAccessibilityService : AccessibilityService() {
     suspend fun captureDisplay(displayId: Int): Bitmap? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
         return suspendCancellableCoroutine { continuation ->
-            takeScreenshot(displayId, mainExecutor, object : TakeScreenshotCallback {
+            takeScreenshot(displayId, Dispatchers.IO.asExecutor(), object : TakeScreenshotCallback {
                 override fun onSuccess(screenshot: ScreenshotResult) {
-                    val bitmap = screenshot.hardwareBuffer.use { buffer ->
-                        Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
-                            ?.copy(Bitmap.Config.ARGB_8888, false)
-                    }
-                    continuation.resume(bitmap)
+                    val bitmap = runCatching {
+                        screenshot.hardwareBuffer.use { buffer ->
+                            Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)?.let { wrapped ->
+                                wrapped.copy(Bitmap.Config.ARGB_8888, false).also { wrapped.recycle() }
+                            }
+                        }
+                    }.onFailure { Log.w(TAG, "Screenshot of display $displayId unreadable", it) }.getOrNull()
+                    continuation.resume(bitmap) { bitmap?.recycle() }
                 }
 
                 override fun onFailure(errorCode: Int) {

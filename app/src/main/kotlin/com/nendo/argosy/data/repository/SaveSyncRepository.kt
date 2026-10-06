@@ -279,9 +279,13 @@ class SaveSyncRepository @Inject constructor(
         contentHash: String?,
         overwrite: Boolean = false,
         uploadedCacheId: Long? = null,
-        ownerApi: AccountApi? = null
+        ownerApi: AccountApi? = null,
+        approveHardcoreDowngrade: Boolean = false
     ): SaveSyncResult =
-        apiClient.uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
+        apiClient.uploadCacheEntry(
+            gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi,
+            approveHardcoreDowngrade
+        )
 
     suspend fun downloadSave(
         gameId: Long,
