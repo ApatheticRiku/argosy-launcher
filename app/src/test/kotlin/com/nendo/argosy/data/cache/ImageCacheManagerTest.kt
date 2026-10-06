@@ -173,6 +173,16 @@ class ImageCacheManagerTest {
     }
 
     @Test
+    fun `art every candidate reports gone is dropped`() {
+        assertEquals(CachedArtDecision.DROP, cachedArtDecision(2_000L, null, everyCandidateGone = true))
+    }
+
+    @Test
+    fun `an unreachable server is not mistaken for removed art`() {
+        assertEquals(CachedArtDecision.SKIP, cachedArtDecision(2_000L, null, everyCandidateGone = false))
+    }
+
+    @Test
     fun `getCustomCachePath returns null by default`() {
         assertNull(imageCacheManager.getCustomCachePath())
     }

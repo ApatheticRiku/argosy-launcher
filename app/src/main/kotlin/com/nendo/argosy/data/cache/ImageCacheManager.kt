@@ -131,9 +131,14 @@ internal fun artUrlHash(url: String): String {
 internal fun isCachedFileFrom(cachedPath: String, sourceUrl: String): Boolean =
     File(cachedPath).nameWithoutExtension.endsWith("_${artUrlHash(sourceUrl)}")
 
-internal enum class CachedArtDecision { KEEP_AND_RENAME, REPLACE, SKIP }
+internal enum class CachedArtDecision { KEEP_AND_RENAME, REPLACE, SKIP, DROP }
 
-internal fun cachedArtDecision(cachedModifiedAt: Long, serverModifiedAt: Long?): CachedArtDecision = when {
+internal fun cachedArtDecision(
+    cachedModifiedAt: Long,
+    serverModifiedAt: Long?,
+    everyCandidateGone: Boolean = false
+): CachedArtDecision = when {
+    everyCandidateGone -> CachedArtDecision.DROP
     serverModifiedAt == null -> CachedArtDecision.SKIP
     serverModifiedAt <= 0L -> CachedArtDecision.REPLACE
     serverModifiedAt > cachedModifiedAt -> CachedArtDecision.REPLACE
@@ -389,7 +394,8 @@ class ImageCacheManager @Inject constructor(
             revalidateCachedArt(
                 request, File(cachedPath), backgroundDir, prefix,
                 store = { path -> storeCachedArt(request, ArtSlot.BACKGROUND, path) },
-                replace = { processRequest(request.copy(revalidateFrom = null), replacing = true) }
+                replace = { processRequest(request.copy(revalidateFrom = null), replacing = true) },
+                drop = { dropCachedArt(request, ArtSlot.BACKGROUND) }
             )
             return
         }
@@ -1340,7 +1346,8 @@ class ImageCacheManager @Inject constructor(
             revalidateCachedArt(
                 request, File(cachedPath), coverDir, prefix,
                 store = { path -> storeCachedArt(request, ArtSlot.COVER, path) },
-                replace = { processCoverRequest(request.copy(revalidateFrom = null), replacing = true) }
+                replace = { processCoverRequest(request.copy(revalidateFrom = null), replacing = true) },
+                drop = { dropCachedArt(request, ArtSlot.COVER) }
             )
             return
         }
@@ -1443,16 +1450,22 @@ class ImageCacheManager @Inject constructor(
         dir: File,
         prefix: String,
         store: suspend (String) -> Unit,
-        replace: suspend () -> Unit
+        replace: suspend () -> Unit,
+        drop: suspend () -> Unit
     ) {
         if (!cached.exists()) {
             replace()
             return
         }
-        val answer = firstAnsweringCandidate(request.urls)
-        when (cachedArtDecision(cached.lastModified(), answer?.second)) {
+        val check = checkCandidates(request.urls)
+        val answer = check.answer
+        when (cachedArtDecision(cached.lastModified(), answer?.second, check.everyCandidateGone)) {
             CachedArtDecision.SKIP ->
                 Logger.info(TAG, "No art candidate answered for ${request.id}, keeping ${cached.name}")
+            CachedArtDecision.DROP -> {
+                Logger.info(TAG, "Art for ${request.id} is gone from the server, dropping ${cached.name}")
+                drop()
+            }
             CachedArtDecision.REPLACE -> replace()
             CachedArtDecision.KEEP_AND_RENAME -> {
                 val url = answer?.first ?: return
@@ -1464,36 +1477,53 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    private fun firstAnsweringCandidate(urls: List<String>): Pair<String, Long>? {
+    private class CandidateCheck(val answer: Pair<String, Long>?, val everyCandidateGone: Boolean)
+
+    private fun checkCandidates(urls: List<String>): CandidateCheck {
+        var everyCandidateGone = urls.isNotEmpty()
         for (url in urls) {
             if (missingArt.isKnownMissing(url)) continue
-            val modified = serverLastModified(url) ?: continue
-            return url to modified
+            when (val head = serverHead(url)) {
+                is ServerHead.Modified -> return CandidateCheck(url to head.at, everyCandidateGone = false)
+                ServerHead.Gone -> Unit
+                ServerHead.Unknown -> everyCandidateGone = false
+            }
         }
-        return null
+        return CandidateCheck(null, everyCandidateGone)
     }
 
-    private fun serverLastModified(url: String): Long? = try {
+    private sealed interface ServerHead {
+        class Modified(val at: Long) : ServerHead
+        data object Gone : ServerHead
+        data object Unknown : ServerHead
+    }
+
+    private fun serverHead(url: String): ServerHead = try {
         val connection = URL(url).openConnection() as java.net.HttpURLConnection
         try {
             connection.requestMethod = "HEAD"
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             when (val status = connection.responseCode) {
-                in 200..299 -> connection.lastModified
+                in 200..299 -> ServerHead.Modified(connection.lastModified)
                 java.net.HttpURLConnection.HTTP_NOT_FOUND, java.net.HttpURLConnection.HTTP_GONE -> {
                     missingArt.markMissing(url)
                     Logger.warn(TAG, "Image not on the server ($status), skipping it for a while: $url")
-                    null
+                    ServerHead.Gone
                 }
-                else -> null
+                else -> ServerHead.Unknown
             }
         } finally {
             connection.disconnect()
         }
     } catch (e: Exception) {
         Logger.warn(TAG, "Could not check cached art against the server: ${e.message}")
-        null
+        ServerHead.Unknown
+    }
+
+    private suspend fun dropCachedArt(request: ImageCacheRequest, slot: ArtSlot) {
+        val game = storedGame(request) ?: return
+        gameArtDao.clearCached(game.id, slot)
     }
 
     private suspend fun processBoxFaceRequest(request: ImageCacheRequest) {

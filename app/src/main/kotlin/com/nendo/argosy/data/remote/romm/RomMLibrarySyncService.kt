@@ -1263,6 +1263,7 @@ class RomMLibrarySyncService @Inject constructor(
 
     private suspend fun writeArtSources(gameId: Long, rom: RomMRom, sources: Map<ArtSlot, List<String>>) {
         sources.forEach { (slot, urls) ->
+            if (urls.isEmpty()) imageCacheManager.forgetCachedArt(gameId, slot)
             recordArtSource(gameArtDao, imageCacheManager, gameId, slot, urls, rom.name, rommId = rom.id)
         }
     }
