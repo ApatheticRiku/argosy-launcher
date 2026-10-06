@@ -75,7 +75,11 @@ class MusicPlayerViewModel @Inject constructor(
         viewModelScope.launch {
             controlsPreferences.preferences.collect { prefs ->
                 _uiState.update {
-                    it.copy(launcherEnabled = prefs.ambientAudioEnabled, volumeLevel = prefs.ambientAudioVolume)
+                    it.copy(
+                        launcherEnabled = prefs.ambientAudioEnabled,
+                        volumeLevel = prefs.ambientAudioVolume,
+                        playInBackground = prefs.ambientAudioPlayInBackground
+                    )
                 }
             }
         }
@@ -237,7 +241,15 @@ class MusicPlayerViewModel @Inject constructor(
             MusicTransportButton.PLAY_PAUSE -> togglePlayPause()
             MusicTransportButton.NEXT -> skipNext()
             MusicTransportButton.SHUFFLE -> toggleShuffle()
+            MusicTransportButton.BACKGROUND -> togglePlayInBackground()
         }
+    }
+
+    fun togglePlayInBackground() {
+        val next = !_uiState.value.playInBackground
+        _uiState.update { it.copy(playInBackground = next) }
+        ambientAudioManager.setPlayInBackground(next)
+        viewModelScope.launch { controlsPreferences.setAmbientAudioPlayInBackground(next) }
     }
 
     fun togglePlayPause() {

@@ -46,6 +46,7 @@ class MainActivityPreferencesObserver(
                 ambientAudioManager.setEnabled(prefs.ambientAudioEnabled)
                 ambientAudioManager.setVolume(levelIn(prefs.ambientAudioVolume, VolumeLevels.AMBIENT_AUDIO))
                 ambientAudioManager.setShuffle(prefs.ambientAudioShuffle)
+                ambientAudioManager.setPlayInBackground(prefs.ambientAudioPlayInBackground)
                 bgmPlaylistCoordinator.activate()
                 if (prefs.ambientAudioEnabled && hasWindowFocus()) {
                     ambientAudioManager.fadeIn()

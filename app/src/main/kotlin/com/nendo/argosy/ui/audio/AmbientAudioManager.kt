@@ -8,6 +8,7 @@ import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.audiofx.LoudnessEnhancer
 import android.net.Uri
+import android.os.PowerManager
 import android.util.Log
 import com.nendo.argosy.data.music.AudioLoudnessRepository
 import com.nendo.argosy.domain.model.MusicQueueTrack
@@ -184,6 +185,15 @@ class AmbientAudioManager @Inject constructor(
         publish()
     }
 
+    private var playInBackground = false
+
+    fun setPlayInBackground(enabled: Boolean) {
+        playInBackground = enabled
+    }
+
+    fun keepsPlayingAsleep(): Boolean =
+        playInBackground && context.getSystemService(PowerManager::class.java)?.isInteractive == false
+
     /**
      * Supplies the launcher playlist and the refresh that re-expands it at each full loop. The
      * queue only follows it while the launcher playlist is the active selection.
@@ -340,6 +350,7 @@ class AmbientAudioManager @Inject constructor(
         val newSlot = PlayerSlot(player, autoStart)
         try {
             player.setAudioAttributes(audioAttributes)
+            player.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
             when (val source = track.source) {
                 is MusicTrackSource.Local -> player.setDataSource(source.path)
                 is MusicTrackSource.Remote ->
@@ -530,6 +541,7 @@ class AmbientAudioManager @Inject constructor(
         try {
             val player = MediaPlayer()
             player.setAudioAttributes(audioAttributes)
+            player.setWakeMode(context, PowerManager.PARTIAL_WAKE_LOCK)
             when (source) {
                 is AmbientOverrideSource.Local -> player.setDataSource(source.path)
                 is AmbientOverrideSource.Remote ->

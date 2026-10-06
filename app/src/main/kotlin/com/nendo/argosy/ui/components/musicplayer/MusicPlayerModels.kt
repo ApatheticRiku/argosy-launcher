@@ -16,7 +16,8 @@ enum class MusicTransportButton {
     PREVIOUS,
     PLAY_PAUSE,
     NEXT,
-    SHUFFLE
+    SHUFFLE,
+    BACKGROUND
 }
 
 enum class MusicBrowseKind {
@@ -82,6 +83,7 @@ data class MusicPlayerUiState(
     val durationMs: Long = 0L,
     val launcherEnabled: Boolean = false,
     val volumeLevel: Int = 0,
+    val playInBackground: Boolean = false,
     val focusedRow: MusicPlayerRow = MusicPlayerRow.TRANSPORT,
     val transportButton: MusicTransportButton = MusicTransportButton.PLAY_PAUSE,
     val sourceButton: MusicBrowseKind = MusicBrowseKind.PLAYLISTS,

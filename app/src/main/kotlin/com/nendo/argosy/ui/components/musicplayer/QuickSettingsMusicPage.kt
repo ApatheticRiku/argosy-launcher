@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
@@ -642,6 +643,14 @@ private fun TransportRow(
             isFocused = focused(MusicTransportButton.SHUFFLE),
             showDot = state.playback.shuffle,
             onClick = { onButton(MusicTransportButton.SHUFFLE) }
+        )
+        TransportButton(
+            icon = Icons.Default.Bedtime,
+            description = stringResource(R.string.ui_quick_settings_music_play_in_background),
+            size = buttonSize,
+            isFocused = focused(MusicTransportButton.BACKGROUND),
+            showDot = state.playInBackground,
+            onClick = { onButton(MusicTransportButton.BACKGROUND) }
         )
     }
 }

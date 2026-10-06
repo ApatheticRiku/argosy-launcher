@@ -156,7 +156,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("haptic_strength", SettingsBackupType.FLOAT),
         SettingsBackupKey("ambient_audio_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("ambient_audio_volume", SettingsBackupType.INT),
-        SettingsBackupKey("ambient_audio_shuffle", SettingsBackupType.BOOLEAN)
+        SettingsBackupKey("ambient_audio_shuffle", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("ambient_audio_play_in_background", SettingsBackupType.BOOLEAN)
     )
 
     private val NAVIGATION = listOf(

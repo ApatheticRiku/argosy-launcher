@@ -310,7 +310,8 @@ private fun LayoutSelectorTile(
                 focused = isFocused,
                 indicators = SelectableChipIndicators,
                 selected = isSelected,
-                shape = shape
+                shape = shape,
+                ringThickness = Dimens.borderThin
             )
             .clickableNoFocus(onClick = onClick)
             .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),

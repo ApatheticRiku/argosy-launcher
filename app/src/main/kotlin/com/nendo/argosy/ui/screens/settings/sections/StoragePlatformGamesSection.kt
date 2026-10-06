@@ -215,7 +215,8 @@ private fun GameStorageCard(
                 focused = isActive,
                 indicators = FocusIndicators(ring = true),
                 tint = theme.focusAccent,
-                shape = shape
+                shape = shape,
+                ringThickness = Dimens.borderThin
             )
             .clip(shape)
             .padding(Dimens.spacingSm),

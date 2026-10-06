@@ -300,7 +300,8 @@ internal fun RecomputeRow(
                 focused = isFocused,
                 indicators = FocusIndicators(fill = true, ring = true),
                 tint = theme.focusAccent,
-                shape = shape
+                shape = shape,
+                ringThickness = Dimens.borderThin
             )
             .clip(shape)
             .clickableNoFocus(

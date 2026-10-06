@@ -140,7 +140,8 @@ object AccountScopedPreferenceKeys {
         "ambient_audio_enabled",
         "ambient_audio_volume",
         "ambient_audio_uri",
-        "ambient_audio_shuffle"
+        "ambient_audio_shuffle",
+        "ambient_audio_play_in_background"
     )
 
     val PER_ACCOUNT: Set<String> =

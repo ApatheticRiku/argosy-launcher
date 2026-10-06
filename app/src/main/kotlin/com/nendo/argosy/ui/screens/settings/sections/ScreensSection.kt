@@ -193,7 +193,8 @@ private fun ScreenCard(
             .argosyFocusIndicators(
                 focused = isFocused,
                 indicators = FocusIndicators.Ring,
-                shape = RoundedCornerShape(Dimens.radiusSm)
+                shape = RoundedCornerShape(Dimens.radiusSm),
+                ringThickness = Dimens.borderThin
             )
             .clip(RoundedCornerShape(Dimens.radiusSm))
             .background(

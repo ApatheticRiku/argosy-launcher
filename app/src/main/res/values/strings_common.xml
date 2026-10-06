@@ -1246,6 +1246,8 @@
     <string name="ui_quick_settings_music_next">Next track</string>
     <!-- Music page button description: plays the list in random order. Verb. -->
     <string name="ui_quick_settings_music_shuffle">Shuffle</string>
+    <!-- Music page button description: keeps music playing while the screen is off. -->
+    <string name="ui_quick_settings_music_play_in_background">Play in background</string>
     <!-- Heading of the Music page list of playlists. Noun, plural. -->
     <string name="ui_quick_settings_music_playlists">Playlists</string>
     <!-- Heading of the Music page list of games whose soundtrack can be played. Noun

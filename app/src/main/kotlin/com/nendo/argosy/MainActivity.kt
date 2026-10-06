@@ -455,7 +455,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        ambientAudioManager.suspend()
+        if (!ambientAudioManager.keepsPlayingAsleep()) ambientAudioManager.suspend()
         if (!dualScreenManager.isCompanionActive.value) {
             dualScreenManager.broadcastForegroundState(false)
         }
@@ -663,7 +663,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 yieldedFocusToGame = true
             }
-            ambientAudioManager.fadeOut()
+            if (!ambientAudioManager.keepsPlayingAsleep()) ambientAudioManager.fadeOut()
             ambientLedManager.setContext(AmbientLedContext.IN_GAME)
             if (::dualScreenManager.isInitialized) {
                 val emulatorDisplay = dualScreenManager.emulatorDisplayId
