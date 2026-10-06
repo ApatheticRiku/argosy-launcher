@@ -173,6 +173,20 @@ class ImageCacheManagerTest {
     }
 
     @Test
+    fun `clearing the image cache keeps referenced artwork overrides`() = runTest {
+        val override = cacheFile("snes", "covers", "cover_override_7_abc.jpg")
+        val unreferencedOverride = cacheFile("snes", "covers", "cover_override_9_def.jpg")
+        val cached = cacheFile("snes", "covers", "cover_7_123456789abc.jpg")
+        coEvery { gameArtDao.getAllOverridePaths() } returns listOf(override.absolutePath)
+
+        imageCacheManager.clearCache()
+
+        assertTrue(override.exists())
+        assertFalse(unreferencedOverride.exists())
+        assertFalse(cached.exists())
+    }
+
+    @Test
     fun `art every candidate reports gone is dropped`() {
         assertEquals(CachedArtDecision.DROP, cachedArtDecision(2_000L, null, everyCandidateGone = true))
     }

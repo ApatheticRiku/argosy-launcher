@@ -608,12 +608,18 @@ class ImageCacheManager @Inject constructor(
         reclaimed
     }
 
-    fun clearCache() {
-        cacheDir.listFiles()?.forEach { entry ->
-            if (entry.isDirectory) {
-                entry.deleteRecursively()
-            } else if (entry.name != ".nomedia") {
-                entry.delete()
+    /**
+     * Deletes every cached image file except the artwork overrides games still reference.
+     */
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        val keep = gameArtDao.getAllOverridePaths().toSet()
+        cacheDir.walkBottomUp().forEach { entry ->
+            when {
+                entry == cacheDir -> Unit
+                entry.isDirectory -> if (entry.listFiles().isNullOrEmpty()) entry.delete()
+                entry.name == ".nomedia" -> Unit
+                entry.absolutePath in keep -> Unit
+                else -> entry.delete()
             }
         }
     }
