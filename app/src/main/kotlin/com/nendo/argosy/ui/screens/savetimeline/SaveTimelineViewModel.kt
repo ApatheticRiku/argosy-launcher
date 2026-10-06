@@ -101,9 +101,19 @@ class SaveTimelineViewModel @Inject constructor(
         val lane = state.focusedLane ?: return false
         if (lane.nodes.isEmpty()) return false
         val target = (state.focusPosition + delta).coerceIn(0, lane.nodes.lastIndex)
+        if (target == state.focusPosition && followFork(state, delta)) return true
         _uiState.update { it.copy(focusPosition = target, recenterTick = it.recenterTick + 1) }
         loadOlderIfAtEdge()
         return target != state.focusPosition
+    }
+
+    private fun followFork(state: SaveTimelineUiState, delta: Int): Boolean {
+        val (laneIndex, position) = SaveTimelineBuilder.forkStep(state, delta) ?: return false
+        _uiState.update {
+            it.copy(focusLane = laneIndex, focusPosition = position, recenterTick = it.recenterTick + 1)
+        }
+        loadOlderIfAtEdge()
+        return true
     }
 
     fun moveLane(delta: Int): Boolean {

@@ -101,6 +101,28 @@ internal object SaveTimelineBuilder {
         return SaveTimelineLayout(lanes = lanes, columns = columns, forks = forks)
     }
 
+    /**
+     * Where a step past the end of the focused lane lands when that end joins another lane:
+     * past the oldest node to its fork parent, once no older history is left to load, and past
+     * the newest node to the earliest fork made from it. Null when the end joins nothing.
+     */
+    fun forkStep(state: SaveTimelineUiState, delta: Int): Pair<Int, Int>? {
+        val node = state.focusedNode ?: return null
+        val lane = state.focusedLane ?: return null
+        val (laneIndex, column) = when {
+            delta < 0 && !lane.hasMore -> state.forks
+                .firstOrNull { it.childLane == state.focusLane && it.childColumn == node.column }
+                ?.let { it.parentLane to it.parentColumn }
+            delta > 0 -> state.forks
+                .filter { it.parentLane == state.focusLane && it.parentColumn == node.column }
+                .minByOrNull { it.childColumn }
+                ?.let { it.childLane to it.childColumn }
+            else -> null
+        } ?: return null
+        val position = state.lanes.getOrNull(laneIndex)?.nodes?.indexOfFirst { it.column == column } ?: -1
+        return if (position < 0) null else laneIndex to position
+    }
+
     fun closestPositionNewerOnTie(lane: SaveTimelineLaneUi, at: Long): Int {
         var best = -1
         var bestDistance = Long.MAX_VALUE
