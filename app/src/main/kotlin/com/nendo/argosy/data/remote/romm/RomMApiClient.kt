@@ -18,7 +18,7 @@ class RomMApiClient @Inject constructor(
     private val platformDao: PlatformDao
 ) {
     internal val api: RomMApi? get() = connectionManager.getApi()
-    internal val baseUrl: String get() = connectionManager.getBaseUrl()
+    internal val baseUrl: String get() = connectionManager.getBaseUrl().trimEnd('/')
 
     /**
      * Absolute URL for a media path RomM already prefixed. Null for an absent path, which
@@ -27,7 +27,7 @@ class RomMApiClient @Inject constructor(
     fun buildMediaUrl(path: String?): String? {
         val trimmed = path?.trim().orEmpty()
         if (trimmed.isEmpty()) return null
-        return if (trimmed.startsWith("http")) trimmed else "$baseUrl$trimmed"
+        return if (trimmed.startsWith("http")) trimmed else "$baseUrl/${trimmed.trimStart('/')}"
     }
 
     /**
