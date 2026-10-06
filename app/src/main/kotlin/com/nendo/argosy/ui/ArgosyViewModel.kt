@@ -444,7 +444,7 @@ class ArgosyViewModel @Inject constructor(
 
     private val _navFocusIndex = MutableStateFlow(0)
 
-    val quickFriends = QuickFriendsController(socialRepository, viewModelScope)
+    val quickFriends = QuickFriendsController(socialRepository, preferencesRepository, viewModelScope)
 
     val quickSettings = QuickSettingsController(
         preferencesRepository = preferencesRepository,

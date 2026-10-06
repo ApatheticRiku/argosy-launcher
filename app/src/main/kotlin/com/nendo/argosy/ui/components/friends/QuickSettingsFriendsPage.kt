@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -59,7 +61,7 @@ fun QuickSettingsFriendsPage(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        state.localUser?.let { ProfileBlock(user = it, online = state.socialConnected) }
+        state.localUser?.let { ProfileBlock(user = it, online = state.socialConnected && state.appearOnline) }
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -73,6 +75,14 @@ fun QuickSettingsFriendsPage(
                         icon = if (quayPassEnabled) QuayPassIcons.On else QuayPassIcons.Off,
                         label = stringResource(R.string.ui_quick_settings_quaypass),
                         checked = quayPassEnabled,
+                        isFocused = isFocused,
+                        onFocus = {},
+                        onToggle = { onRowClick(index) }
+                    )
+                    QuickFriendsRow.AppearOnline -> QuickToggleRow(
+                        icon = if (state.appearOnline) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        label = stringResource(R.string.ui_quick_friends_appear_online),
+                        checked = state.appearOnline,
                         isFocused = isFocused,
                         onFocus = {},
                         onToggle = { onRowClick(index) }

@@ -14,6 +14,7 @@ import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.VolumeController
 import com.nendo.argosy.ui.components.friends.QuickFriendsController
 import com.nendo.argosy.ui.input.HapticFeedbackManager
+import com.nendo.argosy.ui.theme.AccentHue
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.InputHandler
@@ -109,6 +110,7 @@ class QuickSettingsController(
     ) { prefs, hud, social, (deviceSettings, displayLevels, screens) ->
         QuickSettingsState(
             themeMode = prefs.themeMode,
+            primaryColor = prefs.primaryColor,
             soundEnabled = prefs.soundEnabled,
             hapticEnabled = prefs.hapticEnabled,
             vibrationStrength = prefs.hapticStrength,
@@ -371,6 +373,26 @@ class QuickSettingsController(
         return InputResult.HANDLED
     }
 
+    private var lastCustomAccent: Int? = null
+
+    fun setAccentEnabled(enabled: Boolean) {
+        val current = state.value.primaryColor
+        if (!enabled && current != null) lastCustomAccent = current
+        val next = if (enabled) lastCustomAccent ?: AccentHue.colorAt(AccentHue.hueOf(null)) else null
+        scope.launch { preferencesRepository.setPrimaryColor(next) }
+    }
+
+    fun setAccentHue(fraction: Float) {
+        if (state.value.primaryColor == null) return
+        scope.launch { preferencesRepository.setPrimaryColor(AccentHue.colorAt(fraction.coerceIn(0f, 1f) * 360f)) }
+    }
+
+    private fun stepAccent(state: QuickSettingsState, delta: Int): InputResult {
+        val color = state.primaryColor ?: return InputResult.handled(SoundType.BOUNDARY)
+        scope.launch { preferencesRepository.setPrimaryColor(AccentHue.shifted(color, AccentHue.STEP * delta)) }
+        return InputResult.HANDLED
+    }
+
     private fun stepHaptic(state: QuickSettingsState, delta: Int): InputResult {
         if (!state.hapticEnabled) return InputResult.handled(SoundType.BOUNDARY)
         val atEdge = (delta < 0 && state.vibrationStrength <= 0f) || (delta > 0 && state.vibrationStrength >= 1f)
@@ -395,6 +417,7 @@ class QuickSettingsController(
         return when (focusedItem(snapshot)) {
             QuickSettingsItem.Theme ->
                 stepOption(QUICK_THEME_ORDER, snapshot.themeMode, delta, ::setThemeMode)
+            QuickSettingsItem.Accent -> stepAccent(snapshot, delta)
             QuickSettingsItem.ScreenBrightness ->
                 stepLevel(snapshot.screenBrightness, delta, ::setScreenBrightness)
             QuickSettingsItem.SecondScreenBrightness ->
@@ -432,6 +455,11 @@ class QuickSettingsController(
             QuickSettingsItem.UISounds -> {
                 val enabled = !snapshot.soundEnabled
                 setSoundEnabled(enabled)
+                InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
+            }
+            QuickSettingsItem.Accent -> {
+                val enabled = snapshot.primaryColor == null
+                setAccentEnabled(enabled)
                 InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
             }
             QuickSettingsItem.Haptic -> {

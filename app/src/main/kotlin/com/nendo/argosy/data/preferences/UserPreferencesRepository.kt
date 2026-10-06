@@ -260,6 +260,12 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setThemeMode(mode: ThemeMode) = displayPrefs.setThemeMode(mode)
     suspend fun setCustomColors(primary: Int?, secondary: Int?, tertiary: Int?) = displayPrefs.setCustomColors(primary, secondary, tertiary)
+
+    /**
+     * Sets the accent colour, or the theme default when [color] is null. The secondary and
+     * tertiary colours reset with it.
+     */
+    suspend fun setPrimaryColor(color: Int?) = displayPrefs.setCustomColors(color, null, null)
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
     suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
     suspend fun setBackdropEnabled(enabled: Boolean) = displayPrefs.setBackdropEnabled(enabled)

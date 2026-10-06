@@ -37,13 +37,16 @@ class QuickFriendsInputHandler(
     private fun horizontal(delta: Int): InputResult = when (focusedRow()) {
         QuickFriendsRow.Actions -> controller.moveAction(delta)
         QuickFriendsRow.QuayPass -> toggleLeftRight(delta, quayPassEnabled()) { onToggleQuayPass() }
+        QuickFriendsRow.AppearOnline ->
+            toggleLeftRight(delta, controller.state.value.appearOnline) { controller.toggleAppearOnline() }
         else -> InputResult.UNHANDLED
     }
 
     override fun onConfirm(): InputResult {
         val row = focusedRow() ?: return InputResult.UNHANDLED
         activate(row)
-        return if (row == QuickFriendsRow.QuayPass) InputResult.handled(SoundType.TOGGLE) else InputResult.HANDLED
+        val isToggle = row == QuickFriendsRow.QuayPass || row == QuickFriendsRow.AppearOnline
+        return if (isToggle) InputResult.handled(SoundType.TOGGLE) else InputResult.HANDLED
     }
 
     override fun onSecondaryAction(): InputResult {
@@ -67,6 +70,7 @@ class QuickFriendsInputHandler(
     private fun activate(row: QuickFriendsRow) {
         when (row) {
             QuickFriendsRow.QuayPass -> onToggleQuayPass()
+            QuickFriendsRow.AppearOnline -> controller.toggleAppearOnline()
             QuickFriendsRow.Actions -> controller.openAction(controller.state.value.action)
             is QuickFriendsRow.Entry -> onOpenProfile(row.friend)
         }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SportsEsports
@@ -59,6 +60,7 @@ import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
+import com.nendo.argosy.ui.theme.AccentHue
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.LocalMotionTier
@@ -336,6 +338,19 @@ private fun QuickSettingsItemRow(
             onFocus = focus,
             onSelect = { controller.setThemeMode(QUICK_THEME_ORDER[it]) },
             inline = true
+        )
+
+        QuickSettingsItem.Accent -> QuickSwitchedSliderRow(
+            icon = Icons.Default.Palette,
+            label = stringResource(R.string.ui_quick_settings_accent),
+            on = state.primaryColor != null,
+            fraction = AccentHue.hueOf(state.primaryColor) / 360f,
+            valueText = "",
+            offText = stringResource(R.string.ui_quick_settings_accent_default),
+            isFocused = isFocused,
+            onFocus = focus,
+            onToggle = controller::setAccentEnabled,
+            onFractionChange = controller::setAccentHue
         )
 
         QuickSettingsItem.ScreenBrightness -> QuickSliderRow(

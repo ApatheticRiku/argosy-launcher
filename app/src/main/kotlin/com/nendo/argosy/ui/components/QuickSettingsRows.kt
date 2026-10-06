@@ -241,10 +241,11 @@ internal fun QuickSwitchedSliderRow(
     isFocused: Boolean,
     onFocus: () -> Unit,
     onToggle: (Boolean) -> Unit,
-    onFractionChange: (Float) -> Unit
+    onFractionChange: (Float) -> Unit,
+    offText: String? = null
 ) {
     val phase = rememberSwitchedPhase(on)
-    val offLabel = stringResource(R.string.ui_quick_settings_off)
+    val offLabel = offText ?: stringResource(R.string.ui_quick_settings_off)
     QuickRowFrame(isFocused = isFocused, onClick = onFocus, twoLine = true) {
         QuickLabelLine(
             label = label,

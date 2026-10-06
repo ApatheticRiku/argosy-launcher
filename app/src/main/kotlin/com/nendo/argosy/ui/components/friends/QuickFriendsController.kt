@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.components.friends
 
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.preferences.MenuWrapMode
+import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialConnectionState
@@ -14,8 +15,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 sealed class FriendsModal {
     data object None : FriendsModal()
@@ -34,11 +38,13 @@ data class QuickFriendsState(
     val friendCodeUrl: String? = null,
     val modal: FriendsModal = FriendsModal.None,
     val focusIndex: Int = 0,
-    val action: QuickFriendsAction = QuickFriendsAction.MY_CODE
+    val action: QuickFriendsAction = QuickFriendsAction.MY_CODE,
+    val appearOnline: Boolean = true
 )
 
 sealed class QuickFriendsRow(val key: String) {
     data object QuayPass : QuickFriendsRow("quaypass")
+    data object AppearOnline : QuickFriendsRow("appear_online")
     data object Actions : QuickFriendsRow("actions")
     data class Entry(val friend: Friend, val position: Int) : QuickFriendsRow("friend_${friend.id}")
 }
@@ -50,6 +56,7 @@ sealed class QuickFriendsRow(val key: String) {
 fun quickFriendsRows(showQuayPass: Boolean, state: QuickFriendsState): List<QuickFriendsRow> = buildList {
     if (showQuayPass) add(QuickFriendsRow.QuayPass)
     if (state.socialConnected) {
+        add(QuickFriendsRow.AppearOnline)
         add(QuickFriendsRow.Actions)
         state.friends.forEachIndexed { position, friend -> add(QuickFriendsRow.Entry(friend, position)) }
     }
@@ -62,18 +69,22 @@ private data class QuickFriendsFocus(
 
 class QuickFriendsController(
     private val socialRepository: SocialRepository,
-    scope: CoroutineScope
+    private val preferencesRepository: UserPreferencesRepository,
+    private val scope: CoroutineScope
 ) {
     private val focus = MutableStateFlow(QuickFriendsFocus())
     private val modal = MutableStateFlow<FriendsModal>(FriendsModal.None)
+    private val appearOnline = preferencesRepository.userPreferences
+        .map { it.socialOnlineStatusEnabled }
+        .distinctUntilChanged()
 
     val state: StateFlow<QuickFriendsState> = combine(
-        socialRepository.connectionState,
+        combine(socialRepository.connectionState, appearOnline, ::Pair),
         socialRepository.friends,
         socialRepository.friendCode,
         modal,
         focus
-    ) { connection, friends, code, openModal, focused ->
+    ) { (connection, online), friends, code, openModal, focused ->
         val sorted = sortForDisplay(friends)
         val connected = connection as? SocialConnectionState.Connected
         QuickFriendsState(
@@ -85,7 +96,8 @@ class QuickFriendsController(
             friendCodeUrl = code?.url,
             modal = openModal,
             focusIndex = focused.index,
-            action = focused.action
+            action = focused.action,
+            appearOnline = online
         )
     }.stateIn(
         scope = scope,
@@ -150,6 +162,12 @@ class QuickFriendsController(
     fun addFriendByCode(code: String) {
         socialRepository.addFriendByCode(code)
     }
+
+    fun setAppearOnline(enabled: Boolean) {
+        scope.launch { preferencesRepository.setSocialOnlineStatusEnabled(enabled) }
+    }
+
+    fun toggleAppearOnline() = setAppearOnline(!state.value.appearOnline)
 
     fun toggleFavorite(friendId: String) {
         socialRepository.toggleFavoriteFriend(friendId)

@@ -56,6 +56,7 @@ data class QuickSettingsState(
     val soundEnabled: Boolean = false,
     val hapticEnabled: Boolean = true,
     val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
+    val primaryColor: Int? = null,
     val swapAB: Boolean = false,
     val swapXY: Boolean = false,
     val swapStartSelect: Boolean = false,
@@ -112,6 +113,7 @@ sealed class QuickSettingsItem(
     }
 
     data object Theme : QuickSettingsItem("theme", QuickSettingsPage.QUICK, QuickSettingsGroup.DISPLAY)
+    data object Accent : QuickSettingsItem("accent", QuickSettingsPage.QUICK, QuickSettingsGroup.DISPLAY)
     data object ScreenBrightness : QuickSettingsItem(
         "screenBrightness", QuickSettingsPage.QUICK, QuickSettingsGroup.DISPLAY
     )
@@ -176,7 +178,7 @@ sealed class QuickSettingsItem(
         val ALL: List<QuickSettingsItem>
             get() = listOf(
                 FriendsPage,
-                DisplayHeader, Theme, ScreenBrightness, SecondScreenBrightness, SwapDisplays,
+                DisplayHeader, Theme, Accent, ScreenBrightness, SecondScreenBrightness, SwapDisplays,
                 SoundHeader, SystemVolume, UISounds,
                 ControlsHeader, Haptic, SwapAB, SwapXY, SwapStartSelect,
                 DeviceAccess,

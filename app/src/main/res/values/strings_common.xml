@@ -1152,6 +1152,12 @@
     <string name="ui_quick_settings_device_access_allow">Allow</string>
     <!-- Row of that panel: light or dark. Noun. -->
     <string name="ui_quick_settings_theme">Theme</string>
+    <!-- Row of that panel that picks the interface's highlight colour by sliding along the
+         colour wheel. Noun. -->
+    <string name="ui_quick_settings_accent">Accent color</string>
+    <!-- Value of that row while it uses the theme's own colour instead of a custom one.
+         Adjective. -->
+    <string name="ui_quick_settings_accent_default">Default</string>
     <!-- Theme option on a narrow segment: always light. Adjective. -->
     <string name="ui_quick_settings_theme_light">Light</string>
     <!-- Theme option on a narrow segment: always dark. Adjective. -->
@@ -1314,6 +1320,8 @@
     <string name="ui_quick_friends_status_online">Online</string>
     <!-- Under the reader's own name on the Friends page while not connected. Adjective. -->
     <string name="ui_quick_friends_status_offline">Offline</string>
+    <!-- Toggle row on the Friends page: when off, friends see the reader as offline. -->
+    <string name="ui_quick_friends_appear_online">Appear online</string>
     <!-- Second line under a friend hosting a netplay game. %1$s is the game's title. -->
     <string name="ui_drawer_friend_hosting">Hosting %1$s</string>
     <!-- Second line under a friend in a game on their own. %1$s is the game's title. -->

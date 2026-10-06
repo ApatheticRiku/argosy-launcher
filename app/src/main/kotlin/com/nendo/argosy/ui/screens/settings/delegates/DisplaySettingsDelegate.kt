@@ -8,6 +8,7 @@ import com.nendo.argosy.data.preferences.BackdropEdgeStyle
 import com.nendo.argosy.data.preferences.BackdropMotion
 import com.nendo.argosy.data.preferences.BackdropPreset
 import com.nendo.argosy.data.preferences.BackdropVertexIcon
+import com.nendo.argosy.ui.theme.AccentHue
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_MAX_PERCENT
 import com.nendo.argosy.ui.theme.GRIP_RESERVE_MIN_PERCENT
 import com.nendo.argosy.ui.theme.backdrop.BackdropConfig
@@ -140,7 +141,7 @@ class DisplaySettingsDelegate @Inject constructor(
 
     fun setPrimaryColor(scope: CoroutineScope, color: Int?) {
         scope.launch {
-            preferencesRepository.setCustomColors(color, null, null)
+            preferencesRepository.setPrimaryColor(color)
             _state.update { it.copy(primaryColor = color) }
         }
     }
@@ -165,17 +166,7 @@ class DisplaySettingsDelegate @Inject constructor(
     }
 
     fun adjustHue(scope: CoroutineScope, delta: Float) {
-        val currentColor = _state.value.primaryColor
-        val currentHue = if (currentColor != null) {
-            val hsl = FloatArray(3)
-            ColorUtils.colorToHSL(currentColor, hsl)
-            hsl[0]
-        } else {
-            180f
-        }
-        val newHue = (currentHue + delta).mod(360f)
-        val newColor = ColorUtils.HSLToColor(floatArrayOf(newHue, 0.7f, 0.5f))
-        setPrimaryColor(scope, newColor)
+        setPrimaryColor(scope, AccentHue.shifted(_state.value.primaryColor, delta))
     }
 
     fun resetToDefaultColor(scope: CoroutineScope) {
