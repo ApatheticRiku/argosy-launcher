@@ -83,11 +83,12 @@ class SnapshotSyncRouter @Inject constructor(
         channelName: String?,
         cacheFile: File,
         onTopOfCurrent: Boolean,
+        cacheId: Long?,
         approveHardcoreDowngrade: Boolean = false
     ): SaveSyncResult? {
         if (!engine.isEligible(gameId)) return null
         val pushed = engine.pushCached(
-            gameId, emulatorId, channelName, cacheFile, onTopOfCurrent,
+            gameId, emulatorId, channelName, cacheFile, onTopOfCurrent, cacheId,
             approveHardcoreDowngrade = approveHardcoreDowngrade
         )
         return toSaveSyncResult(gameId, pushed)

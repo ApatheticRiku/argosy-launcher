@@ -52,6 +52,7 @@ fun realFsFal(): FileAccessLayer = mockk<FileAccessLayer>(relaxed = true).also {
     }
     every { fal.listFiles(any()) } answers { directListing(firstArg()) }
     every { fal.listFilesUnion(any()) } answers { directListing(firstArg()) ?: emptyList() }
+    every { fal.isListable(any()) } answers { File(firstArg<String>()).list() != null }
     every { fal.externalStorageRoots() } returns emptyList()
     every { fal.normalizeForDisplay(any()) } answers { firstArg() }
 }

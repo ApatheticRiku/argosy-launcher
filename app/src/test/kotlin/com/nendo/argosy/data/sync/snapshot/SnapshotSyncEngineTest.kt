@@ -4,6 +4,7 @@ import android.content.Context
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SnapshotChannelDao
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SnapshotChannelEntity
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
@@ -297,12 +298,129 @@ class SnapshotSyncEngineTest {
         )
         val unit = kotlin.io.path.createTempFile(suffix = ".ram").toFile().apply { writeBytes(byteArrayOf(9)) }
 
-        engine.pushCached(GAME_ID, EMULATOR, null, unit, onTopOfCurrent = true)
-        engine.pushCached(GAME_ID, EMULATOR, null, unit, onTopOfCurrent = false)
+        engine.pushCached(GAME_ID, EMULATOR, null, unit, onTopOfCurrent = true, cacheId = null)
+        engine.pushCached(GAME_ID, EMULATOR, null, unit, onTopOfCurrent = false, cacheId = null)
 
         assertEquals(43L, manifestOf(pushes[0]).getLong("expected_current_id"))
         assertEquals(44L, manifestOf(pushes[1]).getLong("expected_current_id"))
         unit.delete()
+    }
+
+    private fun cachedRow(id: Long, format: String?, hash: String = "content-a", channel: String? = "autosave") = SaveCacheEntity(
+        id = id,
+        gameId = GAME_ID,
+        emulatorId = EMULATOR,
+        cachedAt = java.time.Instant.parse("2026-10-05T09:00:00Z"),
+        saveSize = 3,
+        cachePath = "3/$GAME_ID/20261005_090000/backup.ram",
+        contentHash = hash,
+        identityHash = hash,
+        channelName = channel,
+        needsRemoteSync = true,
+        ownerUserId = 3L,
+        saveFormat = format
+    )
+
+    private fun stubDirtyDefaultChannel(): MutableList<List<MultipartBody.Part>> {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns
+            SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
+        val pushes = mutableListOf<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(pushes)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(42, "c1")).toResponseBody())
+        return pushes
+    }
+
+    @Test
+    fun `a cached save pushes in the format recorded on its row, not the live route`(): Unit = runBlocking {
+        val pushes = stubDirtyDefaultChannel()
+        coEvery { saveCacheDao.getById(60L) } returns cachedRow(60L, SaveCacheEntity.FORMAT_NATIVE)
+        val file = tempDir.newFile("Lunar.srm").apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, file, onTopOfCurrent = false, cacheId = 60L)
+
+        assertEquals("native", manifestOf(pushes.single()).getJSONObject("save").getString("format"))
+    }
+
+    @Test
+    fun `a cached Sigil unit pushes as neutral even once the route is gone`(): Unit = runBlocking {
+        coEvery { sigil.route(GAME_ID, EMULATOR) } returns null
+        val pushes = stubDirtyDefaultChannel()
+        coEvery { saveCacheDao.getById(61L) } returns cachedRow(61L, SaveCacheEntity.FORMAT_NEUTRAL)
+        val file = tempDir.newFile("backup.ram").apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, file, onTopOfCurrent = false, cacheId = 61L)
+
+        assertEquals("neutral", manifestOf(pushes.single()).getJSONObject("save").getString("format"))
+    }
+
+    @Test
+    fun `a cached row written before formats were recorded pushes as native`(): Unit = runBlocking {
+        val pushes = stubDirtyDefaultChannel()
+        coEvery { saveCacheDao.getById(62L) } returns cachedRow(62L, format = null)
+        val file = tempDir.newFile("old.srm").apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, file, onTopOfCurrent = false, cacheId = 62L)
+
+        assertEquals("native", manifestOf(pushes.single()).getJSONObject("save").getString("format"))
+    }
+
+    @Test
+    fun `a cached save that lands marks its row synced`(): Unit = runBlocking {
+        stubDirtyDefaultChannel()
+        coEvery { saveCacheDao.getById(60L) } returns cachedRow(60L, SaveCacheEntity.FORMAT_NATIVE)
+        val file = tempDir.newFile("landed.srm").apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, file, onTopOfCurrent = false, cacheId = 60L)
+
+        coVerify { saveCacheDao.markSynced(60L, any()) }
+    }
+
+    @Test
+    fun `a cached save the server refuses stays unsynced`(): Unit = runBlocking {
+        stubDirtyDefaultChannel()
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns
+            Response.error(409, """{"current":{"id":43,"digest":"sha256:43"}}""".toResponseBody())
+        coEvery { saveCacheDao.getById(60L) } returns cachedRow(60L, SaveCacheEntity.FORMAT_NATIVE)
+        val file = tempDir.newFile("refused.srm").apply { writeBytes(byteArrayOf(9)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, file, onTopOfCurrent = false, cacheId = 60L)
+
+        coVerify(exactly = 0) { saveCacheDao.markSynced(any(), any()) }
+    }
+
+    @Test
+    fun `a Sigil push marks the cached row holding the pushed unit synced`(): Unit = runBlocking {
+        stubDirtyDefaultChannel()
+        coEvery { saveCacheDao.getAllByGameChannelAndHash(GAME_ID, 3L, "autosave", "content-a") } returns
+            listOf(cachedRow(40L, SaveCacheEntity.FORMAT_NEUTRAL))
+
+        assertEquals(SnapshotSyncResult.Pushed(42), engine.keepLocal(GAME_ID, EMULATOR, null))
+
+        coVerify { saveCacheDao.markSynced(40L, any()) }
+    }
+
+    @Test
+    fun `a native push marks the row it packed synced`(): Unit = runBlocking {
+        stubNativeSave(ByteArray(64))
+        stubDirtyDefaultChannel()
+
+        engine.keepLocal(GAME_ID, EMULATOR, null)
+
+        coVerify { saveCacheDao.markSynced(7L, any()) }
+    }
+
+    @Test
+    fun `a save the server already holds marks its cached row synced`(): Unit = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns
+            SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "content-a")))
+        coEvery { saveCacheDao.getAllByGameChannelAndHash(GAME_ID, 3L, "autosave", "content-a") } returns
+            listOf(cachedRow(40L, SaveCacheEntity.FORMAT_NEUTRAL))
+
+        assertEquals(SnapshotSyncResult.UpToDate, engine.sync(GAME_ID, EMULATOR, null))
+
+        coVerify { saveCacheDao.markSynced(40L, any()) }
     }
 
     @Test

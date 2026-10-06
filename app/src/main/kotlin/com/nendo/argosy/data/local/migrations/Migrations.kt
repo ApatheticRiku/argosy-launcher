@@ -4020,6 +4020,12 @@ object Migration_204_205 : Migration(204, 205) {
     }
 }
 
+object Migration_205_206 : Migration(205, 206) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `save_cache` ADD COLUMN `saveFormat` TEXT")
+    }
+}
+
 object Migration_203_204 : Migration(203, 204) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

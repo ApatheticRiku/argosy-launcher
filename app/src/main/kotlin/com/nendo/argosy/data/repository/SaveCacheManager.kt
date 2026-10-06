@@ -67,6 +67,7 @@ class SaveCacheManager @Inject constructor(
 
     companion object {
         private const val TAG = "SaveCacheManager"
+        private const val COPY_DIR_SUFFIX = "_copy"
         const val UNIT_CACHE_SUFFIX = ".unit.zip"
         private val RZIP_MAGIC = "#RZIPv".toByteArray(Charsets.US_ASCII)
 
@@ -222,7 +223,8 @@ class SaveCacheManager @Inject constructor(
                 slotName = slotName,
                 channelName = channelName,
                 needsRemoteSync = needsRemoteSync,
-                ownerUserId = ownerUserId
+                ownerUserId = ownerUserId,
+                saveFormat = formatOf(sigil)
             )
             val insertedId = saveCacheDao.insert(entity)
 
@@ -618,7 +620,8 @@ class SaveCacheManager @Inject constructor(
                 isLocked = false,
                 contentHash = contentHash,
                 isRollback = true,
-                ownerUserId = ownerUserId
+                ownerUserId = ownerUserId,
+                saveFormat = formatOf(sigil)
             )
             val rollbackId = saveCacheDao.insert(entity)
             Log.d(TAG, "Created rollback save for game $gameId at $cachePath")
@@ -634,8 +637,18 @@ class SaveCacheManager @Inject constructor(
     suspend fun restoreThroughSigil(entity: SaveCacheEntity): SigilRestore = withContext(Dispatchers.IO) {
         val cacheFile = File(cacheBaseDir, entity.cachePath)
         if (!cacheFile.exists()) return@withContext SigilRestore.NotRouted
-        sigilSaveHandler.restore(entity.gameId, cacheFile, entity.emulatorId)
+        restoreUnlessNative(entity, cacheFile, entity.emulatorId)
     }
+
+    private fun formatOf(sigil: SigilCollect.Found?): String =
+        if (sigil != null) SaveCacheEntity.FORMAT_NEUTRAL else SaveCacheEntity.FORMAT_NATIVE
+
+    private suspend fun restoreUnlessNative(entity: SaveCacheEntity, cacheFile: File, emulatorId: String?): SigilRestore =
+        if (entity.saveFormat == SaveCacheEntity.FORMAT_NATIVE) {
+            SigilRestore.NotRouted
+        } else {
+            sigilSaveHandler.restore(entity.gameId, cacheFile, emulatorId)
+        }
 
     suspend fun findCachedByHash(gameId: Long, contentHash: String): com.nendo.argosy.data.local.entity.SaveCacheEntity? =
         withContext(Dispatchers.IO) { saveCacheDao.getByGameAndHash(gameId, syncPreferencesRepository.getRommUserId(), contentHash) }
@@ -657,7 +670,7 @@ class SaveCacheManager @Inject constructor(
         fal.prepareSaveAccess(targetPath)
         var placedGciMembers: List<String>? = null
         try {
-            when (val sigilRestore = sigilSaveHandler.restore(entity.gameId, cacheFile)) {
+            when (val sigilRestore = restoreUnlessNative(entity, cacheFile, emulatorId = null)) {
                 SigilRestore.NotRouted -> Unit
                 is SigilRestore.Refused -> {
                     Logger.warn(TAG, "Restore of cache $cacheId refused: ${sigilRestore.reason}")
@@ -882,7 +895,9 @@ class SaveCacheManager @Inject constructor(
 
         val now = Instant.now()
         val timestamp = TIMESTAMP_FORMAT.format(now)
-        val relativeDir = cacheRelativeDir(source.ownerUserId, source.gameId, timestamp)
+        val baseDir = cacheRelativeDir(source.ownerUserId, source.gameId, timestamp)
+        val landsOnSource = File(cacheBaseDir, "$baseDir/${sourceFile.name}").canonicalPath == sourceFile.canonicalPath
+        val relativeDir = if (landsOnSource) "${baseDir}$COPY_DIR_SUFFIX" else baseDir
         val gameDir = File(cacheBaseDir, relativeDir)
 
         try {
@@ -906,7 +921,8 @@ class SaveCacheManager @Inject constructor(
                 contentHash = source.contentHash,
                 channelName = channelName,
                 needsRemoteSync = true,
-                ownerUserId = source.ownerUserId
+                ownerUserId = source.ownerUserId,
+                saveFormat = source.saveFormat
             )
 
             val newId = saveCacheDao.insert(entity)

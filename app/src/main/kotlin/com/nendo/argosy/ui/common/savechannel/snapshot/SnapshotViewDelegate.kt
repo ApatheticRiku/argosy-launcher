@@ -90,7 +90,7 @@ class SnapshotViewDelegate @Inject constructor(
         val actions = buildList {
             if (!tile.isDeviceChannel) add(SnapshotChannelAction.USE_ON_DEVICE)
             if (tile.isOwn) {
-                add(SnapshotChannelAction.RENAME)
+                if (!SnapshotChannels.isDefaultLabel(tile.label)) add(SnapshotChannelAction.RENAME)
                 add(if (tile.isShared) SnapshotChannelAction.STOP_SHARING else SnapshotChannelAction.SHARE)
                 add(SnapshotChannelAction.DELETE)
             }

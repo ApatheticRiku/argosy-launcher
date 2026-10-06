@@ -127,6 +127,26 @@ class SessionSaveFinalizerTest {
     }
 
     @Test
+    fun `a snapshot push at session end marks the session's cache row synced`() = runTest {
+        syncReturns(SyncSaveOnSessionEndUseCase.Result.Uploaded(rommSaveId = null, serverTimestamp = null))
+
+        finalizer.finalize(input)
+
+        coVerify { saveCacheDao.markSynced(cacheId, any()) }
+        coVerify(exactly = 0) { saveCacheDao.updateRommSaveId(any(), any()) }
+        coVerify { saveCacheDao.clearDirtyFlagForChannel(gameId, owner, "autosave", -1) }
+    }
+
+    @Test
+    fun `a session that uploaded nothing leaves its cache row unsynced`() = runTest {
+        syncReturns(SyncSaveOnSessionEndUseCase.Result.Queued)
+
+        finalizer.finalize(input)
+
+        coVerify(exactly = 0) { saveCacheDao.markSynced(any(), any()) }
+    }
+
+    @Test
     fun `a conflict is stored and the stored row owns the decision`() = runTest {
         val upload = SaveSyncResult.Conflict(
             gameId = gameId,

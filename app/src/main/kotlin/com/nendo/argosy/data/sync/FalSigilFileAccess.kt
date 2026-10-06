@@ -19,7 +19,7 @@ class FalSigilFileAccess @Inject constructor(private val fal: FileAccessLayer) :
         val dir = resolve(root, path)
         if (!fal.isDirectory(dir)) return null
         val entries = fal.listFilesUnion(dir)
-        if (entries.isEmpty() && fal.listFiles(dir) == null) throw IOException("can't list $dir")
+        if (entries.isEmpty() && !fal.isListable(dir)) throw IOException("can't list $dir")
         return entries.mapNotNull { info ->
             when {
                 info.isDirectory -> SigilFileEntry(info.name, true)

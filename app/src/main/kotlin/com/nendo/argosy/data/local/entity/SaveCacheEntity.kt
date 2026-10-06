@@ -62,9 +62,19 @@ data class SaveCacheEntity(
      * The server save this device has taken but not yet acknowledged to the server. Survives
      * offline restores so the acknowledgement can be retried on the next sync.
      */
-    val pendingDeviceSyncSaveId: Long? = null
+    val pendingDeviceSyncSaveId: Long? = null,
+    /**
+     * How the cached bytes are laid out: [FORMAT_NEUTRAL] for a unit Sigil built,
+     * [FORMAT_NATIVE] for the files the emulator wrote. Null for a row written before the
+     * format was recorded, or a server download whose format the server did not report; a push
+     * treats null as native.
+     */
+    val saveFormat: String? = null
 ) {
     companion object {
+        const val FORMAT_NEUTRAL = "neutral"
+        const val FORMAT_NATIVE = "native"
+
         @Deprecated("Hardcore saves now use isHardcore flag instead of special slot name")
         const val SLOT_HARDCORE = "HARDCORE"
     }

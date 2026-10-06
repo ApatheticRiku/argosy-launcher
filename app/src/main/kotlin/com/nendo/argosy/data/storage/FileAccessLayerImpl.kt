@@ -160,6 +160,15 @@ class FileAccessLayerImpl @Inject constructor(
         return byName.values.toList()
     }
 
+    override fun isListable(path: String): Boolean {
+        if (!isRestrictedPath(path)) return File(path).list() != null
+        if (androidDataAccessor.isAltAccessSupported() && androidDataAccessor.listFiles(path) != null) return true
+        if (plainListingWorks(path)) return true
+        if (rootFileAccessor.isAvailable && File(path).list() != null) return true
+        val (volumeId, relativePath) = extractVolumeAndPath(path) ?: return false
+        return managedStorageAccessor.isListableDirectory(volumeId, relativePath)
+    }
+
     override fun mkdirs(path: String): Boolean {
         if (androidDataAccessor.isAltAccessSupported() && isRestrictedPath(path)) {
             val result = androidDataAccessor.mkdirs(path)

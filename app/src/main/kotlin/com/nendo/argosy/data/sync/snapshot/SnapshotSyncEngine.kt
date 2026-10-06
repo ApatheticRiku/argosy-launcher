@@ -10,6 +10,7 @@ import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.local.dao.SnapshotChannelDao
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SigilSyncStateEntity
 import com.nendo.argosy.data.local.entity.SnapshotChannelEntity
 import com.nendo.argosy.data.preferences.SyncPreferencesRepository
@@ -40,6 +41,7 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
+import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -145,12 +147,14 @@ class SnapshotSyncEngine @Inject constructor(
             when (action) {
                 SnapshotAction.Nothing -> {
                     commitSigilState(local)
+                    markReached(ctx, local.hashes?.contentHash)
                     SnapshotSyncResult.UpToDate
                 }
                 is SnapshotAction.Push -> pushLocal(ctx, local, emulatorId, channelName, action.expectedCurrentId, isHardcore, false)
                 is SnapshotAction.Adopt -> {
                     val result = adopt(ctx, ctx.current ?: return@locked SnapshotSyncResult.UpToDate)
                     commitSigilState(local)
+                    markReached(ctx, local.hashes?.contentHash)
                     result
                 }
                 is SnapshotAction.Download -> apply(ctx, action.snapshotId, emulatorId, channelName)
@@ -178,6 +182,8 @@ class SnapshotSyncEngine @Inject constructor(
      * Pushes one cached save from an offline chain. The first push of a chain the user chose to
      * keep goes on top of the channel's current ([onTopOfCurrent]); every later one expects the
      * snapshot the push before it made, so the chain lands in order or stops at the first conflict.
+     * The push carries the format recorded on cache row [cacheId], and marks that row synced once
+     * it lands.
      */
     suspend fun pushCached(
         gameId: Long,
@@ -185,14 +191,15 @@ class SnapshotSyncEngine @Inject constructor(
         channelName: String?,
         cacheFile: File,
         onTopOfCurrent: Boolean,
+        cacheId: Long?,
         isHardcore: Boolean = false,
         approveHardcoreDowngrade: Boolean = false
     ): SnapshotSyncResult = locked(gameId) {
         val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
-        val format = if (sigilSaveHandler.route(gameId, emulatorId) != null) FORMAT_NEUTRAL else FORMAT_NATIVE
+        val format = cacheId?.let { saveCacheDao.getById(it) }?.saveFormat ?: SaveCacheEntity.FORMAT_NATIVE
         val unit = unitFromCache(cacheFile, format) ?: return@locked SnapshotSyncResult.Failed("cached save ${cacheFile.name} is empty")
         val expected = if (onTopOfCurrent) ctx.current?.id else ctx.stored?.heldSnapshotId ?: ctx.current?.id
-        push(ctx, unit, PushSource(emulatorId), expected, isHardcore, approveHardcoreDowngrade)
+        push(ctx, unit, PushSource(emulatorId, cacheId = cacheId), expected, isHardcore, approveHardcoreDowngrade)
     }
 
     suspend fun keepServer(gameId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult = locked(gameId) {
@@ -285,19 +292,24 @@ class SnapshotSyncEngine @Inject constructor(
         isHardcore: Boolean,
         approveHardcoreDowngrade: Boolean
     ): SnapshotSyncResult {
-        val unit = when (local) {
-            is LocalSave.Sigil -> SnapshotUnit(
-                local.unit.data, local.unit.artifact, local.unit.contentHash, local.unit.identityHash,
-                local.unit.shape, FORMAT_NEUTRAL
+        val cached = when (local) {
+            is LocalSave.Sigil -> CachedUnit(
+                SnapshotUnit(
+                    local.unit.data, local.unit.artifact, local.unit.contentHash, local.unit.identityHash,
+                    local.unit.shape, SaveCacheEntity.FORMAT_NEUTRAL
+                ),
+                cacheId = null
             )
             is LocalSave.Native -> nativeUnit(ctx.game.id, emulatorId, channelName, local.savePath, isHardcore)
                 ?: return SnapshotSyncResult.Failed("could not pack the save at ${local.savePath}")
             is LocalSave.Unreadable -> return SnapshotSyncResult.Failed(local.reason)
             LocalSave.None -> return SnapshotSyncResult.Failed("no local save to push")
         }
-        val source = PushSource(emulatorId, local.path, local.pending)
-        return push(ctx, unit, source, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
+        val source = PushSource(emulatorId, local.path, local.pending, cached.cacheId)
+        return push(ctx, cached.unit, source, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
     }
+
+    private class CachedUnit(val unit: SnapshotUnit, val cacheId: Long?)
 
     private suspend fun nativeUnit(
         gameId: Long,
@@ -305,7 +317,7 @@ class SnapshotSyncEngine @Inject constructor(
         channelName: String?,
         savePath: String,
         isHardcore: Boolean
-    ): SnapshotUnit? {
+    ): CachedUnit? {
         val cache = saveCacheManager.get()
         val cacheId = when (val cached = cache.cacheCurrentSave(gameId, emulatorId, savePath, channelName, isHardcore = isHardcore)) {
             is SaveCacheManager.CacheResult.Created -> cached.cacheId
@@ -313,7 +325,8 @@ class SnapshotSyncEngine @Inject constructor(
             SaveCacheManager.CacheResult.Failed -> return null
         }
         val entity = cache.getCacheById(cacheId) ?: return null
-        return unitFromCache(cache.getCacheFile(entity), FORMAT_NATIVE)
+        val unit = unitFromCache(cache.getCacheFile(entity), SaveCacheEntity.FORMAT_NATIVE) ?: return null
+        return CachedUnit(unit, cacheId)
     }
 
     private fun unitFromCache(file: File, format: String): SnapshotUnit? {
@@ -355,7 +368,8 @@ class SnapshotSyncEngine @Inject constructor(
     private class PushSource(
         val emulatorId: String,
         val localSavePath: String? = null,
-        val sigilState: SigilPendingState? = null
+        val sigilState: SigilPendingState? = null,
+        val cacheId: Long? = null
     )
 
     private suspend fun push(
@@ -397,6 +411,7 @@ class SnapshotSyncEngine @Inject constructor(
                 screenshot?.delete()
                 record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
                 clearPushedDirtyFlags(ctx)
+                markReached(ctx, unit.contentHash, source.cacheId)
                 source.sigilState?.let { sigilSaveHandler.commit(it) }
                 Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${outcome.snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
                 SnapshotSyncResult.Pushed(outcome.snapshot.id)
@@ -563,14 +578,29 @@ class SnapshotSyncEngine @Inject constructor(
         )
     }
 
+    private fun cacheOwnerOf(ctx: ChannelView): Long? = ctx.ownerUserId.takeUnless { it == SigilSyncStateEntity.NO_OWNER }
+
+    private fun cacheChannelsOf(ctx: ChannelView): List<String?> =
+        if (SnapshotChannels.isDefaultLabel(ctx.label)) listOf(null, SaveSyncApiClient.AUTOSAVE_SLOT_NAME) else listOf(ctx.label)
+
     private suspend fun clearPushedDirtyFlags(ctx: ChannelView) {
-        val owner = ctx.ownerUserId.takeUnless { it == SigilSyncStateEntity.NO_OWNER }
-        if (SnapshotChannels.isDefaultLabel(ctx.label)) {
-            saveCacheDao.clearDirtyFlagForNoChannel(ctx.game.id, owner)
-            saveCacheDao.clearDirtyFlagForChannel(ctx.game.id, owner, SaveSyncApiClient.AUTOSAVE_SLOT_NAME, NO_CACHE_ID)
-        } else {
-            saveCacheDao.clearDirtyFlagForChannel(ctx.game.id, owner, ctx.label, NO_CACHE_ID)
+        val owner = cacheOwnerOf(ctx)
+        cacheChannelsOf(ctx).forEach { channel ->
+            if (channel == null) {
+                saveCacheDao.clearDirtyFlagForNoChannel(ctx.game.id, owner)
+            } else {
+                saveCacheDao.clearDirtyFlagForChannel(ctx.game.id, owner, channel, NO_CACHE_ID)
+            }
         }
+    }
+
+    private suspend fun markReached(ctx: ChannelView, contentHash: String?, cacheId: Long? = null) {
+        val owner = cacheOwnerOf(ctx)
+        val matching = contentHash?.let { hash ->
+            cacheChannelsOf(ctx).flatMap { saveCacheDao.getAllByGameChannelAndHash(ctx.game.id, owner, it, hash) }.map { it.id }
+        }.orEmpty()
+        val now = Instant.now()
+        (matching + listOfNotNull(cacheId)).distinct().forEach { saveCacheDao.markSynced(it, now) }
     }
 
     private suspend fun report(ctx: ChannelView, snapshotId: Long) {
@@ -580,8 +610,6 @@ class SnapshotSyncEngine @Inject constructor(
 
     companion object {
         private const val TAG = "SnapshotSyncEngine"
-        private const val FORMAT_NEUTRAL = "neutral"
-        private const val FORMAT_NATIVE = "native"
         private const val AUTO_SLOT = "auto"
         private const val STATE_SCREENSHOT_EXTENSION = ".png"
         private const val STAGING_PREFIX = ".snapshot-bank-"

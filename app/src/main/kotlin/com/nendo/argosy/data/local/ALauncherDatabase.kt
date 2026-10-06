@@ -198,7 +198,7 @@ import com.nendo.argosy.data.local.entity.SteamLicenseEntity
         com.nendo.argosy.data.local.entity.SigilSyncStateEntity::class,
         com.nendo.argosy.data.local.entity.SnapshotChannelEntity::class
     ],
-    version = 205,
+    version = 206,
     exportSchema = true
 )
 @TypeConverters(Converters::class)

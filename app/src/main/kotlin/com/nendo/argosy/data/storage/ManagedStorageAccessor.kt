@@ -93,28 +93,50 @@ class ManagedStorageAccessor @Inject constructor(
         return listFilesWithManagedParameter(volumeId, relativePath)
     }
 
-    private fun listFilesWithManagedParameter(volumeId: String, relativePath: String): List<DocumentFile>? {
-        val approaches = listOf(
-            {
-                val treeDocId = "$volumeId:$relativePath"
-                val treeUri = Uri.Builder()
-                    .scheme("content")
-                    .authority(EXTERNAL_STORAGE_AUTHORITY)
-                    .appendPath("tree")
-                    .appendPath(treeDocId)
-                    .build()
-                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
-                applyManagedParameter(childrenUri, relativePath)
-            },
-            {
-                val documentId = "$volumeId:$relativePath"
-                val childrenUri = DocumentsContract.buildChildDocumentsUri(
-                    EXTERNAL_STORAGE_AUTHORITY,
-                    documentId
-                )
-                applyManagedParameter(childrenUri, relativePath)
+    private fun childQueryApproaches(volumeId: String, relativePath: String): List<() -> Uri> = listOf(
+        {
+            val treeDocId = "$volumeId:$relativePath"
+            val treeUri = Uri.Builder()
+                .scheme("content")
+                .authority(EXTERNAL_STORAGE_AUTHORITY)
+                .appendPath("tree")
+                .appendPath(treeDocId)
+                .build()
+            val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocId)
+            applyManagedParameter(childrenUri, relativePath)
+        },
+        {
+            val documentId = "$volumeId:$relativePath"
+            val childrenUri = DocumentsContract.buildChildDocumentsUri(
+                EXTERNAL_STORAGE_AUTHORITY,
+                documentId
+            )
+            applyManagedParameter(childrenUri, relativePath)
+        }
+    )
+
+    /**
+     * True when the directory at [relativePath] can be enumerated, including when it holds
+     * nothing. [listFiles] answers null for both an empty directory and a refused one; this
+     * tells them apart.
+     */
+    fun isListableDirectory(volumeId: String, relativePath: String): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            return File(getVolumeRoot(volumeId), relativePath).list() != null
+        }
+        if (!isDirectoryAtPath(volumeId, relativePath)) return false
+        return childQueryApproaches(volumeId, relativePath).any { buildUri ->
+            try {
+                contentResolver.query(buildUri(), DOCUMENT_COLUMNS, null, null, null)?.use { true } ?: false
+            } catch (e: Exception) {
+                android.util.Log.d("ManagedStorageAccessor", "isListableDirectory probe failed: ${e.message}")
+                false
             }
-        )
+        }
+    }
+
+    private fun listFilesWithManagedParameter(volumeId: String, relativePath: String): List<DocumentFile>? {
+        val approaches = childQueryApproaches(volumeId, relativePath)
 
         for ((index, buildUri) in approaches.withIndex()) {
             try {

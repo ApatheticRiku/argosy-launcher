@@ -154,6 +154,7 @@ class SessionSaveFinalizer @Inject constructor(
         cacheId: Long,
         ownerUserId: Long?
     ) {
+        saveCacheDao.markSynced(cacheId, Instant.now())
         upload.rommSaveId?.let { rommSaveId ->
             saveCacheDao.updateRommSaveId(cacheId, rommSaveId)
             upload.serverTimestamp?.let { saveCacheDao.updateCachedAt(cacheId, it) }
