@@ -57,12 +57,21 @@ class SystemSettings @Inject constructor(
         (fraction * maxBrightness).toInt().coerceIn(minBrightness, maxBrightness)
 
     private fun storeBrightnessPrivileged(value: Int): Boolean {
-        if (!PServerExecutor.isAvailable) return false
-        PServerExecutor.setSystemSetting(
-            Settings.System.SCREEN_BRIGHTNESS_MODE,
-            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
-        )
-        PServerExecutor.setSystemSetting(Settings.System.SCREEN_BRIGHTNESS, value)
+        when {
+            PServerExecutor.isAvailable -> {
+                PServerExecutor.setSystemSetting(
+                    Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+                )
+                PServerExecutor.setSystemSetting(Settings.System.SCREEN_BRIGHTNESS, value)
+            }
+            XsuExecutor.isAvailable -> XsuExecutor.execute(
+                "settings put system ${Settings.System.SCREEN_BRIGHTNESS_MODE} " +
+                    "${Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL}; " +
+                    "settings put system ${Settings.System.SCREEN_BRIGHTNESS} $value"
+            )
+            else -> return false
+        }
         return readBrightness() == value
     }
 
