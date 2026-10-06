@@ -5,10 +5,12 @@ import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.screens.settings.sections.input.toggleLeftRight
 
 class QuickFriendsInputHandler(
     private val controller: QuickFriendsController,
     private val showQuayPass: () -> Boolean,
+    private val quayPassEnabled: () -> Boolean,
     private val wrapMode: () -> MenuWrapMode,
     private val onToggleQuayPass: () -> Unit,
     private val onOpenProfile: (Friend) -> Unit
@@ -28,6 +30,16 @@ class QuickFriendsInputHandler(
 
     override fun onDown(): InputResult = move(1)
 
+    override fun onLeft(): InputResult = horizontal(-1)
+
+    override fun onRight(): InputResult = horizontal(1)
+
+    private fun horizontal(delta: Int): InputResult = when (focusedRow()) {
+        QuickFriendsRow.Actions -> controller.moveAction(delta)
+        QuickFriendsRow.QuayPass -> toggleLeftRight(delta, quayPassEnabled()) { onToggleQuayPass() }
+        else -> InputResult.UNHANDLED
+    }
+
     override fun onConfirm(): InputResult {
         val row = focusedRow() ?: return InputResult.UNHANDLED
         activate(row)
@@ -46,11 +58,16 @@ class QuickFriendsInputHandler(
         activate(row)
     }
 
+    fun tapAction(index: Int, action: QuickFriendsAction) {
+        controller.setFocus(index)
+        controller.setAction(action)
+        controller.openAction(action)
+    }
+
     private fun activate(row: QuickFriendsRow) {
         when (row) {
             QuickFriendsRow.QuayPass -> onToggleQuayPass()
-            QuickFriendsRow.FriendCode -> controller.showFriendCode()
-            QuickFriendsRow.AddFriend -> controller.showAddFriend()
+            QuickFriendsRow.Actions -> controller.openAction(controller.state.value.action)
             is QuickFriendsRow.Entry -> onOpenProfile(row.friend)
         }
     }

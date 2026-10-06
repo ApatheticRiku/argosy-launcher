@@ -18,4 +18,7 @@ class BrightnessController @Inject constructor(
 
     fun setPrimaryBrightness(brightness: Float): Boolean =
         systemSettings.setScreenBrightness(brightness)
+
+    @Suppress("UNUSED_PARAMETER", "FunctionOnlyReturningConstant")
+    fun setSecondaryBrightness(brightness: Float): Boolean = false
 }

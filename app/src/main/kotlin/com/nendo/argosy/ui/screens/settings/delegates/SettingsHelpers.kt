@@ -11,8 +11,11 @@ fun cycleInList(current: Int, values: List<Int>, direction: Int = 1): Int {
     return values[(currentIndex + direction).mod(values.size)]
 }
 
+fun levelIndexIn(current: Int, values: List<Int>): Int =
+    values.indexOfFirst { it >= current }.takeIf { it >= 0 } ?: 0
+
 fun adjustInList(current: Int, values: List<Int>, delta: Int): Int? {
-    val currentIndex = values.indexOfFirst { it >= current }.takeIf { it >= 0 } ?: 0
+    val currentIndex = levelIndexIn(current, values)
     val newIndex = (currentIndex + delta).coerceIn(0, values.lastIndex)
     val newValue = values[newIndex]
     return if (newValue != current) newValue else null

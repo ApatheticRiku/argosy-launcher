@@ -26,6 +26,8 @@ import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.SectionPaneLayout
+import com.nendo.argosy.ui.screens.settings.delegates.VolumeLevels
+import com.nendo.argosy.ui.screens.settings.delegates.levelIndexIn
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 
@@ -159,9 +161,7 @@ fun ThemeMusicSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             )
 
             ThemeMusicItem.BgmVolume -> {
-                val volumeLevels = listOf(2, 5, 10, 20, 35)
-                val currentIndex = volumeLevels.indexOfFirst { it >= uiState.ambientAudio.volume }.takeIf { it >= 0 } ?: 0
-                val sliderValue = currentIndex + 1
+                val sliderValue = levelIndexIn(uiState.ambientAudio.volume, VolumeLevels.AMBIENT_AUDIO) + 1
                 SliderPreference(
                     title = stringResource(R.string.settings_music_volume_title),
                     value = sliderValue,

@@ -1107,64 +1107,110 @@
     <string name="ui_quick_settings_title">Quick Settings</string>
     <!-- Row of that panel: how hard the device is allowed to work. Noun. -->
     <string name="ui_quick_settings_performance">Performance</string>
-    <!-- Shown in place of that row's value when Argosy cannot reach the device's settings. -->
-    <string name="ui_quick_settings_performance_disabled">Permission required</string>
     <!-- Row of that panel: how the cooling fan runs. Noun. -->
     <string name="ui_quick_settings_fan">Fan</string>
-    <!-- Shown in place of that row's value when Argosy cannot reach the device's settings. -->
-    <string name="ui_quick_settings_fan_disabled">Permission required</string>
-    <!-- Fan setting: as quiet as the device allows. Adjective. -->
+    <!-- Fan setting: as quiet as the device allows. Adjective; shown on a narrow segment, keep
+         short. -->
     <string name="ui_quick_settings_fan_quiet">Quiet</string>
-    <!-- Fan setting: the device decides. Adjective. -->
+    <!-- Fan setting: the device decides. Adjective; shown on a narrow segment, keep short. -->
     <string name="ui_quick_settings_fan_smart">Smart</string>
-    <!-- Fan setting: cooling favoured over noise. Adjective. -->
+    <!-- Fan setting: cooling favoured over noise. Adjective; shown on a narrow segment, keep
+         short. -->
     <string name="ui_quick_settings_fan_sport">Sport</string>
-    <!-- Fan setting: the reader sets the speed themselves. The plus sign is part of the
-         label. -->
-    <string name="ui_quick_settings_fan_custom">Turbo+</string>
-    <!-- Performance setting: the device's ordinary mode. Adjective. -->
+    <!-- Fan setting: the reader sets the speed themselves on the slider below. Adjective; shown
+         on a narrow segment, keep short. -->
+    <string name="ui_quick_settings_fan_custom">Custom</string>
+    <!-- Performance mode: the device's ordinary mode. Adjective; shown on a segment, keep
+         short. -->
     <string name="ui_quick_settings_performance_standard">Standard</string>
-    <!-- Performance setting: faster, warmer. Noun phrase. -->
-    <string name="ui_quick_settings_performance_high">High Performance</string>
-    <!-- Performance setting: as fast as the device goes. Noun phrase. -->
-    <string name="ui_quick_settings_performance_max">Max Performance</string>
-    <!-- Label over the slider that sets fan speed by hand. Noun. -->
-    <string name="ui_quick_settings_fan_speed">Speed</string>
-    <!-- Label over the slider that sets how hard the device buzzes. Noun. -->
-    <string name="ui_quick_settings_vibration_strength">Strength</string>
+    <!-- Performance mode: faster, warmer. Adjective; shown on a segment, keep short. -->
+    <string name="ui_quick_settings_performance_high">High</string>
+    <!-- Performance mode: as fast as the device goes. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_max">Max</string>
+    <!-- Row of the Performance page that picks the performance mode. Noun. -->
+    <string name="ui_quick_settings_performance_mode">Mode</string>
+    <!-- Label of the slider that sets the fan speed by hand when the fan is on Custom. Noun
+         phrase. -->
+    <string name="ui_quick_settings_fan_speed">Custom speed</string>
+    <!-- Row of the Performance page: how many times per second the screen redraws. Noun
+         phrase. -->
+    <string name="ui_quick_settings_refresh_rate">Refresh rate</string>
+    <!-- Refresh rate option: 60 hertz. Keep the unit abbreviation. -->
+    <string name="ui_quick_settings_refresh_60">60 Hz</string>
+    <!-- Refresh rate option: 120 hertz. Keep the unit abbreviation. -->
+    <string name="ui_quick_settings_refresh_120">120 Hz</string>
+    <!-- Row of the Performance page: shows frame rate, battery and clock over games played
+         in Argosy's own emulator. Noun phrase. -->
+    <string name="ui_quick_settings_hud">Stats overlay</string>
+    <!-- Second line of that row: where the overlay appears. Prepositional phrase. -->
+    <string name="ui_quick_settings_hud_description">In built-in games</string>
+    <!-- Notice at the top of the Performance page when Argosy cannot change the device's
+         performance and fan settings. Full sentence. -->
+    <string name="ui_quick_settings_device_access_notice">Argosy needs permission to change these.</string>
+    <!-- Button beside that notice that opens the permission settings. Verb. -->
+    <string name="ui_quick_settings_device_access_allow">Allow</string>
     <!-- Row of that panel: light or dark. Noun. -->
     <string name="ui_quick_settings_theme">Theme</string>
-    <!-- Row of that panel: whether the device buzzes on a press. Noun, plural. -->
+    <!-- Theme option on a narrow segment: always light. Adjective. -->
+    <string name="ui_quick_settings_theme_light">Light</string>
+    <!-- Theme option on a narrow segment: always dark. Adjective. -->
+    <string name="ui_quick_settings_theme_dark">Dark</string>
+    <!-- Theme option on a narrow segment: follow the device setting. Noun used as an
+         adjective. -->
+    <string name="ui_quick_settings_theme_system">System</string>
+    <!-- Row of that panel: whether the device buzzes on a press, and how hard. Noun,
+         plural. -->
     <string name="ui_quick_settings_haptics">Haptics</string>
     <!-- Row of that panel: whether the launcher makes a sound on a press. Noun phrase. -->
     <string name="ui_quick_settings_ui_sounds">UI Sounds</string>
+    <!-- Row of that panel that swaps the confirm and back buttons on the controller. "A" and
+         "B" are the controller button names; keep them as letters. -->
+    <string name="ui_quick_settings_swap_ab">Swap A/B</string>
     <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
          other's role. -->
-    <string name="ui_quick_settings_swap_displays">Swap Displays</string>
-    <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
-         other's role. -->
+    <string name="ui_quick_settings_swap_displays">Swap screens</string>
     <!-- Row of that panel. "QuayPass" is the name of an Argosy feature; leave it
          untranslated. -->
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <!-- Label beside the system volume slider. Noun. -->
     <string name="ui_quick_settings_volume">Volume</string>
-    <!-- Label beside the screen brightness slider. Noun. -->
+    <!-- Label beside the screen brightness slider on a device with one screen. Noun. -->
     <string name="ui_quick_settings_brightness">Brightness</string>
-    <!-- Title of the page of that panel for a device with two screens. Noun, plural. -->
-    <string name="ui_quick_settings_page_screens">Screens</string>
+    <!-- Label of the brightness slider for the screen that shows the launcher, on a device
+         with two screens. Noun phrase. -->
+    <string name="ui_quick_settings_brightness_main">Main screen</string>
+    <!-- Label of the brightness slider for the other screen, on a device with two screens.
+         Noun phrase. -->
+    <string name="ui_quick_settings_brightness_second">Second screen</string>
+    <!-- Value shown on a switched slider while the setting is turned off. Adjective. -->
+    <string name="ui_quick_settings_off">Off</string>
+    <!-- A slider value as a percentage, for example "40%". %1$d is the number. -->
+    <string name="ui_quick_settings_percent">%1$d%%</string>
     <!-- Title of the page of that panel holding the performance and fan rows. Noun. -->
     <string name="ui_quick_settings_page_performance">Performance</string>
     <!-- Title of the page of that panel holding the social rows. Noun, plural. -->
     <string name="ui_quick_settings_page_friends">Friends</string>
     <!-- Title of the page of that panel holding the background music row. Noun. -->
     <string name="ui_quick_settings_page_music">Music</string>
-    <!-- Sub-heading on that panel over the theme and brightness rows. Noun. -->
+    <!-- Section heading on that panel over the theme and brightness rows. Noun. Shown in
+         capitals. -->
     <string name="ui_quick_settings_group_display">Display</string>
-    <!-- Sub-heading on that panel over the volume and UI sound rows. Noun. -->
-    <string name="ui_quick_settings_group_audio">Audio</string>
-    <!-- Sub-heading on that panel over the remaining rows, such as haptics. Adjective used as a
-         noun: everything else. -->
-    <string name="ui_quick_settings_group_other">Other</string>
+    <!-- Section heading on that panel over the volume and UI sound rows. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_audio">Sound</string>
+    <!-- Section heading on that panel over the haptics and button swap rows. Noun, plural.
+         Shown in capitals. -->
+    <string name="ui_quick_settings_group_controls">Controls</string>
+    <!-- Section heading on the Performance page over the mode and refresh rate rows. Noun.
+         Shown in capitals. -->
+    <string name="ui_quick_settings_group_performance">Performance</string>
+    <!-- Section heading on the Performance page over the fan rows. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_fan">Fan</string>
+    <!-- Section heading on the Performance page over the stats overlay row. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_overlay">Overlay</string>
     <!-- Music page of that panel: shown in place of a song title when nothing is queued. -->
     <string name="ui_quick_settings_music_nothing_playing">Nothing playing</string>
     <!-- Music page: name of the playlist the reader builds in Argosy's own music settings. Noun
@@ -1172,6 +1218,12 @@
     <string name="ui_quick_settings_music_source_launcher">Launcher music</string>
     <!-- Music page: position of the current song in the playing list, for example "3 of 12". -->
     <string name="ui_quick_settings_music_track_position">%1$d of %2$d</string>
+    <!-- Music page heading over the queued songs, shown in capitals. %1$s is the position
+         text above, for example "3 of 12". The dot is a separator. -->
+    <string name="ui_quick_settings_music_up_next">Up next &#183; %1$s</string>
+    <!-- Music page row that turns launcher music on or off and sets how loud it plays. Noun
+         phrase. -->
+    <string name="ui_quick_settings_music_volume">Music volume</string>
     <!-- Music page button description: goes to the previous song. -->
     <string name="ui_quick_settings_music_previous">Previous track</string>
     <!-- Music page button description: starts the music. Verb. -->
@@ -1245,10 +1297,17 @@
 
     <!-- Shown on the quick panel's Friends page when the reader has no friends yet. -->
     <string name="ui_drawer_friends_empty">No friends yet</string>
-    <!-- Heading over the reachable friends. %1$d is how many. Rendered in caps in English. -->
-    <string name="ui_drawer_friends_online">ONLINE (%1$d)</string>
-    <!-- Heading over the unreachable friends. %1$d is how many. Rendered in caps in English. -->
-    <string name="ui_drawer_friends_offline">OFFLINE (%1$d)</string>
+    <!-- Heading over the reachable friends, shown in capitals. %1$d is how many. The dot is a
+         separator. -->
+    <string name="ui_drawer_friends_online">Online &#183; %1$d</string>
+    <!-- Heading over the unreachable friends, shown in capitals. %1$d is how many. The dot is
+         a separator. -->
+    <string name="ui_drawer_friends_offline">Offline &#183; %1$d</string>
+    <!-- Under the reader's own name on the Friends page while connected to the social
+         service. Adjective. -->
+    <string name="ui_quick_friends_status_online">Online</string>
+    <!-- Under the reader's own name on the Friends page while not connected. Adjective. -->
+    <string name="ui_quick_friends_status_offline">Offline</string>
     <!-- Second line under a friend hosting a netplay game. %1$s is the game's title. -->
     <string name="ui_drawer_friend_hosting">Hosting %1$s</string>
     <!-- Second line under a friend in a game on their own. %1$s is the game's title. -->

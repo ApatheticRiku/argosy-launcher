@@ -39,6 +39,7 @@ import com.nendo.argosy.ui.components.animateScrollToItemCentered
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
 import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
+import com.nendo.argosy.ui.primitives.RuledSectionHeader
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.util.clickableNoFocus
@@ -173,23 +174,10 @@ private fun SectionHeader(
     onTimeline: (() -> Unit)? = null
 ) {
     val theme = LocalArgosyTheme.current
-    Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = Dimens.spacingSm + Dimens.spacingXs),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
+    RuledSectionHeader(
+        title = title,
+        modifier = modifier.padding(horizontal = Dimens.spacingSm + Dimens.spacingXs)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            color = theme.textPrimary,
-            maxLines = 1
-        )
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .height(Dimens.borderThin)
-                .background(theme.hairlineHigh)
-        )
         if (actionLabel != null) {
             ModalActionButton(
                 label = actionLabel,

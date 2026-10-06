@@ -518,9 +518,7 @@
 
     <string name="ui_quick_settings_title">快捷设置</string>
     <string name="ui_quick_settings_performance">性能</string>
-    <string name="ui_quick_settings_performance_disabled">需要权限</string>
     <string name="ui_quick_settings_fan">风扇</string>
-    <string name="ui_quick_settings_fan_disabled">需要权限</string>
     <string name="ui_quick_settings_fan_quiet">静音</string>
     <string name="ui_quick_settings_fan_smart">智能</string>
     <string name="ui_quick_settings_fan_sport">运动</string>
@@ -529,20 +527,17 @@
     <string name="ui_quick_settings_performance_high">高性能</string>
     <string name="ui_quick_settings_performance_max">最高性能</string>
     <string name="ui_quick_settings_fan_speed">转速</string>
-    <string name="ui_quick_settings_vibration_strength">强度</string>
     <string name="ui_quick_settings_theme">主题</string>
     <string name="ui_quick_settings_haptics">震动反馈</string>
     <string name="ui_quick_settings_ui_sounds">界面音效</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">音量</string>
     <string name="ui_quick_settings_brightness">亮度</string>
-    <string name="ui_quick_settings_page_screens">屏幕</string>
     <string name="ui_quick_settings_page_performance">性能</string>
     <string name="ui_quick_settings_page_friends">好友</string>
     <string name="ui_quick_settings_page_music">音乐</string>
     <string name="ui_quick_settings_group_display">显示</string>
     <string name="ui_quick_settings_group_audio">音频</string>
-    <string name="ui_quick_settings_group_other">其他</string>
     <string name="ui_quick_settings_music_nothing_playing">未在播放</string>
     <string name="ui_quick_settings_music_source_launcher">启动器音乐</string>
     <string name="ui_quick_settings_music_track_position">第 %1$d 首，共 %2$d 首</string>

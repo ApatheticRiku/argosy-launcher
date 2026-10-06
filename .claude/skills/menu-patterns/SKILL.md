@@ -100,8 +100,47 @@ val isWideDisplay = aspectRatioClass == AspectRatioClass.ULTRA_WIDE ||
 ```
 
 **Examples:** LED brightness. `AmbientLedSection` is the only user of
-`TrackSliderPreference`; the Quick Settings vibration row is a local
-`VibrationStrengthSlider` in `ui/components/QuickSettingsPanel.kt`, not this component.
+`TrackSliderPreference`. The quick settings panel has its own `QuickSliderRow`
+(`ui/components/QuickSettingsRows.kt`), shared by every slider on that panel.
+
+---
+
+### 4b. Switched Slider (QuickSwitchedSliderRow)
+An on/off setting that also has a level (haptics + strength, music on/off + volume). One row,
+not a toggle row plus a slider row.
+
+| Input | Behavior |
+|-------|----------|
+| A / Tap chip | Toggle on/off; sound and haptic fire on the press |
+| LEFT / RIGHT | Adjust the level while on; boundary sound while off or at either end |
+| Drag | Adjust the level while on |
+
+- The leading icon is a square chip (`SwitchChip`, `ui/primitives/SwitchedSlider.kt`):
+  accent-filled when on, neutral with the icon struck through when off.
+- Turning off keeps the stored level; turning on restores it. Never write the level to 0 to
+  mean "off".
+- Motion: off collapses the fill and thumb toward the track centre, then dims the track to
+  `switchedSlider.offTrackAlpha`; on runs the reverse with the thumb last. A change mid-run
+  continues from the current point (`rememberSwitchedPhase`). Reduced motion is one step.
+- Value text crossfades to "Off"; a faint outline of the level stays on the track.
+
+---
+
+### 4c. Segmented Control (SegmentedControl)
+An enum of up to four options shown all at once (`ui/primitives/Controls.kt`). Five or more
+options use `CyclePreference` instead.
+
+| Input | Behavior |
+|-------|----------|
+| LEFT / RIGHT | Move the selection one segment and apply it; boundary sound at either end |
+| A | Nothing, silently (`InputResult.handled(SoundType.SILENT)`) |
+| Tap segment | Select and apply |
+
+- Short enums sit inline on the label line (`segmentedInlineWidth`); longer labels put the
+  control on line two at full width.
+- Selected segment: `surfaceBase` fill + accent label at rest; solid accent + on-accent label
+  while the row holds focus. The selection slides over `Motion.durationMicro` and crossfades
+  under reduced motion.
 
 ---
 
@@ -186,11 +225,12 @@ Collapsible groups with child items.
 ### Two-Layer System
 
 **Layer 1: Item Visibility (`visibleWhen`)** - real example from
-`ui/components/QuickSettingsPanel.kt`:
+`ui/components/QuickSettingsModels.kt`:
 ```kotlin
-data object VibrationStrength : QuickSettingsItem(
-    "vibrationStrength", "audioVisual",
-    visibleWhen = { it.vibrationSupported && it.hapticEnabled }
+data object FanSpeed : QuickSettingsItem(
+    "fanSpeed", QuickSettingsPage.PERFORMANCE, QuickSettingsGroup.FAN,
+    visibleWhen = { it.deviceSettingsSupported && it.fanMode == FanMode.CUSTOM },
+    needsDeviceAccess = true
 )
 ```
 
@@ -225,6 +265,20 @@ When an item becomes hidden/disabled:
 3. If focused item becomes unfocusable, move to next focusable item
 
 ---
+
+## Side Panel Sections (header with rule)
+
+Side panels (the quick settings panel) use flat rows, never cards. Each section starts with
+`PanelSectionHeader` (`ui/primitives/RuledSectionHeader.kt`): the section name in capitals,
+`textDim`, `labelMedium` with `quickPanel.sectionLabelTrackingSp` tracking, followed by a
+hairline rule that fills the row, with a `spacingMd` gap above. The save modal's section
+header is the same `RuledSectionHeader` in its title form; reuse it, never copy it. The
+string resource keeps normal case; capitals are applied at render.
+
+Rows in a side panel are 40dp (52dp two-line) and take `FocusIndicators(fill, ring)` as a
+rounded rect inset from the panel edges. Value text is `textDim` at rest and accent on focus.
+Rows a missing permission blocks render dimmed (`quickPanel.disabledContentAlpha`) and are
+left out of d-pad traversal; a notice row with an action button above them says why.
 
 ## Construction Patterns
 

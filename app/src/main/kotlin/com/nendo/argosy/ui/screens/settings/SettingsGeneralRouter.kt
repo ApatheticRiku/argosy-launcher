@@ -21,6 +21,8 @@ import com.nendo.argosy.core.notification.NotificationProgress
 import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.core.notification.showError
+import com.nendo.argosy.ui.screens.settings.delegates.VolumeLevels
+import com.nendo.argosy.ui.screens.settings.delegates.levelIndexIn
 import com.nendo.argosy.ui.screens.settings.sections.BiosItem
 import com.nendo.argosy.ui.screens.settings.sections.biosItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.SteamItem
@@ -619,9 +621,8 @@ internal fun routeCycleSoundVolume(vm: SettingsViewModel) {
 }
 
 internal fun routeAdjustAmbientAudioVolume(vm: SettingsViewModel, delta: Int) {
-    val volumeLevels = listOf(2, 5, 10, 20, 35)
-    val current = vm.uiState.value.ambientAudio.volume
-    val currentIndex = volumeLevels.indexOfFirst { it >= current }.takeIf { it >= 0 } ?: 0
+    val volumeLevels = VolumeLevels.AMBIENT_AUDIO
+    val currentIndex = levelIndexIn(vm.uiState.value.ambientAudio.volume, volumeLevels)
     val newIndex = (currentIndex + delta).coerceIn(0, volumeLevels.lastIndex)
     if (newIndex == currentIndex && delta != 0) {
         vm.hapticManager.vibrate(HapticPattern.BOUNDARY_HIT)
@@ -630,10 +631,9 @@ internal fun routeAdjustAmbientAudioVolume(vm: SettingsViewModel, delta: Int) {
 }
 
 internal fun routeCycleAmbientAudioVolume(vm: SettingsViewModel) {
-    val volumeLevels = listOf(2, 5, 10, 20, 35)
-    val current = vm.uiState.value.ambientAudio.volume
-    val currentIndex = volumeLevels.indexOfFirst { it >= current }.takeIf { it >= 0 } ?: 0
-    val nextIndex = (currentIndex + 1) % volumeLevels.size
+    val volumeLevels = VolumeLevels.AMBIENT_AUDIO
+    val currentIndex = levelIndexIn(vm.uiState.value.ambientAudio.volume, volumeLevels)
+    val nextIndex = (currentIndex + 1).mod(volumeLevels.size)
     vm.ambientAudioDelegate.setVolume(vm.viewModelScope, volumeLevels[nextIndex])
 }
 

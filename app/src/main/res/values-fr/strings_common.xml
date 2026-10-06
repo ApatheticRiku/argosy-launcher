@@ -565,9 +565,7 @@
 
     <string name="ui_quick_settings_title">Réglages rapides</string>
     <string name="ui_quick_settings_performance">Performance</string>
-    <string name="ui_quick_settings_performance_disabled">Permission requise</string>
     <string name="ui_quick_settings_fan">Ventilateur</string>
-    <string name="ui_quick_settings_fan_disabled">Permission requise</string>
     <string name="ui_quick_settings_fan_quiet">Silencieux</string>
     <string name="ui_quick_settings_fan_smart">Intelligent</string>
     <string name="ui_quick_settings_fan_sport">Sport</string>
@@ -576,20 +574,17 @@
     <string name="ui_quick_settings_performance_high">Haute performance</string>
     <string name="ui_quick_settings_performance_max">Performance maximale</string>
     <string name="ui_quick_settings_fan_speed">Vitesse</string>
-    <string name="ui_quick_settings_vibration_strength">Intensité</string>
     <string name="ui_quick_settings_theme">Thème</string>
     <string name="ui_quick_settings_haptics">Vibrations</string>
     <string name="ui_quick_settings_ui_sounds">Sons de l\'interface</string>
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <string name="ui_quick_settings_volume">Volume</string>
     <string name="ui_quick_settings_brightness">Luminosité</string>
-    <string name="ui_quick_settings_page_screens">Écrans</string>
     <string name="ui_quick_settings_page_performance">Performances</string>
     <string name="ui_quick_settings_page_friends">Amis</string>
     <string name="ui_quick_settings_page_music">Musique</string>
     <string name="ui_quick_settings_group_display">Affichage</string>
     <string name="ui_quick_settings_group_audio">Audio</string>
-    <string name="ui_quick_settings_group_other">Autres</string>
     <string name="ui_quick_settings_music_nothing_playing">Aucune lecture</string>
     <string name="ui_quick_settings_music_source_launcher">Musique du launcher</string>
     <string name="ui_quick_settings_music_track_position">%1$d sur %2$d</string>

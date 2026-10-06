@@ -24,4 +24,11 @@ class FanController @Inject constructor() {
     fun release(): Boolean = runCatching {
         stateFile.writeText("0")
     }.isSuccess
+
+    companion object {
+        const val CUSTOM_DUTY_MIN = 10_000
+        const val CUSTOM_DUTY_MAX = 50_000
+        const val CUSTOM_DUTY_STEP = 2_500
+        const val SPORT_DUTY = 25_000
+    }
 }

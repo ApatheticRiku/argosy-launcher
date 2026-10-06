@@ -6,6 +6,7 @@ import com.nendo.argosy.data.social.Friend
 import com.nendo.argosy.data.social.PresenceStatus
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
+import com.nendo.argosy.data.social.SocialUser
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.InputResult
 import kotlinx.coroutines.CoroutineScope
@@ -22,20 +23,23 @@ sealed class FriendsModal {
     data object AddFriend : FriendsModal()
 }
 
+enum class QuickFriendsAction { MY_CODE, ADD_FRIEND }
+
 data class QuickFriendsState(
     val socialConnected: Boolean = false,
+    val localUser: SocialUser? = null,
     val friends: List<Friend> = emptyList(),
     val onlineCount: Int = 0,
     val friendCode: String? = null,
     val friendCodeUrl: String? = null,
     val modal: FriendsModal = FriendsModal.None,
-    val focusIndex: Int = 0
+    val focusIndex: Int = 0,
+    val action: QuickFriendsAction = QuickFriendsAction.MY_CODE
 )
 
 sealed class QuickFriendsRow(val key: String) {
     data object QuayPass : QuickFriendsRow("quaypass")
-    data object FriendCode : QuickFriendsRow("friendCode")
-    data object AddFriend : QuickFriendsRow("addFriend")
+    data object Actions : QuickFriendsRow("actions")
     data class Entry(val friend: Friend, val position: Int) : QuickFriendsRow("friend_${friend.id}")
 }
 
@@ -46,17 +50,21 @@ sealed class QuickFriendsRow(val key: String) {
 fun quickFriendsRows(showQuayPass: Boolean, state: QuickFriendsState): List<QuickFriendsRow> = buildList {
     if (showQuayPass) add(QuickFriendsRow.QuayPass)
     if (state.socialConnected) {
-        add(QuickFriendsRow.FriendCode)
-        add(QuickFriendsRow.AddFriend)
+        add(QuickFriendsRow.Actions)
         state.friends.forEachIndexed { position, friend -> add(QuickFriendsRow.Entry(friend, position)) }
     }
 }
+
+private data class QuickFriendsFocus(
+    val index: Int = 0,
+    val action: QuickFriendsAction = QuickFriendsAction.MY_CODE
+)
 
 class QuickFriendsController(
     private val socialRepository: SocialRepository,
     scope: CoroutineScope
 ) {
-    private val focusIndex = MutableStateFlow(0)
+    private val focus = MutableStateFlow(QuickFriendsFocus())
     private val modal = MutableStateFlow<FriendsModal>(FriendsModal.None)
 
     val state: StateFlow<QuickFriendsState> = combine(
@@ -64,17 +72,20 @@ class QuickFriendsController(
         socialRepository.friends,
         socialRepository.friendCode,
         modal,
-        focusIndex
-    ) { connection, friends, code, openModal, focus ->
+        focus
+    ) { connection, friends, code, openModal, focused ->
         val sorted = sortForDisplay(friends)
+        val connected = connection as? SocialConnectionState.Connected
         QuickFriendsState(
-            socialConnected = connection is SocialConnectionState.Connected,
+            socialConnected = connected != null,
+            localUser = connected?.user,
             friends = sorted,
             onlineCount = sorted.count { it.isOnlineNow },
             friendCode = code?.code,
             friendCodeUrl = code?.url,
             modal = openModal,
-            focusIndex = focus
+            focusIndex = focused.index,
+            action = focused.action
         )
     }.stateIn(
         scope = scope,
@@ -83,18 +94,38 @@ class QuickFriendsController(
     )
 
     fun resetFocus() {
-        focusIndex.update { 0 }
+        focus.update { QuickFriendsFocus() }
     }
 
     fun setFocus(index: Int) {
-        focusIndex.update { index }
+        focus.update { it.copy(index = index) }
+    }
+
+    fun setAction(action: QuickFriendsAction) {
+        focus.update { it.copy(action = action) }
+    }
+
+    fun moveAction(delta: Int): InputResult {
+        val actions = QuickFriendsAction.entries
+        val current = focus.value.action.ordinal
+        val next = current + delta
+        if (next !in actions.indices) return InputResult.handled(SoundType.BOUNDARY)
+        focus.update { it.copy(action = actions[next]) }
+        return InputResult.HANDLED
     }
 
     fun moveFocus(delta: Int, maxIndex: Int, wrapMode: MenuWrapMode): InputResult {
-        val current = focusIndex.value.coerceIn(0, maxIndex)
+        val current = focus.value.index.coerceIn(0, maxIndex)
         val next = computeWrappedIndex(current, delta, maxIndex, wrapMode)
-        focusIndex.update { next }
+        focus.update { it.copy(index = next) }
         return if (next != current) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
+    }
+
+    fun openAction(action: QuickFriendsAction) {
+        when (action) {
+            QuickFriendsAction.MY_CODE -> showFriendCode()
+            QuickFriendsAction.ADD_FRIEND -> showAddFriend()
+        }
     }
 
     fun showFriendCode() {

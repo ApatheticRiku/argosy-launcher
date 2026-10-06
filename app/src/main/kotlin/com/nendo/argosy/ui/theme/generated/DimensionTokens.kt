@@ -73,7 +73,11 @@ object DimensionTokens {
         const val footerHeightCompact = 30
         const val modalWidth = 400
         const val modalWidthLg = 520
-        const val quickPanelWidthFriends = 456
+        const val quickPanelWidth = 400
+        const val quickPanelWidthWide = 456
+        const val quickPanelWidthMedia = 520
+        const val quickPanelRailWidth = 56
+        const val quickPanelHeaderHeight = 56
         const val modalWidthXl = 575
         const val menuBreakpointWide = 600
         const val inGameMenuWidth = 300

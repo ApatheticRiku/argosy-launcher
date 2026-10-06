@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.database.ContentObserver
 import android.hardware.input.InputManager
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
@@ -33,7 +32,6 @@ import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.data.emulator.EmulatorUpdateManager
 import com.nendo.argosy.data.emulator.PlaySessionTracker
-import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.MenuWrapMode
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.sync.ConflictInfo
@@ -41,32 +39,22 @@ import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.data.sync.SyncQueueManager
 import com.nendo.argosy.ui.components.SaveConflictInfo
 import com.nendo.argosy.ui.screens.common.GameLaunchRequest
-import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.hardware.BrightnessController
+import com.nendo.argosy.hardware.DisplayRefreshController
 import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.VolumeController
-import com.nendo.argosy.ui.components.FanMode
-import com.nendo.argosy.ui.components.PerformanceMode
-import com.nendo.argosy.ui.components.QuickSettingsItem
-import com.nendo.argosy.ui.components.QuickSettingsPage
-import com.nendo.argosy.ui.components.QuickSettingsState
+import com.nendo.argosy.ui.components.QuickSettingsController
 import com.nendo.argosy.ui.components.friends.QuickFriendsController
-import com.nendo.argosy.ui.components.quickSettingsEffectivePage
-import com.nendo.argosy.ui.components.quickSettingsItemAtFocusIndex
-import com.nendo.argosy.ui.components.quickSettingsMaxFocusIndex
-import com.nendo.argosy.ui.components.quickSettingsVisiblePages
 import com.nendo.argosy.ui.components.InputButton
-import com.nendo.argosy.util.PServerExecutor
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.core.input.ControllerDetector
 import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.ui.input.HapticFeedbackManager
-import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.buttonGlyphSwaps
@@ -87,7 +75,6 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -138,23 +125,6 @@ data class DrawerState(
         else -> 0
     }.takeIf { it > 0 }
 }
-
-data class QuickSettingsUiState(
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val soundEnabled: Boolean = false,
-    val hapticEnabled: Boolean = true,
-    val vibrationStrength: Float = ControlsPreferences.DEFAULT_HAPTIC_STRENGTH,
-    val fanMode: FanMode = FanMode.SMART,
-    val fanSpeed: Int = 25000,
-    val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
-    val deviceSettingsSupported: Boolean = false,
-    val deviceSettingsEnabled: Boolean = false,
-    val systemVolume: Float = 1f,
-    val screenBrightness: Float = 0.5f,
-    val isSocialLinked: Boolean = false,
-    val isSocialConnected: Boolean = false,
-    val quayPassEnabled: Boolean = false
-)
 
 data class ScreenDimmerPreferences(
     val enabled: Boolean = true,
@@ -217,6 +187,7 @@ class ArgosyViewModel @Inject constructor(
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
     private val fanController: FanController,
+    private val displayRefreshController: DisplayRefreshController,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val socialRepository: SocialRepository,
     private val steamContentManager: com.nendo.argosy.data.steam.SteamContentManager,
@@ -256,7 +227,7 @@ class ArgosyViewModel @Inject constructor(
 
     private val settingsObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
-            refreshAudioVisualSettings()
+            quickSettings.refreshDisplayLevels()
         }
     }
 
@@ -475,6 +446,20 @@ class ArgosyViewModel @Inject constructor(
 
     val quickFriends = QuickFriendsController(socialRepository, viewModelScope)
 
+    val quickSettings = QuickSettingsController(
+        preferencesRepository = preferencesRepository,
+        brightnessController = brightnessController,
+        volumeController = volumeController,
+        fanController = fanController,
+        refreshController = displayRefreshController,
+        socialRepository = socialRepository,
+        hapticManager = hapticManager,
+        soundManager = soundManager,
+        quickFriends = quickFriends,
+        wrapMode = { uiState.value.menuWrapMode },
+        scope = viewModelScope
+    )
+
     val drawerUiState: StateFlow<DrawerState> = combine(
         listOf(
             romMRepository.connectionState,
@@ -531,8 +516,6 @@ class ArgosyViewModel @Inject constructor(
     )
 
     private val allDrawerItems = NavRing.PAGES
-
-    private var _isDualScreenMode = false
 
     private var _isMediaSignedIn = false
 
@@ -598,10 +581,6 @@ class ArgosyViewModel @Inject constructor(
         _navBarVisible.update { false }
     }
 
-    fun setDualScreenMode(enabled: Boolean) {
-        _isDualScreenMode = enabled
-    }
-
     private val _isDrawerOpen = MutableStateFlow(false)
     val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
 
@@ -615,8 +594,7 @@ class ArgosyViewModel @Inject constructor(
 
     fun resetAllModals() {
         _isDrawerOpen.value = false
-        _isQuickSettingsOpen.value = false
-        quickFriends.dismissModal()
+        quickSettings.setOpen(false)
         modalResetSignal.emit()
     }
 
@@ -692,62 +670,6 @@ class ArgosyViewModel @Inject constructor(
             downloadManager.recheckStorageAndResume()
         }
     }
-
-
-    // Quick Settings
-    private val _isQuickSettingsOpen = MutableStateFlow(false)
-    val isQuickSettingsOpen: StateFlow<Boolean> = _isQuickSettingsOpen.asStateFlow()
-
-    private val _quickSettingsFocusIndex = MutableStateFlow(0)
-    val quickSettingsFocusIndex: StateFlow<Int> = _quickSettingsFocusIndex.asStateFlow()
-
-    private val _quickSettingsPage = MutableStateFlow(QuickSettingsPage.QUICK)
-    val quickSettingsPage: StateFlow<QuickSettingsPage> = _quickSettingsPage.asStateFlow()
-
-    private data class DeviceSettingsState(
-        val fanMode: FanMode = FanMode.SMART,
-        val fanSpeed: Int = 25000,
-        val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
-        val isSupported: Boolean = false,
-        val hasWritePermission: Boolean = false
-    )
-
-    private val _deviceSettings = MutableStateFlow(DeviceSettingsState())
-
-    private val audioManager = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private val _systemVolume = MutableStateFlow(volumeController.getVolume().primary)
-    private val _screenBrightness = MutableStateFlow(
-        brightnessController.getBrightness().primary ?: 0.5f
-    )
-
-    val quickSettingsState: StateFlow<QuickSettingsUiState> = combine(
-        preferencesRepository.userPreferences,
-        _deviceSettings,
-        _systemVolume,
-        _screenBrightness,
-        socialRepository.connectionState
-    ) { prefs, device, volume, brightness, social ->
-        QuickSettingsUiState(
-            themeMode = prefs.themeMode,
-            soundEnabled = prefs.soundEnabled,
-            hapticEnabled = prefs.hapticEnabled,
-            vibrationStrength = prefs.hapticStrength,
-            fanMode = device.fanMode,
-            fanSpeed = device.fanSpeed,
-            performanceMode = device.performanceMode,
-            deviceSettingsSupported = device.isSupported,
-            deviceSettingsEnabled = device.hasWritePermission,
-            systemVolume = volume,
-            screenBrightness = brightness,
-            isSocialLinked = prefs.isSocialLinked,
-            isSocialConnected = social is SocialConnectionState.Connected,
-            quayPassEnabled = prefs.quayPassEnabled
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = QuickSettingsUiState()
-    )
 
     val screenDimmerPreferences: StateFlow<ScreenDimmerPreferences> = preferencesRepository.userPreferences
         .map { it.toScreenDimmerPreferences() }
@@ -1055,343 +977,6 @@ class ArgosyViewModel @Inject constructor(
                     )
                 }
             }
-        }
-    }
-
-    fun setQuickSettingsOpen(open: Boolean) {
-        _isQuickSettingsOpen.value = open
-        if (open) {
-            _quickSettingsFocusIndex.value = 0
-            quickFriends.resetFocus()
-            loadDeviceSettings()
-            refreshAudioVisualSettings()
-        } else {
-            quickFriends.dismissModal()
-        }
-    }
-
-    private fun refreshAudioVisualSettings() {
-        if (System.currentTimeMillis() - volumeInputTimestamp > 250) {
-            _systemVolume.value = volumeController.getVolume().primary
-        }
-        brightnessController.getBrightness().primary?.let { _screenBrightness.value = it }
-    }
-
-    private fun loadDeviceSettings() {
-        viewModelScope.launch {
-            val isSupported = fanController.isAvailable()
-            val pserverAvailable = PServerExecutor.isAvailable
-
-            if (!isSupported) {
-                _deviceSettings.value = DeviceSettingsState(isSupported = false)
-                return@launch
-            }
-
-            val fanModeValue = PServerExecutor.getSystemSetting("fan_mode", 0)
-            val fanSpeedValue = PServerExecutor.getSystemSetting("fan_speed", 25000)
-            val perfModeValue = PServerExecutor.getSystemSetting("performance_mode", 0)
-
-            _deviceSettings.value = DeviceSettingsState(
-                fanMode = FanMode.fromValue(fanModeValue),
-                fanSpeed = fanSpeedValue,
-                performanceMode = PerformanceMode.fromValue(perfModeValue),
-                isSupported = true,
-                hasWritePermission = pserverAvailable
-            )
-        }
-    }
-
-    fun cycleTheme() {
-        viewModelScope.launch {
-            val current = quickSettingsState.value.themeMode
-            val next = when (current) {
-                ThemeMode.SYSTEM -> ThemeMode.LIGHT
-                ThemeMode.LIGHT -> ThemeMode.DARK
-                ThemeMode.DARK -> ThemeMode.SYSTEM
-            }
-            preferencesRepository.setThemeMode(next)
-        }
-    }
-
-    fun toggleSound(): Boolean {
-        val current = quickSettingsState.value.soundEnabled
-        val newState = !current
-        soundManager.setEnabled(newState)
-        viewModelScope.launch {
-            preferencesRepository.setSoundEnabled(newState)
-        }
-        return newState
-    }
-
-    fun toggleHaptic(): Boolean {
-        val current = quickSettingsState.value.hapticEnabled
-        val newState = !current
-        hapticManager.setEnabled(newState)
-        if (newState) {
-            hapticManager.vibrate(HapticPattern.TOGGLE_ON)
-        }
-        viewModelScope.launch {
-            preferencesRepository.setHapticEnabled(newState)
-        }
-        return newState
-    }
-
-    fun setVibrationStrength(strength: Float) {
-        val coercedStrength = strength.coerceIn(0f, 1f)
-        hapticManager.setStrength(coercedStrength)
-        hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
-        viewModelScope.launch {
-            preferencesRepository.setHapticStrength(coercedStrength)
-        }
-    }
-
-    private fun adjustVibrationStrength(delta: Float) {
-        viewModelScope.launch {
-            val strength = preferencesRepository.adjustHapticStrength(delta)
-            hapticManager.setStrength(strength)
-            hapticManager.vibrate(HapticPattern.STRENGTH_PREVIEW)
-        }
-    }
-
-    private var volumeInputTimestamp = 0L
-
-    fun setSystemVolume(volume: Float) {
-        val coercedVolume = volume.coerceIn(0f, 1f)
-        volumeInputTimestamp = System.currentTimeMillis()
-        _systemVolume.value = coercedVolume
-        volumeController.setPrimaryVolume(coercedVolume)
-    }
-
-    fun setScreenBrightness(brightness: Float) {
-        val coercedBrightness = brightness.coerceIn(0f, 1f)
-        if (brightnessController.setPrimaryBrightness(coercedBrightness)) {
-            _screenBrightness.value = coercedBrightness
-        } else {
-            brightnessController.getBrightness().primary?.let { _screenBrightness.value = it }
-        }
-    }
-
-    fun cycleFanMode() {
-        val current = _deviceSettings.value.fanMode
-        val cycleOrder = listOf(
-            FanMode.QUIET,
-            FanMode.SMART,
-            FanMode.SPORT,
-            FanMode.CUSTOM
-        )
-        val nextIndex = (cycleOrder.indexOf(current) + 1).mod(cycleOrder.size)
-        setFanMode(cycleOrder[nextIndex])
-    }
-
-    private fun setFanMode(mode: FanMode) {
-        viewModelScope.launch {
-            if (PServerExecutor.setSystemSetting("fan_mode", mode.value)) {
-                _deviceSettings.update { it.copy(fanMode = mode) }
-            }
-        }
-    }
-
-    fun setFanSpeed(speed: Int) {
-        viewModelScope.launch {
-            val clampedSpeed = speed.coerceIn(25000, 35000)
-            if (PServerExecutor.setSystemSetting("fan_speed", clampedSpeed)) {
-                _deviceSettings.update { it.copy(fanSpeed = clampedSpeed) }
-            }
-        }
-    }
-
-    fun cyclePerformanceMode() {
-        val current = _deviceSettings.value.performanceMode
-        val modes = PerformanceMode.entries
-        val nextIndex = (modes.indexOf(current) + 1).mod(modes.size)
-        val next = modes[nextIndex]
-        setPerformanceMode(next)
-    }
-
-    private fun setPerformanceMode(mode: PerformanceMode) {
-        viewModelScope.launch {
-            if (PServerExecutor.setSystemSetting("performance_mode", mode.value)) {
-                delay(100)
-                val fanMode = when (mode) {
-                    PerformanceMode.STANDARD -> FanMode.SMART
-                    PerformanceMode.HIGH -> FanMode.SPORT
-                    PerformanceMode.MAX -> FanMode.CUSTOM
-                }
-                PServerExecutor.setSystemSetting("fan_mode", fanMode.value)
-                delay(100)
-                refreshDeviceSettings()
-            }
-        }
-    }
-
-    private fun refreshDeviceSettings() {
-        val fanModeValue = PServerExecutor.getSystemSetting("fan_mode", 0)
-        val fanSpeedValue = PServerExecutor.getSystemSetting("fan_speed", 25000)
-        val perfModeValue = PServerExecutor.getSystemSetting("performance_mode", 0)
-        _deviceSettings.update {
-            it.copy(
-                fanMode = FanMode.fromValue(fanModeValue),
-                fanSpeed = fanSpeedValue,
-                performanceMode = PerformanceMode.fromValue(perfModeValue)
-            )
-        }
-    }
-
-    private fun currentQuickSettingsState(): QuickSettingsState {
-        val qs = quickSettingsState.value
-        return QuickSettingsState(
-            themeMode = qs.themeMode,
-            soundEnabled = qs.soundEnabled,
-            hapticEnabled = qs.hapticEnabled,
-            vibrationStrength = qs.vibrationStrength,
-            fanMode = qs.fanMode,
-            fanSpeed = qs.fanSpeed,
-            performanceMode = qs.performanceMode,
-            deviceSettingsSupported = qs.deviceSettingsSupported,
-            deviceSettingsEnabled = qs.deviceSettingsEnabled,
-            systemVolume = qs.systemVolume,
-            screenBrightness = qs.screenBrightness,
-            isDualScreenActive = _isDualScreenMode,
-            isSocialLinked = qs.isSocialLinked,
-            isSocialConnected = qs.isSocialConnected,
-            quayPassEnabled = qs.quayPassEnabled
-        )
-    }
-
-    fun toggleQuayPassFromQuickSettings() {
-        viewModelScope.launch {
-            val prefs = preferencesRepository.userPreferences.first()
-            preferencesRepository.setQuayPassEnabled(!prefs.quayPassEnabled)
-        }
-    }
-
-    private fun activeQuickSettingsPage(state: QuickSettingsState): QuickSettingsPage =
-        quickSettingsEffectivePage(_quickSettingsPage.value, state)
-
-    fun activeQuickSettingsPage(): QuickSettingsPage = activeQuickSettingsPage(currentQuickSettingsState())
-
-    private fun focusedQuickSettingsItem(state: QuickSettingsState): QuickSettingsItem? =
-        quickSettingsItemAtFocusIndex(activeQuickSettingsPage(state), _quickSettingsFocusIndex.value, state)
-
-    fun selectQuickSettingsPage(page: QuickSettingsPage) {
-        if (page == activeQuickSettingsPage(currentQuickSettingsState())) return
-        _quickSettingsPage.update { page }
-        _quickSettingsFocusIndex.update { 0 }
-        quickFriends.resetFocus()
-    }
-
-    private fun cycleQuickSettingsPage(delta: Int): InputResult {
-        val state = currentQuickSettingsState()
-        val pages = quickSettingsVisiblePages(state)
-        if (pages.size < 2) return InputResult.handled(SoundType.BOUNDARY)
-        val index = pages.indexOf(activeQuickSettingsPage(state)).coerceAtLeast(0)
-        selectQuickSettingsPage(pages[(index + delta).mod(pages.size)])
-        return InputResult.HANDLED
-    }
-
-    fun createQuickSettingsInputHandler(
-        onDismiss: () -> Unit
-    ): InputHandler = object : InputHandler {
-
-        override fun onUp(): InputResult {
-            val state = currentQuickSettingsState()
-            val maxIndex = quickSettingsMaxFocusIndex(activeQuickSettingsPage(state), state)
-            return moveWrappedFocus(_quickSettingsFocusIndex, -1, maxIndex, uiState.value.menuWrapMode)
-        }
-
-        override fun onDown(): InputResult {
-            val state = currentQuickSettingsState()
-            val maxIndex = quickSettingsMaxFocusIndex(activeQuickSettingsPage(state), state)
-            return moveWrappedFocus(_quickSettingsFocusIndex, 1, maxIndex, uiState.value.menuWrapMode)
-        }
-
-        override fun onPrevSection(): InputResult = cycleQuickSettingsPage(-1)
-
-        override fun onNextSection(): InputResult = cycleQuickSettingsPage(1)
-
-        override fun onLeft(): InputResult {
-            return when (focusedQuickSettingsItem(currentQuickSettingsState())) {
-                QuickSettingsItem.FanSpeed -> {
-                    setFanSpeed((_deviceSettings.value.fanSpeed - 1000).coerceAtLeast(25000))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.SystemVolume -> {
-                    setSystemVolume((_systemVolume.value - 0.05f).coerceAtLeast(0f))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.ScreenBrightness -> {
-                    setScreenBrightness((_screenBrightness.value - 0.05f).coerceAtLeast(0f))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.VibrationStrength -> {
-                    adjustVibrationStrength(-ControlsPreferences.HAPTIC_STRENGTH_STEP)
-                    InputResult.HANDLED
-                }
-                else -> InputResult.UNHANDLED
-            }
-        }
-
-        override fun onRight(): InputResult {
-            return when (focusedQuickSettingsItem(currentQuickSettingsState())) {
-                QuickSettingsItem.FanSpeed -> {
-                    setFanSpeed((_deviceSettings.value.fanSpeed + 1000).coerceAtMost(35000))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.SystemVolume -> {
-                    setSystemVolume((_systemVolume.value + 0.05f).coerceAtMost(1f))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.ScreenBrightness -> {
-                    setScreenBrightness((_screenBrightness.value + 0.05f).coerceAtMost(1f))
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.VibrationStrength -> {
-                    adjustVibrationStrength(ControlsPreferences.HAPTIC_STRENGTH_STEP)
-                    InputResult.HANDLED
-                }
-                else -> InputResult.UNHANDLED
-            }
-        }
-
-        override fun onConfirm(): InputResult {
-            val state = currentQuickSettingsState()
-            return when (focusedQuickSettingsItem(state)) {
-                QuickSettingsItem.Performance -> {
-                    if (state.deviceSettingsEnabled) cyclePerformanceMode()
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.Fan -> {
-                    if (state.deviceSettingsEnabled) cycleFanMode()
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.Theme -> {
-                    cycleTheme()
-                    InputResult.HANDLED
-                }
-                QuickSettingsItem.Haptic -> {
-                    val enabled = toggleHaptic()
-                    InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-                }
-                QuickSettingsItem.UISounds -> {
-                    val enabled = toggleSound()
-                    InputResult.toggled(enabled, if (enabled) SoundType.TOGGLE else SoundType.SILENT)
-                }
-                QuickSettingsItem.SwapDisplays -> {
-                    com.nendo.argosy.DualScreenManagerHolder.instance?.swapRoles()
-                    InputResult.handled(SoundType.TOGGLE)
-                }
-                else -> InputResult.HANDLED
-            }
-        }
-
-        override fun onBack(): InputResult {
-            onDismiss()
-            return InputResult.handled(SoundType.CLOSE_MODAL)
-        }
-
-        override fun onRightStickClick(): InputResult {
-            onDismiss()
-            return InputResult.handled(SoundType.CLOSE_MODAL)
         }
     }
 

@@ -113,7 +113,10 @@ object ColorTokens {
             val accent = Color(0xFF6366F1)
         }
         object Presence {
-            val online = Color(0xFF22C55E)
+            object Online {
+                val dark = Color(0xFF22C55E)
+                val light = Color(0xFF15803D)
+            }
             val away = Color(0xFFFBBF24)
             val offline = Color(0xFF6B7280)
         }

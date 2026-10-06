@@ -173,7 +173,15 @@ screen. The Navigation setting `select_swap_mode` picks the gesture, and
 after the long-press threshold, and the ArgosyApp fallback swaps; a press keeps the screen's own
 Select action. TAP: screens return Select unhandled (`selectSwapsRoles()`) and the fallback
 swaps. Screens that block Select under an overlay block `onLongSelect` the same way. Hold-A
-opens the game/tile menu on every device. Also reachable from Quick Settings' Swap Displays tile.
+opens the game/tile menu on every device. Also reachable from the Swap screens toggle in the
+DISPLAY section of the quick settings panel's Quick page.
+
+Quick settings panel parity (deferred by decision): the R3 panel renders on the control screen
+only. R3 opens it where the controller is focused, and a companion request
+(`onOpenOverlayFromCompanion` with `OVERLAY_QUICK_SETTINGS`) refocuses the main screen and opens
+it there rather than drawing a second copy. The panel's
+second-screen brightness row stays hidden until a verified write path for the second display
+exists (`BrightnessController.setSecondaryBrightness` returns false today).
 
 Role-state writers: `swapRoles()` toggles, `applyDisplayRoleOverride(override)` sets, and
 `setPrimaryDisplayId` applies a stored layout. While a session is active each one commits only
