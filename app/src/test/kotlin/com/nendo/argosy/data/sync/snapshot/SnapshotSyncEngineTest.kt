@@ -101,8 +101,10 @@ class SnapshotSyncEngineTest {
             fileResolver = SnapshotFileResolver(),
             saveScreenshots = screenshots,
             builtinCoreResolver = coreResolver,
-            statePaths = statePaths
+            statePaths = statePaths,
+            emulatorStamper = stamper
         )
+        coEvery { stamper.stampFor(any(), any()) } returns SnapshotEmulatorStamp("libretro", null, "genesis_plus_gx", "2026-09-30")
         coEvery { coreResolver.resolveCoreId(any(), any(), any()) } returns null
         every { screenshots.recentFor(any(), any()) } returns null
         every { screenshots.keepForSnapshot(any(), any()) } returns true
@@ -117,6 +119,24 @@ class SnapshotSyncEngineTest {
     private val screenshots = mockk<com.nendo.argosy.hardware.SaveScreenshotCapture>()
     private val coreResolver = mockk<com.nendo.argosy.data.emulator.BuiltinCoreResolver>()
     private val statePaths = mockk<com.nendo.argosy.data.emulator.LibretroStatePathResolver>()
+    private val stamper = mockk<SnapshotEmulatorStamper>()
+
+    @Test
+    fun `a push reports the emulator, core and core build that wrote the save`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(emptyList())
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(41, "content-a")).toResponseBody())
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        val manifest = manifestOf(parts.captured)
+        assertEquals("libretro", manifest.getString("emulator"))
+        assertEquals("genesis_plus_gx", manifest.getString("core"))
+        assertEquals("2026-09-30", manifest.getString("core_version"))
+        assertTrue(!manifest.has("emulator_version"))
+    }
     private val saveCacheDao = mockk<com.nendo.argosy.data.local.dao.SaveCacheDao>(relaxed = true)
 
     @Test

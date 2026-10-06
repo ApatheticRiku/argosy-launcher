@@ -9,7 +9,6 @@ import com.nendo.argosy.data.repository.SaveSyncApiClient
  */
 object SnapshotChannels {
     const val DEFAULT_LABEL = "default"
-    const val EMULATOR = "argosy"
 
     fun isDefaultLabel(label: String): Boolean = label.trim().equals(DEFAULT_LABEL, ignoreCase = true)
 

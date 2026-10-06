@@ -126,6 +126,7 @@ class SnapshotChannelServiceTest {
         assertEquals(42L, m.getLong("expected_current_id"))
         assertEquals(39L, m.getLong("parent_snapshot_id"))
         assertTrue("no save means the parent's save carries", !m.has("save"))
+        assertTrue("the source save keeps the emulator that wrote it", !m.has("emulator") && !m.has("core"))
     }
 
     @Test

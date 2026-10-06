@@ -1,7 +1,6 @@
 package com.nendo.argosy.data.sync.snapshot
 
 import android.content.Context
-import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.emulator.ArchiveRomNaming
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
@@ -93,7 +92,8 @@ class SnapshotSyncEngine @Inject constructor(
     private val fileResolver: SnapshotFileResolver,
     private val saveScreenshots: com.nendo.argosy.hardware.SaveScreenshotCapture,
     private val builtinCoreResolver: com.nendo.argosy.data.emulator.BuiltinCoreResolver,
-    private val statePaths: com.nendo.argosy.data.emulator.LibretroStatePathResolver
+    private val statePaths: com.nendo.argosy.data.emulator.LibretroStatePathResolver,
+    private val emulatorStamper: SnapshotEmulatorStamper
 ) {
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
@@ -400,9 +400,8 @@ class SnapshotSyncEngine @Inject constructor(
             })
             put("is_hardcore", isHardcore)
             if (approveHardcoreDowngrade) put("approve_hardcore_downgrade", true)
-            put("emulator", SnapshotChannels.EMULATOR)
-            put("emulator_version", BuildConfig.VERSION_NAME)
         }
+        emulatorStamper.stampFor(ctx.game, source.emulatorId).writeTo(manifest)
         val screenshot = saveScreenshots.recentFor(ctx.game.id)
         return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot, states)) {
             is PushOutcome.Written -> {

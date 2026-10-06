@@ -1,6 +1,5 @@
 package com.nendo.argosy.data.sync.snapshot
 
-import com.nendo.argosy.BuildConfig
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.SnapshotChannelDao
 import com.nendo.argosy.data.local.entity.SigilSyncStateEntity
@@ -200,7 +199,6 @@ class SnapshotChannelService @Inject constructor(
         val client = apiClient.get()
         val api = client.getApi() ?: return SnapshotActionResult.Offline
         val deviceId = client.getDeviceId() ?: return SnapshotActionResult.Offline
-        manifest.put("emulator", SnapshotChannels.EMULATOR).put("emulator_version", BuildConfig.VERSION_NAME)
         if (approveHardcoreDowngrade) manifest.put("approve_hardcore_downgrade", true)
         return when (val outcome = pusher.push(api, deviceId, manifest)) {
             is PushOutcome.Written -> {
