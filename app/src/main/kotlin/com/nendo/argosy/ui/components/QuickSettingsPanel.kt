@@ -55,7 +55,6 @@ import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.ui.primitives.FocusIndicators
-import com.nendo.argosy.ui.primitives.InputGlyph
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -148,8 +147,7 @@ fun QuickSettingsPanel(
                 QuickSettingsRail(
                     pages = pages,
                     activePage = activePage,
-                    onPageSelect = controller::selectPage,
-                    onCycle = { delta -> controller.cyclePage(delta) }
+                    onPageSelect = controller::selectPage
                 )
             }
         }
@@ -193,11 +191,9 @@ private fun QuickPanelHeader(title: String) {
 private fun QuickSettingsRail(
     pages: List<QuickSettingsPage>,
     activePage: QuickSettingsPage,
-    onPageSelect: (QuickSettingsPage) -> Unit,
-    onCycle: (Int) -> Unit
+    onPageSelect: (QuickSettingsPage) -> Unit
 ) {
     val theme = LocalArgosyTheme.current
-    val showPaging = pages.size > 1
     Column(
         modifier = Modifier
             .width(Dimens.quickPanelRailWidth)
@@ -206,7 +202,6 @@ private fun QuickSettingsRail(
             .padding(vertical = Dimens.spacingSm),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (showPaging) RailGlyph(button = InputButton.LB, onClick = { onCycle(-1) })
         pages.forEach { page ->
             key(page) {
                 QuickSettingsRailItem(
@@ -216,21 +211,6 @@ private fun QuickSettingsRail(
                 )
             }
         }
-        Spacer(modifier = Modifier.weight(1f))
-        if (showPaging) RailGlyph(button = InputButton.RB, onClick = { onCycle(1) })
-    }
-}
-
-@Composable
-private fun RailGlyph(button: InputButton, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(Dimens.menuRowHeight)
-            .clickableNoFocus(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        InputGlyph(button = button, size = Dimens.iconMd)
     }
 }
 
