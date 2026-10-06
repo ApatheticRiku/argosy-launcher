@@ -1128,6 +1128,18 @@
     <!-- Performance mode: as fast as the device goes. Adjective; shown on a segment, keep
          short. -->
     <string name="ui_quick_settings_performance_max">Max</string>
+    <!-- Performance mode: slowest clocks for the longest battery life. Adjective; shown on a
+         segment, keep short. -->
+    <string name="ui_quick_settings_performance_eco">Eco</string>
+    <!-- Performance mode: the device's everyday clocks. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_balanced">Balanced</string>
+    <!-- Performance mode tuned for streaming games from a PC or console. Noun; shown on a
+         segment, keep short. -->
+    <string name="ui_quick_settings_performance_streaming">Streaming</string>
+    <!-- Performance mode for playing games on the device. Noun; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_gaming">Gaming</string>
     <!-- Row of the Performance page that picks the performance mode. Noun. -->
     <string name="ui_quick_settings_performance_mode">Mode</string>
     <!-- Label of the slider that sets the fan speed by hand when the fan is on Custom. Noun
@@ -1136,10 +1148,11 @@
     <!-- Row of the Performance page: how many times per second the screen redraws. Noun
          phrase. -->
     <string name="ui_quick_settings_refresh_rate">Refresh rate</string>
-    <!-- Refresh rate option: 60 hertz. Keep the unit abbreviation. -->
-    <string name="ui_quick_settings_refresh_60">60 Hz</string>
-    <!-- Refresh rate option: 120 hertz. Keep the unit abbreviation. -->
-    <string name="ui_quick_settings_refresh_120">120 Hz</string>
+    <!-- Refresh rate option: the system picks the rate. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_refresh_auto">Auto</string>
+    <!-- Refresh rate option. %1$d is a rate in hertz, such as 120. Keep the unit abbreviation. -->
+    <string name="ui_quick_settings_refresh_hz">%1$d Hz</string>
     <!-- Row of the Performance page: shows frame rate, battery and clock over games played
          in Argosy's own emulator. Noun phrase. -->
     <string name="ui_quick_settings_hud">Stats overlay</string>

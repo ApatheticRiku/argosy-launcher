@@ -11,6 +11,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.ControlsPreferences
 import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.hardware.FanController
+import com.nendo.argosy.hardware.PerformanceMode
 
 enum class FanMode(val value: Int, @StringRes val labelRes: Int) {
     QUIET(1, R.string.ui_quick_settings_fan_quiet),
@@ -23,24 +24,17 @@ enum class FanMode(val value: Int, @StringRes val labelRes: Int) {
     }
 }
 
-enum class PerformanceMode(val value: Int, @StringRes val labelRes: Int) {
-    STANDARD(0, R.string.ui_quick_settings_performance_standard),
-    HIGH(1, R.string.ui_quick_settings_performance_high),
-    MAX(2, R.string.ui_quick_settings_performance_max);
-
-    companion object {
-        fun fromValue(value: Int) = entries.find { it.value == value } ?: STANDARD
+@get:StringRes
+val PerformanceMode.labelRes: Int
+    get() = when (this) {
+        PerformanceMode.ECO -> R.string.ui_quick_settings_performance_eco
+        PerformanceMode.BALANCED -> R.string.ui_quick_settings_performance_balanced
+        PerformanceMode.STREAMING -> R.string.ui_quick_settings_performance_streaming
+        PerformanceMode.GAMING -> R.string.ui_quick_settings_performance_gaming
+        PerformanceMode.STANDARD -> R.string.ui_quick_settings_performance_standard
+        PerformanceMode.HIGH -> R.string.ui_quick_settings_performance_high
+        PerformanceMode.MAX -> R.string.ui_quick_settings_performance_max
     }
-}
-
-enum class RefreshRate(val hz: Int, @StringRes val labelRes: Int) {
-    HZ_60(60, R.string.ui_quick_settings_refresh_60),
-    HZ_120(120, R.string.ui_quick_settings_refresh_120);
-
-    companion object {
-        fun fromHz(hz: Int?): RefreshRate? = entries.find { it.hz == hz }
-    }
-}
 
 val QUICK_THEME_ORDER: List<ThemeMode> = listOf(ThemeMode.LIGHT, ThemeMode.DARK, ThemeMode.SYSTEM)
 
@@ -62,8 +56,11 @@ data class QuickSettingsState(
     val swapStartSelect: Boolean = false,
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = FanController.SPORT_DUTY,
-    val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
-    val refreshRate: RefreshRate? = null,
+    val fanSupported: Boolean = false,
+    val performanceModes: List<PerformanceMode> = emptyList(),
+    val performanceMode: PerformanceMode? = null,
+    val refreshRates: List<Int?> = emptyList(),
+    val refreshRateHz: Int? = null,
     val deviceSettingsSupported: Boolean = false,
     val deviceSettingsEnabled: Boolean = false,
     val systemVolume: Float = 1f,
@@ -143,16 +140,17 @@ sealed class QuickSettingsItem(
     )
     data object Refresh : QuickSettingsItem(
         "refreshRate", QuickSettingsPage.PERFORMANCE, QuickSettingsGroup.PERFORMANCE,
-        visibleWhen = { it.deviceSettingsSupported && it.refreshRate != null }
+        visibleWhen = { it.deviceSettingsSupported && it.refreshRates.isNotEmpty() },
+        needsDeviceAccess = true
     )
     data object Fan : QuickSettingsItem(
         "fan", QuickSettingsPage.PERFORMANCE, QuickSettingsGroup.FAN,
-        visibleWhen = { it.deviceSettingsSupported },
+        visibleWhen = { it.deviceSettingsSupported && it.fanSupported },
         needsDeviceAccess = true
     )
     data object FanSpeed : QuickSettingsItem(
         "fanSpeed", QuickSettingsPage.PERFORMANCE, QuickSettingsGroup.FAN,
-        visibleWhen = { it.deviceSettingsSupported && it.fanMode == FanMode.CUSTOM },
+        visibleWhen = { it.deviceSettingsSupported && it.fanSupported && it.fanMode == FanMode.CUSTOM },
         needsDeviceAccess = true
     )
     data object HudOverlay : QuickSettingsItem(

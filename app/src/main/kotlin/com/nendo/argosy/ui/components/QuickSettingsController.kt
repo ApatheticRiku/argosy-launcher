@@ -9,8 +9,11 @@ import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.social.SocialConnectionState
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.hardware.BrightnessController
+import com.nendo.argosy.hardware.DevicePerformance
+import com.nendo.argosy.hardware.DevicePerformanceResolver
 import com.nendo.argosy.hardware.DisplayRefreshController
 import com.nendo.argosy.hardware.FanController
+import com.nendo.argosy.hardware.PerformanceMode
 import com.nendo.argosy.hardware.VolumeController
 import com.nendo.argosy.ui.components.friends.QuickFriendsController
 import com.nendo.argosy.ui.input.HapticFeedbackManager
@@ -44,13 +47,15 @@ private const val VOLUME_ECHO_GUARD_MS = 250L
 private const val DEVICE_SETTLE_MS = 100L
 private const val SETTING_FAN_MODE = "fan_mode"
 private const val SETTING_FAN_SPEED = "fan_speed"
-private const val SETTING_PERFORMANCE_MODE = "performance_mode"
 
 private data class DeviceSettings(
     val fanMode: FanMode = FanMode.SMART,
     val fanSpeed: Int = FanController.SPORT_DUTY,
-    val performanceMode: PerformanceMode = PerformanceMode.STANDARD,
-    val refreshRate: RefreshRate? = null,
+    val fanSupported: Boolean = false,
+    val performanceModes: List<PerformanceMode> = emptyList(),
+    val performanceMode: PerformanceMode? = null,
+    val refreshRates: List<Int?> = emptyList(),
+    val refreshRateHz: Int? = null,
     val isSupported: Boolean = false,
     val hasWritePermission: Boolean = false
 )
@@ -74,7 +79,7 @@ class QuickSettingsController(
     private val preferencesRepository: UserPreferencesRepository,
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
-    private val fanController: FanController,
+    private val performanceResolver: DevicePerformanceResolver,
     private val refreshController: DisplayRefreshController,
     socialRepository: SocialRepository,
     private val hapticManager: HapticFeedbackManager,
@@ -95,6 +100,7 @@ class QuickSettingsController(
     val page: StateFlow<QuickSettingsPage> = _page.asStateFlow()
 
     private val device = MutableStateFlow(DeviceSettings())
+    private var performance: DevicePerformance? = null
     private val dualScreen = MutableStateFlow(DualScreenFlags())
     private val levels = MutableStateFlow(readDisplayLevels(DEFAULT_BRIGHTNESS))
     private var volumeInputTimestamp = 0L
@@ -120,8 +126,11 @@ class QuickSettingsController(
             swapStartSelect = prefs.swapStartSelect,
             fanMode = deviceSettings.fanMode,
             fanSpeed = deviceSettings.fanSpeed,
+            fanSupported = deviceSettings.fanSupported,
+            performanceModes = deviceSettings.performanceModes,
             performanceMode = deviceSettings.performanceMode,
-            refreshRate = deviceSettings.refreshRate,
+            refreshRates = deviceSettings.refreshRates,
+            refreshRateHz = deviceSettings.refreshRateHz,
             deviceSettingsSupported = deviceSettings.isSupported,
             deviceSettingsEnabled = deviceSettings.hasWritePermission,
             systemVolume = displayLevels.volume,
@@ -290,9 +299,10 @@ class QuickSettingsController(
         if (!state.value.deviceSettingsEnabled) return
         device.update { it.copy(performanceMode = mode) }
         scope.launch(deviceDispatcher) {
-            if (PServerExecutor.setSystemSetting(SETTING_PERFORMANCE_MODE, mode.value)) {
+            val backend = performance ?: return@launch
+            if (backend.applyMode(mode) && backend.controlsFan) {
                 delay(DEVICE_SETTLE_MS)
-                PServerExecutor.setSystemSetting(SETTING_FAN_MODE, fanModeFor(mode).value)
+                fanModeFor(mode)?.let { PServerExecutor.setSystemSetting(SETTING_FAN_MODE, it.value) }
                 delay(DEVICE_SETTLE_MS)
             }
             readDeviceSettings()
@@ -316,23 +326,25 @@ class QuickSettingsController(
         }
     }
 
-    fun setRefreshRate(rate: RefreshRate) {
+    fun setRefreshRate(hz: Int?) {
+        if (!state.value.deviceSettingsEnabled) return
+        device.update { it.copy(refreshRateHz = hz) }
         scope.launch(deviceDispatcher) {
-            if (refreshController.setRateHz(rate.hz)) {
-                device.update { it.copy(refreshRate = rate) }
-            }
+            if (!refreshController.setRateHz(hz)) readDeviceSettings()
         }
     }
 
-    private fun fanModeFor(mode: PerformanceMode): FanMode = when (mode) {
+    private fun fanModeFor(mode: PerformanceMode): FanMode? = when (mode) {
         PerformanceMode.STANDARD -> FanMode.SMART
         PerformanceMode.HIGH -> FanMode.SPORT
         PerformanceMode.MAX -> FanMode.CUSTOM
+        else -> null
     }
 
     private fun loadDeviceSettings() {
         scope.launch(deviceDispatcher) {
-            if (!fanController.isAvailable()) {
+            if (performance == null) performance = performanceResolver.resolve()
+            if (performance == null) {
                 device.update { DeviceSettings(isSupported = false) }
                 return@launch
             }
@@ -341,21 +353,26 @@ class QuickSettingsController(
     }
 
     private fun readDeviceSettings() {
-        val fanModeValue = PServerExecutor.getSystemSetting(SETTING_FAN_MODE, 0)
-        val fanSpeedValue = PServerExecutor.getSystemSetting(SETTING_FAN_SPEED, FanController.SPORT_DUTY)
-        val perfModeValue = PServerExecutor.getSystemSetting(SETTING_PERFORMANCE_MODE, 0)
-        val refreshRate = RefreshRate.fromHz(refreshController.currentRateHz())
-        val writable = PServerExecutor.isAvailable
-        device.update {
-            DeviceSettings(
-                fanMode = FanMode.fromValue(fanModeValue),
-                fanSpeed = clampFanDuty(fanSpeedValue),
-                performanceMode = PerformanceMode.fromValue(perfModeValue),
-                refreshRate = refreshRate,
-                isSupported = true,
-                hasWritePermission = writable
-            )
+        val backend = performance ?: return
+        val fan = if (backend.controlsFan) {
+            FanMode.fromValue(PServerExecutor.getSystemSetting(SETTING_FAN_MODE, 0)) to
+                clampFanDuty(PServerExecutor.getSystemSetting(SETTING_FAN_SPEED, FanController.SPORT_DUTY))
+        } else {
+            null
         }
+        val rates = if (backend.controlsRefreshRate) refreshController.supportedRatesHz() else emptyList()
+        val settings = DeviceSettings(
+            fanMode = fan?.first ?: FanMode.SMART,
+            fanSpeed = fan?.second ?: FanController.SPORT_DUTY,
+            fanSupported = fan != null,
+            performanceModes = backend.modes,
+            performanceMode = backend.currentMode(),
+            refreshRates = if (rates.size > 1) listOf<Int?>(null) + rates else emptyList(),
+            refreshRateHz = if (rates.size > 1) refreshController.currentRateHz() else null,
+            isSupported = true,
+            hasWritePermission = backend.canWrite
+        )
+        device.update { settings }
     }
 
     private fun clampFanDuty(duty: Int): Int =
@@ -450,11 +467,14 @@ class QuickSettingsController(
                 toggleLeftRight(delta, snapshot.swapXY, ::setSwapXY)
             QuickSettingsItem.SwapStartSelect ->
                 toggleLeftRight(delta, snapshot.swapStartSelect, ::setSwapStartSelect)
-            QuickSettingsItem.Performance ->
-                stepOption(PerformanceMode.entries, snapshot.performanceMode, delta, ::setPerformanceMode)
-            QuickSettingsItem.Refresh -> snapshot.refreshRate?.let { current ->
-                stepOption(RefreshRate.entries, current, delta, ::setRefreshRate)
-            } ?: InputResult.handled(SoundType.BOUNDARY)
+            QuickSettingsItem.Performance -> stepOption(
+                snapshot.performanceModes,
+                snapshot.performanceMode ?: PerformanceMode.BALANCED,
+                delta,
+                ::setPerformanceMode
+            )
+            QuickSettingsItem.Refresh ->
+                stepOption(snapshot.refreshRates, snapshot.refreshRateHz, delta, ::setRefreshRate)
             QuickSettingsItem.Fan ->
                 stepOption(FanMode.entries, snapshot.fanMode, delta, ::setFanMode)
             QuickSettingsItem.FanSpeed -> stepFanSpeed(snapshot, delta)

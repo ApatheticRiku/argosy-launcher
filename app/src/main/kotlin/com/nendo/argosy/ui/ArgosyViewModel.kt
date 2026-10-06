@@ -45,7 +45,7 @@ import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.hardware.BrightnessController
 import com.nendo.argosy.hardware.DisplayRefreshController
-import com.nendo.argosy.hardware.FanController
+import com.nendo.argosy.hardware.DevicePerformanceResolver
 import com.nendo.argosy.hardware.VolumeController
 import com.nendo.argosy.ui.components.QuickSettingsController
 import com.nendo.argosy.ui.components.friends.QuickFriendsController
@@ -186,7 +186,7 @@ class ArgosyViewModel @Inject constructor(
     private val syncQueueManager: SyncQueueManager,
     private val brightnessController: BrightnessController,
     private val volumeController: VolumeController,
-    private val fanController: FanController,
+    private val performanceResolver: DevicePerformanceResolver,
     private val displayRefreshController: DisplayRefreshController,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val socialRepository: SocialRepository,
@@ -450,7 +450,7 @@ class ArgosyViewModel @Inject constructor(
         preferencesRepository = preferencesRepository,
         brightnessController = brightnessController,
         volumeController = volumeController,
-        fanController = fanController,
+        performanceResolver = performanceResolver,
         refreshController = displayRefreshController,
         socialRepository = socialRepository,
         hapticManager = hapticManager,

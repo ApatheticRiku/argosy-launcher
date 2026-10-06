@@ -453,11 +453,11 @@ private fun QuickSettingsItemRow(
         QuickSettingsItem.Performance -> QuickSegmentedRow(
             icon = Icons.Default.Speed,
             label = stringResource(R.string.ui_quick_settings_performance_mode),
-            options = PerformanceMode.entries.map { stringResource(it.labelRes) },
-            selectedIndex = PerformanceMode.entries.indexOf(state.performanceMode),
+            options = state.performanceModes.map { stringResource(it.labelRes) },
+            selectedIndex = state.performanceModes.indexOf(state.performanceMode),
             isFocused = isFocused,
             onFocus = focus,
-            onSelect = { controller.setPerformanceMode(PerformanceMode.entries[it]) },
+            onSelect = { controller.setPerformanceMode(state.performanceModes[it]) },
             inline = false,
             enabled = enabled
         )
@@ -465,12 +465,18 @@ private fun QuickSettingsItemRow(
         QuickSettingsItem.Refresh -> QuickSegmentedRow(
             icon = Icons.Outlined.Monitor,
             label = stringResource(R.string.ui_quick_settings_refresh_rate),
-            options = RefreshRate.entries.map { stringResource(it.labelRes) },
-            selectedIndex = state.refreshRate?.let { RefreshRate.entries.indexOf(it) } ?: -1,
+            options = state.refreshRates.map { hz ->
+                if (hz == null) {
+                    stringResource(R.string.ui_quick_settings_refresh_auto)
+                } else {
+                    stringResource(R.string.ui_quick_settings_refresh_hz, hz)
+                }
+            },
+            selectedIndex = state.refreshRates.indexOf(state.refreshRateHz),
             isFocused = isFocused,
             onFocus = focus,
-            onSelect = { controller.setRefreshRate(RefreshRate.entries[it]) },
-            inline = true,
+            onSelect = { controller.setRefreshRate(state.refreshRates[it]) },
+            inline = false,
             enabled = enabled
         )
 
