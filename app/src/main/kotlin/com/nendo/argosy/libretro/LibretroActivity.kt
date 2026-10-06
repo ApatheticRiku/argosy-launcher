@@ -208,6 +208,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var configureEmulatorUseCase: com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
     @Inject lateinit var speedrunRepository: com.nendo.argosy.data.speedrun.SpeedrunRepository
     @Inject lateinit var stateOwnershipTracker: com.nendo.argosy.data.sync.StateOwnershipTracker
+    @Inject lateinit var screenCatalog: com.nendo.argosy.util.ScreenCatalog
     @Inject lateinit var gameRepository: com.nendo.argosy.data.repository.GameRepository
     @Inject lateinit var romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository
     @Inject lateinit var gameDocumentLoader: com.nendo.argosy.data.repository.GameDocumentLoader
@@ -3314,7 +3315,7 @@ class LibretroActivity : ComponentActivity() {
      */
     private fun setUpSecondScreen() {
         val output = DualScreenOutput.forCore(resolvedCoreId)
-            ?.takeIf { isDualScreenMode() && secondScreenDisplay() != null }
+            ?.takeIf { !isDockedDark() && secondScreenDisplay() != null }
         if (output == null) {
             clearScreenSplit()
             return
@@ -3341,26 +3342,11 @@ class LibretroActivity : ComponentActivity() {
         retroView.secondaryAspectRatio = 0f
     }
 
-    /**
-     * Whether the launcher is running as two screens right now, which is the only state a console's
-     * second screen belongs in. A display being attached is not enough: dual screen can be off in
-     * settings, or latched off after the companion failed to come up on this device.
-     */
-    private fun isDualScreenMode(): Boolean =
-        com.nendo.argosy.DualScreenManagerHolder.instance
-            ?.displayAffinityHelper
-            ?.let { it.hasSecondaryDisplay && !it.isDockedDark } == true
+    private fun isDockedDark(): Boolean =
+        com.nendo.argosy.util.DisplayAffinityHelper.dockedExternalDisplayId(this) != null
 
-    private fun secondScreenDisplay(): android.view.Display? {
-        val affinity = com.nendo.argosy.DualScreenManagerHolder.instance?.displayAffinityHelper
-            ?: return null
-        val displayManager = getSystemService(android.content.Context.DISPLAY_SERVICE)
-            as android.hardware.display.DisplayManager
-        val gameDisplayId = windowManager.defaultDisplay.displayId
-        return displayManager.displays.firstOrNull {
-            it.displayId != gameDisplayId && it.isValid && affinity.isPhysicalDisplay(it.displayId)
-        }
-    }
+    private fun secondScreenDisplay(): android.view.Display? =
+        screenCatalog.secondScreenFor(windowManager.defaultDisplay.displayId)
 
     /**
      * Rebuilds the second screen's window. Its surface belongs to the display, not to us, so it is
