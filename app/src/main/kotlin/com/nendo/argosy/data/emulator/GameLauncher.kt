@@ -287,7 +287,7 @@ class GameLauncher @Inject constructor(
         Logger.debug(TAG, "Emulator resolved: ${emulator.displayName} (${emulator.packageName})")
 
         if (emulator.id == "gamenative" && game.platformSlug != "steam") {
-            return launchGameNativeCustomGame(game, romFile)
+            return launchGameNativeCustomGame(game, romFile, forResume)
         }
 
         ps2MemcardGate(gameId, game, emulator)?.let { return it }
@@ -759,7 +759,7 @@ class GameLauncher @Inject constructor(
             File(basePath)
         }
 
-    private fun launchGameNativeStoreGame(game: GameEntity): LaunchResult {
+    private suspend fun launchGameNativeStoreGame(game: GameEntity): LaunchResult {
         val appId = game.steamAppId?.toInt()
             ?: return LaunchResult.Error("Missing GameNative id for ${game.title}")
         val store = com.nendo.argosy.data.launcher.GameNativeStore.forSlug(game.platformSlug)
@@ -768,13 +768,14 @@ class GameLauncher @Inject constructor(
             return LaunchResult.NoSteamLauncher(com.nendo.argosy.data.launcher.GameNativeLauncher.packageName)
         }
         Logger.info(TAG, "launchGameNativeStoreGame: gameId=${game.id}, store=${store.slug}, appId=$appId")
+        overlayWriter.recordPlayStart(game.id, Instant.now())
         return LaunchResult.Success(
             com.nendo.argosy.data.launcher.GameNativeLauncher.createSourcedLaunchIntent(appId, store.launchSource)
         )
     }
 
     /** Windows/PC titles launch through GameNative's custom-game intent using the appId GameNative wrote to the folder's .gamenative file. */
-    private fun launchGameNativeCustomGame(game: GameEntity, romFile: File): LaunchResult {
+    private suspend fun launchGameNativeCustomGame(game: GameEntity, romFile: File, forResume: Boolean): LaunchResult {
         val appId = readGameNativeAppId(romFile)
             ?: return LaunchResult.Error(
                 "Add \"${game.title}\" in GameNative as a Custom Game first, then launch it from Argosy."
@@ -782,6 +783,7 @@ class GameLauncher @Inject constructor(
                 Logger.warn(TAG, "launchGameNativeCustomGame: no .gamenative metadata near ${romFile.path}")
             }
         Logger.info(TAG, "launchGameNativeCustomGame: gameId=${game.id}, appId=$appId")
+        if (!forResume) overlayWriter.recordPlayStart(game.id, Instant.now())
         return LaunchResult.Success(
             com.nendo.argosy.data.launcher.GameNativeLauncher.createCustomGameLaunchIntent(appId)
         )
