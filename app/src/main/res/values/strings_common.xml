@@ -1156,9 +1156,9 @@
     <string name="ui_quick_settings_theme_light">Light</string>
     <!-- Theme option on a narrow segment: always dark. Adjective. -->
     <string name="ui_quick_settings_theme_dark">Dark</string>
-    <!-- Theme option on a narrow segment: follow the device setting. Noun used as an
-         adjective. -->
-    <string name="ui_quick_settings_theme_system">System</string>
+    <!-- Theme option on a narrow segment: follow the device's light or dark setting
+         automatically. Keep very short. -->
+    <string name="ui_quick_settings_theme_system">Auto</string>
     <!-- Row of that panel: whether the device buzzes on a press, and how hard. Noun,
          plural. -->
     <string name="ui_quick_settings_haptics">Haptics</string>
