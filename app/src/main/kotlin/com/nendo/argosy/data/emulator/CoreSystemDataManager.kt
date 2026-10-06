@@ -10,6 +10,7 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.zip.ZipInputStream
+import com.nendo.argosy.util.FileNames
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -111,7 +112,7 @@ class CoreSystemDataManager @Inject constructor(
                     var entry = zip.nextEntry
                     while (entry != null) {
                         val outFile = File(destDir, entry.name)
-                        if (!outFile.canonicalPath.startsWith(destDir.canonicalPath)) {
+                        if (!FileNames.isWithin(outFile, destDir)) {
                             throw SecurityException("Zip entry outside target: ${entry.name}")
                         }
                         if (entry.isDirectory) {

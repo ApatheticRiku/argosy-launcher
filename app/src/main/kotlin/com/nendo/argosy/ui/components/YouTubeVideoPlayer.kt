@@ -30,6 +30,10 @@ fun YouTubeVideoPlayer(
     onError: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (!YOUTUBE_VIDEO_ID.matches(videoId)) {
+        LaunchedEffect(videoId) { onError() }
+        return
+    }
     var webView by remember { mutableStateOf<WebView?>(null) }
     val processLifecycle = ProcessLifecycleOwner.get().lifecycle
 
@@ -141,3 +145,5 @@ fun YouTubeVideoPlayer(
         modifier = modifier.fillMaxSize()
     )
 }
+
+private val YOUTUBE_VIDEO_ID = Regex("[A-Za-z0-9_-]{11}")
