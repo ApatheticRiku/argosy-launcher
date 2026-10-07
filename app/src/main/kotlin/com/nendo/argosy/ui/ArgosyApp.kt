@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nendo.argosy.ui.components.BackgroundSyncConflictDialog
+import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.ui.components.FloatingNavBar
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.revealOnBottomEdgeTouch
@@ -1386,6 +1387,16 @@ fun ArgosyApp(
                     onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
                 )
             }
+
+            val sessionEndOverlay by viewModel.sessionEndOverlay.collectAsState()
+            SyncOverlay(
+                syncProgress = sessionEndOverlay?.syncProgress,
+                gameTitle = sessionEndOverlay?.gameTitle,
+                onGrantPermission = sessionEndOverlay?.onGrantPermission,
+                onDisableSync = sessionEndOverlay?.onDisableSync,
+                onOpenSettings = sessionEndOverlay?.onOpenSettings,
+                onSkip = sessionEndOverlay?.onSkip
+            )
 
             coreCrashPrompt?.let { prompt ->
                 CoreCrashModal(

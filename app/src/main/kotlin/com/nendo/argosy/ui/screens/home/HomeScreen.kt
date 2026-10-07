@@ -142,7 +142,6 @@ import com.nendo.argosy.ui.components.FooterSpacer
 import com.nendo.argosy.ui.components.FooterVariant
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
-import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.ui.components.SystemStatusBar
 import com.nendo.argosy.ui.components.YouTubeVideoPlayer
 import com.nendo.argosy.ui.input.ChangelogInputHandler
@@ -1521,15 +1520,6 @@ fun HomeScreen(
                 }
             )
         }
-
-        SyncOverlay(
-            syncProgress = uiState.syncOverlayState?.syncProgress,
-            gameTitle = uiState.syncOverlayState?.gameTitle,
-            onGrantPermission = uiState.syncOverlayState?.onGrantPermission,
-            onDisableSync = uiState.syncOverlayState?.onDisableSync,
-            onOpenSettings = uiState.syncOverlayState?.onOpenSettings,
-            onSkip = uiState.syncOverlayState?.onSkip
-        )
 
         uiState.discPickerState?.let { pickerState ->
             DiscPickerModal(

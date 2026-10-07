@@ -174,6 +174,7 @@ class QuickSettingsController(
                 secondaryBrightness = current.secondaryBrightness
             )
         }
+        if (!_isOpen.value) return
         scope.launch(deviceDispatcher) {
             val secondary = brightnessController.secondaryBrightness()
             levels.update { it.copy(secondaryBrightness = secondary) }

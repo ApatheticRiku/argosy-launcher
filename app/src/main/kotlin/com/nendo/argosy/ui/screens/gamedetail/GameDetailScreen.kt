@@ -1284,17 +1284,9 @@ private fun GameDetailModals(
         onDismiss = viewModel::dismissPermissionModal
     )
 
-    val delegateOverlay = uiState.syncOverlayState
-    val effectiveSyncProgress = delegateOverlay?.syncProgress
-        ?: if (uiState.isSyncing) uiState.syncProgress else null
-
     SyncOverlay(
-        syncProgress = effectiveSyncProgress,
-        gameTitle = delegateOverlay?.gameTitle ?: game.title,
-        onGrantPermission = delegateOverlay?.onGrantPermission,
-        onDisableSync = delegateOverlay?.onDisableSync,
-        onOpenSettings = delegateOverlay?.onOpenSettings,
-        onSkip = delegateOverlay?.onSkip
+        syncProgress = if (uiState.isSyncing && uiState.syncOverlayState == null) uiState.syncProgress else null,
+        gameTitle = game.title
     )
 
     AnimatedVisibility(

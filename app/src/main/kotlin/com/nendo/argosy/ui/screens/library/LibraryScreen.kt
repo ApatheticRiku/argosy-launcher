@@ -114,7 +114,6 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
-import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.icons.InputIcons
 import com.nendo.argosy.ui.input.DiscPickerInputHandler
@@ -805,14 +804,6 @@ fun LibraryScreen(
             }
         }
 
-        SyncOverlay(
-            syncProgress = uiState.syncOverlayState?.syncProgress,
-            gameTitle = uiState.syncOverlayState?.gameTitle,
-            onGrantPermission = uiState.syncOverlayState?.onGrantPermission,
-            onDisableSync = uiState.syncOverlayState?.onDisableSync,
-            onOpenSettings = uiState.syncOverlayState?.onOpenSettings,
-            onSkip = uiState.syncOverlayState?.onSkip
-        )
 
         LetterOverlay(
             letter = uiState.overlaySectionLabel,

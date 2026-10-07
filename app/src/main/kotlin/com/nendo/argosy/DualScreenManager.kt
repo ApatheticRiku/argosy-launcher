@@ -35,7 +35,6 @@ import com.nendo.argosy.core.game.toAchievementUi
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
-import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
 import com.nendo.argosy.hardware.FocusAccessibilityService
 import com.nendo.argosy.hardware.FocusDirectorActivity
 import com.nendo.argosy.hardware.SecondaryHomeActivity
@@ -81,7 +80,6 @@ class DualScreenManager(
     internal val downloadManager: DownloadManager,
     private val gameActionsDelegate: GameActionsDelegate,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
-    private val gameLaunchDelegate: GameLaunchDelegate,
     private val sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator,
     private val saveCacheManager: SaveCacheManager,
     internal val raRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,

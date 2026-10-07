@@ -40,7 +40,6 @@ import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.ui.input.gamepadEventToKeyCode
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
-import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
 import com.nendo.argosy.ui.theme.ALauncherTheme
 import android.view.Display
 import com.nendo.argosy.hardware.SecondaryHomeActivity
@@ -127,7 +126,6 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var advanceCollectionFocusUseCase: com.nendo.argosy.domain.usecase.collection.AdvanceCollectionFocusUseCase
     @Inject lateinit var prepareCollectionQueueUseCase: com.nendo.argosy.domain.usecase.collection.PrepareCollectionQueueUseCase
     @Inject lateinit var getGamesForPinnedCollectionUseCase: com.nendo.argosy.domain.usecase.collection.GetGamesForPinnedCollectionUseCase
-    @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
     @Inject lateinit var sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var prefetchGameSaveDataUseCase:
@@ -272,7 +270,6 @@ class MainActivity : ComponentActivity() {
                 downloadManager = downloadManagerInstance,
                 gameActionsDelegate = gameActionsDelegate,
                 platformSyncQueue = platformSyncQueue,
-                gameLaunchDelegate = gameLaunchDelegate,
                 sessionEndCoordinator = sessionEndCoordinator,
                 saveCacheManager = saveCacheManager,
                 prefetchGameSaveDataUseCase = prefetchGameSaveDataUseCase,

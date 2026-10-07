@@ -177,6 +177,7 @@ class ArgosyViewModel @Inject constructor(
     private val playSessionTracker: PlaySessionTracker,
     private val saveSyncRepository: SaveSyncRepository,
     private val launcherStartup: com.nendo.argosy.ui.startup.LauncherStartupCoordinator,
+    sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator,
     private val emulatorUpdateManager: EmulatorUpdateManager,
     private val coreVersionRepository: com.nendo.argosy.data.repository.CoreVersionRepository,
     private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
@@ -216,6 +217,9 @@ class ArgosyViewModel @Inject constructor(
     fun netplayJoinService(): com.nendo.argosy.data.netplay.NetplayJoinService = netplayJoinService
 
     private val contentResolver get() = application.contentResolver
+
+    val sessionEndOverlay: StateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?> =
+        sessionEndCoordinator.syncOverlayState
 
     private val _backgroundConflictInfo = MutableStateFlow<ConflictInfo?>(null)
     val backgroundConflictInfo: StateFlow<ConflictInfo?> = _backgroundConflictInfo.asStateFlow()
