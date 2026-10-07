@@ -11,6 +11,7 @@ import com.nendo.argosy.data.local.entity.CollectionType
 import com.nendo.argosy.data.repository.CustomGridShapeStore
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
+import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.download.DownloadManager
 import com.nendo.argosy.domain.model.RequiredAction
@@ -137,7 +138,8 @@ class HomeViewModel @Inject constructor(
     private val romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository,
     private val siblingChoice: com.nendo.argosy.ui.screens.common.SiblingChoiceDelegate,
     private val showcaseSource: com.nendo.argosy.ui.common.PresentationShowcaseSource,
-    private val quickNavigationSource: com.nendo.argosy.data.preferences.QuickNavigationSource
+    private val quickNavigationSource: com.nendo.argosy.data.preferences.QuickNavigationSource,
+    private val firstFrameCache: HomeFirstFrameCache
 ) : ViewModel(), HomeInputActions {
 
     val quickNavigationEnabled: StateFlow<Boolean> get() = quickNavigationSource.enabled
@@ -400,12 +402,47 @@ class HomeViewModel @Inject constructor(
         } else {
             savedRow
         }
-        return HomeUiState(
+        val base = HomeUiState(
             currentRow = effectiveRow,
             focusedGameIndex = gameIndex,
             isLoading = !preloaded
         )
+        val prefs = preferencesRepository.latest ?: return base
+        val grid = prefs.homeLayout.customGrid
+        val seeded = base.withLayoutFrom(prefs).copy(
+            customGrid = base.customGrid.copy(
+                autoFit = grid.autoFit,
+                storedPages = grid.pageCount,
+                scrollAxis = grid.scrollAxis,
+                pageSettings = firstFrameCache.pageSettings ?: base.customGrid.pageSettings
+            )
+        )
+        val tiles = firstFrameCache.tiles?.takeIf { it.gridKind == grid.gridKind } ?: return seeded
+        return seeded.copy(
+            customGrid = seeded.customGrid.copy(tiles = tiles.tiles, raTile = tiles.raTile),
+            tileGames = tiles.tileGames,
+            tileCollections = tiles.tileCollections,
+            tileApps = tiles.tileApps,
+            tileLibraryLinks = tiles.tileLibraryLinks,
+            tileShowcases = tiles.tileShowcases,
+            continueGameId = tiles.continueGameId,
+            raTileSummary = tiles.raTileSummary
+        )
     }
+
+    private fun HomeUiState.withLayoutFrom(prefs: UserPreferences): HomeUiState = copy(
+        backgroundBlur = prefs.backgroundBlur,
+        backgroundSaturation = prefs.backgroundSaturation,
+        backgroundOpacity = prefs.backgroundOpacity,
+        useGameBackground = prefs.useGameBackground,
+        customBackgroundPath = prefs.customBackgroundPath,
+        homeBackgroundMode = prefs.homeBackgroundMode,
+        carouselConfig = prefs.homeLayout.carousel,
+        autoGridConfig = prefs.homeLayout.autoGrid,
+        customGridConfig = prefs.homeLayout.customGrid,
+        layoutKind = prefs.homeLayout.selected,
+        homeApps = prefs.secondaryHomeApps.toList()
+    )
 
     private fun saveCurrentState() {
         val state = _uiState.value
@@ -690,21 +727,7 @@ class HomeViewModel @Inject constructor(
                 currentBorderStyle = prefs.boxArtBorderStyle
                 gradientExtractionDelegate.updatePreferences(prefs.gradientPreset, prefs.boxArtBorderStyle)
 
-                _uiState.update {
-                    it.copy(
-                        backgroundBlur = prefs.backgroundBlur,
-                        backgroundSaturation = prefs.backgroundSaturation,
-                        backgroundOpacity = prefs.backgroundOpacity,
-                        useGameBackground = prefs.useGameBackground,
-                        customBackgroundPath = prefs.customBackgroundPath,
-                        homeBackgroundMode = prefs.homeBackgroundMode,
-                        carouselConfig = prefs.homeLayout.carousel,
-                        autoGridConfig = prefs.homeLayout.autoGrid,
-                        customGridConfig = prefs.homeLayout.customGrid,
-                        layoutKind = prefs.homeLayout.selected,
-                        homeApps = prefs.secondaryHomeApps.toList()
-                    )
-                }
+                _uiState.update { it.withLayoutFrom(prefs) }
                 val scrollAxis = prefs.homeLayout.customGrid.scrollAxis
                 val axisChanged = _uiState.value.customGrid.scrollAxis != scrollAxis
                 customGrid.applyConfig(
@@ -1078,7 +1101,10 @@ class HomeViewModel @Inject constructor(
                     publishHomeTiles(tiles)
                 }
         }
-        customGrid.observePageSettings { applyPageAudio() }
+        customGrid.observePageSettings {
+            firstFrameCache.pageSettings = _uiState.value.customGrid.pageSettings
+            applyPageAudio()
+        }
     }
 
     /**
@@ -1128,8 +1154,25 @@ class HomeViewModel @Inject constructor(
                 raTileSummary = feature.raSummary
             )
         }
+        rememberPublishedTiles()
         resolveTilePlayback(shown)
         ensureRandomPicks(shown, games)
+    }
+
+    private fun rememberPublishedTiles() {
+        val state = _uiState.value
+        firstFrameCache.tiles = HomeTilesSnapshot(
+            gridKind = state.customGridConfig.gridKind,
+            tiles = state.customGrid.tiles,
+            raTile = state.customGrid.raTile,
+            tileGames = state.tileGames,
+            tileCollections = state.tileCollections,
+            tileApps = state.tileApps,
+            tileLibraryLinks = state.tileLibraryLinks,
+            tileShowcases = state.tileShowcases,
+            continueGameId = state.continueGameId,
+            raTileSummary = state.raTileSummary
+        )
     }
 
     private fun shownTiles(

@@ -7,9 +7,13 @@ import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.domain.model.ScreenLayouts
 import com.nendo.argosy.util.LogLevel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.shareIn
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +37,9 @@ class UserPreferencesRepository @Inject constructor(
     private val sessionPrefs: SessionPreferencesRepository,
     private val jellyfinPrefs: JellyfinPreferencesRepository
 ) {
-    val userPreferences: Flow<UserPreferences> = combine(
+    private val shareScope = com.nendo.argosy.util.SafeCoroutineScope(Dispatchers.Default, "UserPreferences")
+
+    private val preferencesSource: Flow<UserPreferences> = combine(
         combine(
             displayPrefs.preferences,
             syncPrefs.preferences,
@@ -255,7 +261,18 @@ class UserPreferencesRepository @Inject constructor(
         )
     }
 
+    val userPreferences: Flow<UserPreferences> = preferencesSource
+
     val preferences: Flow<UserPreferences> = userPreferences
+
+    private val hotPreferences: SharedFlow<UserPreferences> =
+        preferencesSource.shareIn(shareScope, SharingStarted.Eagerly, replay = 1)
+
+    /**
+     * The most recent preferences without suspending, or null before the first DataStore read.
+     * A seed for a screen's first frame; reads that must see a write just made use [userPreferences].
+     */
+    val latest: UserPreferences? get() = hotPreferences.replayCache.firstOrNull()
 
     // --- Display delegates ---
 
