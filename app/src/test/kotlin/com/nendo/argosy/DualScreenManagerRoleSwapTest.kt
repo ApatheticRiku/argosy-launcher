@@ -214,7 +214,12 @@ class DualScreenManagerRoleSwapTest {
             mockk(relaxed = true) { every { getRoleDisplayIds(any()) } returns null },
         gameWindowMover: com.nendo.argosy.hardware.GameWindowMover = FakeGameWindowMover(arrives = false)
     ): DualScreenManager = DualScreenManager(
-        context = mockk(relaxed = true),
+        context = mockk(relaxed = true) {
+            every { applicationContext } returns mockk(relaxed = true) {
+                every { getSystemService(android.app.KeyguardManager::class.java) } returns
+                    mockk { every { isKeyguardLocked } returns false }
+            }
+        },
         scope = testScope,
         gameDao = mockk(relaxed = true),
         gameRepository = mockk(relaxed = true),
