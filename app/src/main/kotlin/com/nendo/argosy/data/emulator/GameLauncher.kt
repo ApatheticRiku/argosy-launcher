@@ -1320,10 +1320,10 @@ class GameLauncher @Inject constructor(
     }
 
     suspend fun forceStopEmulator(packageName: String) = withContext(Dispatchers.IO) {
-        if (PACKAGE_NAME.matches(packageName) && com.nendo.argosy.util.PServerExecutor.isAvailable) {
-            val result = com.nendo.argosy.util.PServerExecutor.execute("am force-stop $packageName")
+        if (PACKAGE_NAME.matches(packageName) && com.nendo.argosy.util.RootShell.isAvailable) {
+            val result = com.nendo.argosy.util.RootShell.execute("am force-stop $packageName")
             if (result.isSuccess) {
-                Logger.debug(TAG, "force-stop via root daemon: $packageName")
+                Logger.debug(TAG, "force-stop via root shell: $packageName")
                 return@withContext
             }
             Logger.warn(TAG, "Root force-stop failed for $packageName, falling back", result.exceptionOrNull())
