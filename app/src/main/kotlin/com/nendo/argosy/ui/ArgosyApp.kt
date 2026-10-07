@@ -45,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import com.nendo.argosy.libretro.LibretroActivity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nendo.argosy.ui.components.BackgroundSyncConflictDialog
@@ -123,9 +122,9 @@ private const val NAV_READY_TIMEOUT_MS = 45_000L
 
 @Composable
 fun ArgosyApp(
-    viewModel: ArgosyViewModel = hiltViewModel(),
-    quickMenuViewModel: QuickMenuViewModel = hiltViewModel(),
-    musicPlayerViewModel: MusicPlayerViewModel = hiltViewModel(),
+    viewModel: ArgosyViewModel = launcherViewModel(),
+    quickMenuViewModel: QuickMenuViewModel = launcherViewModel(),
+    musicPlayerViewModel: MusicPlayerViewModel = launcherViewModel(),
     onStartupComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()

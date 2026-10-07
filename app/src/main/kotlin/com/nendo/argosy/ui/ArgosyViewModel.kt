@@ -74,7 +74,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -177,7 +176,7 @@ class ArgosyViewModel @Inject constructor(
     private val modalResetSignal: ModalResetSignal,
     private val playSessionTracker: PlaySessionTracker,
     private val saveSyncRepository: SaveSyncRepository,
-    private val startupMaintenance: com.nendo.argosy.ui.startup.StartupMaintenanceCoordinator,
+    private val launcherStartup: com.nendo.argosy.ui.startup.LauncherStartupCoordinator,
     private val emulatorUpdateManager: EmulatorUpdateManager,
     private val coreVersionRepository: com.nendo.argosy.data.repository.CoreVersionRepository,
     private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
@@ -197,7 +196,6 @@ class ArgosyViewModel @Inject constructor(
     private val netplayPreflightChecker: NetplayPreflightChecker,
     private val netplayJoinService: com.nendo.argosy.data.netplay.NetplayJoinService,
     private val launchGameUseCase: LaunchGameUseCase,
-    private val homeLibraryDelegate: com.nendo.argosy.ui.screens.home.delegates.HomeLibraryDelegate,
     private val pendingConflictDao: com.nendo.argosy.data.local.dao.PendingConflictDao,
     private val conflictResolutionService: com.nendo.argosy.data.sync.ConflictResolutionService,
     private val deepLinkLaunchCoordinator: com.nendo.argosy.ui.deeplink.DeepLinkLaunchCoordinator,
@@ -240,13 +238,11 @@ class ArgosyViewModel @Inject constructor(
         override fun onInputDeviceRemoved(deviceId: Int) = refreshControllerDetection()
     }
 
-    private val _startupComplete = MutableStateFlow(false)
-    private val _startupStatus = MutableStateFlow<Int?>(null)
 
     init {
         downloadNotificationObserver.observe(viewModelScope)
         syncNotificationObserver.observe(viewModelScope)
-        scheduleStartupTasks()
+        launcherStartup.start()
         observeFeedbackSettings(preferencesRepository)
         downloadManager.clearCompleted()
         initControllerDetection()
@@ -350,40 +346,6 @@ class ArgosyViewModel @Inject constructor(
         }
     }
 
-    private fun scheduleStartupTasks() {
-        viewModelScope.launch {
-            _startupStatus.value = R.string.ui_startup_status_initializing
-            playSessionTracker.endSession()
-
-            if (!gameRepository.awaitStorageReady(timeoutMs = 10_000L)) {
-                Log.w("ArgosyViewModel", "Storage not ready after timeout, scheduling retry")
-                _startupStatus.value = R.string.ui_startup_status_waiting_for_storage
-                kotlinx.coroutines.delay(30_000L)
-                scheduleStartupTasks()
-                return@launch
-            }
-
-            val statusMirror = launch {
-                startupMaintenance.status.filterNotNull().collect { _startupStatus.value = it }
-            }
-            try {
-                startupMaintenance.awaitPass()
-            } catch (e: kotlinx.coroutines.CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                com.nendo.argosy.util.Logger.error("ArgosyViewModel", "Startup maintenance failed, continuing to home", e)
-            } finally {
-                statusMirror.cancel()
-            }
-
-            _startupStatus.value = R.string.ui_startup_status_preparing_home
-            homeLibraryDelegate.ensureInitialLoad(viewModelScope)
-
-            emulatorUpdateManager.checkIfNeeded()
-            _startupComplete.value = true
-        }
-    }
-
     fun triggerPostWizardSync() {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             romMRepository.initialize()
@@ -419,8 +381,8 @@ class ArgosyViewModel @Inject constructor(
     val uiState: StateFlow<ArgosyUiState> = combine(
         preferencesRepository.userPreferences,
         _detectedLayout,
-        _startupComplete,
-        _startupStatus
+        launcherStartup.complete,
+        launcherStartup.status
     ) { prefs, detectedLayout, startupDone, status ->
         val glyphSwaps = prefs.buttonGlyphSwaps(detectedLayout)
         val hasExistingConfig = prefs.rommBaseUrl != null || prefs.romStoragePath != null

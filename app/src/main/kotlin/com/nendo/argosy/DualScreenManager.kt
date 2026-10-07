@@ -82,6 +82,7 @@ class DualScreenManager(
     private val gameActionsDelegate: GameActionsDelegate,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
     private val gameLaunchDelegate: GameLaunchDelegate,
+    private val sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator,
     private val saveCacheManager: SaveCacheManager,
     internal val raRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
     internal val raTileContentRepository: com.nendo.argosy.data.repository.RaTileContentRepository,
@@ -1784,31 +1785,45 @@ class DualScreenManager(
      * Ends the session whose emulator [emulatorLeftScreen] reported gone. On a dual-screen device it
      * then kills the stopped emulator along with any presentation window it left on the other
      * display, retrying until the process is cached or a new session starts. On any other device
-     * the emulator is stopped once, after the session end completes, when
-     * [GameLaunchDelegate.shouldStopAfterSession] allows it.
+     * [SessionEndCoordinator] stops the emulator once its session end completes.
      */
     fun endSessionAfterEmulatorLeft() {
         val emulatorPackage = sessionStateStore.getEmulatorPackage()
         emulatorDisplayId = null
         sessionStateStore.clearSession()
-        val sessionEnd = playSessionTracker.endSessionInBackground()
+        val sessionEnd = sessionEndCoordinator.endClosedSession()
         broadcastSessionCleared()
-        if (emulatorPackage == null) return
+        if (emulatorPackage == null || !_isDualScreenDevice.value) return
         if (emulatorPackage == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE) return
         scope.launch {
             sessionEnd.join()
-            if (!_isDualScreenDevice.value) {
-                if (sessionStateStore.hasActiveSession()) return@launch
-                if (gameLaunchDelegate.shouldStopAfterSession(emulatorPackage)) {
-                    gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
-                }
-                return@launch
-            }
             repeat(EMULATOR_RELEASE_ATTEMPTS) {
                 if (sessionStateStore.hasActiveSession()) return@launch
-                gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
+                sessionEndCoordinator.stopBackgroundEmulator(emulatorPackage)
                 delay(EMULATOR_RELEASE_INTERVAL_MS)
             }
+        }
+    }
+
+    private var focusCheck: kotlinx.coroutines.Job? = null
+
+    /**
+     * A launcher window gaining focus on the display its game ran on is the launcher's signal that
+     * the game closed. The session ends once [emulatorLeftScreen] confirms it; a game on another
+     * display keeps running.
+     */
+    fun onLauncherWindowFocused(activity: android.app.Activity) {
+        if (isMovingGame || focusCheck?.isActive == true) return
+        val ownDisplay = activity.window.decorView.display?.displayId ?: return
+        val gameDisplay = emulatorDisplayId
+        if (gameDisplay != null && gameDisplay != ownDisplay) return
+        focusCheck = scope.launch {
+            if (playSessionTracker.activeSession.value == null &&
+                preferencesRepository.getPersistedSession() == null
+            ) return@launch
+            if (!emulatorLeftScreen(activity) { activity.hasWindowFocus() }) return@launch
+            Log.d(TAG, "Launcher focused on display $ownDisplay and the game is gone, ending session")
+            endSessionAfterEmulatorLeft()
         }
     }
 

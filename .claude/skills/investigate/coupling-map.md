@@ -283,7 +283,11 @@ Laws:
   (`LibretroActivity.kt:2309`). The fix pattern is reload-on-resume, never context_reset.
   In-game features get tested on SOFTWARE cores.
 - Session-foreground policy: Argosy UI foregrounded = session over; only cross-display
-  sessions survive (`MainActivity.cleanupStaleSession`, KDoc at `MainActivity.kt:627`).
+  sessions survive. The one launcher trigger is a launcher window gaining focus on the
+  game's display (`DualScreenManager.onLauncherWindowFocused`, called from both activities'
+  `onWindowFocusChanged`); the save flow runs in `SessionEndCoordinator`. Screen resume is not
+  a trigger: both activities stay RESUMED on a dual-screen device. Startup orphan recovery
+  runs once per process in `LauncherStartupCoordinator`.
   Rule: foreground kills the session. Exception: single-screen devices keep a 15s grace
   when the emulator package was foregrounded within the last 15s. Why: relaunch-to-resume
   is legitimate there. Boundary: dual-screen devices get NO grace; a session on a
@@ -329,9 +333,9 @@ Lockstep set:
 - RomM ingest: `data/remote/romm/RomMPlaySessionModels.kt`,
   `data/social/uploader/RomMPlaySessionUploader.kt`, `supportsPlaySessionIngest` capability
   in `data/remote/romm/RomMCapabilities.kt`.
-- Session-foreground policy + cross-display survival (`MainActivity.cleanupStaleSession`,
-  see libretro axis) and `endSessionInBackground` callers (MainActivity, DualScreenManager,
-  GameLaunchDelegate, SecondaryHomeActivity, LibretroActivity, PlaySessionTracker).
+- Session-foreground policy + cross-display survival (`DualScreenManager.onLauncherWindowFocused`,
+  see libretro axis) and session-end callers (SessionEndCoordinator, DualScreenManager,
+  LibretroActivity, GameSessionService presence watch, PlaySessionTracker).
 
 CRITICAL cross-reference: the save-archiving tail (cacheCurrentSave at session end,
 live-cache during play) is a DOOR INTO THE SAVE-SYNC AXIS and inherits walkthrough-forced

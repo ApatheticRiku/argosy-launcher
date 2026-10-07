@@ -1087,7 +1087,6 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onResume() {
-        gameLaunchDelegate.handleSessionEnd(viewModelScope)
         republishCompanionDetail()
 
         if (romMRepository.isConnected()) {

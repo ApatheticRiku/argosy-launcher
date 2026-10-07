@@ -242,7 +242,6 @@ class SecondaryHomeActivity :
         dsm.notifyUserActivity("companionResume")
         syncFromSessionStore()
         dsm.onCompanionResumed()
-        endSessionIfEmulatorGone()
     }
 
     private fun syncFromSessionStore() {
@@ -251,26 +250,6 @@ class SecondaryHomeActivity :
         isGameActive = store.hasActiveSession()
         isHardcore = store.isHardcore()
         currentChannelName = store.getChannelName()
-    }
-
-    /**
-     * Ends a session whose emulator has left this display. The companion getting its display back is
-     * the one event that says a game running on it is over, and it is the only one there is: nothing
-     * else observes an emulator the launcher does not own.
-     */
-    private fun endSessionIfEmulatorGone() {
-        if (!isGameActive || dsm.isMovingGame) return
-        val emulatorDisplay = dsm.emulatorDisplayId ?: return
-        val ownDisplay = window.decorView.display?.displayId ?: return
-        if (emulatorDisplay != ownDisplay) return
-        lifecycleScope.launch {
-            val emulatorGone = dsm.emulatorLeftScreen(this@SecondaryHomeActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            }
-            if (!emulatorGone || !dsm.sessionStateStore.hasActiveSession()) return@launch
-            android.util.Log.d("SecondaryHome", "Companion resumed and the emulator is gone, ending session")
-            dsm.endSessionAfterEmulatorLeft()
-        }
     }
 
     override fun onStop() {
@@ -833,7 +812,6 @@ class SecondaryHomeActivity :
             initializeCompanion()
             syncFromSessionStore()
             dsm.onCompanionResumed()
-            endSessionIfEmulatorGone()
         }
     }
 
@@ -895,6 +873,7 @@ class SecondaryHomeActivity :
         if (hasFocus) window.hideSystemBars()
         if (!::dsm.isInitialized) return
         if (hasFocus) {
+            dsm.onLauncherWindowFocused(this)
             dsm.ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
         } else {
             dsm.ambientAudioManager.onLauncherWindowUnfocused(AUDIO_FOCUS_WINDOW)

@@ -128,6 +128,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var prepareCollectionQueueUseCase: com.nendo.argosy.domain.usecase.collection.PrepareCollectionQueueUseCase
     @Inject lateinit var getGamesForPinnedCollectionUseCase: com.nendo.argosy.domain.usecase.collection.GetGamesForPinnedCollectionUseCase
     @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
+    @Inject lateinit var sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var prefetchGameSaveDataUseCase:
         com.nendo.argosy.domain.usecase.sync.PrefetchGameSaveDataUseCase
@@ -209,14 +210,12 @@ class MainActivity : ComponentActivity() {
 
     private var hasResumedBefore = false
     private var yieldedFocusToGame = false
-    private var recreatedBySystem = false
 
     // --- Lifecycle ---
 
     @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        recreatedBySystem = savedInstanceState != null
 
         if (display != null && display!!.displayId != Display.DEFAULT_DISPLAY) {
             val docked = com.nendo.argosy.util.DisplayAffinityHelper.dockedExternalDisplayId(this) != null
@@ -274,6 +273,7 @@ class MainActivity : ComponentActivity() {
                 gameActionsDelegate = gameActionsDelegate,
                 platformSyncQueue = platformSyncQueue,
                 gameLaunchDelegate = gameLaunchDelegate,
+                sessionEndCoordinator = sessionEndCoordinator,
                 saveCacheManager = saveCacheManager,
                 prefetchGameSaveDataUseCase = prefetchGameSaveDataUseCase,
                 raRepository = raRepository,
@@ -431,12 +431,6 @@ class MainActivity : ComponentActivity() {
 
         dualScreenManager.broadcastForegroundState(true)
 
-        if (recreatedBySystem) {
-            recreatedBySystem = false
-            Log.d(TAG, "onResume: recreated by a configuration change, leaving any session to the game")
-        } else {
-            cleanupStaleSession()
-        }
         revalidateDownloadedFiles()
 
         if (hasResumedBefore) {
@@ -651,6 +645,7 @@ class MainActivity : ComponentActivity() {
             }
             window.hideSystemBars()
             window.decorView.requestFocus()
+            if (::dualScreenManager.isInitialized) dualScreenManager.onLauncherWindowFocused(this)
             ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
             ambientAudioManager.fadeIn()
             ambientLedManager.setContext(AmbientLedContext.ARGOSY_UI)
@@ -729,33 +724,6 @@ class MainActivity : ComponentActivity() {
         activityScope.launch(Dispatchers.IO) {
             runCatching { gameRepository.validateLocalFiles() }
                 .onFailure { Log.w(TAG, "revalidateDownloadedFiles failed", it) }
-        }
-    }
-
-    /**
-     * The launcher UI returning to the foreground ends the session only once the emulator is
-     * actually gone. An emulator that hands off between its own activities drops the launcher
-     * in front for an instant, and a two-display device leaves the game running unfocused on the
-     * other panel, so neither the launcher resuming nor the display it resumed on says anything
-     * about whether the game is still there. Only a session on a different display survives
-     * outright, since the game and the launcher UI legitimately coexist.
-     */
-    private fun cleanupStaleSession() {
-        activityScope.launch {
-            if (!::dualScreenManager.isInitialized) return@launch
-            if (dualScreenManager.isMovingGame) return@launch
-            val emulatorDisplay = dualScreenManager.emulatorDisplayId
-            val ownDisplay = window.decorView.display?.displayId
-            if (emulatorDisplay != null && ownDisplay != null && emulatorDisplay != ownDisplay) return@launch
-            val emulatorGone = dualScreenManager.emulatorLeftScreen(this@MainActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            }
-            if (!emulatorGone) return@launch
-            if (playSessionTracker.activeSession.value == null &&
-                preferencesRepository.getPersistedSession() == null
-            ) return@launch
-
-            dualScreenManager.endSessionAfterEmulatorLeft()
         }
     }
 

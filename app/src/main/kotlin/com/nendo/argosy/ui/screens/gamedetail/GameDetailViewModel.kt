@@ -1121,11 +1121,6 @@ class GameDetailViewModel @Inject constructor(
 
     // --- Play/Launch ---
 
-    fun onResume() {
-        if (gameLaunchDelegate.isSyncing) return
-        gameLaunchDelegate.handleSessionEnd(viewModelScope)
-    }
-
     fun primaryAction(origin: LaunchOrigin = LaunchOrigin.INTERNAL) {
         val now = System.currentTimeMillis()
         if (now - lastActionTime < actionDebounceMs) return

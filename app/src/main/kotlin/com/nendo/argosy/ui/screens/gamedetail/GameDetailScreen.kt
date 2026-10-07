@@ -252,7 +252,6 @@ fun GameDetailScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_GAME_DETAIL)
-                viewModel.onResume()
                 viewModel.republishCompanionDetail()
             } else if (event == Lifecycle.Event.ON_STOP) {
                 viewModel.clearCompanionDetail()

@@ -2237,7 +2237,6 @@ class HomeViewModel @Inject constructor(
     // --- Public API: Lifecycle ---
 
     fun onResume() {
-        gameLaunchDelegate.handleSessionEnd(viewModelScope)
         libraryDelegate.invalidateRecentGamesCache()
         refreshTileGamesAndFeatures()
         mediaDelegate.refresh(viewModelScope)
