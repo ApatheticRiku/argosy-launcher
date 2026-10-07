@@ -236,6 +236,12 @@ class HomeViewModel @Inject constructor(
             siblingChoice.reset()
         }.launchIn(viewModelScope)
 
+        _uiState
+            .map { HomeFocusSnapshot(it.currentRow, it.focusedGameIndex, it.customGrid.page, it.customGrid.cell) }
+            .distinctUntilChanged()
+            .onEach { firstFrameCache.focus = it }
+            .launchIn(viewModelScope)
+
         combine(_uiState, gameMenuDelegate.state) { state, menu -> showsScreenNumbers(state, menu) }
             .distinctUntilChanged()
             .onEach { show ->
@@ -395,9 +401,11 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun restoreInitialState(): HomeUiState {
-        val (savedRow, gameIndex) = navigationDelegate.restoreInitialRow(savedStateHandle)
+        val carriedFocus = firstFrameCache.focus?.takeIf { !navigationDelegate.hasSavedRow(savedStateHandle) }
+        val (savedRow, gameIndex) = carriedFocus?.let { it.row to it.gameIndex }
+            ?: navigationDelegate.restoreInitialRow(savedStateHandle)
         val preloaded = libraryDelegate.initialLoadComplete
-        val effectiveRow = if (preloaded && savedRow == HomeRow.Continue) {
+        val effectiveRow = if (preloaded && savedRow == HomeRow.Continue && carriedFocus == null) {
             libraryDelegate.cachedStartRow
         } else {
             savedRow
@@ -419,7 +427,12 @@ class HomeViewModel @Inject constructor(
         )
         val tiles = firstFrameCache.tiles?.takeIf { it.gridKind == grid.gridKind } ?: return seeded
         return seeded.copy(
-            customGrid = seeded.customGrid.copy(tiles = tiles.tiles, raTile = tiles.raTile),
+            customGrid = seeded.customGrid.copy(
+                tiles = tiles.tiles,
+                raTile = tiles.raTile,
+                page = carriedFocus?.gridPage ?: seeded.customGrid.page,
+                cell = carriedFocus?.gridCell ?: seeded.customGrid.cell
+            ),
             tileGames = tiles.tileGames,
             tileCollections = tiles.tileCollections,
             tileApps = tiles.tileApps,

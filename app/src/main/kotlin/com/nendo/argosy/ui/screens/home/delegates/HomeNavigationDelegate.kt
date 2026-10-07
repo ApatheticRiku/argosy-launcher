@@ -68,6 +68,8 @@ class HomeNavigationDelegate @Inject constructor(
         return currentRow to gameIndex
     }
 
+    fun hasSavedRow(savedStateHandle: SavedStateHandle): Boolean = savedStateHandle.contains(KEY_ROW_TYPE)
+
     fun saveCurrentState(savedStateHandle: SavedStateHandle, currentRow: HomeRow, focusedGameIndex: Int) {
         val (rowType, platformIndex) = when (val row = currentRow) {
             HomeRow.Favorites -> ROW_TYPE_FAVORITES to 0

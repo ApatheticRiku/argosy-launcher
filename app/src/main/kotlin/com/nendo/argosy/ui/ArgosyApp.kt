@@ -91,6 +91,8 @@ import com.nendo.argosy.ui.input.UiShortcutGate
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.NavGraph
 import com.nendo.argosy.ui.navigation.NavRing
+import com.nendo.argosy.ui.navigation.RouteRestore
+import com.nendo.argosy.ui.navigation.concreteRoute
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.screens.player.PlayerActivity
 import com.nendo.argosy.ui.screens.player.PlayerArgs
@@ -188,6 +190,23 @@ fun ArgosyApp(
     LaunchedEffect(isOnHomeScreen) {
         activity?.isOnHomeScreen = isOnHomeScreen
         dsm?.setPrimaryOnHome(isOnHomeScreen)
+    }
+
+    val carriedRoute = remember { dsm?.primaryRoute?.value }
+    LaunchedEffect(Unit) {
+        val stack = carriedRoute?.let(RouteRestore::restoreStack).orEmpty()
+        if (stack.isEmpty()) return@LaunchedEffect
+        val entry = withTimeoutOrNull(NAV_READY_TIMEOUT_MS) {
+            navController.currentBackStackEntryFlow.first()
+        } ?: return@LaunchedEffect
+        if (entry.destination.route != Screen.Home.route || navController.previousBackStackEntry != null) {
+            return@LaunchedEffect
+        }
+        stack.forEach { navController.navigate(it) }
+    }
+
+    LaunchedEffect(navBackStackEntry) {
+        navBackStackEntry?.let { dsm?.setPrimaryRoute(it.concreteRoute()) }
     }
 
     LaunchedEffect(dsm) {

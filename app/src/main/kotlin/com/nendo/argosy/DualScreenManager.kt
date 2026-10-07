@@ -988,6 +988,18 @@ class DualScreenManager(
         _primaryOnHome.value = onHome
     }
 
+    private val _primaryRoute = MutableStateFlow<String?>(null)
+
+    /**
+     * The concrete route the hosting launcher is showing, so the launcher composed on the other
+     * activity after a role swap opens on the same screen.
+     */
+    val primaryRoute: StateFlow<String?> = _primaryRoute
+
+    fun setPrimaryRoute(route: String?) {
+        _primaryRoute.value = route
+    }
+
     /**
      * What the player has open, mirrored here so the companion reads playback the same way it reads
      * every other cross-display fact. The player is still the only writer; this is the door the
