@@ -403,7 +403,8 @@ class SnapshotSyncEngine @Inject constructor(
         }
         emulatorStamper.stampFor(ctx.game, source.emulatorId).writeTo(manifest)
         val screenshot = saveScreenshots.recentFor(ctx.game.id)
-        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot, states)) {
+        val saveServerHasIt = ctx.current?.save?.contentHash == unit.contentHash
+        return when (val outcome = pusher.push(ctx.api, ctx.deviceId, manifest, unit, screenshot, states, saveServerHasIt)) {
             is PushOutcome.Written -> {
                 (screenshot ?: states.firstNotNullOfOrNull { it.screenshot })
                     ?.let { saveScreenshots.keepForSnapshot(outcome.snapshot.id, it) }
