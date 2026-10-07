@@ -159,6 +159,16 @@ card directory while the archive holds only one game's folders, so every caller 
   nothing is written; a Sigil unit is never placed as raw files. A null `saveFormat` marks a row written before
   schema 206, or a server download whose format the server did not report: a push treats it as
   `native`, a restore follows the live route.
+- `SigilSaveHandler` calls collect and restore with `unmanaged = true` although Argosy launches the
+  game. Users also start these emulators outside Argosy, and a session can end before the content
+  unloads, so a managed volume swap could rest on a stale collect and lose other games' saves.
+  Restore passes `overwriteLocal = true`: the snapshot decide table (`SnapshotDecision`) is the one
+  conflict gate before every automatic restore, and a restore the user picks from history is meant
+  to overwrite. Revisit managed mode once sessions end on the emulator's task dying.
+- Shared-volume claims use Argosy's own `newlyUnowned` (names absent at the previous collect).
+  Sigil's `unownedChanged` also counts rewritten saves but measures from the state blob Argosy
+  passes back, which stays at the last claimed collect; moving to it needs Sigil's
+  collect-before-launch protocol and a device check on a Saturn or Sega CD shared volume.
 
 ### Bulk and server-driven paths
 
