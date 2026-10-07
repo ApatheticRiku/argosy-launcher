@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -24,7 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,13 +35,13 @@ import androidx.compose.ui.unit.Dp
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.animateScrollToItemCentered
 import com.nendo.argosy.ui.primitives.ArgosyProgressBar
-import com.nendo.argosy.ui.primitives.ModalActionButton
 import com.nendo.argosy.ui.primitives.ProgressBarStyle
 import com.nendo.argosy.ui.primitives.RuledSectionHeader
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
-import com.nendo.argosy.ui.util.clickableNoFocus
 
+private const val ROW_TIMELINE = "timeline"
+private const val ROW_NEW_CHANNEL = "new_channel"
 private const val ROW_MINE_HEADER = "mine_header"
 private const val ROW_MINE_PREFIX = "mine_"
 private const val ROW_MINE_EMPTY = "mine_empty"
@@ -89,22 +87,41 @@ private fun SnapshotSections(
             modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight),
             verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
         ) {
-            item(key = ROW_MINE_HEADER) {
-                SectionHeader(
-                    title = stringResource(R.string.save_channels_section_mine_title),
-                    actionLabel = stringResource(R.string.save_channels_section_mine_new).takeIf { state.canCreateChannel },
-                    isActionFocused = state.isStopFocused(SnapshotStop.NewChannel),
-                    onAction = actions::tapNewChannel,
-                    onTimeline = actions::openTimeline
-                )
+            if (state.showsTimeline) {
+                item(key = ROW_TIMELINE) {
+                    SnapshotOverlayRow(
+                        label = stringResource(R.string.save_channels_section_timeline_button),
+                        isFocused = state.isStopFocused(SnapshotStop.Timeline),
+                        onClick = actions::openTimeline,
+                        icon = Icons.Filled.AccountTree
+                    )
+                }
             }
-            if (state.mine.isEmpty()) {
+            if (showsMineHeader(state)) {
+                item(key = ROW_MINE_HEADER) {
+                    SectionHeader(title = stringResource(R.string.save_channels_section_mine_title))
+                }
+            }
+            if (state.mine.isEmpty() && !state.canCreateChannel) {
                 item(key = ROW_MINE_EMPTY) {
                     SnapshotMessage(stringResource(R.string.save_channels_section_mine_empty))
                 }
-            } else {
-                itemsIndexed(state.mine, key = { _, tile -> "$ROW_MINE_PREFIX${tile.channelId}" }) { index, tile ->
-                    ChannelRow(tile, index, state, isMine = true, coverPath = coverPath, actions = actions)
+            }
+            itemsIndexed(state.mine, key = { _, tile -> "$ROW_MINE_PREFIX${tile.channelId}" }) { index, tile ->
+                ChannelRow(tile, index, state, isMine = true, coverPath = coverPath, actions = actions)
+            }
+            if (state.canCreateChannel) {
+                item(key = ROW_NEW_CHANNEL) {
+                    Box(
+                        modifier = Modifier
+                            .height(Dimens.saveChannelRowHeight)
+                            .padding(Dimens.spacingSm)
+                    ) {
+                        SnapshotNewSaveTile(
+                            isFocused = state.isStopFocused(SnapshotStop.NewChannel),
+                            onClick = actions::tapNewChannel
+                        )
+                    }
                 }
             }
             if (state.backups.isNotEmpty()) {
@@ -138,10 +155,15 @@ private fun SnapshotSections(
     }
 }
 
+private fun showsMineHeader(state: SnapshotViewState): Boolean =
+    state.backups.isNotEmpty() || state.community.isNotEmpty()
+
 private fun rowKeys(state: SnapshotViewState): List<String> = buildList {
-    add(ROW_MINE_HEADER)
-    if (state.mine.isEmpty()) add(ROW_MINE_EMPTY)
+    if (state.showsTimeline) add(ROW_TIMELINE)
+    if (showsMineHeader(state)) add(ROW_MINE_HEADER)
+    if (state.mine.isEmpty() && !state.canCreateChannel) add(ROW_MINE_EMPTY)
     state.mine.forEach { add("$ROW_MINE_PREFIX${it.channelId}") }
+    if (state.canCreateChannel) add(ROW_NEW_CHANNEL)
     if (state.backups.isNotEmpty()) {
         add(ROW_BACKUPS_HEADER)
         state.backups.forEach { add("$ROW_BACKUP_PREFIX${it.saveId}") }
@@ -154,7 +176,8 @@ private fun rowKeys(state: SnapshotViewState): List<String> = buildList {
 
 private fun stopKey(state: SnapshotViewState): String? =
     when (val stop = state.stop) {
-        SnapshotStop.NewChannel -> ROW_MINE_HEADER
+        SnapshotStop.Timeline -> ROW_TIMELINE
+        SnapshotStop.NewChannel -> ROW_NEW_CHANNEL
         SnapshotStop.MineTiles -> state.mine.getOrNull(state.mineIndex)?.let { "$ROW_MINE_PREFIX${it.channelId}" }
         SnapshotStop.CommunityTiles ->
             state.community.getOrNull(state.communityIndex)?.let { "$ROW_COMMUNITY_PREFIX${it.channelId}" }
@@ -165,41 +188,11 @@ private fun stopKey(state: SnapshotViewState): String? =
     }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    modifier: Modifier = Modifier,
-    actionLabel: String? = null,
-    isActionFocused: Boolean = false,
-    onAction: () -> Unit = {},
-    onTimeline: (() -> Unit)? = null
-) {
-    val theme = LocalArgosyTheme.current
+private fun SectionHeader(title: String, modifier: Modifier = Modifier) {
     RuledSectionHeader(
         title = title,
         modifier = modifier.padding(horizontal = Dimens.spacingSm + Dimens.spacingXs)
-    ) {
-        if (actionLabel != null) {
-            ModalActionButton(
-                label = actionLabel,
-                tint = theme.focusAccent,
-                restLabelColor = theme.textPrimary,
-                focused = isActionFocused,
-                onClick = onAction
-            )
-        }
-        if (onTimeline != null) {
-            Icon(
-                imageVector = Icons.Filled.AccountTree,
-                contentDescription = stringResource(R.string.save_channels_section_timeline_button),
-                tint = theme.textDim,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(Dimens.radiusMd))
-                    .clickableNoFocus(onClick = onTimeline)
-                    .padding(Dimens.spacingXs)
-                    .size(Dimens.iconMd)
-            )
-        }
-    }
+    )
 }
 
 @Composable

@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">我的</string>
     <string name="save_channels_section_backups_title">備份</string>
     <string name="save_channels_section_community_title">社群</string>
-    <string name="save_channels_section_mine_new">新增存檔槽</string>
+    <string name="save_channels_section_mine_new">新存檔</string>
     <string name="save_channels_section_mine_empty">尚無存檔槽</string>
     <string name="save_channels_load_failed">無法載入存檔槽</string>
 

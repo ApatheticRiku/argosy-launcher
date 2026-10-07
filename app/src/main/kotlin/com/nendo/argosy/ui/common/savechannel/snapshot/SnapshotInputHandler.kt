@@ -44,7 +44,9 @@ class SnapshotInputHandler(
     }
 
     override fun onConfirm(): InputResult {
-        delegate.confirm(scope, onSaveStatusChanged)
+        val state = view
+        if (state != null && state.isStopFocused(SnapshotStop.Timeline)) onOpenTimeline()
+        else delegate.confirm(scope, onSaveStatusChanged)
         return InputResult.HANDLED
     }
 

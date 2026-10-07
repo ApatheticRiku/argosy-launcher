@@ -19,7 +19,7 @@ class SnapshotViewDelegate @Inject constructor(
 
     suspend fun isAvailable(gameId: Long): Boolean = runner.isAvailable(gameId)
 
-    fun start(scope: CoroutineScope) = runner.start(scope)
+    fun start(scope: CoroutineScope, showsTimeline: Boolean = false) = runner.start(scope, showsTimeline)
 
     fun clear() = runner.clear()
 
@@ -244,6 +244,7 @@ class SnapshotViewDelegate @Inject constructor(
 
     private fun confirmStop(scope: CoroutineScope, state: SnapshotViewState) {
         when (val stop = state.stop) {
+            SnapshotStop.Timeline -> Unit
             SnapshotStop.NewChannel -> openLabelEntry()
             SnapshotStop.MineTiles, SnapshotStop.CommunityTiles -> state.focusedTile?.let {
                 toggleExpanded(scope, it, isMine = stop == SnapshotStop.MineTiles)

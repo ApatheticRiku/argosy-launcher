@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">Meine</string>
     <string name="save_channels_section_backups_title">Sicherungen</string>
     <string name="save_channels_section_community_title">Community</string>
-    <string name="save_channels_section_mine_new">Neuer Kanal</string>
+    <string name="save_channels_section_mine_new">Neuer Spielstand</string>
     <string name="save_channels_section_mine_empty">Noch keine Kanäle</string>
     <string name="save_channels_load_failed">Kanäle konnten nicht geladen werden</string>
 

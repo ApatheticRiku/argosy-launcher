@@ -73,7 +73,10 @@ class SaveChannelDelegate @Inject constructor(
 
         scope.launch {
             val snapshotMode = snapshotDelegate.isAvailable(gameId)
-            if (snapshotMode) snapshotDelegate.start(scope)
+            if (snapshotMode) {
+                snapshotDelegate.start(scope, showsTimeline = true)
+                _state.update { it.copy(isLoading = false, selectedTab = SaveTab.SAVES) }
+            }
             val activeRow = activeSaveRepository.getActiveRow(gameId)
             val activeSaveTimestamp = activeRow?.cachedAt?.toEpochMilli()
             val activeSaveCacheId = activeRow?.id
@@ -100,7 +103,9 @@ class SaveChannelDelegate @Inject constructor(
                     saveSlots = localSlots,
                     statesEntries = states,
                     supportsStates = stateConfigExists,
-                    selectedTab = if (savePath == null && stateConfigExists && it.snapshot == null) {
+                    selectedTab = if (snapshotMode) {
+                        it.selectedTab
+                    } else if (savePath == null && stateConfigExists && it.snapshot == null) {
                         SaveTab.STATES
                     } else {
                         SaveTab.SAVES

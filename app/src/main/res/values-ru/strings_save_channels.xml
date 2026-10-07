@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">Мои</string>
     <string name="save_channels_section_backups_title">Резервные копии</string>
     <string name="save_channels_section_community_title">Сообщество</string>
-    <string name="save_channels_section_mine_new">Новый канал</string>
+    <string name="save_channels_section_mine_new">Новое сохранение</string>
     <string name="save_channels_section_mine_empty">Пока нет каналов</string>
     <string name="save_channels_load_failed">Не удалось загрузить каналы</string>
 

@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">我的</string>
     <string name="save_channels_section_backups_title">备份</string>
     <string name="save_channels_section_community_title">社区</string>
-    <string name="save_channels_section_mine_new">新建通道</string>
+    <string name="save_channels_section_mine_new">新存档</string>
     <string name="save_channels_section_mine_empty">还没有通道</string>
     <string name="save_channels_load_failed">无法加载通道</string>
 

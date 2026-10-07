@@ -18,8 +18,8 @@
     <string name="save_channels_section_backups_title">Backups</string>
     <!-- Heading over channels other users on the server have shared. -->
     <string name="save_channels_section_community_title">Community</string>
-    <!-- Button beside the Mine heading that starts a new channel. -->
-    <string name="save_channels_section_mine_new">New channel</string>
+    <!-- Label under the plus tile after the user's own channels that starts a new save channel (playthrough). "Save" is a noun. -->
+    <string name="save_channels_section_mine_new">New save</string>
     <!-- Shown under Mine when the user has no channels at all. -->
     <string name="save_channels_section_mine_empty">No channels yet</string>
     <!-- Shown when the channel list could not be fetched from the server. -->
@@ -43,7 +43,7 @@
     <string name="save_channels_footer_channel_actions">Options</string>
     <!-- Hint on the footer button that opens the full-screen timeline of every channel. Noun. -->
     <string name="save_channels_footer_timeline">Timeline</string>
-    <!-- Spoken label of the icon button beside the Mine heading that opens the timeline. Noun. -->
+    <!-- Row above the save channels that opens the save timeline screen. Noun. -->
     <string name="save_channels_section_timeline_button">Timeline</string>
 
     <!-- ============================ Device labels ============================ -->

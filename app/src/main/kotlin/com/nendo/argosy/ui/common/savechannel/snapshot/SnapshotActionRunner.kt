@@ -57,12 +57,12 @@ class SnapshotActionRunner @Inject constructor(
     suspend fun isAvailable(gameId: Long): Boolean =
         withContext(Dispatchers.IO) { runCatching { service.isAvailable(gameId) }.getOrDefault(false) }
 
-    fun start(scope: CoroutineScope) {
+    fun start(scope: CoroutineScope, showsTimeline: Boolean = false) {
         holder.snapshotHistories.value = emptyMap()
         holder.snapshotLibrary.value = null
         pending = null
         focusDeviceChannel = true
-        holder.state.update { it.copy(snapshot = SnapshotViewState()) }
+        holder.state.update { it.copy(snapshot = SnapshotViewState(showsTimeline = showsTimeline)) }
         scope.launch {
             service.cached(holder.currentGameId)?.let(::show)
             reload()

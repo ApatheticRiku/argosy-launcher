@@ -130,6 +130,7 @@ sealed interface SnapshotConfirmUi {
 }
 
 sealed interface SnapshotStop {
+    data object Timeline : SnapshotStop
     data object NewChannel : SnapshotStop
     data object MineTiles : SnapshotStop
     data object Cards : SnapshotStop
@@ -141,6 +142,7 @@ data class SnapshotViewState(
     val isLoading: Boolean = true,
     val loadFailed: Boolean = false,
     val isBusy: Boolean = false,
+    val showsTimeline: Boolean = false,
     val canCreateChannel: Boolean = false,
     val mine: List<SnapshotTileUi> = emptyList(),
     val backups: List<SnapshotBackupUi> = emptyList(),
@@ -157,8 +159,9 @@ data class SnapshotViewState(
 ) {
     val stops: List<SnapshotStop>
         get() = buildList {
-            if (canCreateChannel) add(SnapshotStop.NewChannel)
+            if (showsTimeline) add(SnapshotStop.Timeline)
             if (mine.isNotEmpty()) add(SnapshotStop.MineTiles)
+            if (canCreateChannel) add(SnapshotStop.NewChannel)
             backups.indices.forEach { add(SnapshotStop.Backup(it)) }
             if (community.isNotEmpty()) add(SnapshotStop.CommunityTiles)
         }

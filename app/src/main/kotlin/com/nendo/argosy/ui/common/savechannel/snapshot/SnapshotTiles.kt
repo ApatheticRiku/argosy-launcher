@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
@@ -209,6 +210,48 @@ internal fun SnapshotChannelTile(
             }
         }
         TileChips(tile)
+    }
+}
+
+@Composable
+internal fun SnapshotNewSaveTile(isFocused: Boolean, onClick: () -> Unit) {
+    val theme = LocalArgosyTheme.current
+    val shape = RoundedCornerShape(Dimens.radiusLg)
+    val sheetShape = RoundedCornerShape(Dimens.radiusMd)
+    Column(
+        modifier = Modifier
+            .width(Dimens.saveChannelTileWidth)
+            .fillMaxHeight()
+            .argosyFocusIndicators(focused = isFocused, indicators = TileFocus, shape = shape)
+            .clip(shape)
+            .clickableNoFocus(onClick = onClick)
+            .padding(Dimens.spacingXs),
+        verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = Dimens.spacingXs, end = Dimens.spacingXs)
+                .aspectRatio(THUMB_ASPECT)
+                .clip(sheetShape)
+                .background(theme.surfaceElevated)
+                .border(Dimens.borderThin, theme.hairlineHigh, sheetShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = null,
+                tint = if (isFocused) theme.focusAccent else theme.textDim,
+                modifier = Modifier.size(Dimens.iconXl)
+            )
+        }
+        Text(
+            text = stringResource(R.string.save_channels_section_mine_new),
+            style = MaterialTheme.typography.titleSmall,
+            color = theme.textPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

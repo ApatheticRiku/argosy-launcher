@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">Míos</string>
     <string name="save_channels_section_backups_title">Copias de seguridad</string>
     <string name="save_channels_section_community_title">Comunidad</string>
-    <string name="save_channels_section_mine_new">Nuevo canal</string>
+    <string name="save_channels_section_mine_new">Nueva partida</string>
     <string name="save_channels_section_mine_empty">Aún no hay canales</string>
     <string name="save_channels_load_failed">No se pudieron cargar los canales</string>
 
