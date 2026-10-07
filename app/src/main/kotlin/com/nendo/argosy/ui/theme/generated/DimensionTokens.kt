@@ -74,6 +74,7 @@ object DimensionTokens {
         const val modalWidth = 400
         const val modalWidthLg = 520
         const val quickPanelWidthWide = 456
+        const val navDrawerWidth = 252
         const val quickPanelWidthMedia = 520
         const val quickPanelRailWidth = 56
         const val quickPanelHeaderHeight = 56

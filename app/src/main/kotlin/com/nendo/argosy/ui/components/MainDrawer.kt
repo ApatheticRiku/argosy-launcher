@@ -67,7 +67,7 @@ fun MainDrawer(
     onNavigate: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    ModalDrawerSheet(modifier = modifier) {
+    ModalDrawerSheet(modifier = modifier.width(Dimens.navDrawerWidth)) {
         Column(
             modifier = Modifier
                 .fillMaxHeight()

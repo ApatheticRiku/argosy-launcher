@@ -94,6 +94,7 @@ object Dimens {
     val modalWidth: Dp @Composable get() = DimensionTokens.Layout.modalWidth.dp * scale
     val modalWidthLg: Dp @Composable get() = DimensionTokens.Layout.modalWidthLg.dp * scale
     val quickPanelWidthWide: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthWide.dp * scale
+    val navDrawerWidth: Dp get() = DimensionTokens.Layout.navDrawerWidth.dp
     val quickPanelWidthMedia: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthMedia.dp * scale
     val quickPanelRailWidth: Dp @Composable get() = DimensionTokens.Layout.quickPanelRailWidth.dp * scale
     val quickPanelHeaderHeight: Dp @Composable get() = DimensionTokens.Layout.quickPanelHeaderHeight.dp * scale
