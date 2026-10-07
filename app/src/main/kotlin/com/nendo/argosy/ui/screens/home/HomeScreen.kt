@@ -421,28 +421,22 @@ fun HomeScreen(
         previewBlocked,
         suppressVideoPreview
     ) {
-        viewModel.deactivateVideoPreview()
-        if (!uiState.videoWallpaperEnabled) return@LaunchedEffect
-        if (uiState.layoutKind != HomeLayoutKind.CAROUSEL) return@LaunchedEffect
-        val game = uiState.focusedGame ?: return@LaunchedEffect
-        val videoId = game.youtubeVideoId ?: return@LaunchedEffect
-        val shouldSkip = previewBlocked ||
-            suppressVideoPreview ||
-            videoPlayedForGameId == game.id
-        if (shouldSkip) {
-            return@LaunchedEffect
-        }
-        delay(uiState.videoWallpaperDelayMs)
-        val isResumed = lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-        val stillValid = isResumed &&
-            uiState.videoWallpaperEnabled &&
-            !currentPreviewBlocked &&
-            !suppressVideoPreview &&
-            videoPlayedForGameId != game.id
-        if (stillValid) {
-            videoPlayedForGameId = game.id
-            viewModel.startVideoPreviewLoading(videoId)
-        }
+        scheduleHomeVideoPreview(
+            state = uiState,
+            blocked = previewBlocked,
+            suppressed = suppressVideoPreview,
+            alreadyPlayed = videoPlayedForGameId == uiState.focusedGame?.id,
+            canStart = { gameId ->
+                lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
+                    uiState.videoWallpaperEnabled && !currentPreviewBlocked &&
+                    !suppressVideoPreview && videoPlayedForGameId != gameId
+            },
+            deactivate = viewModel::deactivateVideoPreview,
+            start = { gameId, videoId ->
+                videoPlayedForGameId = gameId
+                viewModel.startVideoPreviewLoading(videoId)
+            }
+        )
     }
 
     DisposableEffect(lifecycleOwner) {
