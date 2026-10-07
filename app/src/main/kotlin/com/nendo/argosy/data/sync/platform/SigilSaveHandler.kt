@@ -106,6 +106,7 @@ class SigilSaveHandler @Inject constructor(
 
         private val LAYOUTS: Map<String, Map<String, String>> = mapOf(
             "gc" to mapOf("dolphin" to "dolphin_standalone", "dolphin_mmjr" to "dolphin_standalone"),
+            "wii" to mapOf("dolphin_wii" to "dolphin_standalone", "dolphin_mmjr_wii" to "dolphin_standalone"),
             "psx" to mapOf("duckstation" to "duckstation"),
             "ps2" to listOf("nethersx2", "aethersx2", "pcsx2", "armsx2_refresh", "armsx2")
                 .associateWith { "pcsx2_standalone" },
@@ -119,27 +120,27 @@ class SigilSaveHandler @Inject constructor(
             "3ds" to mapOf("citra" to "citra", "azahar" to "azahar", "lime3ds" to "lime3ds")
         )
 
-        private val ROOT_ANCHORS: Map<String, String> = mapOf(
-            "dolphin_standalone" to "GC",
-            "duckstation" to "memcards",
-            "pcsx2_standalone" to "memcards",
-            "ppsspp_standalone" to "PSP",
-            "vita3k" to "ux0",
-            "aps3e" to "dev_hdd0",
-            "armsx3" to "dev_hdd0",
-            "yuzu" to "nand",
-            "eden" to "nand",
-            "citron" to "nand",
-            "sudachi" to "nand",
-            "lemon" to "nand",
-            "skyline" to "switch",
-            "strato" to "switch",
-            "ryujinx" to "bis",
-            "kenjinx" to "bis",
-            "cemu" to "mlc01",
-            "citra" to "sdmc",
-            "azahar" to "sdmc",
-            "lime3ds" to "sdmc"
+        private val ROOT_ANCHORS: Map<String, List<String>> = mapOf(
+            "dolphin_standalone" to listOf("GC", "Wii"),
+            "duckstation" to listOf("memcards"),
+            "pcsx2_standalone" to listOf("memcards"),
+            "ppsspp_standalone" to listOf("PSP"),
+            "vita3k" to listOf("ux0"),
+            "aps3e" to listOf("dev_hdd0"),
+            "armsx3" to listOf("dev_hdd0"),
+            "yuzu" to listOf("nand"),
+            "eden" to listOf("nand"),
+            "citron" to listOf("nand"),
+            "sudachi" to listOf("nand"),
+            "lemon" to listOf("nand"),
+            "skyline" to listOf("switch"),
+            "strato" to listOf("switch"),
+            "ryujinx" to listOf("bis"),
+            "kenjinx" to listOf("bis"),
+            "cemu" to listOf("mlc01"),
+            "citra" to listOf("sdmc"),
+            "azahar" to listOf("sdmc"),
+            "lime3ds" to listOf("sdmc")
         )
 
         private val GB_CORES = setOf("gambatte", "mgba", "vbam", "sameboy", "tgbdual")
@@ -218,7 +219,7 @@ class SigilSaveHandler @Inject constructor(
         }
 
         fun rootFor(basePath: String, layout: String): String? =
-            ROOT_ANCHORS[layout]?.let { rootFor(basePath, listOf(it)) }
+            ROOT_ANCHORS[layout]?.let { rootFor(basePath, it) }
 
         /**
          * The save root a layout expects, found in [basePath] by the first folder of one of the
@@ -240,7 +241,7 @@ class SigilSaveHandler @Inject constructor(
          */
         fun isProtectedSavePath(path: String): Boolean {
             val trimmed = path.trimEnd('/')
-            return ROOT_ANCHORS.values.distinct().any { anchor ->
+            return ROOT_ANCHORS.values.flatten().distinct().any { anchor ->
                 val index = anchorIndex(trimmed, anchor) ?: return@any false
                 val below = trimmed.substring(index + anchor.length + 1).trimStart('/')
                 below.isEmpty() || !below.contains('/')

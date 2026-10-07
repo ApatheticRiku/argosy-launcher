@@ -157,11 +157,23 @@ class PlatformSaveHandlerRegistryRoutingTest {
     }
 
     @Test
-    fun `dolphin on wii stays on its folder handler`() {
+    fun `dolphin on wii goes through sigil`() {
         every { sigilHandler.routes(any(), any()) } answers {
             SigilSaveHandler.layoutFor(firstArg(), secondArg()) != null
         }
         val config = SavePathRegistry.getConfigForPlatform("dolphin", "wii")
-        assertSame(registry.getFolderHandler("wii"), registry.getHandler(config, "wii", "dolphin"))
+        assertSame(sigilHandler, registry.getHandler(config, "wii", "dolphin"))
+    }
+
+    @Test
+    fun `a dolphin wii save path anchors at the folder holding Wii`() {
+        assertEquals(
+            "/sdcard/Android/data/org.dolphinemu.dolphinemu/files",
+            SigilSaveHandler.rootFor("/sdcard/Android/data/org.dolphinemu.dolphinemu/files/Wii/title/00010000", "dolphin_standalone")
+        )
+        assertEquals(
+            "/sdcard/Android/data/org.dolphinemu.dolphinemu/files",
+            SigilSaveHandler.rootFor("/sdcard/Android/data/org.dolphinemu.dolphinemu/files/GC/USA/Card A", "dolphin_standalone")
+        )
     }
 }
