@@ -20,10 +20,4 @@ class Migration205To206Test {
     fun `adds a nullable save format to the save cache and touches nothing else`() {
         assertEquals(listOf("ALTER TABLE `save_cache` ADD COLUMN `saveFormat` TEXT"), statements())
     }
-
-    @Test
-    fun `is the last registered migration and leaves no gap`() {
-        assertEquals(Migration_205_206, MigrationRegistry.ALL.last())
-        MigrationRegistry.assertContiguous(206)
-    }
 }

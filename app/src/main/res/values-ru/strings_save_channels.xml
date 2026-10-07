@@ -45,7 +45,6 @@
     <string name="save_channels_detail_state_slot_auto">Авто</string>
     <string name="save_channels_detail_state_slot_numbered">Слот %1$s</string>
     <string name="save_channels_detail_action_activate">Активировать</string>
-    <string name="save_channels_detail_action_apply">Применить</string>
     <string name="save_channels_detail_action_fork">Ответвить</string>
     <string name="save_channels_detail_action_copy_over">Копировать в…</string>
     <string name="save_channels_detail_action_pin">Закрепить</string>
@@ -90,7 +89,6 @@
     <string name="save_channels_timeline_footer_channel">Канал</string>
     <string name="save_channels_timeline_notice_history_failed">Не удалось загрузить старые сохранения</string>
 
-    <string name="save_channels_notice_restored">Применено</string>
     <string name="save_channels_notice_forked">Ответвлено</string>
     <string name="save_channels_notice_copied">Скопировано</string>
     <string name="save_channels_notice_made_snapshot">Снимок создан</string>

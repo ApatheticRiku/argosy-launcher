@@ -150,7 +150,8 @@ class SnapshotSyncEngine @Inject constructor(
                     markReached(ctx, local.hashes?.contentHash)
                     SnapshotSyncResult.UpToDate
                 }
-                is SnapshotAction.Push -> pushLocal(ctx, local, emulatorId, channelName, action.expectedCurrentId, isHardcore, false)
+                is SnapshotAction.Push ->
+                    pushLocal(ctx, local, emulatorId, channelName, action.expectedCurrentId, isHardcore, false, action.parentSnapshotId)
                 is SnapshotAction.Adopt -> {
                     val result = adopt(ctx, ctx.current ?: return@locked SnapshotSyncResult.UpToDate)
                     commitSigilState(local)
@@ -175,7 +176,8 @@ class SnapshotSyncEngine @Inject constructor(
     ): SnapshotSyncResult = locked(gameId) {
         val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
         val local = localSave(ctx.game, emulatorId)
-        pushLocal(ctx, local, emulatorId, channelName, ctx.current?.id, isHardcore, approveHardcoreDowngrade)
+        val parent = ctx.stored?.takeIf { it.heldByChoice }?.heldSnapshotId
+        pushLocal(ctx, local, emulatorId, channelName, ctx.current?.id, isHardcore, approveHardcoreDowngrade, parent)
     }
 
     /**
@@ -206,6 +208,20 @@ class SnapshotSyncEngine @Inject constructor(
         val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
         val current = ctx.current ?: return@locked SnapshotSyncResult.UpToDate
         apply(ctx, current.id, emulatorId, channelName)
+    }
+
+    /**
+     * Places [snapshotId] on this device without changing the channel on the server. The device
+     * keeps it until it is played on, and the next push names it as the parent.
+     */
+    suspend fun restoreLocally(
+        gameId: Long,
+        emulatorId: String,
+        channelName: String?,
+        snapshotId: Long
+    ): SnapshotSyncResult = locked(gameId) {
+        val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
+        apply(ctx, snapshotId, emulatorId, channelName, byChoice = snapshotId != ctx.current?.id)
     }
 
     private suspend fun <T> locked(gameId: Long, block: suspend () -> T): T = withContext(Dispatchers.IO) {
@@ -276,7 +292,7 @@ class SnapshotSyncEngine @Inject constructor(
         val stored = ctx.stored ?: return null
         val id = stored.heldSnapshotId ?: return null
         val save = stored.heldSaveHash?.let { SaveHashes(it, stored.heldSaveIdentityHash ?: it) }
-        return SnapshotPoint(id, save)
+        return SnapshotPoint(id, save, stored.heldByChoice)
     }
 
     private fun currentPoint(current: RomMSnapshot?): SnapshotPoint? = current?.let { snapshot ->
@@ -290,7 +306,8 @@ class SnapshotSyncEngine @Inject constructor(
         channelName: String?,
         expectedCurrentId: Long?,
         isHardcore: Boolean,
-        approveHardcoreDowngrade: Boolean
+        approveHardcoreDowngrade: Boolean,
+        parentSnapshotId: Long? = null
     ): SnapshotSyncResult {
         val cached = when (local) {
             is LocalSave.Sigil -> CachedUnit(
@@ -306,7 +323,7 @@ class SnapshotSyncEngine @Inject constructor(
             LocalSave.None -> return SnapshotSyncResult.Failed("no local save to push")
         }
         val source = PushSource(emulatorId, local.path, local.pending, cached.cacheId)
-        return push(ctx, cached.unit, source, expectedCurrentId, isHardcore, approveHardcoreDowngrade)
+        return push(ctx, cached.unit, source, expectedCurrentId, isHardcore, approveHardcoreDowngrade, parentSnapshotId)
     }
 
     private class CachedUnit(val unit: SnapshotUnit, val cacheId: Long?)
@@ -378,7 +395,8 @@ class SnapshotSyncEngine @Inject constructor(
         source: PushSource,
         expectedCurrentId: Long?,
         isHardcore: Boolean,
-        approveHardcoreDowngrade: Boolean
+        approveHardcoreDowngrade: Boolean,
+        parentSnapshotId: Long? = null
     ): SnapshotSyncResult {
         val states = autoStates(ctx, source.emulatorId, isHardcore)
         val manifest = JSONObject().apply {
@@ -393,6 +411,7 @@ class SnapshotSyncEngine @Inject constructor(
             put("channel_id", ctx.channelId)
             if (ctx.isNewChannel) put("label", ctx.label)
             put("expected_current_id", expectedCurrentId ?: JSONObject.NULL)
+            parentSnapshotId?.let { put("parent_snapshot_id", it) }
             put("save", JSONObject().apply {
                 put("hash", unit.contentHash)
                 put("shape", unit.shape)
@@ -432,7 +451,13 @@ class SnapshotSyncEngine @Inject constructor(
         return SnapshotSyncResult.Applied(current.id)
     }
 
-    private suspend fun apply(ctx: ChannelView, snapshotId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult {
+    private suspend fun apply(
+        ctx: ChannelView,
+        snapshotId: Long,
+        emulatorId: String,
+        channelName: String?,
+        byChoice: Boolean = false
+    ): SnapshotSyncResult {
         val snapshot = runCatching { ctx.api.getSnapshot(snapshotId) }.getOrNull()?.takeIf { it.isSuccessful }?.body()
             ?: return SnapshotSyncResult.Failed("could not read snapshot #$snapshotId")
         val staged = when (val stage = stageBank(ctx, snapshot, emulatorId)) {
@@ -465,7 +490,7 @@ class SnapshotSyncEngine @Inject constructor(
         staged?.let {
             Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | bank of #${snapshot.id}: kept=${it.kept.size} written=${it.written} of ${it.size}")
         }
-        record(ctx, snapshot.id, snapshot.digest, save?.hashes())
+        record(ctx, snapshot.id, snapshot.digest, save?.hashes(), byChoice)
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
@@ -563,7 +588,7 @@ class SnapshotSyncEngine @Inject constructor(
         SaveHashes(content, identityHash.takeUnless { format == SaveCacheEntity.FORMAT_NATIVE } ?: content)
     }
 
-    private suspend fun record(ctx: ChannelView, snapshotId: Long, digest: String, save: SaveHashes?) {
+    private suspend fun record(ctx: ChannelView, snapshotId: Long, digest: String, save: SaveHashes?, byChoice: Boolean = false) {
         channelDao.upsert(
             SnapshotChannelEntity(
                 ownerUserId = ctx.ownerUserId,
@@ -575,6 +600,7 @@ class SnapshotSyncEngine @Inject constructor(
                 heldDigest = digest,
                 heldSaveHash = save?.contentHash,
                 heldSaveIdentityHash = save?.identityHash,
+                heldByChoice = byChoice,
                 updatedAt = System.currentTimeMillis()
             )
         )

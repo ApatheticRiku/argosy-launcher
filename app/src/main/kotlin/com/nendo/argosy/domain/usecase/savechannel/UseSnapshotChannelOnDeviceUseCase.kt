@@ -10,11 +10,6 @@ import com.nendo.argosy.data.sync.snapshot.SnapshotSyncResult
 import com.nendo.argosy.util.Logger
 import javax.inject.Inject
 
-/**
- * Makes a RomM channel the one a game syncs on this device. The save on disk is synced to the
- * channel it belonged to first, then the game switches channel, states included, and takes the
- * new channel's current.
- */
 class UseSnapshotChannelOnDeviceUseCase @Inject constructor(
     private val activeSaveRepository: ActiveSaveRepository,
     private val activateSaveChannel: ActivateSaveChannelUseCase,
@@ -25,7 +20,8 @@ class UseSnapshotChannelOnDeviceUseCase @Inject constructor(
         gameId: Long,
         emulatorId: String,
         romFileId: Long,
-        channel: RomMChannel
+        channel: RomMChannel,
+        snapshotId: Long? = null
     ): SnapshotActionResult {
         val previous = activeSaveRepository.getActiveChannel(gameId)
         when (val synced = engine.sync(gameId, emulatorId, previous)) {
@@ -35,10 +31,17 @@ class UseSnapshotChannelOnDeviceUseCase @Inject constructor(
             else -> Unit
         }
         val argosyChannel = channelService.argosyChannelOf(channel)
-        activateSaveChannel(gameId, argosyChannel)
-        channelService.rememberDeviceChannel(gameId, argosyChannel, channel.id, romFileId)
-        return when (val applied = engine.keepServer(gameId, emulatorId, argosyChannel)) {
-            is SnapshotSyncResult.Failed -> failed(gameId, "apply of ${channel.id}", applied.reason)
+        if (argosyChannel != previous) {
+            activateSaveChannel(gameId, argosyChannel)
+            channelService.rememberDeviceChannel(gameId, argosyChannel, channel.id, romFileId)
+        }
+        val applied = if (snapshotId != null) {
+            engine.restoreLocally(gameId, emulatorId, argosyChannel, snapshotId)
+        } else {
+            engine.keepServer(gameId, emulatorId, argosyChannel)
+        }
+        return when (applied) {
+            is SnapshotSyncResult.Failed -> failed(gameId, "apply of ${snapshotId ?: channel.id}", applied.reason)
             else -> SnapshotActionResult.Done
         }
     }

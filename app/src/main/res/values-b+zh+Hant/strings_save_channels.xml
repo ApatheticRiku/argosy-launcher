@@ -45,7 +45,6 @@
     <string name="save_channels_detail_state_slot_auto">自動</string>
     <string name="save_channels_detail_state_slot_numbered">第%1$s格</string>
     <string name="save_channels_detail_action_activate">啟用</string>
-    <string name="save_channels_detail_action_apply">套用</string>
     <string name="save_channels_detail_action_fork">分支</string>
     <string name="save_channels_detail_action_copy_over">複製到…</string>
     <string name="save_channels_detail_action_pin">釘選</string>
@@ -90,7 +89,6 @@
     <string name="save_channels_timeline_footer_channel">存檔槽</string>
     <string name="save_channels_timeline_notice_history_failed">無法載入較舊的存檔</string>
 
-    <string name="save_channels_notice_restored">已套用</string>
     <string name="save_channels_notice_forked">已建立分支</string>
     <string name="save_channels_notice_copied">已複製</string>
     <string name="save_channels_notice_made_snapshot">已建立快照</string>

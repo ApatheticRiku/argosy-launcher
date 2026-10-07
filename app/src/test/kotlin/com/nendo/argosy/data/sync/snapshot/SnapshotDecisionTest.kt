@@ -11,6 +11,36 @@ class SnapshotDecisionTest {
 
     private fun point(id: Long, save: SaveHashes?) = SnapshotPoint(id, save)
 
+    private fun chosen(id: Long, save: SaveHashes?) = SnapshotPoint(id, save, byChoice = true)
+
+    @Test
+    fun `a restored older snapshot with clean files is kept, not replaced by current`() {
+        assertEquals(SnapshotAction.Nothing, SnapshotDecision.decide(chosen(39, a), point(42, b), a))
+    }
+
+    @Test
+    fun `a restored older snapshot played on pushes over current with it as parent`() {
+        val c = SaveHashes("content-c", "identity-c")
+        assertEquals(
+            SnapshotAction.Push(expectedCurrentId = 42, parentSnapshotId = 39),
+            SnapshotDecision.decide(chosen(39, a), point(42, b), c)
+        )
+    }
+
+    @Test
+    fun `a restored snapshot newer than a stale current listing still pushes onto current with it as parent`() {
+        val c = SaveHashes("content-c", "identity-c")
+        assertEquals(
+            SnapshotAction.Push(expectedCurrentId = 39, parentSnapshotId = 42),
+            SnapshotDecision.decide(chosen(42, b), point(39, a), c)
+        )
+    }
+
+    @Test
+    fun `an older snapshot held without a choice still downloads current`() {
+        assertEquals(SnapshotAction.Download(42), SnapshotDecision.decide(point(39, a), point(42, b), a))
+    }
+
     @Test
     fun `holding current with clean files does nothing`() {
         assertEquals(SnapshotAction.Nothing, SnapshotDecision.decide(point(41, a), point(41, a), a))

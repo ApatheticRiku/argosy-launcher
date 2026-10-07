@@ -45,7 +45,6 @@
     <string name="save_channels_detail_state_slot_auto">Auto</string>
     <string name="save_channels_detail_state_slot_numbered">Emplacement %1$s</string>
     <string name="save_channels_detail_action_activate">Activer</string>
-    <string name="save_channels_detail_action_apply">Appliquer</string>
     <string name="save_channels_detail_action_fork">Dériver</string>
     <string name="save_channels_detail_action_copy_over">Copier vers…</string>
     <string name="save_channels_detail_action_pin">Épingler</string>
@@ -90,7 +89,6 @@
     <string name="save_channels_timeline_footer_channel">Canal</string>
     <string name="save_channels_timeline_notice_history_failed">Impossible de charger les sauvegardes plus anciennes</string>
 
-    <string name="save_channels_notice_restored">Appliqué</string>
     <string name="save_channels_notice_forked">Dérivé</string>
     <string name="save_channels_notice_copied">Copié</string>
     <string name="save_channels_notice_made_snapshot">Instantané créé</string>

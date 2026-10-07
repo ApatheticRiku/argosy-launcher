@@ -283,9 +283,7 @@ class SnapshotViewDelegate @Inject constructor(
             listOfNotNull(SnapshotDetailAction.MAKE_SNAPSHOT.takeIf { channel.isOwn })
         } else {
             buildList {
-                val isDeviceChannel = snapshot?.tile(channelId)?.isDeviceChannel == true
-                if (card.isCurrent && !isDeviceChannel) add(SnapshotDetailAction.ACTIVATE)
-                if (!card.isCurrent && canWrite) add(SnapshotDetailAction.APPLY)
+                if (card.snapshotId != null) add(SnapshotDetailAction.ACTIVATE)
                 if (runner.romFileIdFor(channel) != null) add(SnapshotDetailAction.FORK)
                 if (runner.copyTargets(channel).isNotEmpty()) add(SnapshotDetailAction.COPY_OVER)
                 if (canWrite) add(if (card.isPinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN)
@@ -310,11 +308,8 @@ class SnapshotViewDelegate @Inject constructor(
         val channel = runner.entryOf(detail.channelId)?.channel ?: return
         val snapshotId = detail.card.snapshotId
         when (detail.focusedAction ?: return) {
-            SnapshotDetailAction.ACTIVATE -> runner.useOnDevice(scope, detail.channelId, onSaveStatusChanged)
-            SnapshotDetailAction.APPLY -> {
-                val emulatorId = holder.state.value.emulatorId ?: return
-                runner.push(scope, SnapshotPush.Restore(channel, snapshotId ?: return, emulatorId))
-            }
+            SnapshotDetailAction.ACTIVATE ->
+                runner.useOnDevice(scope, detail.channelId, onSaveStatusChanged, snapshotId)
             SnapshotDetailAction.FORK -> holder.updateSnapshot {
                 it.copy(
                     labelEntry = SnapshotLabelEntryUi(

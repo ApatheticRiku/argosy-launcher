@@ -4,11 +4,11 @@ data class SaveHashes(val contentHash: String, val identityHash: String) {
     fun sameSaveAs(other: SaveHashes): Boolean = identityHash == other.identityHash
 }
 
-data class SnapshotPoint(val id: Long, val save: SaveHashes?)
+data class SnapshotPoint(val id: Long, val save: SaveHashes?, val byChoice: Boolean = false)
 
 sealed class SnapshotAction {
     data object Nothing : SnapshotAction()
-    data class Push(val expectedCurrentId: Long?) : SnapshotAction()
+    data class Push(val expectedCurrentId: Long?, val parentSnapshotId: Long? = null) : SnapshotAction()
     data class Download(val snapshotId: Long) : SnapshotAction()
     data class Adopt(val snapshotId: Long) : SnapshotAction()
     data class Conflict(val currentId: Long) : SnapshotAction()
@@ -18,6 +18,8 @@ sealed class SnapshotAction {
  * The spec's decide table for one channel: [held] is the snapshot this device last pushed or
  * applied, [current] the channel's current on the server, [local] the save on disk now. A missing
  * local save never reads as a change, so a cleared save folder is refilled, not pushed as empty.
+ * A held snapshot the user restored ([SnapshotPoint.byChoice]) is kept while clean and, once
+ * played on, pushed on top of current with that snapshot as its parent.
  */
 object SnapshotDecision {
     fun decide(held: SnapshotPoint?, current: SnapshotPoint?, local: SaveHashes?): SnapshotAction {
@@ -34,6 +36,7 @@ object SnapshotDecision {
         val dirty = local != null && (held.save == null || !local.sameSaveAs(held.save))
         return when {
             held.id == current.id -> if (dirty) SnapshotAction.Push(current.id) else SnapshotAction.Nothing
+            held.byChoice -> if (dirty) SnapshotAction.Push(current.id, parentSnapshotId = held.id) else SnapshotAction.Nothing
             dirty -> SnapshotAction.Conflict(current.id)
             else -> SnapshotAction.Download(current.id)
         }

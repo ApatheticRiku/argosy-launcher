@@ -28,8 +28,6 @@ internal fun SaveChannelStateHolder.updateSnapshot(transform: (SnapshotViewState
 }
 
 sealed class SnapshotPush(val done: NotificationText) {
-    class Restore(val channel: RomMChannel, val snapshotId: Long, val emulatorId: String) :
-        SnapshotPush(NotificationText.Res(R.string.save_channels_notice_restored))
     class Fork(val romFileId: Long, val snapshotId: Long, val label: String) :
         SnapshotPush(NotificationText.Res(R.string.save_channels_notice_forked))
     class CopyOver(val snapshotId: Long, val target: RomMChannel) :
@@ -170,13 +168,18 @@ class SnapshotActionRunner @Inject constructor(
         }
     }
 
-    fun useOnDevice(scope: CoroutineScope, channelId: String, onSaveStatusChanged: (SaveStatusEvent) -> Unit) {
+    fun useOnDevice(
+        scope: CoroutineScope,
+        channelId: String,
+        onSaveStatusChanged: (SaveStatusEvent) -> Unit,
+        snapshotId: Long? = null
+    ) {
         val channel = entryOf(channelId)?.channel ?: return
         val emulatorId = holder.state.value.emulatorId ?: return
         val romFileId = romFileIdFor(channel) ?: return
         if (!beginBusy()) return
         scope.launch {
-            val result = useChannelOnDevice(holder.currentGameId, emulatorId, romFileId, channel)
+            val result = useChannelOnDevice(holder.currentGameId, emulatorId, romFileId, channel, snapshotId)
             if (result == SnapshotActionResult.Done) {
                 val argosyChannel = service.argosyChannelOf(channel)
                 holder.state.update { it.copy(activeChannel = argosyChannel) }
@@ -208,8 +211,6 @@ class SnapshotActionRunner @Inject constructor(
 
     private suspend fun execute(push: SnapshotPush, approve: Boolean): SnapshotActionResult =
         when (push) {
-            is SnapshotPush.Restore ->
-                service.restoreAsCurrent(holder.currentGameId, push.emulatorId, push.channel, push.snapshotId, approve)
             is SnapshotPush.Fork -> service.fork(push.romFileId, push.snapshotId, push.label, approve)
             is SnapshotPush.CopyOver -> service.copyOver(push.snapshotId, push.target, approve)
             is SnapshotPush.MakeSnapshot -> service.makeSnapshot(push.channel, push.saveId, approve)

@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -322,7 +321,6 @@ private fun ActivateButton(isFocused: Boolean, onClick: () -> Unit, modifier: Mo
 private val SnapshotDetailAction.icon: ImageVector
     get() = when (this) {
         SnapshotDetailAction.ACTIVATE -> Icons.Filled.PlayArrow
-        SnapshotDetailAction.APPLY -> Icons.Filled.Restore
         SnapshotDetailAction.FORK -> Icons.AutoMirrored.Filled.CallSplit
         SnapshotDetailAction.COPY_OVER -> Icons.Filled.ContentCopy
         SnapshotDetailAction.PIN -> Icons.Filled.PushPin
@@ -334,7 +332,6 @@ private val SnapshotDetailAction.icon: ImageVector
 private fun SnapshotDetailAction.label(): String = stringResource(
     when (this) {
         SnapshotDetailAction.ACTIVATE -> R.string.save_channels_detail_action_activate
-        SnapshotDetailAction.APPLY -> R.string.save_channels_detail_action_apply
         SnapshotDetailAction.FORK -> R.string.save_channels_detail_action_fork
         SnapshotDetailAction.COPY_OVER -> R.string.save_channels_detail_action_copy_over
         SnapshotDetailAction.PIN -> R.string.save_channels_detail_action_pin

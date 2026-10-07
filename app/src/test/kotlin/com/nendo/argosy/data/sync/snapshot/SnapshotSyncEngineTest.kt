@@ -506,6 +506,24 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
+    fun `progress on a restored older snapshot pushes over current naming it as parent`() = runBlocking {
+        stubNativeSave(ByteArray(8))
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(
+            3L, GAME_ID, "default", CHANNEL, FILE_ID, 39, "d", "content-a", "content-a", 0, heldByChoice = true
+        )
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(43, "disk-hash")).toResponseBody())
+
+        assertEquals(SnapshotSyncResult.Pushed(43), engine.sync(GAME_ID, EMULATOR, null))
+        val manifest = manifestOf(parts.captured)
+        assertEquals(42L, manifest.getLong("expected_current_id"))
+        assertEquals(39L, manifest.getLong("parent_snapshot_id"))
+        assertTrue("the new tip is held normally", !stored.captured.heldByChoice)
+    }
+
+    @Test
     fun `a named Argosy channel syncs as the spec channel with its label`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "Speedrun") } returns null
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "other")))

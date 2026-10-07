@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 
 @Entity(
@@ -16,5 +17,7 @@ data class SnapshotChannelEntity(
     val heldDigest: String? = null,
     val heldSaveHash: String? = null,
     val heldSaveIdentityHash: String? = null,
-    val updatedAt: Long
+    val updatedAt: Long,
+    @ColumnInfo(defaultValue = "0")
+    val heldByChoice: Boolean = false
 )

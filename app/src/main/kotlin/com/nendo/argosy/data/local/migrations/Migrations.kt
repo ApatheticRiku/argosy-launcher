@@ -4026,6 +4026,12 @@ object Migration_205_206 : Migration(205, 206) {
     }
 }
 
+object Migration_206_207 : Migration(206, 207) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `snapshot_channels` ADD COLUMN `heldByChoice` INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
 object Migration_203_204 : Migration(203, 204) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

@@ -105,10 +105,8 @@
     <string name="save_channels_detail_state_slot_auto">Auto</string>
     <!-- Numbered save state slot. %1$s is the slot number. -->
     <string name="save_channels_detail_state_slot_numbered">Slot %1$s</string>
-    <!-- Detail action on a channel's current save: play this channel on this device. Verb. -->
+    <!-- Detail action on any snapshot: play from this save and its states on this device. The server is not changed until the next save. Verb. -->
     <string name="save_channels_detail_action_activate">Activate</string>
-    <!-- Detail action: make this older snapshot the channel's current save. Verb. -->
-    <string name="save_channels_detail_action_apply">Apply</string>
     <!-- Detail action: start a new channel from this snapshot. Verb. -->
     <string name="save_channels_detail_action_fork">Fork</string>
     <!-- Detail action: put this snapshot on top of another of the user's channels. -->
@@ -203,7 +201,6 @@
 
     <!-- ============================ Notices ============================ -->
 
-    <string name="save_channels_notice_restored">Applied</string>
     <string name="save_channels_notice_forked">Forked</string>
     <string name="save_channels_notice_copied">Copied</string>
     <string name="save_channels_notice_made_snapshot">Snapshot made</string>

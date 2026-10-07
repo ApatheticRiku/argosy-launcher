@@ -106,20 +106,6 @@ class SnapshotChannelService @Inject constructor(
             ?.takeIf { it.isSuccessful }?.body()
     }
 
-    suspend fun restoreAsCurrent(
-        gameId: Long,
-        emulatorId: String,
-        channel: RomMChannel,
-        snapshotId: Long,
-        approveHardcoreDowngrade: Boolean = false
-    ): SnapshotActionResult {
-        val result = push(intoChannel(channel).put(PARENT_KEY, snapshotId), approveHardcoreDowngrade)
-        if (result == SnapshotActionResult.Done && isDeviceChannel(gameId, channel)) {
-            engine.keepServer(gameId, emulatorId, argosyChannelOf(channel))
-        }
-        return result
-    }
-
     suspend fun fork(
         romFileId: Long,
         snapshotId: Long,
@@ -233,12 +219,6 @@ class SnapshotChannelService @Inject constructor(
             ?.let { return it.channelId }
         return channels.filter { it.isOwn && it.label.equals(label, ignoreCase = true) }
             .maxByOrNull { it.current?.createdAt.orEmpty() }?.id
-    }
-
-    private suspend fun isDeviceChannel(gameId: Long, channel: RomMChannel): Boolean {
-        val label = SnapshotChannels.labelOf(activeSaveRepository.getActiveChannel(gameId))
-        val stored = channelDao.get(ownerUserId(), gameId, label)
-        return stored?.channelId == channel.id || (stored == null && channel.label.equals(label, ignoreCase = true))
     }
 
     private suspend fun ownerUserId(): Long = syncPreferencesRepository.getRommUserId() ?: SigilSyncStateEntity.NO_OWNER
