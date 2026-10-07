@@ -221,6 +221,7 @@ class HomeViewModel @Inject constructor(
     )
 
     private var storedTiles: List<com.nendo.argosy.domain.model.HomeTile> = emptyList()
+    private var storedTilesLoaded = false
     private var tileMediaShown: Boolean = false
 
     private var achievementPrefetchJob: Job? = null
@@ -388,6 +389,7 @@ class HomeViewModel @Inject constructor(
     private fun applyTileMediaVisibility(signedIn: Boolean) {
         if (signedIn == tileMediaShown) return
         tileMediaShown = signedIn
+        if (!storedTilesLoaded) return
         viewModelScope.launch { publishHomeTiles(storedTiles) }
     }
 
@@ -1111,6 +1113,7 @@ class HomeViewModel @Inject constructor(
                 .flatMapLatest { kind -> homeTileRepository.observeTiles(owner, kind) }
                 .collect { tiles ->
                     storedTiles = tiles
+                    storedTilesLoaded = true
                     publishHomeTiles(tiles)
                 }
         }
