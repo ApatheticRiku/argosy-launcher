@@ -27,6 +27,9 @@ class DualScreenManagerRoleSwapTest {
     private lateinit var preferencesRepository:
         com.nendo.argosy.data.preferences.UserPreferencesRepository
     private lateinit var manager: DualScreenManager
+    private lateinit var appContext: android.content.Context
+    private lateinit var hostContext: android.content.Context
+    private var keyguardLocked = false
 
     @Before
     fun setup() {
@@ -34,6 +37,13 @@ class DualScreenManagerRoleSwapTest {
         sessionStateStore = mockk(relaxed = true)
         preferencesRepository = mockk(relaxed = true)
         every { sessionStateStore.hasActiveSession() } returns false
+        appContext = mockk(relaxed = true) {
+            every { getSystemService(android.app.KeyguardManager::class.java) } returns
+                mockk { every { isKeyguardLocked } answers { keyguardLocked } }
+        }
+        hostContext = mockk(relaxed = true) {
+            every { applicationContext } returns appContext
+        }
         manager = newManager()
     }
 
@@ -165,6 +175,109 @@ class DualScreenManagerRoleSwapTest {
         assertEquals(null, manager.emulatorDisplayId)
     }
 
+    @Test
+    fun `locking during delayed emulator recovery prevents focus until a new unlocked recovery`() {
+        io.mockk.mockkObject(com.nendo.argosy.hardware.FocusDirectorActivity.Companion)
+        every {
+            com.nendo.argosy.hardware.FocusDirectorActivity.launchOnDisplay(any(), any())
+        } returns Unit
+        every { sessionStateStore.hasActiveSession() } returns true
+        manager.emulatorDisplayId = PRESENTATION_DISPLAY
+        manager.restoreEmulatorFocus()
+        testScope.testScheduler.runCurrent()
+        testScope.testScheduler.advanceTimeBy(100)
+
+        keyguardLocked = true
+        testScope.testScheduler.advanceUntilIdle()
+
+        verify(exactly = 0) {
+            com.nendo.argosy.hardware.FocusDirectorActivity.launchOnDisplay(any(), any())
+        }
+        keyguardLocked = false
+        manager.restoreEmulatorFocus()
+        testScope.testScheduler.advanceUntilIdle()
+
+        verify(exactly = 1) {
+            com.nendo.argosy.hardware.FocusDirectorActivity.launchOnDisplay(appContext, PRESENTATION_DISPLAY)
+        }
+    }
+
+    @Test
+    fun `locking during delayed companion recovery suppresses launch and unlock retries it`() {
+        val receiver = companionRecoveryReceiver()
+        keyguardLocked = false
+        manager.ensureCompanionLaunched()
+        testScope.testScheduler.runCurrent()
+        testScope.testScheduler.advanceTimeBy(250)
+        keyguardLocked = true
+        testScope.testScheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { hostContext.startActivity(any(), any<android.os.Bundle>()) }
+
+        keyguardLocked = false
+        receiver.onReceive(appContext, userPresentIntent())
+        testScope.testScheduler.runCurrent()
+        testScope.testScheduler.advanceTimeBy(500)
+        testScope.testScheduler.runCurrent()
+
+        verify(exactly = 1) { hostContext.startActivity(any(), any<android.os.Bundle>()) }
+        manager.unregisterReceivers()
+    }
+
+    @Test
+    fun `unlock recovery does not displace a foreign app on the second screen`() {
+        val receiver = companionRecoveryReceiver()
+        every { sessionStateStore.isForeignAppOnSecondary() } returns true
+        keyguardLocked = false
+
+        receiver.onReceive(appContext, userPresentIntent())
+        testScope.testScheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { hostContext.startActivity(any(), any<android.os.Bundle>()) }
+        manager.unregisterReceivers()
+    }
+
+    @Test
+    fun `unlock recovery does not displace an active session outside the launcher`() {
+        val receiver = companionRecoveryReceiver()
+        every { sessionStateStore.hasActiveSession() } returns true
+        every { sessionStateStore.isArgosyForeground() } returns false
+        keyguardLocked = false
+
+        receiver.onReceive(appContext, userPresentIntent())
+        testScope.testScheduler.advanceUntilIdle()
+
+        verify(exactly = 0) { hostContext.startActivity(any(), any<android.os.Bundle>()) }
+        manager.unregisterReceivers()
+    }
+
+    private fun companionRecoveryReceiver(): android.content.BroadcastReceiver {
+        io.mockk.mockkStatic(androidx.core.content.ContextCompat::class)
+        val receiver = slot<android.content.BroadcastReceiver>()
+        every {
+            androidx.core.content.ContextCompat.registerReceiver(
+                appContext, capture(receiver), any(), androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED
+            )
+        } returns null
+        io.mockk.mockkObject(com.nendo.argosy.hardware.CompanionGuardService.Companion)
+        every { com.nendo.argosy.hardware.CompanionGuardService.start(any()) } returns Unit
+        manager = newManager(
+            displayAffinityHelper = mockk(relaxed = true) {
+                every { isDockedDark } returns false
+                every { hasSecondaryDisplay } returns true
+                every { getCompanionLaunchOptions() } returns mockk(relaxed = true)
+            }
+        )
+        keyguardLocked = true
+        manager.registerReceivers()
+        testScope.testScheduler.runCurrent()
+        return receiver.captured
+    }
+
+    private fun userPresentIntent(): android.content.Intent = mockk {
+        every { action } returns android.content.Intent.ACTION_USER_PRESENT
+    }
+
     private fun liveSwapReady(mover: FakeGameWindowMover): DualScreenManager.LiveMoveHost {
         io.mockk.mockkObject(com.nendo.argosy.hardware.FocusDirectorActivity.Companion)
         every {
@@ -214,12 +327,7 @@ class DualScreenManagerRoleSwapTest {
             mockk(relaxed = true) { every { getRoleDisplayIds(any()) } returns null },
         gameWindowMover: com.nendo.argosy.hardware.GameWindowMover = FakeGameWindowMover(arrives = false)
     ): DualScreenManager = DualScreenManager(
-        context = mockk(relaxed = true) {
-            every { applicationContext } returns mockk(relaxed = true) {
-                every { getSystemService(android.app.KeyguardManager::class.java) } returns
-                    mockk { every { isKeyguardLocked } returns false }
-            }
-        },
+        context = hostContext,
         scope = testScope,
         gameDao = mockk(relaxed = true),
         gameRepository = mockk(relaxed = true),

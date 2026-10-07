@@ -616,13 +616,11 @@ fun HomeScreen(
                             videoId = videoId,
                             muted = uiState.muteVideoPreview,
                             onReady = {
-                                val current = viewModel.uiState.value
-                                if (!currentPreviewBlocked && current.isVideoPreviewLoading &&
-                                    current.videoPreviewId == videoId &&
+                                viewModel.activateVideoPreview(
+                                    videoId,
+                                    currentPreviewBlocked,
                                     lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-                                ) {
-                                    viewModel.activateVideoPreview()
-                                }
+                                )
                             },
                             onError = {
                                 if (viewModel.uiState.value.videoPreviewId == videoId) {
