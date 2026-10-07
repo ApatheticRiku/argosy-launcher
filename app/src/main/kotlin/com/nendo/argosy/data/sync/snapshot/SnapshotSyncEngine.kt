@@ -558,7 +558,9 @@ class SnapshotSyncEngine @Inject constructor(
         }.getOrElse { temp.delete(); false }
     }
 
-    private fun RomMSnapshotSave.hashes(): SaveHashes? = contentHash?.let { SaveHashes(it, identityHash ?: it) }
+    private fun RomMSnapshotSave.hashes(): SaveHashes? = contentHash?.let { content ->
+        SaveHashes(content, identityHash.takeUnless { format == SaveCacheEntity.FORMAT_NATIVE } ?: content)
+    }
 
     private suspend fun record(ctx: ChannelView, snapshotId: Long, digest: String, save: SaveHashes?) {
         channelDao.upsert(

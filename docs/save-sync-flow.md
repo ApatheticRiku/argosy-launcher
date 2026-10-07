@@ -220,6 +220,9 @@ in below and listed at the end.
   cached and uploaded (raw bytes for a single file, the zip entry-list hash otherwise, per the
   Sigil wire contract), and an identity hash used for "did progress change" comparisons (ignores
   RTC ticks via the Sigil unit identity, and the hardcore trailer).
+- A native snapshot save compares by content hash on both sides. The server's `identity_hash` for a
+  zip with one non-clock member is that member's own md5, while Argosy's native units carry no
+  clock member, so content equality is the exact test and identity would never match.
 - Zip entry names are canonical, not on-disk names: GameCube entries are named from the GCI
   header, cross-fork size sidecars are excluded.
 - Every archive entering the cache (session end, download, legacy server shapes such as

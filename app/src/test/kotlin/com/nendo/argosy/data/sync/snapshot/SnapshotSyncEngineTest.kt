@@ -490,6 +490,22 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
+    fun `a native save matching current by content is adopted, whatever the server's identity hash`() = runBlocking {
+        stubNativeSave(ByteArray(8))
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        val current = snapshot(41, null).copy(
+            save = RomMSnapshotSave(410, contentHash = "disk-hash", identityHash = "single-entry-hash", format = "native")
+        )
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(current))
+        coEvery { api.reportSnapshotHeld(41, DEVICE) } returns Response.success(Unit)
+
+        val result = engine.sync(GAME_ID, EMULATOR, null)
+
+        assertTrue("adopted, not a conflict: $result", result !is SnapshotSyncResult.Conflict)
+        assertEquals("disk-hash", stored.captured.heldSaveIdentityHash)
+    }
+
+    @Test
     fun `a named Argosy channel syncs as the spec channel with its label`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "Speedrun") } returns null
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "other")))
