@@ -94,6 +94,21 @@ class LaunchProgressTrackerTest {
     }
 
     @Test
+    fun `a cancelled launch that never finishes holds the next one for a bounded time`() = runTest {
+        val tracker = tracker()
+        tracker.begin("Stuck")!!
+        tracker.cancel()
+
+        val next = async { tracker.begin("Second") }
+        advanceTimeBy(14_000)
+        assertFalse(next.isCompleted)
+        advanceTimeBy(2_000)
+
+        assertEquals("Second", next.await()?.gameTitle)
+        assertEquals("Second", tracker.current?.gameTitle)
+    }
+
+    @Test
     fun `a launch cancelled while it waits never starts, and the next one does not wait on it`() = runTest {
         val tracker = tracker()
         val first = tracker.begin("First")!!
