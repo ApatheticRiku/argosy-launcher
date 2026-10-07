@@ -151,7 +151,8 @@ class SigilSaveHandler @Inject constructor(
             "dreamcast" to setOf("flycast"),
             "gb" to GB_CORES,
             "gbc" to GB_CORES,
-            "n64" to setOf("mupen64plus_next", "parallel_n64")
+            "n64" to setOf("mupen64plus_next", "parallel_n64"),
+            "wii" to setOf("dolphin")
         )
 
         private val LIBRETRO_LAYOUT_ALIASES: Map<String, String> = mapOf(
