@@ -893,10 +893,17 @@ class SecondaryHomeActivity :
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) window.hideSystemBars()
+        if (!::dsm.isInitialized) return
+        if (hasFocus) {
+            dsm.ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
+        } else {
+            dsm.ambientAudioManager.onLauncherWindowUnfocused(AUDIO_FOCUS_WINDOW)
+        }
     }
 }
 
 private const val CONFIRM_HOLD_MS = 500L
+private const val AUDIO_FOCUS_WINDOW = "companion"
 private const val HAND_BACK_THROTTLE_MS = 1500L
 
 /**

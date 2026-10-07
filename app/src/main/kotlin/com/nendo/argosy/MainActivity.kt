@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "MainActivity"
+private const val AUDIO_FOCUS_WINDOW = "main"
 private val LAUNCH_EXTRA_KEYS = listOf("path", "romm_id", "game_id", "channel")
 internal fun shouldInitializeScreenCapture(prefs: UserPreferences): Boolean =
     prefs.ambientLedEnabled && prefs.ambientLedScreenEnabled
@@ -650,6 +651,7 @@ class MainActivity : ComponentActivity() {
             }
             window.hideSystemBars()
             window.decorView.requestFocus()
+            ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
             ambientAudioManager.fadeIn()
             ambientLedManager.setContext(AmbientLedContext.ARGOSY_UI)
             ambientLedManager.clearInGameColors()
@@ -663,7 +665,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 yieldedFocusToGame = true
             }
-            if (!ambientAudioManager.keepsPlayingAsleep()) ambientAudioManager.fadeOut()
+            ambientAudioManager.onLauncherWindowUnfocused(AUDIO_FOCUS_WINDOW)
             ambientLedManager.setContext(AmbientLedContext.IN_GAME)
             if (::dualScreenManager.isInitialized) {
                 val emulatorDisplay = dualScreenManager.emulatorDisplayId

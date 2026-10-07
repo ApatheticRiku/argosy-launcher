@@ -19,6 +19,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,6 +33,7 @@ import kotlin.math.pow
 import kotlin.math.roundToInt
 
 private const val TAG = "AmbientAudio"
+private const val LAUNCHER_FOCUS_HANDOFF_MS = 300L
 private const val TARGET_LOUDNESS_DB = -14.0
 private const val GAIN_MIN_DB = -12.0
 private const val GAIN_MAX_DB = 10.0
@@ -193,6 +195,29 @@ class AmbientAudioManager @Inject constructor(
 
     fun keepsPlayingAsleep(): Boolean =
         playInBackground && context.getSystemService(PowerManager::class.java)?.isInteractive == false
+
+    private val focusedLauncherWindows = mutableSetOf<String>()
+    private var focusLossFade: Job? = null
+
+    fun onLauncherWindowFocused(window: String) {
+        focusedLauncherWindows += window
+        focusLossFade?.cancel()
+        focusLossFade = null
+    }
+
+    /**
+     * Fades the music once no launcher window holds focus, after a short wait so focus moving
+     * between the launcher's own screens never silences it.
+     */
+    fun onLauncherWindowUnfocused(window: String) {
+        focusedLauncherWindows -= window
+        if (focusedLauncherWindows.isNotEmpty()) return
+        focusLossFade?.cancel()
+        focusLossFade = scope.launch {
+            delay(LAUNCHER_FOCUS_HANDOFF_MS)
+            if (focusedLauncherWindows.isEmpty() && !keepsPlayingAsleep()) fadeOut()
+        }
+    }
 
     /**
      * Supplies the launcher playlist and the refresh that re-expands it at each full loop. The
