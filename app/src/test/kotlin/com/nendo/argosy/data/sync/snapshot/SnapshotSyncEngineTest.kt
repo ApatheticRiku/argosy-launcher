@@ -62,6 +62,7 @@ class SnapshotSyncEngineTest {
     )
     private val local = SigilCollect.Found(byteArrayOf(1, 2, 3), "backup.ram", "content-a", "identity-a")
     private val stored = slot<SnapshotChannelEntity>()
+    private val activeSaves = mockk<com.nendo.argosy.data.repository.ActiveSaveRepository>(relaxed = true)
 
     private lateinit var engine: SnapshotSyncEngine
 
@@ -102,7 +103,8 @@ class SnapshotSyncEngineTest {
             saveScreenshots = screenshots,
             builtinCoreResolver = coreResolver,
             statePaths = statePaths,
-            emulatorStamper = stamper
+            emulatorStamper = stamper,
+            activeSaveRepository = activeSaves
         )
         coEvery { stamper.stampFor(any(), any()) } returns SnapshotEmulatorStamp("libretro", null, "genesis_plus_gx", "2026-09-30")
         coEvery { coreResolver.resolveCoreId(any(), any(), any()) } returns null
@@ -552,6 +554,24 @@ class SnapshotSyncEngineTest {
         assertEquals(SnapshotSyncResult.Applied(42), engine.sync(GAME_ID, EMULATOR, null))
         assertEquals(42L, stored.captured.heldSnapshotId)
         coVerify { api.reportSnapshotHeld(42, DEVICE) }
+    }
+
+    @Test
+    fun `the cache row holding an applied snapshot's save becomes the active save`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
+        coEvery { api.getSnapshot(42) } returns Response.success(snapshot(42, "theirs"))
+        coEvery {
+            downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
+        } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
+        coEvery { api.reportSnapshotHeld(42, DEVICE) } returns Response.success(Unit)
+        val older = mockk<SaveCacheEntity>(relaxed = true) { every { id } returns 326L; every { rommSaveId } returns null }
+        val placed = mockk<SaveCacheEntity>(relaxed = true) { every { id } returns 328L; every { rommSaveId } returns 420L }
+        coEvery { saveCacheDao.getByGameAndOwner(GAME_ID, 3L) } returns listOf(older, placed)
+
+        engine.sync(GAME_ID, EMULATOR, null)
+
+        coVerify { activeSaves.activateCache(GAME_ID, 328L) }
     }
 
     @Test

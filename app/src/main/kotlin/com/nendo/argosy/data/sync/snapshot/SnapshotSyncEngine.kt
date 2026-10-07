@@ -93,7 +93,8 @@ class SnapshotSyncEngine @Inject constructor(
     private val saveScreenshots: com.nendo.argosy.hardware.SaveScreenshotCapture,
     private val builtinCoreResolver: com.nendo.argosy.data.emulator.BuiltinCoreResolver,
     private val statePaths: com.nendo.argosy.data.emulator.LibretroStatePathResolver,
-    private val emulatorStamper: SnapshotEmulatorStamper
+    private val emulatorStamper: SnapshotEmulatorStamper,
+    private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
 ) {
     private val locks = ConcurrentHashMap<Long, Mutex>()
 
@@ -490,10 +491,22 @@ class SnapshotSyncEngine @Inject constructor(
         staged?.let {
             Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | bank of #${snapshot.id}: kept=${it.kept.size} written=${it.written} of ${it.size}")
         }
+        save?.let { activatePlacedSave(ctx, it.id) }
         record(ctx, snapshot.id, snapshot.digest, save?.hashes(), byChoice)
         report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
+    }
+
+    private suspend fun activatePlacedSave(ctx: ChannelView, serverSaveId: Long) {
+        val owner = syncPreferencesRepository.getRommUserId()
+        val row = saveCacheDao.getByGameAndOwner(ctx.game.id, owner).firstOrNull { it.rommSaveId == serverSaveId }
+        if (row == null) {
+            Logger.warn(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | no cache row holds save $serverSaveId to make active")
+            return
+        }
+        val activated = activeSaveRepository.activateCache(ctx.game.id, row.id)
+        Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | active cache id=${row.id} for save $serverSaveId (ok=$activated)")
     }
 
     private fun liveBaseName(game: GameEntity): String? =

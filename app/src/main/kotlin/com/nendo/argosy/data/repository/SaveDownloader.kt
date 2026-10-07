@@ -364,7 +364,7 @@ class SaveDownloader @Inject constructor(
                             lastSyncDeviceName = serverSave.originDeviceName() ?: currentDeviceSync?.deviceName ?: syncEntity.lastSyncDeviceName
                         )
                     )
-                    if (serverTimestamp != null && cachedMatch.cachedAt != serverTimestamp) {
+                    if (!fromSnapshot && serverTimestamp != null && cachedMatch.cachedAt != serverTimestamp) {
                         saveCacheDao.updateCachedAt(cachedMatch.id, serverTimestamp)
                     }
                     activeSaveRepository.activateCache(gameId, cachedMatch.id)
@@ -781,7 +781,7 @@ class SaveDownloader @Inject constructor(
                     precomputedContentHash = serverSave.contentHash
                 )
                 if (cacheResult is SaveCacheManager.CacheResult.Created) {
-                    if (serverTimestamp != null && cacheResult.cacheId > 0L) {
+                    if (!fromSnapshot && serverTimestamp != null && cacheResult.cacheId > 0L) {
                         saveCacheDao.updateCachedAt(cacheResult.cacheId, serverTimestamp)
                     }
                     if (cacheResult.cacheId > 0L) {
