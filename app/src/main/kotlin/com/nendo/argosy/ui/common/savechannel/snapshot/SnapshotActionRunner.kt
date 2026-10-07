@@ -61,8 +61,25 @@ class SnapshotActionRunner @Inject constructor(
         holder.snapshotHistories.value = emptyMap()
         holder.snapshotLibrary.value = null
         pending = null
+        focusDeviceChannel = true
         holder.state.update { it.copy(snapshot = SnapshotViewState()) }
-        scope.launch { reload() }
+        scope.launch {
+            service.cached(holder.currentGameId)?.let(::show)
+            reload()
+        }
+    }
+
+    private var focusDeviceChannel = false
+
+    private fun show(library: com.nendo.argosy.data.sync.snapshot.SnapshotLibrary) {
+        holder.snapshotLibrary.value = library
+        holder.updateSnapshot { state ->
+            val applied = mapper.applyLibrary(state, library)
+            if (!focusDeviceChannel) return@updateSnapshot applied
+            val index = applied.mine.indexOfFirst { it.channelId == library.deviceChannelId }
+            if (index < 0) applied else applied.copy(stop = SnapshotStop.MineTiles, mineIndex = index)
+        }
+        if (library.deviceChannelId != null) focusDeviceChannel = false
     }
 
     fun clear() {
@@ -264,9 +281,7 @@ class SnapshotActionRunner @Inject constructor(
             }
             return
         }
-        holder.snapshotHistories.value = emptyMap()
-        holder.snapshotLibrary.value = library
-        holder.updateSnapshot { mapper.applyLibrary(it, library) }
+        show(library)
         holder.state.value.snapshot?.expanded?.let { fetchHistory(it.channelId, more = false) }
     }
 

@@ -45,7 +45,8 @@ class SnapshotChannelServiceTest {
             engine = mockk(relaxed = true),
             pusher = SnapshotPusher(moshi),
             fileResolver = SnapshotFileResolver(),
-            saveScreenshots = screenshots
+            saveScreenshots = screenshots,
+            libraryCache = mockk(relaxed = true)
         )
     }
 

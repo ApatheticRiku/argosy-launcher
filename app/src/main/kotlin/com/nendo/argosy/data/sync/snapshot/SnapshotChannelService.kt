@@ -16,6 +16,7 @@ import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncApiClient
 import com.nendo.argosy.hardware.SaveScreenshotCapture
 import com.nendo.argosy.util.Logger
+import com.squareup.moshi.JsonClass
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,8 +24,10 @@ import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
+@JsonClass(generateAdapter = true)
 data class SnapshotChannelEntry(val channel: RomMChannel, val olderClientSaves: List<RomMSave>)
 
+@JsonClass(generateAdapter = true)
 data class SnapshotLibrary(
     val romFileId: Long,
     val mine: List<SnapshotChannelEntry>,
@@ -73,9 +76,16 @@ class SnapshotChannelService @Inject constructor(
     private val engine: SnapshotSyncEngine,
     private val pusher: SnapshotPusher,
     private val fileResolver: SnapshotFileResolver,
-    private val saveScreenshots: SaveScreenshotCapture
+    private val saveScreenshots: SaveScreenshotCapture,
+    private val libraryCache: SnapshotLibraryCache
 ) {
     suspend fun isAvailable(gameId: Long): Boolean = engine.isEligible(gameId)
+
+    suspend fun cached(gameId: Long): SnapshotLibrary? {
+        val library = libraryCache.get(ownerUserId(), gameId) ?: return null
+        val channels = (library.mine + library.community).map { it.channel }
+        return library.copy(deviceChannelId = deviceChannelId(gameId, library.romFileId, channels))
+    }
 
     suspend fun load(gameId: Long): SnapshotLibrary? = withContext(Dispatchers.IO) {
         val api = apiClient.get().getApi() ?: return@withContext null
@@ -97,7 +107,7 @@ class SnapshotChannelService @Inject constructor(
             community = channels.filter { !it.isOwn }.map { SnapshotChannelEntry(it, emptyList()) },
             backups = ownSaves.filter { it.channelId == null }.sortedByDescending { it.updatedAt },
             deviceChannelId = deviceChannelId(gameId, file.id, channels)
-        )
+        ).also { libraryCache.put(ownerUserId(), gameId, it) }
     }
 
     suspend fun history(channelId: String, before: Long?): List<RomMSnapshot>? = withContext(Dispatchers.IO) {
