@@ -418,10 +418,14 @@ data class RomMRARefreshRequest(
 @JsonClass(generateAdapter = true)
 data class RomMHeartbeatResponse(
     @Json(name = "SYSTEM") val system: RomMSystem? = null,
-    @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null
+    @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null,
+    @Json(name = "SAVE_SYNC") val saveSync: RomMSaveSyncFeatures? = null
 ) {
     val version: String?
         get() = system?.version
+
+    val snapshotsEnabled: Boolean
+        get() = saveSync?.snapshots == true
 
     val libretroApiEnabled: Boolean?
         get() = metadataSources?.libretroApiEnabled
@@ -458,6 +462,11 @@ data class RomMCoverResource(
 data class RomMSystem(
     @Json(name = "VERSION") val version: String? = null,
     @Json(name = "SHOW_SETUP_WIZARD") val showSetupWizard: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMSaveSyncFeatures(
+    @Json(name = "SNAPSHOTS") val snapshots: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

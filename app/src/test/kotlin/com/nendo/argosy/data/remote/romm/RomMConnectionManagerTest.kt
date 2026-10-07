@@ -33,7 +33,8 @@ class RomMConnectionManagerTest {
         serverVersion: String = "5.4.0",
         stored: UserPreferences = UserPreferences(),
         reachable: Boolean = true,
-        rememberedSnapshots: Boolean? = null
+        rememberedSnapshots: Boolean? = null,
+        snapshots: Boolean = false
     ): RomMConnectionManager {
         every { preferences.preferences } returns flowOf(stored)
         coEvery { preferences.getRommSnapshotSupport(any()) } returns null
@@ -45,7 +46,12 @@ class RomMConnectionManagerTest {
             heartbeats.incrementAndGet()
             delay(HEARTBEAT_DELAY_MS)
             if (!reachable) throw java.io.IOException("unreachable")
-            Response.success(RomMHeartbeatResponse(system = RomMSystem(version = serverVersion)))
+            Response.success(
+                RomMHeartbeatResponse(
+                    system = RomMSystem(version = serverVersion),
+                    saveSync = RomMSaveSyncFeatures(snapshots = snapshots)
+                )
+            )
         }
         coEvery { api.getCurrentUser() } returns Response.success(
             RomMUser(id = 1L, username = "player", enabled = true, role = "admin")
@@ -129,7 +135,7 @@ class RomMConnectionManagerTest {
 
     @Test
     fun `connecting remembers whether the server supports snapshots`() = runBlocking {
-        val manager = manager(serverVersion = "5.5.0", stored = storedAccount())
+        val manager = manager(stored = storedAccount(), snapshots = true)
 
         manager.initialize()
 
@@ -158,7 +164,7 @@ class RomMConnectionManagerTest {
 
     @Test
     fun `connected, the live server decides over the remembered value`() = runBlocking {
-        val manager = manager(serverVersion = "5.4.0", stored = storedAccount(), rememberedSnapshots = true)
+        val manager = manager(serverVersion = "5.5.0", stored = storedAccount(), rememberedSnapshots = true)
 
         manager.initialize()
 

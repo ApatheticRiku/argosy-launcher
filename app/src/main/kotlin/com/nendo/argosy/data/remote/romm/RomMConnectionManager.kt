@@ -500,7 +500,9 @@ class RomMConnectionManager @Inject constructor(
             biosRepository.setApi(api)
             val body = response.body()
             val version = body?.version ?: "unknown"
-            val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
+            val capabilities = RomMCapabilities.from(
+                version, body?.libretroApiEnabled, body?.steamGridDbEnabled, body?.snapshotsEnabled == true
+            )
             _connectionState.value = ConnectionState.Connected(version, capabilities)
             saveSyncRepository.get().setCapabilities(capabilities)
             rememberSnapshots(normalizedUrl, capabilities)
@@ -707,7 +709,12 @@ class RomMConnectionManager @Inject constructor(
         val newApi = createApi(base, body.accessToken)
         val heartbeat = try { newApi.heartbeat() } catch (_: Exception) { null }
         val version = heartbeat?.body()?.version ?: "unknown"
-        val capabilities = RomMCapabilities.from(version, heartbeat?.body()?.libretroApiEnabled, heartbeat?.body()?.steamGridDbEnabled)
+        val capabilities = RomMCapabilities.from(
+            version,
+            heartbeat?.body()?.libretroApiEnabled,
+            heartbeat?.body()?.steamGridDbEnabled,
+            heartbeat?.body()?.snapshotsEnabled == true
+        )
 
         persistRommCredentials(base, body.accessToken, fetchCurrentUser(newApi))
         userPreferencesRepository.setRommDeviceId(body.deviceId, BuildConfig.VERSION_NAME)
@@ -881,7 +888,9 @@ class RomMConnectionManager @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()
                 val version = body?.version ?: "unknown"
-                val capabilities = RomMCapabilities.from(version, body?.libretroApiEnabled, body?.steamGridDbEnabled)
+                val capabilities = RomMCapabilities.from(
+                    version, body?.libretroApiEnabled, body?.steamGridDbEnabled, body?.snapshotsEnabled == true
+                )
                 _connectionState.value = ConnectionState.Connected(version, capabilities)
                 saveSyncRepository.get().setCapabilities(capabilities)
                 rememberSnapshots(baseUrl, capabilities)

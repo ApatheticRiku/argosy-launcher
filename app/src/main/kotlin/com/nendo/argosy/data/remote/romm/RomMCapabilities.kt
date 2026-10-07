@@ -36,7 +36,6 @@ data class RomMCapabilities(
         const val MUSIC_PLAYLISTS_MIN_VERSION = "5.1.0"
         const val MUSIC_TRACK_ROM_FILTER_MIN_VERSION = "5.1.0"
         const val MUSIC_GAMES_MIN_VERSION = "5.3.0"
-        const val SNAPSHOTS_MIN_VERSION = "5.5.0"
 
         val NONE = RomMCapabilities(
             serverVersion = "",
@@ -54,7 +53,8 @@ data class RomMCapabilities(
         fun from(
             version: String?,
             libretroEnabled: Boolean? = null,
-            steamGridDbEnabled: Boolean? = null
+            steamGridDbEnabled: Boolean? = null,
+            snapshotsEnabled: Boolean = false
         ): RomMCapabilities {
             if (version.isNullOrBlank() || version == "unknown") return NONE
             val gate = comparableVersion(version)
@@ -77,7 +77,7 @@ data class RomMCapabilities(
                 supportsMusicTrackRomFilter =
                     compareVersions(gate, MUSIC_TRACK_ROM_FILTER_MIN_VERSION) >= 0,
                 supportsMusicGames = compareVersions(gate, MUSIC_GAMES_MIN_VERSION) >= 0,
-                supportsSnapshots = compareVersions(gate, SNAPSHOTS_MIN_VERSION) >= 0,
+                supportsSnapshots = snapshotsEnabled,
             )
         }
 

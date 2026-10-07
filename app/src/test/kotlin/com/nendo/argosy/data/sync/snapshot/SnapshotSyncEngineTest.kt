@@ -67,7 +67,7 @@ class SnapshotSyncEngineTest {
 
     @Before
     fun setUp() {
-        every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.5.0")
+        every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.5.0", snapshotsEnabled = true)
         every { apiClient.getApi() } returns api
         every { apiClient.getDeviceId() } returns DEVICE
         coEvery { gameDao.getById(GAME_ID) } returns game
@@ -708,8 +708,8 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
-    fun `before RomM 5_5 nothing goes through the snapshot API`() = runBlocking {
-        every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.4.0")
+    fun `a server without the snapshot flag gets nothing through the snapshot API`() = runBlocking {
+        every { apiClient.getCapabilities() } returns RomMCapabilities.from("5.5.0", snapshotsEnabled = false)
 
         assertEquals(SnapshotSyncResult.NotEligible, engine.sync(GAME_ID, EMULATOR, null))
         coVerify(exactly = 0) { api.listChannels(any()) }
