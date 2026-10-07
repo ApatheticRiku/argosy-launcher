@@ -180,8 +180,11 @@ Quick settings panel parity (deferred by decision): the R3 panel renders on the 
 only. R3 opens it where the controller is focused, and a companion request
 (`onOpenOverlayFromCompanion` with `OVERLAY_QUICK_SETTINGS`) refocuses the main screen and opens
 it there rather than drawing a second copy. The panel's
-second-screen brightness row stays hidden until a verified write path for the second display
-exists (`BrightnessController.setSecondaryBrightness` returns false today).
+second-screen brightness row drives the second built-in panel through the root route with the
+display service's per-display brightness binder calls (`service call display <set> i32 <id> f
+<value>`, the call AYN's own dual-screen assistant makes through `DisplayManager.setBrightness`).
+The transaction numbers are per Android release in `BrightnessController.callsBySdk`; only SDK 33
+(Thor, 35/36) is mapped and verified, and the row stays hidden on any release not in that map.
 
 Role-state writers: `swapRoles()` toggles, `applyDisplayRoleOverride(override)` sets, and
 `setPrimaryDisplayId` applies a stored layout. While a session is active each one commits only

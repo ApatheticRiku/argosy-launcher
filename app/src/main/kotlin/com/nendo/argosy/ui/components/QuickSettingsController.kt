@@ -169,7 +169,14 @@ class QuickSettingsController(
         val volumeFresh = System.currentTimeMillis() - volumeInputTimestamp > VOLUME_ECHO_GUARD_MS
         levels.update { current ->
             val read = readDisplayLevels(current.brightness)
-            read.copy(volume = if (volumeFresh) read.volume else current.volume)
+            read.copy(
+                volume = if (volumeFresh) read.volume else current.volume,
+                secondaryBrightness = current.secondaryBrightness
+            )
+        }
+        scope.launch(deviceDispatcher) {
+            val secondary = brightnessController.secondaryBrightness()
+            levels.update { it.copy(secondaryBrightness = secondary) }
         }
     }
 
@@ -178,7 +185,7 @@ class QuickSettingsController(
         return DisplayLevels(
             volume = volumeController.getVolume().primary,
             brightness = brightness.primary ?: fallbackBrightness,
-            secondaryBrightness = brightness.secondary
+            secondaryBrightness = null
         )
     }
 
@@ -288,9 +295,11 @@ class QuickSettingsController(
 
     fun setSecondaryBrightness(brightness: Float) {
         val coerced = brightness.coerceIn(0f, 1f)
+        levels.update { it.copy(secondaryBrightness = coerced) }
         scope.launch(deviceDispatcher) {
-            if (brightnessController.setSecondaryBrightness(coerced)) {
-                levels.update { it.copy(secondaryBrightness = coerced) }
+            if (!brightnessController.setSecondaryBrightness(coerced)) {
+                val stored = brightnessController.secondaryBrightness()
+                levels.update { it.copy(secondaryBrightness = stored) }
             }
         }
     }
