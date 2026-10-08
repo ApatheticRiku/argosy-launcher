@@ -650,15 +650,31 @@ fun HomeScreen(
              * shrink the rail for no reason.
              */
             val infoReserve = reservedGameInfoHeight()
-            val infoOverlaysRail = !uiState.isMediaRow &&
-                uiState.carouselConfig.rowAlignment != HomeRowAlignment.CENTER
-            val infoHeight = if (uiState.isMediaRow || infoOverlaysRail) 0.dp else infoReserve
-            val cardSize = rememberCarouselCardSize(
-                availableHeight = maxHeight - headerBlockHeight - infoHeight -
-                    Dimens.footerHeight - Dimens.spacingLg - Dimens.spacingXl,
+            val isPortrait = maxWidth <= maxHeight
+            val centredFocus = uiState.carouselConfig.focusPosition == HomeFocusPosition.CENTER
+            val railOnlyHeight = maxHeight - headerBlockHeight - Dimens.footerHeight -
+                Dimens.spacingLg - Dimens.spacingXl
+            val overlaidCardSize = rememberCarouselCardSize(
+                availableHeight = railOnlyHeight,
                 config = uiState.carouselConfig
             )
-            val infoAtBottom = uiState.carouselConfig.rowAlignment == HomeRowAlignment.TOP
+            val splitGap = overlaidCardSize.width * uiState.carouselConfig.focusScale + Dimens.spacingLg * 2
+            val splitSide = (maxWidth - Dimens.spacingXxl * 2 - splitGap) / 2
+            val infoSplits = !isPortrait && centredFocus &&
+                splitSide >= ComponentDefaults.Carousel.infoSplitMinSideDp.dp
+            val infoStacksAbove = !isPortrait && centredFocus && !infoSplits
+            val infoOverlaysRail = !uiState.isMediaRow && !infoStacksAbove &&
+                uiState.carouselConfig.rowAlignment != HomeRowAlignment.CENTER
+            val infoHeight = if (uiState.isMediaRow || infoOverlaysRail) 0.dp else infoReserve
+            val cardSize = if (infoHeight == 0.dp) {
+                overlaidCardSize
+            } else {
+                rememberCarouselCardSize(
+                    availableHeight = railOnlyHeight - infoHeight,
+                    config = uiState.carouselConfig
+                )
+            }
+            val infoAtBottom = uiState.carouselConfig.rowAlignment == HomeRowAlignment.TOP && !infoStacksAbove
             /**
              * How far the overlaid block moves off the header or footer to sit midway in the band
              * the resting cards leave free. The band is the same height whichever edge the row
@@ -683,7 +699,6 @@ fun HomeScreen(
                         .coerceAtLeast(Dimens.spacingXl)
                 else -> cardSize.height * uiState.carouselConfig.focusScale + Dimens.spacingMd
             }
-            val isPortrait = maxWidth <= maxHeight
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -771,6 +786,7 @@ fun HomeScreen(
                                 onCoverLoadFailed = viewModel::repairCoverImage,
                                 onCoverLoaded = viewModel::extractGradientForGame,
                                 onPosterLoaded = viewModel::extractGradientForMedia,
+                                useBoxArt = uiState.boxArt3d,
                                 modifier = Modifier.fillMaxSize()
                             )
                         }
@@ -807,6 +823,7 @@ fun HomeScreen(
                                 ),
                                 focusedIndex = uiState.focusedGameIndex,
                                 config = uiState.autoGridConfig,
+                                useBoxArt = uiState.boxArt3d,
                                 gridState = gridState,
                                 entryAnimationKey = (uiState.currentPlatform?.id ?: uiState.currentRow)
                                     .takeIf { uiState.autoGridConfig.showAllGames },
@@ -861,7 +878,7 @@ fun HomeScreen(
                                 ),
                                 showPlatformBadge = uiState.carouselConfig.showPlatformBadge &&
                                     uiState.currentRow !is HomeRow.Platform && uiState.currentRow != HomeRow.Steam && uiState.currentRow != HomeRow.Android,
-                                useBoxArt = uiState.carouselConfig.useBoxArt,
+                                useBoxArt = uiState.boxArt3d,
                                 onCoverLoadFailed = viewModel::repairCoverImage,
                                 onCoverLoaded = viewModel::extractGradientForGame,
                                 onPosterLoaded = viewModel::extractGradientForMedia,
@@ -1154,14 +1171,8 @@ fun HomeScreen(
                 friends = uiState.friendsFor(uiState.focusedGame),
                 showMetadata = !uiState.isVideoPreviewActive,
                 textColorOverride = if (videoTextColor != Color.Unspecified) videoTextColor else null,
-                placement = if (
-                    !isPortrait &&
-                    uiState.carouselConfig.focusPosition == HomeFocusPosition.CENTER
-                ) {
-                    GameInfoPlacement.SPLIT
-                } else {
-                    GameInfoPlacement.CENTERED
-                },
+                placement = if (infoSplits) GameInfoPlacement.SPLIT else GameInfoPlacement.CENTERED,
+                splitGap = splitGap,
                 modifier = Modifier
                     .fillMaxWidth(
                         when {
@@ -1173,19 +1184,14 @@ fun HomeScreen(
                     )
                     .align(
                         gameInfoAlignment(
-                            atBottom = uiState.carouselConfig.rowAlignment == HomeRowAlignment.TOP,
-                            centred = isPortrait ||
-                                uiState.carouselConfig.focusPosition == HomeFocusPosition.CENTER,
+                            atBottom = infoAtBottom,
+                            centred = isPortrait || centredFocus,
                             inverted = uiState.carouselConfig.inverted
                         )
                     )
                     .padding(
-                        top = if (uiState.carouselConfig.rowAlignment == HomeRowAlignment.TOP) {
-                            0.dp
-                        } else {
-                            gameInfoTopPadding
-                        },
-                        bottom = if (uiState.carouselConfig.rowAlignment == HomeRowAlignment.TOP) {
+                        top = if (infoAtBottom) 0.dp else gameInfoTopPadding,
+                        bottom = if (infoAtBottom) {
                             Dimens.footerHeight + Dimens.spacingLg + infoBandInset
                         } else {
                             0.dp
@@ -1707,12 +1713,6 @@ private val PAGE_BACKGROUND_EXTENSIONS: Set<String> =
 private const val GAME_INFO_SIDE_WIDTH_FRACTION = 0.6f
 
 /**
- * Width each half takes when the details split around a centred focus, leaving the remainder as a
- * gutter down the middle so neither half crowds the focused card.
- */
-private const val GAME_INFO_SPLIT_WIDTH_FRACTION = 0.45f
-
-/**
  * The room the details block is given, as a constant rather than whatever the current game happens
  * to measure.
  *
@@ -1770,6 +1770,7 @@ private fun GameInfo(
     showMetadata: Boolean = true,
     textColorOverride: Color? = null,
     placement: GameInfoPlacement = GameInfoPlacement.SPLIT,
+    splitGap: Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     val metadataAlpha by animateFloatAsState(
@@ -1785,6 +1786,7 @@ private fun GameInfo(
 
     GameInfoLayout(
         isSplit = isSplit,
+        splitGap = splitGap,
         modifier = modifier.padding(horizontal = Dimens.spacingXxl),
         details = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -1838,6 +1840,7 @@ private fun GameInfo(
 @Composable
 private fun GameInfoLayout(
     isSplit: Boolean,
+    splitGap: Dp,
     modifier: Modifier = Modifier,
     details: @Composable () -> Unit,
     badges: @Composable ColumnScope.() -> Unit
@@ -1850,14 +1853,14 @@ private fun GameInfoLayout(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.weight(GAME_INFO_SPLIT_WIDTH_FRACTION),
+                modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 details()
             }
-            Spacer(modifier = Modifier.weight(1f - GAME_INFO_SPLIT_WIDTH_FRACTION * 2f))
+            Spacer(modifier = Modifier.width(splitGap))
             Box(
-                modifier = Modifier.weight(GAME_INFO_SPLIT_WIDTH_FRACTION),
+                modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, content = badges)

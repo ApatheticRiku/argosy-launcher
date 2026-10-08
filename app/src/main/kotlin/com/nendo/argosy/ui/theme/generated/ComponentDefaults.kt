@@ -228,6 +228,7 @@ object ComponentDefaults {
         const val dotSizeActive = 10
         const val dotGap = 6
         const val dotInactiveAlpha = 0.3f
+        const val infoSplitMinSideDp = 160
     }
 
     object SurfaceBackdrop {
