@@ -80,4 +80,92 @@ class RomMReachabilityTest {
 
         assertEquals("https://romm.example/api/heartbeat", request.captured.url.toString())
     }
+
+    private class Harness(var serverUp: Boolean) {
+        var clock = 0L
+        var probes = 0
+        val queued = mutableListOf<Runnable>()
+        val ledger = ReachabilityLedger(
+            now = { clock },
+            probe = { probes++; serverUp },
+            runInBackground = { queued += it }
+        )
+
+        fun runQueued() {
+            val pending = queued.toList()
+            queued.clear()
+            pending.forEach { it.run() }
+        }
+    }
+
+    @Test
+    fun `a dead server answers every later launch at once and re-probes off the caller`() {
+        val h = Harness(serverUp = false)
+
+        assertFalse(h.ledger.isReachable(root))
+        assertEquals(1, h.probes)
+
+        h.clock = 60_000L
+        assertFalse(h.ledger.isReachable(root))
+        assertFalse(h.ledger.isReachable(root))
+        assertEquals("no launch waits on a probe", 1, h.probes)
+        assertEquals("one background re-probe at a time", 1, h.queued.size)
+
+        h.runQueued()
+        assertEquals(2, h.probes)
+        assertFalse(h.ledger.isReachable(root))
+    }
+
+    @Test
+    fun `a background re-probe that answers lets the next launch through`() {
+        val h = Harness(serverUp = false)
+        h.ledger.isReachable(root)
+        h.clock = 60_000L
+        h.ledger.isReachable(root)
+
+        h.serverUp = true
+        h.runQueued()
+
+        assertTrue(h.ledger.isReachable(root))
+        assertEquals(2, h.probes)
+    }
+
+    @Test
+    fun `a failure inside the fresh window schedules nothing`() {
+        val h = Harness(serverUp = false)
+        h.ledger.isReachable(root)
+        h.clock = 5_000L
+
+        assertFalse(h.ledger.isReachable(root))
+        assertTrue(h.queued.isEmpty())
+    }
+
+    @Test
+    fun `only an answer after the mark counts as the server answering`() {
+        val h = Harness(serverUp = true)
+        h.clock = 1_000L
+        h.ledger.recordReachable(root)
+        h.clock = 2_000L
+        val mark = h.clock
+
+        assertFalse(h.ledger.answeredSince(root, mark))
+
+        h.clock = 3_000L
+        h.ledger.recordReachable(root)
+        assertTrue(h.ledger.answeredSince(root, mark))
+
+        h.ledger.recordUnreachable(root)
+        assertFalse(h.ledger.answeredSince(root, mark))
+    }
+
+    @Test
+    fun `a successful call clears a recorded failure`() {
+        val h = Harness(serverUp = false)
+        h.ledger.isReachable(root)
+
+        h.ledger.recordReachable(root)
+
+        assertTrue(h.ledger.isReachable(root))
+        assertEquals(1, h.probes)
+    }
 }

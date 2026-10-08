@@ -27,6 +27,10 @@ class RomMRepository @Inject constructor(
 
     suspend fun isReachable(): Boolean = connectionManager.isReachable()
 
+    fun responseMark(): Long = connectionManager.responseMark()
+
+    fun answeredSince(mark: Long): Boolean = connectionManager.answeredSince(mark)
+
     fun isVersionAtLeast(minVersion: String): Boolean = connectionManager.isVersionAtLeast(minVersion)
 
     // --- Connection ---

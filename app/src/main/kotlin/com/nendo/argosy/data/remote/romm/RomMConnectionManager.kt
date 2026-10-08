@@ -161,6 +161,11 @@ class RomMConnectionManager @Inject constructor(
         isConnected() && baseUrl.isNotEmpty() && apiFactory.reachability.isReachable(baseUrl)
     }
 
+    fun responseMark(): Long = apiFactory.reachability.mark()
+
+    fun answeredSince(mark: Long): Boolean =
+        baseUrl.isNotEmpty() && apiFactory.reachability.answeredSince(baseUrl, mark)
+
     fun getDeviceId(): String? = cachedDeviceId
 
     fun getConnectedVersion(): String? {

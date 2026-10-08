@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,9 +40,14 @@ class RomMReachability @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userCertStore: UserCertStore
 ) {
-    private val lock = Any()
-    private val lastReachableAt = mutableMapOf<String, Long>()
-    private val lastUnreachableAt = mutableMapOf<String, Long>()
+    private val reprobeExecutor = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "RomMReprobe").apply { isDaemon = true }
+    }
+    private val ledger = ReachabilityLedger(
+        now = SystemClock::elapsedRealtime,
+        probe = { root -> heartbeatGotAnyResponse(probeClient(), root) },
+        runInBackground = reprobeExecutor::execute
+    )
 
     private var cachedProbeClient: OkHttpClient? = null
     private var probeClientTrust: X509TrustManager? = null
@@ -80,31 +86,15 @@ class RomMReachability @Inject constructor(
         return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
-    fun recordReachable(baseUrl: String) {
-        val root = baseUrl.trimEnd('/') + "/"
-        synchronized(lock) {
-            lastReachableAt[root] = SystemClock.elapsedRealtime()
-            lastUnreachableAt.remove(root)
-        }
-    }
+    fun recordReachable(baseUrl: String) = ledger.recordReachable(baseUrl.trimEnd('/') + "/")
+
+    fun mark(): Long = SystemClock.elapsedRealtime()
+
+    fun answeredSince(baseUrl: String, mark: Long): Boolean = ledger.answeredSince(baseUrl.trimEnd('/') + "/", mark)
 
     fun isReachable(baseUrl: String): Boolean {
         if (!hasActiveNetwork()) return false
-        val root = baseUrl.trimEnd('/') + "/"
-        synchronized(lock) {
-            val now = SystemClock.elapsedRealtime()
-            lastReachableAt[root]?.let { if (now - it < REACHABLE_FRESH_MS) return true }
-            lastUnreachableAt[root]?.let { if (now - it < UNREACHABLE_FRESH_MS) return false }
-            val reachable = heartbeatGotAnyResponse(probeClient(), root)
-            if (reachable) {
-                lastReachableAt[root] = SystemClock.elapsedRealtime()
-                lastUnreachableAt.remove(root)
-            } else {
-                lastUnreachableAt[root] = SystemClock.elapsedRealtime()
-                Logger.info(TAG, "heartbeat probe failed at $root, failing calls fast")
-            }
-            return reachable
-        }
+        return ledger.isReachable(baseUrl.trimEnd('/') + "/")
     }
 
     private fun proceedRecording(chain: Interceptor.Chain, request: Request, root: String): Response =
@@ -112,10 +102,7 @@ class RomMReachability @Inject constructor(
             chain.proceed(request).also { recordReachable(root) }
         } catch (e: IOException) {
             if (chain.call().isCanceled()) throw e
-            synchronized(lock) {
-                lastReachableAt.remove(root)
-                lastUnreachableAt[root] = SystemClock.elapsedRealtime()
-            }
+            ledger.recordUnreachable(root)
             throw e
         }
 
@@ -124,5 +111,62 @@ class RomMReachability @Inject constructor(
         val apiIndex = full.indexOf("/api/")
         if (apiIndex < 0) return null
         return full.substring(0, apiIndex + 1)
+    }
+}
+
+internal class ReachabilityLedger(
+    private val now: () -> Long,
+    private val probe: (String) -> Boolean,
+    private val runInBackground: (Runnable) -> Unit
+) {
+    private val lock = Any()
+    private val lastReachableAt = mutableMapOf<String, Long>()
+    private val lastUnreachableAt = mutableMapOf<String, Long>()
+    private val reprobing = mutableSetOf<String>()
+
+    fun isReachable(root: String): Boolean {
+        synchronized(lock) {
+            val at = now()
+            lastReachableAt[root]?.let { if (at - it < REACHABLE_FRESH_MS) return true }
+            lastUnreachableAt[root]?.let { failedAt ->
+                if (at - failedAt >= UNREACHABLE_FRESH_MS && reprobing.add(root)) {
+                    runInBackground(Runnable { reprobe(root) })
+                }
+                return false
+            }
+            return record(root, probe(root))
+        }
+    }
+
+    fun recordReachable(root: String) {
+        synchronized(lock) { record(root, true) }
+    }
+
+    fun recordUnreachable(root: String) {
+        synchronized(lock) { record(root, false) }
+    }
+
+    fun answeredSince(root: String, mark: Long): Boolean =
+        synchronized(lock) { lastReachableAt[root]?.let { it >= mark } == true }
+
+    private fun reprobe(root: String) {
+        val reachable = probe(root)
+        synchronized(lock) {
+            reprobing.remove(root)
+            record(root, reachable)
+        }
+        if (reachable) Logger.info(TAG, "heartbeat answered again at $root")
+    }
+
+    private fun record(root: String, reachable: Boolean): Boolean {
+        if (reachable) {
+            lastReachableAt[root] = now()
+            lastUnreachableAt.remove(root)
+        } else {
+            lastReachableAt.remove(root)
+            lastUnreachableAt[root] = now()
+            Logger.info(TAG, "heartbeat probe failed at $root, failing calls fast until a probe answers")
+        }
+        return reachable
     }
 }

@@ -128,6 +128,22 @@ class LaunchWithSyncUseCaseTest {
     }
 
     @Test
+    fun `a pre-launch sync past its budget is awaited while the server is answering`() = runTest {
+        every { romMRepository.answeredSince(any()) } returns true
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } coAnswers {
+            kotlinx.coroutines.delay(60_000)
+            PreLaunchSyncResult.NoServerSave
+        }
+
+        val progress = useCase.invokeWithProgress(gameId).toList()
+
+        assertTrue("A slow transfer finishes before launch: $progress", progress.last() is SyncProgress.PreLaunch.Launching)
+        assertTrue(progress.none { it is SyncProgress.Skipped })
+    }
+
+    @Test
     fun `NoServerSave result emits Launching`() = runTest {
         coEvery {
             saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)

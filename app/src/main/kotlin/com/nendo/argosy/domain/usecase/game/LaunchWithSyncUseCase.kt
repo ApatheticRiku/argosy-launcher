@@ -30,7 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 private const val TAG = "LaunchWithSync"
-private const val PRE_LAUNCH_SYNC_BUDGET_MS = 8_000L
+private const val PRE_LAUNCH_SYNC_BUDGET_MS = 5_000L
 
 class LaunchWithSyncUseCase @Inject constructor(
     private val gameDao: GameDao,
@@ -129,6 +129,21 @@ class LaunchWithSyncUseCase @Inject constructor(
         }
     }
 
+    private suspend fun <T> withinConnectionBudget(gameId: Long, block: suspend () -> T): T? = coroutineScope {
+        val mark = romMRepository.responseMark()
+        val work = async { block() }
+        withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) { work.await() } ?: run {
+            if (romMRepository.answeredSince(mark)) {
+                Logger.info(TAG, "Pre-launch sync for gameId=$gameId passed ${PRE_LAUNCH_SYNC_BUDGET_MS}ms with the server answering; waiting for it to finish")
+                work.await()
+            } else {
+                Logger.warn(TAG, "Pre-launch sync for gameId=$gameId got no server answer in ${PRE_LAUNCH_SYNC_BUDGET_MS}ms, launching with local data")
+                work.cancel()
+                null
+            }
+        }
+    }
+
     private suspend fun syncStatesQuietly(gameId: Long, emulatorPackage: String, channelName: String?) {
         runCatching { syncStatesOnSessionEndUseCase.adoptOffSessionStates(gameId, emulatorPackage, queueUploads = false) }
             .onFailure { Logger.error(TAG, "Off-session state adoption failed for gameId=$gameId", it) }
@@ -220,7 +235,7 @@ class LaunchWithSyncUseCase @Inject constructor(
         if (!SavePathRegistry.canSyncWithSettings(emulatorId, prefs.saveSyncEnabled)) {
             if (romMRepository.isReachable()) {
                 refreshMainSiblingInBackground(gameId)
-                withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) { syncStatesQuietly(gameId, emulatorPackage, channelName) }
+                withinConnectionBudget(gameId) { syncStatesQuietly(gameId, emulatorPackage, channelName) }
             }
             emit(SyncProgress.Skipped)
             return@flow
@@ -243,17 +258,14 @@ class LaunchWithSyncUseCase @Inject constructor(
 
         n3dsSaveCaseRepair.repairIfNeeded(gameId, emulatorId, emulatorPackage)
 
-        val syncResult = withTimeoutOrNull(PRE_LAUNCH_SYNC_BUDGET_MS) {
+        val syncResult = withinConnectionBudget(gameId) {
             coroutineScope {
                 val stateSync = async { syncStatesQuietly(gameId, emulatorPackage, channelName) }
                 val saveSync = saveSyncRepository.preLaunchSyncForGame(gameId, game.rommId, emulatorId, channelName, secureSaves = prefs.secureSaves)
                 stateSync.await()
                 saveSync
             }
-        } ?: run {
-            Logger.warn(TAG, "Pre-launch sync for gameId=$gameId exceeded ${PRE_LAUNCH_SYNC_BUDGET_MS}ms, launching with local data")
-            PreLaunchSyncResult.TimedOut
-        }
+        } ?: PreLaunchSyncResult.TimedOut
 
         when (syncResult) {
             is PreLaunchSyncResult.NoConnection -> {
