@@ -460,12 +460,6 @@ class JellyfinSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleStreamingQuality(scope: CoroutineScope, direction: Int) {
-        val entries = MediaStreamingQuality.entries
-        val next = entries[(entries.indexOf(_state.value.streamingQuality) + direction).mod(entries.size)]
-        setStreamingQuality(scope, next)
-    }
-
     fun setStreamingQuality(scope: CoroutineScope, quality: MediaStreamingQuality) {
         scope.launch {
             preferencesRepository.setMediaStreamingQuality(quality)

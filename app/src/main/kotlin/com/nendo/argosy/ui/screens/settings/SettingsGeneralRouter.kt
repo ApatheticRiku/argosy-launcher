@@ -7,7 +7,6 @@ import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.SavePathRegistry
-import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.remote.romm.ConnectionState
 import com.nendo.argosy.ui.input.HapticPattern
 import com.nendo.argosy.ui.components.HomeLayoutSettingField
@@ -356,29 +355,6 @@ internal fun routeSetPlatformEmulator(vm: SettingsViewModel, platformId: Long, p
 
 // --- Display & Theme ---
 
-internal fun routeCycleThemeMode(vm: SettingsViewModel, direction: Int) {
-    val modes = com.nendo.argosy.data.preferences.ThemeMode.entries
-    val current = vm.uiState.value.display.themeMode
-    val currentIndex = modes.indexOf(current)
-    val nextIndex = (currentIndex + direction).mod(modes.size)
-    vm.setThemeMode(modes[nextIndex])
-}
-
-internal fun routeCycleGridDensity(vm: SettingsViewModel, direction: Int) {
-    val densities = GridDensity.entries
-    val current = vm.uiState.value.display.gridDensity
-    val currentIndex = densities.indexOf(current)
-    val nextIndex = (currentIndex + direction).mod(densities.size)
-    vm.setGridDensity(densities[nextIndex])
-}
-
-internal fun routeCycleLibraryLayout(vm: SettingsViewModel, direction: Int) {
-    val layouts = com.nendo.argosy.data.preferences.LibraryLayout.entries
-    val current = vm.uiState.value.display.libraryLayout
-    val nextIndex = (layouts.indexOf(current) + direction).mod(layouts.size)
-    vm.setLibraryLayout(layouts[nextIndex])
-}
-
 internal fun routeAdjustUiScale(vm: SettingsViewModel, delta: Int) {
     val current = vm.uiState.value.display.uiScale
     val wouldBe = (current + delta).coerceIn(50, 150)
@@ -453,19 +429,6 @@ internal fun routeCycleBackgroundOpacity(vm: SettingsViewModel) {
 internal fun routeMoveColorFocus(vm: SettingsViewModel, delta: Int) {
     vm.displayDelegate.moveColorFocus(delta)
     vm._uiState.update { it.copy(colorFocusIndex = vm.displayDelegate.colorFocusIndex) }
-}
-
-internal fun routeCycleGradientPreset(vm: SettingsViewModel, direction: Int) {
-    val current = vm._uiState.value.display.gradientPreset
-    val next = when (current) {
-        GradientPreset.VIBRANT -> if (direction > 0) GradientPreset.BALANCED else GradientPreset.SUBTLE
-        GradientPreset.BALANCED -> if (direction > 0) GradientPreset.SUBTLE else GradientPreset.VIBRANT
-        GradientPreset.SUBTLE -> if (direction > 0) GradientPreset.VIBRANT else GradientPreset.BALANCED
-        GradientPreset.CUSTOM -> GradientPreset.BALANCED
-    }
-    vm._uiState.update { it.copy(gradientConfig = next.toConfig()) }
-    vm.displayDelegate.setGradientPreset(vm.viewModelScope, next)
-    vm.extractGradientForPreview()
 }
 
 internal fun routeSetGradientPreset(vm: SettingsViewModel, preset: GradientPreset) {

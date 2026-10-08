@@ -29,6 +29,9 @@ import com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness
 import com.nendo.argosy.data.preferences.FontSlot
 import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.data.preferences.HomeBackgroundMode
+import com.nendo.argosy.data.preferences.GlowColorMode
+import com.nendo.argosy.data.preferences.PlatformIndicatorContent
+import com.nendo.argosy.data.preferences.PlatformIndicatorStyle
 import com.nendo.argosy.data.preferences.SystemIconPadding
 import com.nendo.argosy.data.preferences.SystemIconPosition
 import com.nendo.argosy.data.preferences.ThemeMode
@@ -128,15 +131,6 @@ class DisplaySettingsDelegate @Inject constructor(
             preferencesRepository.setThemeMode(mode)
             _state.update { it.copy(themeMode = mode) }
         }
-    }
-
-    fun cycleThemeMode(scope: CoroutineScope) {
-        val next = when (_state.value.themeMode) {
-            ThemeMode.SYSTEM -> ThemeMode.LIGHT
-            ThemeMode.LIGHT -> ThemeMode.DARK
-            ThemeMode.DARK -> ThemeMode.SYSTEM
-        }
-        setThemeMode(scope, next)
     }
 
     fun setPrimaryColor(scope: CoroutineScope, color: Int?) {
@@ -299,14 +293,8 @@ class DisplaySettingsDelegate @Inject constructor(
     fun setBackdropVertexIcons(scope: CoroutineScope, icons: BackdropVertexIcon) =
         updateBackdrop(scope, { preferencesRepository.setBackdropVertexIcons(icons) }) { it.copy(vertexIcons = icons) }
 
-    fun cycleBackdropVertexIcons(scope: CoroutineScope, direction: Int = 1) =
-        setBackdropVertexIcons(scope, cycleEnum(_state.value.surfaceBackdrop.vertexIcons, direction))
-
     fun setBackdropMotion(scope: CoroutineScope, motion: BackdropMotion) =
         updateBackdrop(scope, { preferencesRepository.setBackdropMotion(motion) }) { it.copy(motion = motion) }
-
-    fun cycleBackdropMotion(scope: CoroutineScope, direction: Int = 1) =
-        setBackdropMotion(scope, cycleEnum(_state.value.surfaceBackdrop.motion, direction))
 
     fun setBackdropMotionSpeed(scope: CoroutineScope, speed: Int) {
         val clamped = speed.coerceIn(MOTION_SPEED_MIN, MOTION_SPEED_MAX)
@@ -399,19 +387,17 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleGridDensity(scope: CoroutineScope) {
-        val next = when (_state.value.gridDensity) {
-            GridDensity.COMPACT -> GridDensity.NORMAL
-            GridDensity.NORMAL -> GridDensity.SPACIOUS
-            GridDensity.SPACIOUS -> GridDensity.COMPACT
-        }
-        setGridDensity(scope, next)
-    }
-
     fun setLibraryLayout(scope: CoroutineScope, layout: com.nendo.argosy.data.preferences.LibraryLayout) {
         scope.launch {
             preferencesRepository.setLibraryLayout(layout)
             _state.update { it.copy(libraryLayout = layout) }
+        }
+    }
+
+    fun setLibraryBoxArt3d(scope: CoroutineScope, enabled: Boolean) {
+        scope.launch {
+            preferencesRepository.setLibraryBoxArt3d(enabled)
+            _state.update { it.copy(libraryBoxArt3d = enabled) }
         }
     }
 
@@ -436,12 +422,6 @@ class DisplaySettingsDelegate @Inject constructor(
             preferencesRepository.setGripReserveMode(mode)
             _state.update { it.copy(gripReserveMode = mode) }
         }
-    }
-
-    fun cycleGripReserveMode(scope: CoroutineScope, direction: Int) {
-        val modes = GripReserveMode.entries
-        val current = modes.indexOf(_state.value.gripReserveMode).coerceAtLeast(0)
-        setGripReserveMode(scope, modes[(current + direction).mod(modes.size)])
     }
 
     fun setGripReservePercent(scope: CoroutineScope, percent: Int) {
@@ -547,9 +527,6 @@ class DisplaySettingsDelegate @Inject constructor(
         scope.launch { preferencesRepository.setPresentationStyle(style) }
     }
 
-    fun cycleHomeBackgroundMode(scope: CoroutineScope, direction: Int = 1) =
-        setHomeBackgroundMode(scope, cycleEnum(_state.value.homeBackgroundMode, direction))
-
     fun setUseAccentColorFooter(scope: CoroutineScope, use: Boolean) {
         scope.launch {
             preferencesRepository.setUseAccentColorFooter(use)
@@ -611,8 +588,7 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleBoxArtShape(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtShape, direction)
+    fun setBoxArtShape(scope: CoroutineScope, next: BoxArtShape) {
         scope.launch {
             preferencesRepository.setBoxArtShape(next)
             _state.update { it.copy(boxArtShape = next) }
@@ -627,16 +603,14 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleBoxArtBorderThickness(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtBorderThickness, direction)
+    fun setBoxArtBorderThickness(scope: CoroutineScope, next: BoxArtBorderThickness) {
         scope.launch {
             preferencesRepository.setBoxArtBorderThickness(next)
             _state.update { it.copy(boxArtBorderThickness = next) }
         }
     }
 
-    fun cycleBoxArtBorderStyle(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtBorderStyle, direction)
+    fun setBoxArtBorderStyle(scope: CoroutineScope, next: BoxArtBorderStyle) {
         scope.launch {
             preferencesRepository.setBoxArtBorderStyle(next)
             _state.update { it.copy(boxArtBorderStyle = next) }
@@ -659,24 +633,21 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleBoxArtOuterEffect(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtOuterEffect, direction)
+    fun setBoxArtOuterEffect(scope: CoroutineScope, next: BoxArtOuterEffect) {
         scope.launch {
             preferencesRepository.setBoxArtOuterEffect(next)
             _state.update { it.copy(boxArtOuterEffect = next) }
         }
     }
 
-    fun cycleBoxArtOuterEffectThickness(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtOuterEffectThickness, direction)
+    fun setBoxArtOuterEffectThickness(scope: CoroutineScope, next: BoxArtOuterEffectThickness) {
         scope.launch {
             preferencesRepository.setBoxArtOuterEffectThickness(next)
             _state.update { it.copy(boxArtOuterEffectThickness = next) }
         }
     }
 
-    fun cycleGlowColorMode(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.glowColorMode, direction)
+    fun setGlowColorMode(scope: CoroutineScope, next: GlowColorMode) {
         scope.launch {
             preferencesRepository.setGlowColorMode(next)
             _state.update { it.copy(glowColorMode = next) }
@@ -694,24 +665,21 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleSystemIconPadding(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.systemIconPadding, direction)
+    fun setSystemIconPadding(scope: CoroutineScope, next: SystemIconPadding) {
         scope.launch {
             preferencesRepository.setSystemIconPadding(next)
             _state.update { it.copy(systemIconPadding = next) }
         }
     }
 
-    fun cyclePlatformIndicatorStyle(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.platformIndicatorStyle, direction)
+    fun setPlatformIndicatorStyle(scope: CoroutineScope, next: PlatformIndicatorStyle) {
         scope.launch {
             preferencesRepository.setPlatformIndicatorStyle(next)
             _state.update { it.copy(platformIndicatorStyle = next) }
         }
     }
 
-    fun cyclePlatformIndicatorContent(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.platformIndicatorContent, direction)
+    fun setPlatformIndicatorContent(scope: CoroutineScope, next: PlatformIndicatorContent) {
         scope.launch {
             preferencesRepository.setPlatformIndicatorContent(next)
             _state.update { it.copy(platformIndicatorContent = next) }
@@ -726,8 +694,7 @@ class DisplaySettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleBoxArtInnerEffectThickness(scope: CoroutineScope, direction: Int = 1) {
-        val next = cycleEnum(_state.value.boxArtInnerEffectThickness, direction)
+    fun setBoxArtInnerEffectThickness(scope: CoroutineScope, next: BoxArtInnerEffectThickness) {
         scope.launch {
             preferencesRepository.setBoxArtInnerEffectThickness(next)
             _state.update { it.copy(boxArtInnerEffectThickness = next) }
@@ -773,12 +740,6 @@ class DisplaySettingsDelegate @Inject constructor(
             preferencesRepository.setLibraryDefaultSource(source)
             _state.update { it.copy(libraryDefaultSource = source) }
         }
-    }
-
-    fun cycleLibraryDefaultSource(scope: CoroutineScope, direction: Int) {
-        val keys = listOf("ALL", "PLAYABLE", "FAVORITES")
-        val next = (keys.indexOf(_state.value.libraryDefaultSource).coerceAtLeast(0) + direction).mod(keys.size)
-        setLibraryDefaultSource(scope, keys[next])
     }
 
     fun setLibraryDefaultPlatform(scope: CoroutineScope, platformId: Long?) {

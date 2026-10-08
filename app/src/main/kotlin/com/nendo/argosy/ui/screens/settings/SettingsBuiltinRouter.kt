@@ -19,7 +19,6 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinEmulatorItem
-import com.nendo.argosy.ui.screens.settings.sections.HUD_CORNERS
 import com.nendo.argosy.util.AppPaths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -49,8 +48,6 @@ internal val ARCHITECTURE_OPTIONS: List<String>
         else add("ARMv7 (32-bit)")
     }
 
-internal const val BUILTIN_ARCHITECTURE_PICKER_KEY = "builtin_architecture"
-
 private fun architectureDisplayToAbi(display: String): String? = when (display) {
     "ARMv7 (32-bit)" -> "armeabi-v7a"
     "ARMv8 (64-bit)" -> "arm64-v8a"
@@ -61,14 +58,6 @@ internal fun architectureAbiToDisplay(abi: String?): String = when (abi) {
     "armeabi-v7a" -> "ARMv7 (32-bit)"
     "arm64-v8a" -> "ARMv8 (64-bit)"
     else -> "Universal"
-}
-
-internal fun routeCycleBuiltinArchitecture(vm: SettingsViewModel, direction: Int) {
-    val options = ARCHITECTURE_OPTIONS
-    val current = vm._uiState.value.emulators.architectureDisplay
-    val currentIndex = options.indexOf(current).coerceAtLeast(0)
-    val nextIndex = (currentIndex + direction + options.size) % options.size
-    routeSetBuiltinArchitecture(vm, options[nextIndex])
 }
 
 internal fun routeSetBuiltinArchitecture(vm: SettingsViewModel, value: String) {
@@ -109,15 +98,6 @@ internal fun routeSetIngameMenuTwoColumn(vm: SettingsViewModel, enabled: Boolean
 internal fun routeSetHudEnabled(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update { it.copy(emulators = it.emulators.copy(hudEnabled = enabled)) }
     vm.viewModelScope.launch { vm.libretroSettingsRepo.setHudEnabled(enabled) }
-}
-
-internal fun routeCycleHudCorner(vm: SettingsViewModel, forward: Boolean) {
-    val corners = com.nendo.argosy.ui.components.HudCorner.entries
-    val index = com.nendo.argosy.ui.common
-        .hudCornerFromStored(vm._uiState.value.emulators.hudCorner).ordinal
-    val next = corners[(if (forward) index + 1 else index - 1).mod(corners.size)].name
-    vm._uiState.update { it.copy(emulators = it.emulators.copy(hudCorner = next)) }
-    vm.viewModelScope.launch { vm.libretroSettingsRepo.setHudCorner(next) }
 }
 
 internal fun routeSetHudCorner(vm: SettingsViewModel, corner: String) {

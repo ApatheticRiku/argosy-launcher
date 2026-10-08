@@ -41,6 +41,7 @@ import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.GameCard
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.home.HomeGameUi
 import com.nendo.argosy.ui.screens.settings.DisplayState
@@ -205,7 +206,7 @@ internal sealed class BoxArtItem(
     }
 }
 
-private val GRADIENT_PRESET_CHOICES = listOf(
+internal val GRADIENT_PRESET_CHOICES = listOf(
     GradientPreset.VIBRANT,
     GradientPreset.BALANCED,
     GradientPreset.SUBTLE
@@ -276,15 +277,13 @@ fun BoxArtSection(
                 when (item) {
                     is BoxArtItem.Header -> BoxArtSectionHeader(stringResource(item.titleRes))
 
-                    BoxArtItem.Shape -> CyclePreference(
+                    BoxArtItem.Shape -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_shape_title),
-                        value = display.boxArtShape.label(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtShape() },
-                        onPrev = { viewModel.cycleBoxArtShape(-1) },
                         options = remember(context) { BoxArtShape.entries.map { it.label(context) } },
-                        onSelect = { viewModel.cycleBoxArtShape(it - display.boxArtShape.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = BoxArtShape.entries.indexOf(display.boxArtShape),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setBoxArtShape(BoxArtShape.entries[it]) },
+                        alwaysStacked = true
                     )
                     BoxArtItem.CornerRadius -> CyclePreference(
                         title = stringResource(R.string.settings_box_art_corner_radius_title),
@@ -296,25 +295,21 @@ fun BoxArtSection(
                         onSelect = { viewModel.cycleBoxArtCornerRadius(it - display.boxArtCornerRadius.ordinal) },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.BorderThickness -> CyclePreference(
+                    BoxArtItem.BorderThickness -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_border_thickness_title),
-                        value = display.boxArtBorderThickness.displayName(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtBorderThickness() },
-                        onPrev = { viewModel.cycleBoxArtBorderThickness(-1) },
                         options = remember(context) { BoxArtBorderThickness.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleBoxArtBorderThickness(it - display.boxArtBorderThickness.ordinal) },
-                        pickerRequestToken = pickerToken(item)
-                    )
-                    BoxArtItem.BorderStyle -> CyclePreference(
-                        title = stringResource(R.string.settings_box_art_border_style_title),
-                        value = display.boxArtBorderStyle.displayName(context),
+                        selectedIndex = BoxArtBorderThickness.entries.indexOf(display.boxArtBorderThickness),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtBorderStyle() },
-                        onPrev = { viewModel.cycleBoxArtBorderStyle(-1) },
+                        onSelect = { viewModel.setBoxArtBorderThickness(BoxArtBorderThickness.entries[it]) },
+                        alwaysStacked = true
+                    )
+                    BoxArtItem.BorderStyle -> SegmentedPreference(
+                        title = stringResource(R.string.settings_box_art_border_style_title),
                         options = remember(context) { BoxArtBorderStyle.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleBoxArtBorderStyle(it - display.boxArtBorderStyle.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = BoxArtBorderStyle.entries.indexOf(display.boxArtBorderStyle),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setBoxArtBorderStyle(BoxArtBorderStyle.entries[it]) },
+                        alwaysStacked = true
                     )
                     BoxArtItem.GlassTint -> CyclePreference(
                         title = stringResource(R.string.settings_box_art_glass_tint_title),
@@ -326,15 +321,13 @@ fun BoxArtSection(
                         onSelect = { viewModel.cycleGlassBorderTint(it - display.glassBorderTint.ordinal) },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.GradientPresetItem -> CyclePreference(
+                    BoxArtItem.GradientPresetItem -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_gradient_preset_title),
-                        value = context.getString(display.gradientPreset.labelRes),
+                        options = GRADIENT_PRESET_CHOICES.map { stringResource(it.labelRes) },
+                        selectedIndex = GRADIENT_PRESET_CHOICES.indexOf(display.gradientPreset),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGradientPreset() },
-                        onPrev = { viewModel.cycleGradientPreset(-1) },
-                        options = remember(context) { GRADIENT_PRESET_CHOICES.map { context.getString(it.labelRes) } },
                         onSelect = { viewModel.setGradientPreset(GRADIENT_PRESET_CHOICES[it]) },
-                        pickerRequestToken = pickerToken(item)
+                        alwaysStacked = true
                     )
                     BoxArtItem.GradientAdvanced -> SwitchPreference(
                         title = stringResource(R.string.settings_box_art_gradient_advanced_title),
@@ -343,25 +336,21 @@ fun BoxArtSection(
                         onToggle = { viewModel.toggleGradientAdvancedMode() }
                     )
 
-                    BoxArtItem.IndicatorStyle -> CyclePreference(
+                    BoxArtItem.IndicatorStyle -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_indicator_style_title),
-                        value = display.platformIndicatorStyle.displayName(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cyclePlatformIndicatorStyle() },
-                        onPrev = { viewModel.cyclePlatformIndicatorStyle(-1) },
                         options = remember(context) { PlatformIndicatorStyle.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cyclePlatformIndicatorStyle(it - display.platformIndicatorStyle.ordinal) },
-                        pickerRequestToken = pickerToken(item)
-                    )
-                    BoxArtItem.IndicatorContent -> CyclePreference(
-                        title = stringResource(R.string.settings_box_art_indicator_content_title),
-                        value = display.platformIndicatorContent.displayName(context),
+                        selectedIndex = PlatformIndicatorStyle.entries.indexOf(display.platformIndicatorStyle),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cyclePlatformIndicatorContent() },
-                        onPrev = { viewModel.cyclePlatformIndicatorContent(-1) },
+                        onSelect = { viewModel.setPlatformIndicatorStyle(PlatformIndicatorStyle.entries[it]) },
+                        alwaysStacked = true
+                    )
+                    BoxArtItem.IndicatorContent -> SegmentedPreference(
+                        title = stringResource(R.string.settings_box_art_indicator_content_title),
                         options = remember(context) { PlatformIndicatorContent.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cyclePlatformIndicatorContent(it - display.platformIndicatorContent.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = PlatformIndicatorContent.entries.indexOf(display.platformIndicatorContent),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setPlatformIndicatorContent(PlatformIndicatorContent.entries[it]) },
+                        alwaysStacked = true
                     )
                     BoxArtItem.IconPos -> CyclePreference(
                         title = stringResource(
@@ -383,36 +372,30 @@ fun BoxArtSection(
                         },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.IconPad -> CyclePreference(
+                    BoxArtItem.IconPad -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_icon_padding_title),
-                        value = display.systemIconPadding.displayName(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cycleSystemIconPadding() },
-                        onPrev = { viewModel.cycleSystemIconPadding(-1) },
                         options = remember(context) { SystemIconPadding.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleSystemIconPadding(it - display.systemIconPadding.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = SystemIconPadding.entries.indexOf(display.systemIconPadding),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setSystemIconPadding(SystemIconPadding.entries[it]) },
+                        alwaysStacked = true
                     )
 
-                    BoxArtItem.OuterEffect -> CyclePreference(
+                    BoxArtItem.OuterEffect -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_outer_effect_title),
-                        value = display.boxArtOuterEffect.displayName(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtOuterEffect() },
-                        onPrev = { viewModel.cycleBoxArtOuterEffect(-1) },
                         options = remember(context) { BoxArtOuterEffect.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleBoxArtOuterEffect(it - display.boxArtOuterEffect.ordinal) },
-                        pickerRequestToken = pickerToken(item)
-                    )
-                    BoxArtItem.OuterThickness -> CyclePreference(
-                        title = stringResource(R.string.settings_box_art_outer_thickness_title),
-                        value = display.boxArtOuterEffectThickness.displayName(context),
+                        selectedIndex = BoxArtOuterEffect.entries.indexOf(display.boxArtOuterEffect),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtOuterEffectThickness() },
-                        onPrev = { viewModel.cycleBoxArtOuterEffectThickness(-1) },
+                        onSelect = { viewModel.setBoxArtOuterEffect(BoxArtOuterEffect.entries[it]) },
+                        alwaysStacked = true
+                    )
+                    BoxArtItem.OuterThickness -> SegmentedPreference(
+                        title = stringResource(R.string.settings_box_art_outer_thickness_title),
                         options = remember(context) { BoxArtOuterEffectThickness.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleBoxArtOuterEffectThickness(it - display.boxArtOuterEffectThickness.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = BoxArtOuterEffectThickness.entries.indexOf(display.boxArtOuterEffectThickness),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setBoxArtOuterEffectThickness(BoxArtOuterEffectThickness.entries[it]) },
+                        alwaysStacked = true
                     )
                     BoxArtItem.GlowIntensity -> CyclePreference(
                         title = stringResource(R.string.settings_box_art_glow_strength_title),
@@ -424,15 +407,13 @@ fun BoxArtSection(
                         onSelect = { viewModel.cycleBoxArtGlowStrength(it - display.boxArtGlowStrength.ordinal) },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.GlowColor -> CyclePreference(
+                    BoxArtItem.GlowColor -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_glow_color_title),
-                        value = context.getString(display.glowColorMode.labelRes),
+                        options = GlowColorMode.entries.map { stringResource(it.labelRes) },
+                        selectedIndex = GlowColorMode.entries.indexOf(display.glowColorMode),
                         isFocused = isFocused(item),
-                        onClick = { viewModel.cycleGlowColorMode() },
-                        onPrev = { viewModel.cycleGlowColorMode(-1) },
-                        options = remember(context) { GlowColorMode.entries.map { context.getString(it.labelRes) } },
-                        onSelect = { viewModel.cycleGlowColorMode(it - display.glowColorMode.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        onSelect = { viewModel.setGlowColorMode(GlowColorMode.entries[it]) },
+                        alwaysStacked = true
                     )
 
                     BoxArtItem.InnerEffect -> CyclePreference(
@@ -445,15 +426,13 @@ fun BoxArtSection(
                         onSelect = { viewModel.cycleBoxArtInnerEffect(it - display.boxArtInnerEffect.ordinal) },
                         pickerRequestToken = pickerToken(item)
                     )
-                    BoxArtItem.InnerThickness -> CyclePreference(
+                    BoxArtItem.InnerThickness -> SegmentedPreference(
                         title = stringResource(R.string.settings_box_art_inner_thickness_title),
-                        value = display.boxArtInnerEffectThickness.displayName(context),
-                        isFocused = isFocused(item),
-                        onClick = { viewModel.cycleBoxArtInnerEffectThickness() },
-                        onPrev = { viewModel.cycleBoxArtInnerEffectThickness(-1) },
                         options = remember(context) { BoxArtInnerEffectThickness.entries.map { it.displayName(context) } },
-                        onSelect = { viewModel.cycleBoxArtInnerEffectThickness(it - display.boxArtInnerEffectThickness.ordinal) },
-                        pickerRequestToken = pickerToken(item)
+                        selectedIndex = BoxArtInnerEffectThickness.entries.indexOf(display.boxArtInnerEffectThickness),
+                        isFocused = isFocused(item),
+                        onSelect = { viewModel.setBoxArtInnerEffectThickness(BoxArtInnerEffectThickness.entries[it]) },
+                        alwaysStacked = true
                     )
 
                     BoxArtItem.SampleGrid -> GradientTuningCycle(

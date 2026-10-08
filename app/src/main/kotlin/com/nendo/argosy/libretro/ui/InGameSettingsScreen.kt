@@ -64,15 +64,20 @@ import com.nendo.argosy.ui.screens.settings.components.HotkeysModal
 import com.nendo.argosy.data.repository.MappingPlatforms
 import com.nendo.argosy.ui.screens.settings.components.InputMappingModal
 import com.nendo.argosy.ui.screens.settings.components.ScopedMapping
-import com.nendo.argosy.ui.screens.settings.sections.HUD_CORNERS
+import com.nendo.argosy.ui.components.HudCorner
+import com.nendo.argosy.ui.components.SegmentedPreference
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.ui.common.hudCornerFromStored
 import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.core.emulator.LibretroSettingDef
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.libretro.LibretroSettingsAccessor
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.ui.screens.settings.libretro.LibretroSettingsSection
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.libretro.isSegmented
+import com.nendo.argosy.ui.screens.settings.libretro.step
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.data.preferences.GripReserveMode
@@ -156,7 +161,7 @@ sealed class InGameControlsAction {
     data class SetTouchLockOrientation(val enabled: Boolean) : InGameControlsAction()
     data class SetTouchGenesis6Button(val enabled: Boolean) : InGameControlsAction()
     data class SetHudEnabled(val enabled: Boolean) : InGameControlsAction()
-    data class CycleHudCorner(val forward: Boolean) : InGameControlsAction()
+    data class SetHudCorner(val corner: HudCorner) : InGameControlsAction()
     data class SetHudShowBattery(val enabled: Boolean) : InGameControlsAction()
     data class SetHudShowClock(val enabled: Boolean) : InGameControlsAction()
     data class SetHudShowPlaytime(val enabled: Boolean) : InGameControlsAction()
@@ -395,25 +400,26 @@ fun InGameSettingsScreen(
             null
         }
 
-    fun handleHudConfirm(item: InGameHudItem) {
+    fun handleHudConfirm(item: InGameHudItem): InputResult {
         val action = currentOnControlsAction.value
         val enabled = hudSwitchValue(item, currentControlsState.value)
-        if (enabled == null) {
-            action(InGameControlsAction.CycleHudCorner(true))
-        } else {
-            hudSwitchAction(item, !enabled)?.let { action(it) }
-        }
+            ?: return InputResult.handled(SoundType.SILENT)
+        hudSwitchAction(item, !enabled)?.let { action(it) }
+        return InputResult.HANDLED
     }
 
-    fun handleHudAdjust(item: InGameHudItem, direction: Int) {
+    fun handleHudAdjust(item: InGameHudItem, direction: Int): InputResult {
         val action = currentOnControlsAction.value
-        val enabled = hudSwitchValue(item, currentControlsState.value)
+        val state = currentControlsState.value
+        val enabled = hudSwitchValue(item, state)
         if (enabled == null) {
-            action(InGameControlsAction.CycleHudCorner(direction > 0))
-            return
+            return stepOption(HudCorner.entries, hudCornerFromStored(state.hudCorner), direction) {
+                action(InGameControlsAction.SetHudCorner(it))
+            }
         }
         val next = direction > 0
         if (next != enabled) hudSwitchAction(item, next)?.let { action(it) }
+        return InputResult.HANDLED
     }
 
     fun isTabEnabled(tab: InGameSettingsTab): Boolean =
@@ -515,15 +521,10 @@ fun InGameSettingsScreen(
                     return if (cycleControlsItem(-1)) InputResult.HANDLED else InputResult.UNHANDLED
                 }
                 val hudItem = getHudItemAtIndex(focusedIndex)
-                if (hudItem != null) {
-                    handleHudAdjust(hudItem, -1)
-                    return InputResult.HANDLED
-                }
+                if (hudItem != null) return handleHudAdjust(hudItem, -1)
                 val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.UNHANDLED
                 if (accessor.isActionItem(setting)) return InputResult.UNHANDLED
-                if (setting.type !is LibretroSettingDef.SettingType.Cycle) return InputResult.UNHANDLED
-                accessor.cycle(setting, -1)
-                return InputResult.HANDLED
+                return accessor.step(setting, -1)
             }
 
             override fun onRight(): InputResult {
@@ -540,15 +541,10 @@ fun InGameSettingsScreen(
                     return InputResult.HANDLED
                 }
                 val hudItem = getHudItemAtIndex(focusedIndex)
-                if (hudItem != null) {
-                    handleHudAdjust(hudItem, 1)
-                    return InputResult.HANDLED
-                }
+                if (hudItem != null) return handleHudAdjust(hudItem, 1)
                 val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.HANDLED
                 if (accessor.isActionItem(setting)) return InputResult.HANDLED
-                if (setting.type is LibretroSettingDef.SettingType.Cycle) {
-                    accessor.cycle(setting, 1)
-                }
+                if (setting.type is LibretroSettingDef.SettingType.Cycle) return accessor.step(setting, 1)
                 return InputResult.HANDLED
             }
 
@@ -556,16 +552,15 @@ fun InGameSettingsScreen(
                 when (currentTab) {
                     InGameSettingsTab.VIDEO -> {
                         val hudItem = getHudItemAtIndex(focusedIndex)
-                        if (hudItem != null) {
-                            handleHudConfirm(hudItem)
-                            return InputResult.HANDLED
-                        }
+                        if (hudItem != null) return handleHudConfirm(hudItem)
                         val setting = getSettingAtIndex(focusedIndex) ?: return InputResult.HANDLED
                         if (accessor.isActionItem(setting)) {
                             accessor.onAction(setting)
                         } else when (setting.type) {
                             is LibretroSettingDef.SettingType.Switch -> accessor.toggle(setting)
-                            is LibretroSettingDef.SettingType.Cycle -> accessor.cycle(setting, 1)
+                            is LibretroSettingDef.SettingType.Cycle ->
+                                if (setting.isSegmented) return InputResult.handled(SoundType.SILENT)
+                                else accessor.cycle(setting, 1)
                         }
                     }
                     InGameSettingsTab.CONTROLS -> handleControlsConfirm()
@@ -1061,19 +1056,12 @@ private fun InGameHudRow(
             onToggle = { onAction(InGameControlsAction.SetHudEnabled(it)) }
         )
 
-        InGameHudItem.CORNER -> CyclePreference(
+        InGameHudItem.CORNER -> SegmentedPreference(
             title = stringResource(R.string.ingame_settings_hud_corner_title),
-            value = stringResource(hudCornerFromStored(state.hudCorner).labelRes),
+            options = HudCorner.entries.map { stringResource(it.labelRes) },
+            selectedIndex = hudCornerFromStored(state.hudCorner).ordinal,
             isFocused = isFocused,
-            onClick = { onAction(InGameControlsAction.CycleHudCorner(true)) },
-            onPrev = { onAction(InGameControlsAction.CycleHudCorner(false)) },
-            options = HUD_CORNERS.map { stringResource(hudCornerFromStored(it).labelRes) },
-            onSelect = { index ->
-                val steps = index - HUD_CORNERS.indexOf(state.hudCorner).coerceAtLeast(0)
-                repeat(kotlin.math.abs(steps)) {
-                    onAction(InGameControlsAction.CycleHudCorner(steps > 0))
-                }
-            }
+            onSelect = { index -> onAction(InGameControlsAction.SetHudCorner(HudCorner.entries[index])) }
         )
 
         InGameHudItem.BATTERY -> SwitchPreference(

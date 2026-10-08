@@ -14,16 +14,15 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.FocusedScroll
+import com.nendo.argosy.ui.components.HudCorner
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.ARCHITECTURE_OPTIONS
 import com.nendo.argosy.ui.screens.settings.components.SectionHeader
-import com.nendo.argosy.ui.screens.settings.BUILTIN_ARCHITECTURE_PICKER_KEY
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.theme.Dimens
-import com.nendo.argosy.ui.common.legacyLabel
 import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.common.hudCornerFromStored
 
@@ -77,18 +76,12 @@ fun BuiltinEmulatorSection(
         if (builtinEnabled) {
             item(key = "builtin_architecture") {
                 val architectureOptions = remember { ARCHITECTURE_OPTIONS }
-                CyclePreference(
+                SegmentedPreference(
                     title = stringResource(R.string.settings_builtin_architecture_title),
-                    value = emulators.architectureDisplay,
-                    isFocused = uiState.focusedIndex == BuiltinEmulatorItem.ARCHITECTURE.focusIndex,
-                    onClick = { viewModel.cycleBuiltinArchitecture(1) },
-                    onPrev = { viewModel.cycleBuiltinArchitecture(-1) },
                     options = architectureOptions,
-                    onSelect = {
-                        val current = architectureOptions.indexOf(emulators.architectureDisplay).coerceAtLeast(0)
-                        viewModel.cycleBuiltinArchitecture(it - current)
-                    },
-                    pickerRequestToken = if (uiState.enumPickerKey == BUILTIN_ARCHITECTURE_PICKER_KEY) uiState.enumPickerToken else 0
+                    selectedIndex = architectureOptions.indexOf(emulators.architectureDisplay),
+                    isFocused = uiState.focusedIndex == BuiltinEmulatorItem.ARCHITECTURE.focusIndex,
+                    onSelect = { viewModel.setBuiltinArchitecture(architectureOptions[it]) }
                 )
             }
             item(key = "builtin_video") {
@@ -181,17 +174,12 @@ fun BuiltinEmulatorSection(
             }
             if (emulators.hudEnabled) {
                 item(key = "builtin_hud_corner") {
-                    CyclePreference(
+                    SegmentedPreference(
                         title = stringResource(R.string.settings_builtin_hud_corner_title),
-                        value = stringResource(hudCornerFromStored(emulators.hudCorner).labelRes),
+                        options = HudCorner.entries.map { stringResource(it.labelRes) },
+                        selectedIndex = hudCornerFromStored(emulators.hudCorner).ordinal,
                         isFocused = uiState.focusedIndex == BuiltinEmulatorItem.HUD_CORNER.focusIndex,
-                        onClick = { viewModel.cycleHudCorner(true) },
-                        onPrev = { viewModel.cycleHudCorner(false) },
-                        options = com.nendo.argosy.ui.components.HudCorner.entries.map { stringResource(it.labelRes) },
-                        onSelect = { index ->
-                            com.nendo.argosy.ui.components.HudCorner.entries.getOrNull(index)
-                                ?.let { viewModel.setHudCorner(it.name) }
-                        }
+                        onSelect = { index -> viewModel.setHudCorner(HudCorner.entries[index].name) }
                     )
                 }
                 item(key = "builtin_hud_battery") {
@@ -241,11 +229,3 @@ fun BuiltinEmulatorSection(
         }
     }
 }
-
-/**
- * Legacy, unlocalized corner names. Kept only for [com.nendo.argosy.libretro.ui.InGameSettingsScreen]'s
- * value-based index lookup against the stored HUD corner; never render this list. Display uses
- * [com.nendo.argosy.ui.common.labelRes] instead.
- */
-internal val HUD_CORNERS: List<String> =
-    com.nendo.argosy.ui.components.HudCorner.entries.map { it.legacyLabel }

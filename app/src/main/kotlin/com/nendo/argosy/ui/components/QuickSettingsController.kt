@@ -23,6 +23,7 @@ import com.nendo.argosy.ui.input.InputDispatcher.Companion.computeWrappedIndex
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.input.SoundFeedbackManager
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.ui.screens.settings.sections.input.toggleLeftRight
 import com.nendo.argosy.util.PServerExecutor
 import kotlinx.coroutines.CoroutineScope
@@ -398,14 +399,6 @@ class QuickSettingsController(
         val next = computeWrappedIndex(current, delta, maxIndex, wrapMode())
         _focusIndex.update { next }
         return if (next != current) InputResult.HANDLED else InputResult.handled(SoundType.BOUNDARY)
-    }
-
-    private fun <T> stepOption(options: List<T>, current: T, delta: Int, apply: (T) -> Unit): InputResult {
-        val index = options.indexOf(current).coerceAtLeast(0)
-        val next = index + delta
-        if (next !in options.indices) return InputResult.handled(SoundType.BOUNDARY)
-        apply(options[next])
-        return InputResult.HANDLED
     }
 
     private fun stepLevel(current: Float, delta: Int, apply: (Float) -> Unit): InputResult {

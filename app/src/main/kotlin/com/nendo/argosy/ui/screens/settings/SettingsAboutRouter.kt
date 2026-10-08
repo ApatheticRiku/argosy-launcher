@@ -151,12 +151,6 @@ internal fun routeSetFileLogLevel(vm: SettingsViewModel, level: LogLevel) {
     vm._uiState.update { it.copy(fileLogLevel = level) }
 }
 
-internal fun routeCycleFileLogLevel(vm: SettingsViewModel, direction: Int = 1) {
-    val currentLevel = vm._uiState.value.fileLogLevel
-    val newLevel = if (direction > 0) currentLevel.next() else currentLevel.prev()
-    vm.setFileLogLevel(newLevel)
-}
-
 internal fun routeSetSaveDebugLoggingEnabled(vm: SettingsViewModel, enabled: Boolean) {
     vm.viewModelScope.launch {
         vm.preferencesRepository.setSaveDebugLoggingEnabled(enabled)

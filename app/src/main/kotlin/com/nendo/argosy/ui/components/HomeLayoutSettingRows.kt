@@ -1,24 +1,10 @@
 package com.nendo.argosy.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
-import com.nendo.argosy.data.preferences.GridDensity
 import com.nendo.argosy.domain.model.CustomGridShape
 import com.nendo.argosy.domain.model.GRID_AXIS_STEPS
 import com.nendo.argosy.domain.model.GridAxis
@@ -34,12 +20,7 @@ import com.nendo.argosy.domain.model.HomeLayoutSettings
 import com.nendo.argosy.domain.model.HomeRowAlignment
 import com.nendo.argosy.domain.model.HomeScrollAxis
 import com.nendo.argosy.domain.model.HomeTileAutoAdd
-import com.nendo.argosy.ui.primitives.FocusIndicators
-import com.nendo.argosy.ui.primitives.argosyFocusIndicators
-import com.nendo.argosy.ui.theme.Dimens
-import com.nendo.argosy.ui.theme.LocalArgosyTheme
-import com.nendo.argosy.ui.theme.generated.ComponentDefaults
-import com.nendo.argosy.ui.util.clickableNoFocus
+import com.nendo.argosy.ui.primitives.SegmentedControl
 import kotlin.math.roundToInt
 
 /**
@@ -60,8 +41,6 @@ enum class HomeLayoutSettingField {
     AUTO_GRID_LANES,
     SHOW_TITLES,
     AUTO_GRID_SHOW_ALL,
-    CAROUSEL_BOX_ART,
-    AUTO_GRID_BOX_ART,
     CUSTOM_GRID_COLUMNS,
     CUSTOM_GRID_ROWS,
     CUSTOM_GRID_AUTO_ADD,
@@ -100,14 +79,12 @@ fun homeLayoutFieldsFor(kind: HomeLayoutKind): List<HomeLayoutSettingField> = wh
         HomeLayoutSettingField.RESTING_SCALE,
         HomeLayoutSettingField.NEIGHBOUR_PUSH,
         HomeLayoutSettingField.PLATFORM_BADGE,
-        HomeLayoutSettingField.CAROUSEL_BOX_ART,
         HomeLayoutSettingField.INVERTED
     )
     HomeLayoutKind.AUTO_GRID -> listOf(
         HomeLayoutSettingField.SCROLL_AXIS,
         HomeLayoutSettingField.AUTO_GRID_LANES,
         HomeLayoutSettingField.SHOW_TITLES,
-        HomeLayoutSettingField.AUTO_GRID_BOX_ART,
         HomeLayoutSettingField.AUTO_GRID_SHOW_ALL
     )
     HomeLayoutKind.CUSTOM_GRID -> listOf(
@@ -131,7 +108,7 @@ fun isHomeLayoutFieldShown(settings: HomeLayoutSettings, field: HomeLayoutSettin
 
 /**
  * Left/right adjustment for [field]. Booleans follow the house rule that left is off and right is
- * on; enums wrap; numbers clamp. [customGridShape] is the custom grid's current shape, which an axis
+ * on; enums and numbers stop at either end. [customGridShape] is the custom grid's current shape, which an axis
  * locks to when the other axis becomes non-fixed.
  */
 fun adjustHomeLayoutField(
@@ -141,9 +118,9 @@ fun adjustHomeLayoutField(
     customGridShape: CustomGridShape
 ): HomeLayoutSettings = when (field) {
         HomeLayoutSettingField.ROW_ALIGNMENT ->
-            settings.copy(carousel = settings.carousel.copy(rowAlignment = cycle(settings.carousel.rowAlignment, direction)))
+            settings.copy(carousel = settings.carousel.copy(rowAlignment = step(settings.carousel.rowAlignment, direction)))
         HomeLayoutSettingField.FOCUS_POSITION ->
-            settings.copy(carousel = settings.carousel.copy(focusPosition = cycle(settings.carousel.focusPosition, direction)))
+            settings.copy(carousel = settings.carousel.copy(focusPosition = step(settings.carousel.focusPosition, direction)))
         HomeLayoutSettingField.INVERTED ->
             settings.copy(carousel = settings.carousel.copy(inverted = direction > 0))
         HomeLayoutSettingField.RESTING_SCALE ->
@@ -162,15 +139,11 @@ fun adjustHomeLayoutField(
         HomeLayoutSettingField.PLATFORM_BADGE ->
             settings.copy(carousel = settings.carousel.copy(showPlatformBadge = direction > 0))
         HomeLayoutSettingField.SCROLL_AXIS ->
-            settings.copy(autoGrid = settings.autoGrid.copy(scrollAxis = cycle(settings.autoGrid.scrollAxis, direction)))
+            settings.copy(autoGrid = settings.autoGrid.copy(scrollAxis = step(settings.autoGrid.scrollAxis, direction)))
         HomeLayoutSettingField.SHOW_TITLES ->
             settings.copy(autoGrid = settings.autoGrid.copy(showTitles = direction > 0))
         HomeLayoutSettingField.AUTO_GRID_SHOW_ALL ->
             settings.copy(autoGrid = settings.autoGrid.copy(showAllGames = direction > 0))
-        HomeLayoutSettingField.CAROUSEL_BOX_ART ->
-            settings.copy(carousel = settings.carousel.copy(useBoxArt = direction > 0))
-        HomeLayoutSettingField.AUTO_GRID_BOX_ART ->
-            settings.copy(autoGrid = settings.autoGrid.copy(useBoxArt = direction > 0))
         HomeLayoutSettingField.AUTO_GRID_LANES ->
             settings.copy(autoGrid = settings.autoGrid.copy(laneCount = stepSpan(settings.autoGrid.laneCount, direction)))
         HomeLayoutSettingField.CUSTOM_GRID_COLUMNS ->
@@ -188,7 +161,7 @@ fun adjustHomeLayoutField(
                 )
             )
         HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD ->
-            settings.copy(customGrid = settings.customGrid.copy(autoAdd = cycle(settings.customGrid.autoAdd, direction)))
+            settings.copy(customGrid = settings.customGrid.copy(autoAdd = step(settings.customGrid.autoAdd, direction)))
         HomeLayoutSettingField.CUSTOM_GRID_EMPTY_SLOTS ->
             settings.copy(customGrid = settings.customGrid.copy(showEmptySlots = direction > 0))
         HomeLayoutSettingField.CUSTOM_GRID_PERSIST_PAGES ->
@@ -210,6 +183,14 @@ fun isHomeLayoutFieldAtBound(
 ): Boolean = when (field) {
     HomeLayoutSettingField.CUSTOM_GRID_COLUMNS -> settings.customGrid.columns.isAtStepBound(direction)
     HomeLayoutSettingField.CUSTOM_GRID_ROWS -> settings.customGrid.rows.isAtStepBound(direction)
+    HomeLayoutSettingField.ROW_ALIGNMENT ->
+        settings.carousel.rowAlignment.isAtEnd(direction, HomeRowAlignment.entries.size)
+    HomeLayoutSettingField.FOCUS_POSITION ->
+        settings.carousel.focusPosition.isAtEnd(direction, HomeFocusPosition.entries.size)
+    HomeLayoutSettingField.SCROLL_AXIS ->
+        settings.autoGrid.scrollAxis.isAtEnd(direction, HomeScrollAxis.entries.size)
+    HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD ->
+        settings.customGrid.autoAdd.isAtEnd(direction, HomeTileAutoAdd.entries.size)
     else -> false
 }
 
@@ -231,10 +212,6 @@ fun toggleHomeLayoutField(settings: HomeLayoutSettings, field: HomeLayoutSetting
             settings.copy(
                 autoGrid = settings.autoGrid.copy(showAllGames = !settings.autoGrid.showAllGames)
             )
-        HomeLayoutSettingField.CAROUSEL_BOX_ART ->
-            settings.copy(carousel = settings.carousel.copy(useBoxArt = !settings.carousel.useBoxArt))
-        HomeLayoutSettingField.AUTO_GRID_BOX_ART ->
-            settings.copy(autoGrid = settings.autoGrid.copy(useBoxArt = !settings.autoGrid.useBoxArt))
         HomeLayoutSettingField.CUSTOM_GRID_EMPTY_SLOTS ->
             settings.copy(
                 customGrid = settings.customGrid.copy(
@@ -263,10 +240,8 @@ fun toggleHomeLayoutField(settings: HomeLayoutSettings, field: HomeLayoutSetting
     }
 }
 
-private val SelectableChipIndicators = FocusIndicators(fill = true, ring = true)
-
 /**
- * The layout selector: one tile per layout, the selected one raised. Kept separate from the picker
+ * The layout selector: a segmented track with one segment per layout. Kept separate from the picker
  * so a settings pane can place it among its own rows with the preview sitting directly above it.
  */
 @Composable
@@ -275,69 +250,18 @@ fun HomeLayoutSelectorRow(
     isFocused: Boolean,
     onSelect: (HomeLayoutKind) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Dimens.listGap)
-    ) {
-        HomeLayoutKind.entries.forEach { kind ->
-            LayoutSelectorTile(
-                kind = kind,
-                isSelected = kind == selected,
-                isFocused = isFocused && kind == selected,
-                onClick = { onSelect(kind) },
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun LayoutSelectorTile(
-    kind: HomeLayoutKind,
-    isSelected: Boolean,
-    isFocused: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val theme = LocalArgosyTheme.current
-    val shape = RoundedCornerShape(Dimens.radiusControl)
-    Box(
-        modifier = modifier
-            .heightIn(min = Dimens.menuRowHeight)
-            .clip(shape)
-            .background(if (isSelected) theme.surfaceRaised else theme.surfaceBase)
-            .argosyFocusIndicators(
-                focused = isFocused,
-                indicators = SelectableChipIndicators,
-                selected = isSelected,
-                shape = shape,
-                ringThickness = Dimens.borderThin
-            )
-            .clickableNoFocus(onClick = onClick)
-            .padding(horizontal = Dimens.spacingSm, vertical = Dimens.spacingXs),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = layoutLabel(kind),
-            style = MaterialTheme.typography.labelLarge,
-            textAlign = TextAlign.Center,
-            color = if (isSelected) theme.textPrimary else theme.textDim
-        )
-    }
+    SegmentedControl(
+        options = HomeLayoutKind.entries.map { layoutLabel(it) },
+        selectedIndex = selected.ordinal,
+        onSelect = { onSelect(HomeLayoutKind.entries[it]) },
+        focused = isFocused,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 /**
  * One layout setting rendered with the standard preference controls, so a layout field looks and
  * behaves like every other row wherever it is hosted.
- */
-/**
- * [boxArtCapableGames] is how many games hold both a front cover and a spine. The box art rows say
- * so when it is zero, because the setting still turns on and still changes nothing: a library whose
- * metadata source never supplied spine art draws every game flat, and without a word here that
- * looks like a broken toggle rather than missing artwork.
- *
- * Null means the count was not supplied, and reads as the ordinary subtitle. A caller that forgets
- * to pass it must not make the screen assert there is no spine art.
  */
 @Composable
 fun HomeLayoutSettingRow(
@@ -345,28 +269,22 @@ fun HomeLayoutSettingRow(
     field: HomeLayoutSettingField,
     isFocused: Boolean,
     onAdjust: (Int) -> Unit,
-    onToggle: () -> Unit,
-    boxArtCapableGames: Int? = null
+    onToggle: () -> Unit
 ) {
-    val boxArtSubtitle = if (boxArtCapableGames == 0) {
-        stringResource(R.string.ui_home_layout_box_art_subtitle_none)
-    } else {
-        stringResource(R.string.ui_home_layout_box_art_subtitle)
-    }
     when (field) {
-        HomeLayoutSettingField.ROW_ALIGNMENT -> CyclePreference(
+        HomeLayoutSettingField.ROW_ALIGNMENT -> SegmentedPreference(
             title = stringResource(R.string.ui_home_layout_row_alignment),
-            value = alignmentLabel(settings.carousel.rowAlignment),
+            options = HomeRowAlignment.entries.map { alignmentLabel(it) },
+            selectedIndex = settings.carousel.rowAlignment.ordinal,
             isFocused = isFocused,
-            onClick = { onAdjust(1) },
-            onPrev = { onAdjust(-1) }
+            onSelect = { onAdjust(it - settings.carousel.rowAlignment.ordinal) }
         )
-        HomeLayoutSettingField.FOCUS_POSITION -> CyclePreference(
+        HomeLayoutSettingField.FOCUS_POSITION -> SegmentedPreference(
             title = stringResource(R.string.ui_home_layout_focus_position),
-            value = focusPositionLabel(settings.carousel.focusPosition),
+            options = HomeFocusPosition.entries.map { focusPositionLabel(it) },
+            selectedIndex = settings.carousel.focusPosition.ordinal,
             isFocused = isFocused,
-            onClick = { onAdjust(1) },
-            onPrev = { onAdjust(-1) }
+            onSelect = { onAdjust(it - settings.carousel.focusPosition.ordinal) }
         )
         HomeLayoutSettingField.INVERTED -> SwitchPreference(
             title = stringResource(R.string.ui_home_layout_inverted),
@@ -396,12 +314,12 @@ fun HomeLayoutSettingRow(
             isFocused = isFocused,
             onToggle = { onToggle() }
         )
-        HomeLayoutSettingField.SCROLL_AXIS -> CyclePreference(
+        HomeLayoutSettingField.SCROLL_AXIS -> SegmentedPreference(
             title = stringResource(R.string.ui_home_layout_scroll_axis),
-            value = scrollAxisLabel(settings.autoGrid.scrollAxis),
+            options = HomeScrollAxis.entries.map { scrollAxisLabel(it) },
+            selectedIndex = settings.autoGrid.scrollAxis.ordinal,
             isFocused = isFocused,
-            onClick = { onAdjust(1) },
-            onPrev = { onAdjust(-1) }
+            onSelect = { onAdjust(it - settings.autoGrid.scrollAxis.ordinal) }
         )
         HomeLayoutSettingField.SHOW_TITLES -> SwitchPreference(
             title = stringResource(R.string.ui_home_layout_show_titles),
@@ -413,20 +331,6 @@ fun HomeLayoutSettingRow(
             title = stringResource(R.string.ui_home_layout_show_all_games),
             subtitle = stringResource(R.string.ui_home_layout_show_all_games_subtitle),
             isEnabled = settings.autoGrid.showAllGames,
-            isFocused = isFocused,
-            onToggle = { onToggle() }
-        )
-        HomeLayoutSettingField.CAROUSEL_BOX_ART -> SwitchPreference(
-            title = stringResource(R.string.ui_home_layout_carousel_box_art),
-            subtitle = boxArtSubtitle,
-            isEnabled = settings.carousel.useBoxArt,
-            isFocused = isFocused,
-            onToggle = { onToggle() }
-        )
-        HomeLayoutSettingField.AUTO_GRID_BOX_ART -> SwitchPreference(
-            title = stringResource(R.string.ui_home_layout_auto_grid_box_art),
-            subtitle = boxArtSubtitle,
-            isEnabled = settings.autoGrid.useBoxArt,
             isFocused = isFocused,
             onToggle = { onToggle() }
         )
@@ -450,12 +354,12 @@ fun HomeLayoutSettingRow(
             isFocused = isFocused,
             onAdjust = onAdjust
         )
-        HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD -> CyclePreference(
+        HomeLayoutSettingField.CUSTOM_GRID_AUTO_ADD -> SegmentedPreference(
             title = stringResource(R.string.ui_home_layout_custom_grid_auto_add),
-            value = autoAddLabel(settings.customGrid.autoAdd),
+            options = HomeTileAutoAdd.entries.map { autoAddLabel(it) },
+            selectedIndex = settings.customGrid.autoAdd.ordinal,
             isFocused = isFocused,
-            onClick = { onAdjust(1) },
-            onPrev = { onAdjust(-1) }
+            onSelect = { onAdjust(it - settings.customGrid.autoAdd.ordinal) }
         )
         HomeLayoutSettingField.CUSTOM_GRID_EMPTY_SLOTS -> SwitchPreference(
             title = stringResource(R.string.ui_home_layout_custom_grid_empty_slots),
@@ -578,7 +482,10 @@ private fun stepScale(current: Float, deltaPercent: Int, minPercent: Int, maxPer
 private fun stepSpan(current: Int, direction: Int): Int =
     (current + direction).coerceIn(MIN_LANE_COUNT, MAX_LANE_COUNT)
 
-private inline fun <reified T : Enum<T>> cycle(current: T, direction: Int): T {
+private inline fun <reified T : Enum<T>> step(current: T, direction: Int): T {
     val values = enumValues<T>()
-    return values[(current.ordinal + direction).mod(values.size)]
+    return values[(current.ordinal + direction).coerceIn(0, values.size - 1)]
 }
+
+private fun Enum<*>.isAtEnd(direction: Int, count: Int): Boolean =
+    if (direction < 0) ordinal == 0 else ordinal == count - 1

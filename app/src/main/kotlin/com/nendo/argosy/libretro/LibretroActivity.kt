@@ -3059,12 +3059,8 @@ class LibretroActivity : ComponentActivity() {
             is InGameControlsAction.SetHudEnabled -> {
                 lifecycleScope.launch { preferencesRepository.setHudEnabled(action.enabled) }
             }
-            is InGameControlsAction.CycleHudCorner -> {
-                val corners = com.nendo.argosy.ui.components.HudCorner.entries
-                val index = com.nendo.argosy.ui.common
-                    .hudCornerFromStored(touchSettingsState.hudCorner).ordinal
-                val next = corners[(if (action.forward) index + 1 else index - 1).mod(corners.size)].name
-                lifecycleScope.launch { preferencesRepository.setHudCorner(next) }
+            is InGameControlsAction.SetHudCorner -> {
+                lifecycleScope.launch { preferencesRepository.setHudCorner(action.corner.name) }
             }
             is InGameControlsAction.SetHudShowBattery -> {
                 lifecycleScope.launch { preferencesRepository.setHudShowBattery(action.enabled) }

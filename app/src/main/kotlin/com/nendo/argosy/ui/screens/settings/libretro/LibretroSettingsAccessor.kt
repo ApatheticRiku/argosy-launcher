@@ -3,7 +3,10 @@ package com.nendo.argosy.ui.screens.settings.libretro
 import androidx.annotation.StringRes
 import com.nendo.argosy.R
 import com.nendo.argosy.core.emulator.LibretroSettingDef
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.primitives.SEGMENTED_MAX_OPTIONS
 import com.nendo.argosy.ui.screens.settings.BuiltinVideoState
 
 sealed interface SettingDisplayValue {
@@ -30,6 +33,22 @@ interface LibretroSettingsAccessor {
     fun toggle(setting: LibretroSettingDef)
     fun reset(setting: LibretroSettingDef)
     fun onAction(setting: LibretroSettingDef) { cycle(setting, 1) }
+}
+
+val LibretroSettingDef.isSegmented: Boolean
+    get() = (type as? LibretroSettingDef.SettingType.Cycle)?.options?.size in 2..SEGMENTED_MAX_OPTIONS
+
+fun LibretroSettingsAccessor.isAtSegmentEnd(setting: LibretroSettingDef, direction: Int): Boolean {
+    if (!setting.isSegmented) return false
+    val options = (setting.type as LibretroSettingDef.SettingType.Cycle).options
+    return options.indexOf(getValue(setting)).coerceAtLeast(0) + direction !in options.indices
+}
+
+fun LibretroSettingsAccessor.step(setting: LibretroSettingDef, direction: Int): InputResult {
+    if (setting.type !is LibretroSettingDef.SettingType.Cycle) return InputResult.UNHANDLED
+    if (isAtSegmentEnd(setting, direction)) return InputResult.handled(SoundType.BOUNDARY)
+    cycle(setting, direction)
+    return InputResult.HANDLED
 }
 
 class GlobalLibretroSettingsAccessor(

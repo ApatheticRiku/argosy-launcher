@@ -17,7 +17,6 @@ import com.nendo.argosy.ui.screens.settings.sections.AmbientLedItem
 import com.nendo.argosy.ui.screens.settings.sections.ambientLedItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.ambientLedMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.BiosItem
-import com.nendo.argosy.domain.model.HomeLayoutKind
 import com.nendo.argosy.ui.components.toggleHomeLayoutField
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinEmulatorItem
 import com.nendo.argosy.ui.screens.settings.sections.PlatformDetailItem
@@ -93,6 +92,8 @@ import com.nendo.argosy.ui.screens.settings.sections.homeScreenMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.interfaceMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.mainSettingsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.permissionsMaxFocusIndex
+import com.nendo.argosy.ui.screens.settings.sections.permissionsItemAt
+import com.nendo.argosy.ui.screens.settings.sections.confirm
 import com.nendo.argosy.ui.screens.settings.sections.storageItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.StorageGamesItem
 import com.nendo.argosy.ui.screens.settings.sections.createStorageGamesLayoutInfo
@@ -447,7 +448,8 @@ private fun routeJellyfinConfirm(vm: SettingsViewModel, state: SettingsUiState):
         }
         JellyfinItem.PasswordSignIn -> vm.showJellyfinLoginForm()
         JellyfinItem.SyncLibrary -> if (state.jellyfin.isSignedIn) vm.syncJellyfinLibrary()
-        JellyfinItem.StreamingQuality, JellyfinItem.AudioLanguage, JellyfinItem.Subtitles,
+        JellyfinItem.StreamingQuality -> return InputResult.handled(SoundType.SILENT)
+        JellyfinItem.AudioLanguage, JellyfinItem.Subtitles,
         JellyfinItem.SubtitleLanguage, JellyfinItem.DownloadQuality -> {
             vm.requestEnumPicker(item.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
@@ -750,10 +752,8 @@ private fun routeDisplaysConfirm(vm: SettingsViewModel, state: SettingsUiState):
 private fun routePresentationConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val style = state.display.presentationStyle
     return when (val item = presentationItemAtFocusIndex(state.focusedIndex, style)) {
-        PresentationItem.Layout, PresentationItem.Scrim, PresentationItem.Art -> {
-            vm.requestEnumPicker(item.key)
-            InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        PresentationItem.Layout, PresentationItem.Scrim, PresentationItem.Art ->
+            InputResult.handled(SoundType.SILENT)
         is PresentationItem.Stat -> {
             vm.setPresentationStyle(style.withStat(item.stat, !style.shows(item.stat)))
             InputResult.handled(SoundType.TOGGLE)
@@ -773,10 +773,7 @@ private fun routeAudioConfirm(vm: SettingsViewModel, state: SettingsUiState): In
 
 private fun routeThemeConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     when (themeItemAtFocusIndex(state.focusedIndex)) {
-        ThemeItem.Mode -> {
-            vm.requestEnumPicker(ThemeItem.Mode.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        ThemeItem.Mode -> return InputResult.handled(SoundType.SILENT)
         ThemeItem.TintBleed -> vm.cycleSurfaceTintBleed()
         ThemeItem.AccentFooter -> vm.setUseAccentColorFooter(!state.display.useAccentColorFooter)
         ThemeItem.Backdrop -> vm.navigateToThemeBackdrop()
@@ -868,14 +865,7 @@ private fun routeThemeBackdropConfirm(vm: SettingsViewModel, state: SettingsUiSt
             vm.requestEnumPicker(ThemeBackdropItem.EdgeLines.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
         }
-        ThemeBackdropItem.CornerIcons -> {
-            vm.requestEnumPicker(ThemeBackdropItem.CornerIcons.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
-        ThemeBackdropItem.Motion -> {
-            vm.requestEnumPicker(ThemeBackdropItem.Motion.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        ThemeBackdropItem.CornerIcons, ThemeBackdropItem.Motion -> return InputResult.handled(SoundType.SILENT)
         ThemeBackdropItem.Direction -> {
             vm.requestEnumPicker(ThemeBackdropItem.Direction.key)
             return InputResult.handled(SoundType.OPEN_MODAL)
@@ -893,10 +883,7 @@ private fun routeThemeBackdropConfirm(vm: SettingsViewModel, state: SettingsUiSt
 
 private fun routeControllerGripConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     return when (controllerGripItemAtFocusIndex(state.focusedIndex, state.display)) {
-        ControllerGripItem.Mode -> {
-            vm.requestEnumPicker(ControllerGripItem.Mode.key)
-            InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        ControllerGripItem.Mode -> InputResult.handled(SoundType.SILENT)
         ControllerGripItem.Controllers -> {
             vm.showGripControllerModal()
             InputResult.handled(SoundType.OPEN_MODAL)
@@ -907,10 +894,7 @@ private fun routeControllerGripConfirm(vm: SettingsViewModel, state: SettingsUiS
 
 private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     when (val focused = homeScreenItemAtFocusIndex(state.focusedIndex, state.display)) {
-        HomeScreenItem.Background -> {
-            vm.requestEnumPicker(HomeScreenItem.Background.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        HomeScreenItem.Background -> return InputResult.handled(SoundType.SILENT)
         HomeScreenItem.GameArtwork -> {
             vm.setUseGameBackground(!state.display.useGameBackground)
             return InputResult.handled(SoundType.TOGGLE)
@@ -935,15 +919,10 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
             vm.setInstalledOnlyHome(!state.display.installedOnlyHome)
             return InputResult.handled(SoundType.TOGGLE)
         }
-        HomeScreenItem.LayoutSelector -> {
-            val kinds = HomeLayoutKind.entries
-            val next = kinds[(kinds.indexOf(state.display.homeLayout.selected) + 1).mod(kinds.size)]
-            vm.setHomeLayout(state.display.homeLayout.copy(selected = next))
-            return InputResult.HANDLED
-        }
+        HomeScreenItem.LayoutSelector, HomeScreenItem.BoxArt -> return InputResult.handled(SoundType.SILENT)
         is HomeScreenItem.LayoutField -> {
             val updated = toggleHomeLayoutField(state.display.homeLayout, focused.field)
-            if (updated == state.display.homeLayout) return InputResult.HANDLED
+            if (updated == state.display.homeLayout) return InputResult.handled(SoundType.SILENT)
             vm.setHomeLayout(updated)
             return InputResult.handled(SoundType.TOGGLE)
         }
@@ -955,12 +934,12 @@ private fun routeHomeScreenConfirm(vm: SettingsViewModel, state: SettingsUiState
 private fun routeBoxArtConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
     val item = boxArtItemAtFocusIndex(state.focusedIndex, state.display)
     when (item) {
-        BoxArtItem.Shape, BoxArtItem.CornerRadius, BoxArtItem.BorderThickness, BoxArtItem.BorderStyle,
-        BoxArtItem.GlassTint, BoxArtItem.GradientPresetItem, BoxArtItem.IndicatorStyle,
-        BoxArtItem.IndicatorContent, BoxArtItem.IconPos, BoxArtItem.IconPad, BoxArtItem.OuterEffect,
-        BoxArtItem.OuterThickness, BoxArtItem.GlowIntensity, BoxArtItem.GlowColor,
-        BoxArtItem.InnerEffect, BoxArtItem.InnerThickness,
-        BoxArtItem.SampleGrid, BoxArtItem.SampleRadius, BoxArtItem.MinSaturation,
+        BoxArtItem.Shape, BoxArtItem.BorderThickness, BoxArtItem.BorderStyle, BoxArtItem.GradientPresetItem,
+        BoxArtItem.IndicatorStyle, BoxArtItem.IndicatorContent, BoxArtItem.IconPad, BoxArtItem.OuterEffect,
+        BoxArtItem.OuterThickness, BoxArtItem.GlowColor, BoxArtItem.InnerThickness ->
+            return InputResult.handled(SoundType.SILENT)
+        BoxArtItem.CornerRadius, BoxArtItem.GlassTint, BoxArtItem.IconPos, BoxArtItem.GlowIntensity,
+        BoxArtItem.InnerEffect, BoxArtItem.SampleGrid, BoxArtItem.SampleRadius, BoxArtItem.MinSaturation,
         BoxArtItem.MinBrightness, BoxArtItem.HueDistance, BoxArtItem.SaturationBoost,
         BoxArtItem.BrightnessClamp -> {
             vm.requestEnumPicker(item.key)
@@ -1010,10 +989,8 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             return InputResult.toggled(newEnabled, if (newEnabled) SoundType.TOGGLE else SoundType.SILENT)
         }
         NavigationItem.VibrationStrength -> vm.cycleVibrationStrength()
-        NavigationItem.ControllerLayout -> {
-            vm.requestEnumPicker(NavigationItem.ControllerLayout.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        NavigationItem.ControllerLayout, NavigationItem.SelectLCombo, NavigationItem.SelectRCombo,
+        NavigationItem.MenuWrap, NavigationItem.SelectSwap -> return InputResult.handled(SoundType.SILENT)
         NavigationItem.SwapAB -> {
             val swapped = !state.controls.swapAB
             vm.setSwapAB(swapped)
@@ -1028,22 +1005,6 @@ private fun routeNavigationConfirm(vm: SettingsViewModel, state: SettingsUiState
             val swapped = !state.controls.swapStartSelect
             vm.setSwapStartSelect(swapped)
             return InputResult.toggled(swapped)
-        }
-        NavigationItem.SelectLCombo -> {
-            vm.requestEnumPicker(NavigationItem.SelectLCombo.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
-        NavigationItem.SelectRCombo -> {
-            vm.requestEnumPicker(NavigationItem.SelectRCombo.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
-        NavigationItem.MenuWrap -> {
-            vm.requestEnumPicker(NavigationItem.MenuWrap.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
-        NavigationItem.SelectSwap -> {
-            vm.requestEnumPicker(NavigationItem.SelectSwap.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
         }
         NavigationItem.QuickNavigation -> {
             val enabled = !state.controls.quickNavigation
@@ -1079,6 +1040,8 @@ private fun routeLibraryViewConfirm(vm: SettingsViewModel, state: SettingsUiStat
             vm.setSortFavoritesFirst(!state.display.sortFavoritesFirst)
             InputResult.handled(SoundType.TOGGLE)
         }
+        LibraryItem.LayoutItem, LibraryItem.GridDensityItem, LibraryItem.BoxArtItem, LibraryItem.DefaultSource ->
+            InputResult.handled(SoundType.SILENT)
         else -> {
             vm.requestEnumPicker(item.key)
             InputResult.handled(SoundType.OPEN_MODAL)
@@ -1139,24 +1102,7 @@ private fun routeBiosConfirm(vm: SettingsViewModel, state: SettingsUiState): Inp
 }
 
 private fun routePermissionsConfirm(vm: SettingsViewModel, state: SettingsUiState): InputResult {
-    val perms = state.permissions
-    val baseIndex = 3
-    val writeSettingsIndex = if (perms.isWriteSettingsRelevant) baseIndex else -1
-    val screenCaptureIndex = if (perms.isScreenCaptureRelevant) {
-        if (perms.isWriteSettingsRelevant) baseIndex + 1 else baseIndex
-    } else -1
-    val displayOverlayIndex = baseIndex +
-        (if (perms.isWriteSettingsRelevant) 1 else 0) +
-        (if (perms.isScreenCaptureRelevant) 1 else 0)
-
-    when (state.focusedIndex) {
-        0 -> vm.openStorageSettings()
-        1 -> vm.openUsageStatsSettings()
-        2 -> vm.openNotificationSettings()
-        writeSettingsIndex -> vm.openWriteSettings()
-        screenCaptureIndex -> vm.requestScreenCapturePermission()
-        displayOverlayIndex -> vm.openDisplayOverlaySettings()
-    }
+    permissionsItemAt(state.focusedIndex, state.permissions)?.confirm(vm)
     return InputResult.HANDLED
 }
 
@@ -1186,10 +1132,7 @@ private fun routeAboutConfirm(vm: SettingsViewModel, state: SettingsUiState): In
             }
             return InputResult.handled(SoundType.TOGGLE)
         }
-        AboutItem.LogLevel -> {
-            vm.requestEnumPicker(AboutItem.LogLevel.key)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        AboutItem.LogLevel -> return InputResult.handled(SoundType.SILENT)
         AboutItem.SaveDebugLogging -> {
             vm.setSaveDebugLoggingEnabled(!state.saveDebugLoggingEnabled)
             return InputResult.handled(SoundType.TOGGLE)
@@ -1497,10 +1440,7 @@ private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUi
     val builtinEnabled = state.emulators.builtinLibretroEnabled
     when (BuiltinEmulatorItem.entries.getOrNull(state.focusedIndex)) {
         BuiltinEmulatorItem.ENABLE -> vm.setBuiltinLibretroEnabled(!builtinEnabled)
-        BuiltinEmulatorItem.ARCHITECTURE -> if (builtinEnabled) {
-            vm.requestEnumPicker(BUILTIN_ARCHITECTURE_PICKER_KEY)
-            return InputResult.handled(SoundType.OPEN_MODAL)
-        }
+        BuiltinEmulatorItem.ARCHITECTURE, BuiltinEmulatorItem.HUD_CORNER -> return InputResult.handled(SoundType.SILENT)
         BuiltinEmulatorItem.VIDEO -> if (builtinEnabled) vm.navigateToBuiltinVideo()
         BuiltinEmulatorItem.CONTROLS -> if (builtinEnabled) vm.navigateToBuiltinControls()
         BuiltinEmulatorItem.CORE_MANAGEMENT -> if (builtinEnabled) vm.navigateToCoreManagement()
@@ -1509,7 +1449,6 @@ private fun routeBuiltinEmulatorConfirm(vm: SettingsViewModel, state: SettingsUi
             if (builtinEnabled) vm.setIngameMenuTwoColumn(!state.emulators.ingameMenuTwoColumn)
         BuiltinEmulatorItem.HUD_ENABLED ->
             if (builtinEnabled) vm.setHudEnabled(!state.emulators.hudEnabled)
-        BuiltinEmulatorItem.HUD_CORNER -> if (builtinEnabled) vm.cycleHudCorner(true)
         BuiltinEmulatorItem.HUD_BATTERY ->
             if (builtinEnabled) vm.setHudShowBattery(!state.emulators.hudShowBattery)
         BuiltinEmulatorItem.HUD_CLOCK ->

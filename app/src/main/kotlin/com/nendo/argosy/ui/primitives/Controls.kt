@@ -51,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -297,12 +299,31 @@ fun StepperControl(
     }
 }
 
+const val SEGMENTED_MAX_OPTIONS = 4
+
 @Composable
 fun segmentedInlineWidth(count: Int): Dp {
     val s = LocalUiScale.current.scale
     val segment = ComponentDefaults.Segmented.minSegmentWidthDp * s
     val gap = ComponentDefaults.Segmented.gapDp * s
     val padding = ComponentDefaults.Segmented.trackPaddingDp * s
+    return (segment * count + gap * (count - 1).coerceAtLeast(0) + padding * 2).dp
+}
+
+@Composable
+fun segmentedInlineWidth(options: List<String>): Dp {
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelMedium
+    val density = LocalDensity.current
+    val s = LocalUiScale.current.scale
+    val longest = remember(options, style, density) {
+        options.maxOfOrNull { measurer.measure(it, style).size.width } ?: 0
+    }
+    val minimum = ComponentDefaults.Segmented.minSegmentWidthDp * s
+    val segment = with(density) { longest.toDp() + Dimens.spacingMd * 2 }.value.coerceAtLeast(minimum)
+    val gap = ComponentDefaults.Segmented.gapDp * s
+    val padding = ComponentDefaults.Segmented.trackPaddingDp * s
+    val count = options.size
     return (segment * count + gap * (count - 1).coerceAtLeast(0) + padding * 2).dp
 }
 
@@ -346,7 +367,7 @@ fun SegmentedControl(
             animationSpec = tween(Motion.durationMicro, easing = Motion.argosyEase),
             label = "segmented-fill",
         )
-        if (!reduced) {
+        if (!reduced && selectedIndex in options.indices) {
             Box(
                 modifier = Modifier
                     .offset(x = indicatorX)
