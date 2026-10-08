@@ -27,6 +27,8 @@ import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferences
+import com.nendo.argosy.data.wallpaper.LockScreenScenes
+import com.nendo.argosy.util.SecondaryHomeComponent
 import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -191,6 +193,7 @@ class MainActivity : ComponentActivity() {
     // --- Screen Capture ---
 
     private var screenCapturePromptedThisSession = false
+    private var liveWallpaperPromptedThisSession = false
     private val screenCaptureLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -470,13 +473,6 @@ class MainActivity : ComponentActivity() {
         if (!dualScreenManager.claimInput(event)) return true
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
             Logger.verbose(TAG) { "dispatchKeyEvent: key=${event.keyCode} isHome=$isOnHomeScreen swapped=${dualScreenManager.isRolesSwapped.value} gameOnSecondary=${dualScreenManager.swappedIsGameActive.value} companion=${dualScreenManager.isCompanionActive.value} overlay=$isOverlayFocused" }
-            if (dualScreenManager.handleConflictInput(
-                    event.keyCode,
-                    sessionStateStore.getSwapAB(),
-                    sessionStateStore.getSwapXY(),
-                    sessionStateStore.getSwapStartSelect()
-                )
-            ) return true
         }
 
         if (dualScreenManager.swappedIsGameActive.value && !isOverlayFocused && isGameOnOtherDisplay()) {
@@ -794,8 +790,21 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+
+            if (shouldOfferLiveWallpaper(prefs)) {
+                liveWallpaperPromptedThisSession = true
+                runCatching { startActivity(LockScreenScenes.pickerIntent(this@MainActivity)) }
+                    .onFailure { Log.w(TAG, "Live wallpaper picker unavailable: ${it.message}") }
+            }
         }
     }
+
+    private fun shouldOfferLiveWallpaper(prefs: UserPreferences): Boolean =
+        prefs.lockScreenArt &&
+            !liveWallpaperPromptedThisSession &&
+            SecondaryHomeComponent.isDefaultHome(this) &&
+            LockScreenScenes.isSupported(this) &&
+            !LockScreenScenes.isLiveActive(this)
 
 
 

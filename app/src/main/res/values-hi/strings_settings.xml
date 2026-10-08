@@ -344,6 +344,10 @@
     <string name="settings_home_screen_video_muted_subtitle">वीडियो का ऑडियो म्यूट करें</string>
 
     <string name="settings_home_screen_installed_only_title">केवल इंस्टॉल किए गए गेम</string>
+    <string name="settings_home_screen_box_art_title">बॉक्स आर्ट</string>
+    <string name="settings_home_screen_box_art_subtitle">जिन गेम में 3D बॉक्स है, उनके लिए उसे दिखाता है</string>
+    <string name="settings_home_screen_box_art_option_2d">2D कवर</string>
+    <string name="settings_home_screen_box_art_option_3d">3D बॉक्स</string>
     <string name="settings_home_screen_installed_only_subtitle">होम स्क्रीन पर केवल डाउनलोड किए गए गेम दिखाएँ</string>
 
     <!-- ===== Saves section ===== -->
@@ -547,6 +551,10 @@
     <string name="settings_permissions_screen_capture_description">गेम खेलते समय स्क्रीन के रंग पढ़ने के लिए एम्बिएंट LED लाइटिंग सक्षम करता है।</string>
     <string name="settings_permissions_display_overlay_title">अन्य ऐप्स के ऊपर दिखाएँ</string>
     <string name="settings_permissions_display_overlay_description">बाहरी एमुलेटर में गेम खेलते समय सेव पहचान नोटिफ़िकेशन दिखाता है।</string>
+    <string name="settings_permissions_live_wallpaper_title">एनिमेटेड लॉक स्क्रीन</string>
+    <string name="settings_permissions_live_wallpaper_description">लॉक स्क्रीन पर आपकी लाइब्रेरी को धीरे-धीरे स्क्रॉल होती बॉक्स आर्ट की पंक्तियों के रूप में दिखाता है।</string>
+    <string name="lock_screen_wallpaper_label">Argosy लाइब्रेरी</string>
+    <string name="lock_screen_wallpaper_description">लॉक स्क्रीन पर आपकी लाइब्रेरी की बॉक्स आर्ट की स्क्रॉल होती पंक्तियाँ, और लोड होते समय शुरू हो रहा गेम।</string>
     <string name="settings_permissions_status_footer">स्थिति: %1$d/%2$d अनुमतियाँ दी गईं</string>
 
     <!-- ===== About section ===== -->
@@ -593,6 +601,10 @@
     <string name="settings_about_log_path_internal">इंटरनल</string>
     <string name="settings_about_log_path_sd_card">SD कार्ड/%1$s</string>
     <string name="settings_about_log_level_title">लॉग लेवल</string>
+    <string name="settings_about_log_level_debug">डीबग</string>
+    <string name="settings_about_log_level_info">जानकारी</string>
+    <string name="settings_about_log_level_warn">चेतावनी</string>
+    <string name="settings_about_log_level_error">त्रुटि</string>
     <string name="settings_about_save_debug_title">सेव डीबग लॉगिंग</string>
     <string name="settings_about_save_debug_subtitle_on">विस्तृत सेव ऑपरेशन लॉग हो रहे हैं</string>
     <string name="settings_about_save_debug_subtitle_off">सेव सिंक, कैश और चैनल इवेंट लॉग करें</string>
@@ -1740,6 +1752,10 @@
     <string name="settings_library_layout_title">लेआउट</string>
     <string name="settings_library_layout_grid">ग्रिड</string>
     <string name="settings_library_layout_list">सूची</string>
+    <string name="settings_library_box_art_title">बॉक्स आर्ट</string>
+    <string name="settings_library_box_art_subtitle">जिन गेम में 3D बॉक्स है, उनके लिए उसे दिखाता है</string>
+    <string name="settings_library_box_art_option_2d">2D कवर</string>
+    <string name="settings_library_box_art_option_3d">3D बॉक्स</string>
     <string name="settings_library_grid_density_title">ग्रिड डेंसिटी</string>
     <string name="settings_library_grid_density_compact">कॉम्पैक्ट</string>
     <string name="settings_library_grid_density_normal">सामान्य</string>

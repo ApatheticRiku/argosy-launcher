@@ -9,11 +9,13 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.nendo.argosy.data.wallpaper.LockScreenScenes
 import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.ui.screens.settings.PermissionsState
 import com.nendo.argosy.util.PermissionHelper
+import com.nendo.argosy.util.SecondaryHomeComponent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -62,9 +64,16 @@ class PermissionsSettingsDelegate @Inject constructor(
                 isWriteSettingsRelevant = isDeviceWithFanControl,
                 hasScreenCapture = hasScreenCapture,
                 isScreenCaptureRelevant = isLedAvailable,
-                hasDisplayOverlay = hasDisplayOverlay
+                hasDisplayOverlay = hasDisplayOverlay,
+                hasLiveWallpaper = LockScreenScenes.isLiveActive(application),
+                isLiveWallpaperRelevant = LockScreenScenes.isSupported(application) &&
+                    SecondaryHomeComponent.isDefaultHome(application)
             )
         }
+    }
+
+    fun openLiveWallpaperPicker() {
+        application.startActivity(LockScreenScenes.pickerIntent(application).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun observeScreenCapturePermission(scope: CoroutineScope) {

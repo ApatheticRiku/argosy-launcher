@@ -10,6 +10,7 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.SystemClock
 import android.view.Display
 import android.view.Surface
@@ -51,14 +52,17 @@ class LockScreenArtManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val displayPrefs: DisplayPreferencesRepository,
     private val gameRepository: GameRepository,
-    private val playSessionTracker: PlaySessionTracker
+    private val playSessionTracker: PlaySessionTracker,
+    private val scenes: LockScreenScenes
 ) {
     private val scope = SafeCoroutineScope(Dispatchers.IO, TAG)
     private val mutex = Mutex()
     private var shownKey: String? = null
     @Volatile private var libraryRefresh: Job? = null
 
-    private class LoadedArt(val art: Pair<String, Bitmap?>?)
+    @Volatile private var shownLive = false
+
+    private class LoadedArt<T>(val art: Pair<String, T?>?)
 
     companion object {
         internal fun mayDraw(gameId: Long?, shownKey: String?, isLaunch: Boolean): Boolean =
@@ -77,7 +81,7 @@ class LockScreenArtManager @Inject constructor(
             displayPrefs.preferences
                 .map { it.lockScreenArt }
                 .distinctUntilChanged()
-                .collect { enabled -> if (!enabled) mutex.withLock { clearIfApplied() } }
+                .collect { enabled -> if (!enabled) mutex.withLock { clearIfApplied(removeLiveWallpaper = true) } }
         }
     }
 
@@ -106,7 +110,7 @@ class LockScreenArtManager @Inject constructor(
                     armed = true
                 }
             }
-            val settled = drawn && withTimeoutOrNull(LAUNCH_RECOLOR_WAIT_MS) { recolored.await() } != null
+            val settled = drawn && armed && withTimeoutOrNull(LAUNCH_RECOLOR_WAIT_MS) { recolored.await() } != null
             Logger.debug(
                 TAG,
                 "showBeforeLaunch: gameId=$gameId drawn=$drawn " +
@@ -135,7 +139,7 @@ class LockScreenArtManager @Inject constructor(
         val isHome = SecondaryHomeComponent.isDefaultHome(context)
         if (!enabled || !isHome) {
             Logger.debug(TAG, "refresh: not drawing | enabled=$enabled, isHome=$isHome")
-            clearIfApplied()
+            clearIfApplied(removeLiveWallpaper = true)
             return@withLock false
         }
         val wallpaperManager = WallpaperManager.getInstance(context)
@@ -145,17 +149,19 @@ class LockScreenArtManager @Inject constructor(
         }
         val (width, height) = screenSize() ?: return@withLock false
 
+        val live = LockScreenScenes.isLiveActive(context)
+        if (live != shownLive) {
+            shownKey = null
+            shownLive = live
+        }
+        if (live) return@withLock showLive(gameId, width, height, artLoadBudgetMs)
+
         val loadArt: suspend () -> Pair<String, Bitmap?>? = {
             gameId?.let { heroArt(it, width, height) } ?: mosaicArt(width, height)
         }
-        val art = if (artLoadBudgetMs != null) {
-            val loaded = withTimeoutOrNull(artLoadBudgetMs) { LoadedArt(loadArt()) } ?: run {
-                Logger.debug(TAG, "refresh: art not ready within ${artLoadBudgetMs}ms; leaving the lock screen as it is | gameId=$gameId")
-                return@withLock false
-            }
-            loaded.art
-        } else {
-            loadArt()
+        val art = when (val loaded = withinBudget(artLoadBudgetMs, gameId, loadArt)) {
+            null -> return@withLock false
+            else -> loaded.art
         }
         val (key, bitmap) = art ?: run {
             Logger.debug(TAG, "refresh: nothing to draw | gameId=$gameId, size=${width}x$height")
@@ -177,6 +183,70 @@ class LockScreenArtManager @Inject constructor(
         set
     }
 
+    private suspend fun <T> withinBudget(
+        budgetMs: Long?,
+        gameId: Long?,
+        load: suspend () -> Pair<String, T?>?
+    ): LoadedArt<T>? {
+        if (budgetMs == null) return LoadedArt(load())
+        return withTimeoutOrNull(budgetMs) { LoadedArt(load()) } ?: run {
+            Logger.debug(TAG, "refresh: art not ready within ${budgetMs}ms; leaving the lock screen as it is | gameId=$gameId")
+            null
+        }
+    }
+
+    private suspend fun showLive(gameId: Long?, width: Int, height: Int, budgetMs: Long?): Boolean {
+        releaseStaticLockForLive()
+        val loadScene: suspend () -> Pair<String, LockScreenScene?>? = {
+            gameId?.let { id -> heroArt(id, width, height)?.let { (key, bitmap) -> key to bitmap?.let(LockScreenScene::Hero) } }
+                ?: scrollingMosaic(width, height)
+        }
+        val (key, scene) = withinBudget(budgetMs, gameId, loadScene)?.art ?: return false
+        if (scene == null) return false
+        scenes.show(scene)
+        shownKey = key
+        Logger.debug(TAG, "showLive: sent the live wallpaper a new scene | key=$key")
+        return true
+    }
+
+    private suspend fun scrollingMosaic(width: Int, height: Int): Pair<String, LockScreenScene?>? {
+        val tileCount = LockScreenArtRenderer.stripTileCount(width, height)
+        val sources = gameRepository.coversOnePerTitle().distinct()
+        val key = "mosaic:${sources.size}:${sources.take(tileCount * 2).hashCode()}:${width}x$height"
+        if (key == shownKey) return key to null
+        return scrollingScene(sources, width, height)?.let { key to it }
+    }
+
+    private suspend fun releaseStaticLockForLive() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return
+        val wallpaperManager = WallpaperManager.getInstance(context)
+        if (wallpaperManager.getWallpaperId(WallpaperManager.FLAG_LOCK) < 0) return
+        runCatching { wallpaperManager.clear(WallpaperManager.FLAG_LOCK) }
+            .onSuccess {
+                Logger.debug(TAG, "releaseStaticLockForLive: cleared the still lock image so the live wallpaper shows")
+                displayPrefs.setLockScreenArtApplied(false)
+            }
+            .onFailure { Logger.warn(TAG, "releaseStaticLockForLive: could not clear the lock wallpaper | ${it.message}") }
+    }
+
+    fun onLiveWallpaperBound() {
+        libraryRefresh = scope.launch { refresh() }
+    }
+
+    fun prepareLivePreview() {
+        if (scenes.scene.value != null) return
+        scope.launch {
+            val (width, height) = screenSize() ?: return@launch
+            scrollingScene(gameRepository.coversOnePerTitle().distinct(), width, height)?.let(scenes::show)
+        }
+    }
+
+    private suspend fun scrollingScene(sources: List<String>, width: Int, height: Int): LockScreenScene.Mosaic? {
+        val grid = LockScreenArtRenderer.grid(width, height)
+        val count = LockScreenArtRenderer.stripTileCount(width, height)
+        return LockScreenArtRenderer.scrollingMosaic(loadCovers(sources, count, grid.tileWidth, grid.tileHeight), width, height)
+    }
+
     private suspend fun heroArt(gameId: Long, width: Int, height: Int): Pair<String, Bitmap?>? {
         gameRepository.getById(gameId) ?: return null
         shownKey?.takeIf { it.startsWith("game:$gameId:") }?.let { return it to null }
@@ -196,17 +266,22 @@ class LockScreenArtManager @Inject constructor(
         val sources = gameRepository.coversOnePerTitle().distinct()
         val key = "mosaic:${sources.size}:${sources.take(grid.tileCount * 2).hashCode()}:${width}x$height"
         if (key == shownKey) return key to null
+        val covers = loadCovers(sources, grid.tileCount, grid.tileWidth, grid.tileHeight)
+        val bitmap = LockScreenArtRenderer.mosaic(covers, width, height) ?: return null
+        return key to bitmap
+    }
+
+    private suspend fun loadCovers(sources: List<String>, count: Int, width: Int, height: Int): List<Bitmap> {
         val covers = mutableListOf<Bitmap>()
         for (batch in sources.chunked(MOSAIC_LOAD_BATCH)) {
-            if (covers.size >= grid.tileCount) break
+            if (covers.size >= count) break
             covers += coroutineScope {
-                batch.map { source -> async { load(source, grid.tileWidth, grid.tileHeight) } }
+                batch.map { source -> async { load(source, width, height) } }
                     .awaitAll()
                     .filterNotNull()
             }
         }
-        val bitmap = LockScreenArtRenderer.mosaic(covers.take(grid.tileCount), width, height) ?: return null
-        return key to bitmap
+        return covers.take(count)
     }
 
     private suspend fun load(source: String, width: Int, height: Int): Bitmap? {
@@ -220,7 +295,16 @@ class LockScreenArtManager @Inject constructor(
         return (result.drawable as? BitmapDrawable)?.bitmap
     }
 
-    private suspend fun clearIfApplied() {
+    private suspend fun clearIfApplied(removeLiveWallpaper: Boolean = false) {
+        if (LockScreenScenes.isLiveActive(context)) {
+            scenes.clear()
+            shownKey = null
+            if (removeLiveWallpaper) {
+                runCatching {
+                    WallpaperManager.getInstance(context).clear(WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
+                }.onFailure { Logger.warn(TAG, "clearIfApplied: could not remove the live wallpaper | ${it.message}") }
+            }
+        }
         if (!displayPrefs.isLockScreenArtApplied()) return
         runCatching { WallpaperManager.getInstance(context).clear(WallpaperManager.FLAG_LOCK) }
             .onFailure { Logger.warn(TAG, "clearIfApplied: could not clear the lock wallpaper | ${it.message}") }

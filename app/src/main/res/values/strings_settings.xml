@@ -687,6 +687,14 @@
     <!-- Row title. Adjective phrase describing which games are listed: only the ones on this
          device. -->
     <string name="settings_home_screen_installed_only_title">Installed Games Only</string>
+    <!-- Home screen setting title. Noun: the picture drawn for each game on the home screen. -->
+    <string name="settings_home_screen_box_art_title">Box Art</string>
+    <!-- Second line under the home screen box art setting. -->
+    <string name="settings_home_screen_box_art_subtitle">Shows a 3D box for games that have one</string>
+    <!-- Home box art option: the flat front cover. Keep short; shown in a segmented control. -->
+    <string name="settings_home_screen_box_art_option_2d">2D Cover</string>
+    <!-- Home box art option: the game's box drawn at an angle. Keep short; shown in a segmented control. -->
+    <string name="settings_home_screen_box_art_option_3d">3D Box</string>
     <!-- Second line of that row. -->
     <string name="settings_home_screen_installed_only_subtitle">Only show downloaded games on home screen</string>
 
@@ -1068,6 +1076,14 @@
     <string name="settings_permissions_display_overlay_title">Display Over Other Apps</string>
     <!-- Body of that card. -->
     <string name="settings_permissions_display_overlay_description">Shows save detection notifications while playing games in external emulators.</string>
+    <!-- Card title. Noun phrase naming Argosy's animated wallpaper, which Android asks the user to apply once. -->
+    <string name="settings_permissions_live_wallpaper_title">Animated Lock Screen</string>
+    <!-- Body of that card. -->
+    <string name="settings_permissions_live_wallpaper_description">Lets the lock screen show your library as slowly scrolling rows of box art.</string>
+    <!-- Name of Argosy's live wallpaper in Android's wallpaper picker. -->
+    <string name="lock_screen_wallpaper_label">Argosy Library</string>
+    <!-- Description of that wallpaper in Android's wallpaper picker. -->
+    <string name="lock_screen_wallpaper_description">Rows of your library\'s box art scrolling on the lock screen, and the game you are starting while it loads.</string>
     <!-- Line under the list. %1$d is how many permissions were given, %2$d how many there are. -->
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d permissions granted</string>
 
@@ -1159,6 +1175,14 @@
     <string name="settings_about_log_path_sd_card">SD Card/%1$s</string>
     <!-- Row title. Noun phrase: how much detail the log keeps. -->
     <string name="settings_about_log_level_title">Log Level</string>
+    <!-- Log level option. Most detailed level, records diagnostic messages. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_debug">Debug</string>
+    <!-- Log level option. Records normal informational messages. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_info">Info</string>
+    <!-- Log level option. Records warnings and errors only. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_warn">Warn</string>
+    <!-- Log level option. Records errors only. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_error">Error</string>
     <!-- Row title. Noun phrase: extra logging around game saves. -->
     <string name="settings_about_save_debug_title">Save Debug Logging</string>
     <!-- Second line of that row while it is on. -->
@@ -3298,6 +3322,14 @@
     <string name="settings_library_layout_grid">Grid</string>
     <!-- Value of that row. Noun: games shown one per row with details beside the cover. -->
     <string name="settings_library_layout_list">List</string>
+    <!-- Library setting title. Noun: the picture drawn for each game in the library grid. -->
+    <string name="settings_library_box_art_title">Box Art</string>
+    <!-- Second line under the library box art setting. -->
+    <string name="settings_library_box_art_subtitle">Shows a 3D box for games that have one</string>
+    <!-- Library box art option: the flat front cover. Keep short; shown in a segmented control. -->
+    <string name="settings_library_box_art_option_2d">2D Cover</string>
+    <!-- Library box art option: the game's box drawn at an angle. Keep short; shown in a segmented control. -->
+    <string name="settings_library_box_art_option_3d">3D Box</string>
 
     <!-- Row title. Noun phrase: how tightly the library packs its game covers. -->
     <string name="settings_library_grid_density_title">Grid Density</string>

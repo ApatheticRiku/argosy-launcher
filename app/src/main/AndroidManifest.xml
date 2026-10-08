@@ -138,6 +138,19 @@
         </provider>
 
         <service
+            android:name=".data.wallpaper.LockScreenWallpaperService"
+            android:label="@string/lock_screen_wallpaper_label"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/lock_screen_wallpaper" />
+        </service>
+
+        <service
             android:name=".data.download.DownloadForegroundService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />

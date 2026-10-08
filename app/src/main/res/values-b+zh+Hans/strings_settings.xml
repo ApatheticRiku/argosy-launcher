@@ -339,6 +339,10 @@
     <string name="settings_home_screen_video_muted_subtitle">静音视频声音</string>
 
     <string name="settings_home_screen_installed_only_title">仅显示已安装游戏</string>
+    <string name="settings_home_screen_box_art_title">封面图</string>
+    <string name="settings_home_screen_box_art_subtitle">为有 3D 盒装图的游戏显示 3D 盒装</string>
+    <string name="settings_home_screen_box_art_option_2d">2D 封面</string>
+    <string name="settings_home_screen_box_art_option_3d">3D 盒装</string>
     <string name="settings_home_screen_installed_only_subtitle">主屏幕仅显示已下载的游戏</string>
 
     <!-- ===== Saves section ===== -->
@@ -535,6 +539,10 @@
     <string name="settings_permissions_screen_capture_description">使氛围LED灯光能够在游戏过程中采集屏幕颜色。</string>
     <string name="settings_permissions_display_overlay_title">悬浮在其他应用上层</string>
     <string name="settings_permissions_display_overlay_description">在外部模拟器中游戏时显示存档检测通知。</string>
+    <string name="settings_permissions_live_wallpaper_title">动态锁屏</string>
+    <string name="settings_permissions_live_wallpaper_description">在锁屏上以缓慢滚动的封面行展示你的游戏库。</string>
+    <string name="lock_screen_wallpaper_label">Argosy 游戏库</string>
+    <string name="lock_screen_wallpaper_description">锁屏上滚动展示你游戏库的封面，正在启动的游戏会在加载时显示。</string>
     <string name="settings_permissions_status_footer">状态：已授予%1$d/%2$d项权限</string>
 
     <!-- ===== About section ===== -->
@@ -581,6 +589,10 @@
     <string name="settings_about_log_path_internal">内部存储</string>
     <string name="settings_about_log_path_sd_card">SD卡/%1$s</string>
     <string name="settings_about_log_level_title">日志级别</string>
+    <string name="settings_about_log_level_debug">调试</string>
+    <string name="settings_about_log_level_info">信息</string>
+    <string name="settings_about_log_level_warn">警告</string>
+    <string name="settings_about_log_level_error">错误</string>
 
     <string name="settings_about_save_debug_title">存档调试日志</string>
     <string name="settings_about_save_debug_subtitle_on">记录详细的存档操作</string>
@@ -1696,6 +1708,10 @@
     <string name="settings_library_layout_title">布局</string>
     <string name="settings_library_layout_grid">网格</string>
     <string name="settings_library_layout_list">列表</string>
+    <string name="settings_library_box_art_title">封面图</string>
+    <string name="settings_library_box_art_subtitle">为有 3D 盒装图的游戏显示 3D 盒装</string>
+    <string name="settings_library_box_art_option_2d">2D 封面</string>
+    <string name="settings_library_box_art_option_3d">3D 盒装</string>
     <string name="settings_library_grid_density_title">网格密度</string>
     <string name="settings_library_grid_density_compact">紧凑</string>
     <string name="settings_library_grid_density_normal">正常</string>

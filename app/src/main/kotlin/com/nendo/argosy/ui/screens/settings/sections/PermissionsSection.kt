@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.ScreenshotMonitor
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,7 +46,7 @@ import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
 
-private sealed class PermissionsItem(
+internal sealed class PermissionsItem(
     val key: String,
     val visibleWhen: (PermissionsState) -> Boolean = { true }
 ) {
@@ -64,13 +65,34 @@ private sealed class PermissionsItem(
         visibleWhen = { it.isScreenCaptureRelevant }
     )
     data object DisplayOverlay : PermissionsItem("displayOverlay")
+    data object LiveWallpaper : PermissionsItem(
+        key = "liveWallpaper",
+        visibleWhen = { it.isLiveWallpaperRelevant }
+    )
     data object StatusFooter : PermissionsItem("statusFooter")
 
     companion object {
         val ALL: List<PermissionsItem>
             get() = listOf(
-                InfoText, StorageAccess, UsageStats, Notifications, WriteSettings, ScreenCapture, DisplayOverlay, StatusFooter
+                InfoText, StorageAccess, UsageStats, Notifications, WriteSettings, ScreenCapture, DisplayOverlay,
+                LiveWallpaper, StatusFooter
             )
+    }
+}
+
+internal fun permissionsItemAt(focusIndex: Int, permissions: PermissionsState): PermissionsItem? =
+    permissionsLayout.itemAtFocusIndex(focusIndex, permissions)
+
+internal fun PermissionsItem.confirm(viewModel: SettingsViewModel) {
+    when (this) {
+        PermissionsItem.StorageAccess -> viewModel.openStorageSettings()
+        PermissionsItem.UsageStats -> viewModel.openUsageStatsSettings()
+        PermissionsItem.Notifications -> viewModel.openNotificationSettings()
+        PermissionsItem.WriteSettings -> viewModel.openWriteSettings()
+        PermissionsItem.ScreenCapture -> viewModel.requestScreenCapturePermission()
+        PermissionsItem.DisplayOverlay -> viewModel.openDisplayOverlaySettings()
+        PermissionsItem.LiveWallpaper -> viewModel.openLiveWallpaperPicker()
+        PermissionsItem.InfoText, PermissionsItem.StatusFooter -> Unit
     }
 }
 
@@ -87,7 +109,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val listState = rememberLazyListState()
     val permissions = uiState.permissions
 
-    val visibleItems = remember(permissions.isWriteSettingsRelevant) {
+    val visibleItems = remember(permissions) {
         permissionsLayout.visibleItems(permissions)
     }
 
@@ -119,7 +141,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_storage_description),
                     isGranted = permissions.hasStorageAccess,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.openStorageSettings() }
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.UsageStats -> PermissionCard(
@@ -128,7 +150,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_usage_stats_description),
                     isGranted = permissions.hasUsageStats,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.openUsageStatsSettings() }
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.Notifications -> PermissionCard(
@@ -137,7 +159,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_notifications_description),
                     isGranted = permissions.hasNotificationPermission,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.openNotificationSettings() }
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.WriteSettings -> PermissionCard(
@@ -146,7 +168,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_write_settings_description),
                     isGranted = permissions.hasWriteSettings,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.openWriteSettings() }
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.ScreenCapture -> PermissionCard(
@@ -155,7 +177,7 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_screen_capture_description),
                     isGranted = permissions.hasScreenCapture,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.requestScreenCapturePermission() }
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.DisplayOverlay -> PermissionCard(
@@ -164,7 +186,16 @@ fun PermissionsSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     description = stringResource(R.string.settings_permissions_display_overlay_description),
                     isGranted = permissions.hasDisplayOverlay,
                     isFocused = isFocused(item),
-                    onClick = { viewModel.openDisplayOverlaySettings() }
+                    onClick = { item.confirm(viewModel) }
+                )
+
+                PermissionsItem.LiveWallpaper -> PermissionCard(
+                    icon = Icons.Default.Wallpaper,
+                    title = stringResource(R.string.settings_permissions_live_wallpaper_title),
+                    description = stringResource(R.string.settings_permissions_live_wallpaper_description),
+                    isGranted = permissions.hasLiveWallpaper,
+                    isFocused = isFocused(item),
+                    onClick = { item.confirm(viewModel) }
                 )
 
                 PermissionsItem.StatusFooter -> Column {

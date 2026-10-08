@@ -259,7 +259,8 @@ data class DisplayState(
         com.nendo.argosy.domain.model.HomeLayoutSettings(),
     val presentationStyle: com.nendo.argosy.domain.model.PresentationStyle =
         com.nendo.argosy.domain.model.PresentationStyle(),
-    val boxArtCapableGames: Int = 0,
+    val box3dCapableGames: Int = 0,
+    val libraryBoxArt3d: Boolean = false,
     val useAccentColorFooter: Boolean = false,
     val compactFooter: Boolean = false,
     val lockScreenArt: Boolean = true,
@@ -1516,26 +1517,23 @@ data class PermissionsState(
     val isWriteSettingsRelevant: Boolean = false,
     val hasScreenCapture: Boolean = false,
     val isScreenCaptureRelevant: Boolean = false,
-    val hasDisplayOverlay: Boolean = false
+    val hasDisplayOverlay: Boolean = false,
+    val hasLiveWallpaper: Boolean = false,
+    val isLiveWallpaperRelevant: Boolean = false
 ) {
-    val allGranted: Boolean get() = hasStorageAccess && hasUsageStats && hasNotificationPermission &&
-        (!isWriteSettingsRelevant || hasWriteSettings) &&
-        (!isScreenCaptureRelevant || hasScreenCapture) &&
-        hasDisplayOverlay
-    val grantedCount: Int get() = listOf(
-        hasStorageAccess,
-        hasUsageStats,
-        hasNotificationPermission,
-        if (isWriteSettingsRelevant) hasWriteSettings else null,
-        if (isScreenCaptureRelevant) hasScreenCapture else null,
-        hasDisplayOverlay
-    ).count { it == true }
-    val totalCount: Int get() {
-        var count = 4
-        if (isWriteSettingsRelevant) count++
-        if (isScreenCaptureRelevant) count++
-        return count
-    }
+    private val relevantGrants: List<Boolean>
+        get() = listOfNotNull(
+            hasStorageAccess,
+            hasUsageStats,
+            hasNotificationPermission,
+            hasWriteSettings.takeIf { isWriteSettingsRelevant },
+            hasScreenCapture.takeIf { isScreenCaptureRelevant },
+            hasDisplayOverlay,
+            hasLiveWallpaper.takeIf { isLiveWallpaperRelevant }
+        )
+    val allGranted: Boolean get() = relevantGrants.all { it }
+    val grantedCount: Int get() = relevantGrants.count { it }
+    val totalCount: Int get() = relevantGrants.size
 }
 
 const val RA_PROXY_TOGGLE_INDEX = 1

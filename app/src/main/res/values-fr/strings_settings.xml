@@ -349,6 +349,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Couper le son de la vidéo</string>
 
     <string name="settings_home_screen_installed_only_title">Jeux installés uniquement</string>
+    <string name="settings_home_screen_box_art_title">Jaquette</string>
+    <string name="settings_home_screen_box_art_subtitle">Affiche un boîtier 3D pour les jeux qui en ont un</string>
+    <string name="settings_home_screen_box_art_option_2d">Jaquette 2D</string>
+    <string name="settings_home_screen_box_art_option_3d">Boîtier 3D</string>
     <string name="settings_home_screen_installed_only_subtitle">N\'afficher que les jeux téléchargés sur l\'écran d\'accueil</string>
 
     <!-- ===== Section Sauvegardes ===== -->
@@ -559,6 +563,10 @@
     <string name="settings_permissions_screen_capture_description">Permet l\'éclairage LED ambiant en échantillonnant les couleurs de l\'écran pendant le jeu.</string>
     <string name="settings_permissions_display_overlay_title">Affichage par-dessus les autres applications</string>
     <string name="settings_permissions_display_overlay_description">Affiche des notifications de détection de sauvegarde en jouant avec des émulateurs externes.</string>
+    <string name="settings_permissions_live_wallpaper_title">Écran de verrouillage animé</string>
+    <string name="settings_permissions_live_wallpaper_description">Affiche votre bibliothèque sur l\'écran de verrouillage en rangées de jaquettes qui défilent lentement.</string>
+    <string name="lock_screen_wallpaper_label">Bibliothèque Argosy</string>
+    <string name="lock_screen_wallpaper_description">Des rangées de jaquettes de votre bibliothèque défilent sur l\'écran de verrouillage, puis le jeu en cours de lancement pendant son chargement.</string>
     <string name="settings_permissions_status_footer">État : %1$d/%2$d autorisations accordées</string>
 
     <!-- ===== Section A propos ===== -->
@@ -605,6 +613,10 @@
     <string name="settings_about_log_path_internal">Interne</string>
     <string name="settings_about_log_path_sd_card">Carte SD/%1$s</string>
     <string name="settings_about_log_level_title">Niveau de journalisation</string>
+    <string name="settings_about_log_level_debug">Débogage</string>
+    <string name="settings_about_log_level_info">Info</string>
+    <string name="settings_about_log_level_warn">Alerte</string>
+    <string name="settings_about_log_level_error">Erreur</string>
 
     <string name="settings_about_save_debug_title">Journalisation de débogage des sauvegardes</string>
     <string name="settings_about_save_debug_subtitle_on">Opérations de sauvegarde détaillées consignées</string>
@@ -1790,6 +1802,10 @@
     <string name="settings_library_layout_title">Disposition</string>
     <string name="settings_library_layout_grid">Grille</string>
     <string name="settings_library_layout_list">Liste</string>
+    <string name="settings_library_box_art_title">Jaquette</string>
+    <string name="settings_library_box_art_subtitle">Affiche un boîtier 3D pour les jeux qui en ont un</string>
+    <string name="settings_library_box_art_option_2d">Jaquette 2D</string>
+    <string name="settings_library_box_art_option_3d">Boîtier 3D</string>
     <string name="settings_library_grid_density_title">Densité de la grille</string>
     <string name="settings_library_grid_density_compact">Compacte</string>
     <string name="settings_library_grid_density_normal">Normale</string>

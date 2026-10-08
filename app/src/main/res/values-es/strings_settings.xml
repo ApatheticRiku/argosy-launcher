@@ -359,6 +359,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Silenciar el audio del video</string>
 
     <string name="settings_home_screen_installed_only_title">Solo juegos instalados</string>
+    <string name="settings_home_screen_box_art_title">Carátula</string>
+    <string name="settings_home_screen_box_art_subtitle">Muestra una caja 3D en los juegos que la tienen</string>
+    <string name="settings_home_screen_box_art_option_2d">Portada 2D</string>
+    <string name="settings_home_screen_box_art_option_3d">Caja 3D</string>
     <string name="settings_home_screen_installed_only_subtitle">Mostrar solo los juegos descargados en la pantalla de inicio</string>
 
     <!-- ===== Saves section ===== -->
@@ -569,6 +573,10 @@
     <string name="settings_permissions_screen_capture_description">Permite la iluminación LED ambiental para tomar muestras de los colores de la pantalla mientras juegas.</string>
     <string name="settings_permissions_display_overlay_title">Mostrar sobre otras aplicaciones</string>
     <string name="settings_permissions_display_overlay_description">Muestra notificaciones de detección de guardado al jugar con emuladores externos.</string>
+    <string name="settings_permissions_live_wallpaper_title">Pantalla de bloqueo animada</string>
+    <string name="settings_permissions_live_wallpaper_description">Muestra tu biblioteca en la pantalla de bloqueo como filas de portadas que se desplazan lentamente.</string>
+    <string name="lock_screen_wallpaper_label">Biblioteca de Argosy</string>
+    <string name="lock_screen_wallpaper_description">Filas de portadas de tu biblioteca desplazándose en la pantalla de bloqueo, y el juego que se está iniciando mientras carga.</string>
     <string name="settings_permissions_status_footer">Estado: %1$d/%2$d permisos concedidos</string>
 
     <!-- ===== About section ===== -->
@@ -615,6 +623,10 @@
     <string name="settings_about_log_path_internal">Interno</string>
     <string name="settings_about_log_path_sd_card">Tarjeta SD/%1$s</string>
     <string name="settings_about_log_level_title">Nivel de registro</string>
+    <string name="settings_about_log_level_debug">Depuración</string>
+    <string name="settings_about_log_level_info">Info</string>
+    <string name="settings_about_log_level_warn">Aviso</string>
+    <string name="settings_about_log_level_error">Error</string>
 
     <string name="settings_about_save_debug_title">Registro de depuración de guardados</string>
     <string name="settings_about_save_debug_subtitle_on">Se registran las operaciones de guardado detalladas</string>
@@ -1800,6 +1812,10 @@
     <string name="settings_library_layout_title">Diseño</string>
     <string name="settings_library_layout_grid">Cuadrícula</string>
     <string name="settings_library_layout_list">Lista</string>
+    <string name="settings_library_box_art_title">Carátula</string>
+    <string name="settings_library_box_art_subtitle">Muestra una caja 3D en los juegos que la tienen</string>
+    <string name="settings_library_box_art_option_2d">Portada 2D</string>
+    <string name="settings_library_box_art_option_3d">Caja 3D</string>
     <string name="settings_library_grid_density_title">Densidad de cuadrícula</string>
     <string name="settings_library_grid_density_compact">Compacta</string>
     <string name="settings_library_grid_density_normal">Normal</string>

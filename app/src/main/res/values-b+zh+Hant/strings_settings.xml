@@ -322,6 +322,10 @@
     <string name="settings_home_screen_video_muted_subtitle">將影片靜音</string>
 
     <string name="settings_home_screen_installed_only_title">僅限已安裝的遊戲</string>
+    <string name="settings_home_screen_box_art_title">封面圖</string>
+    <string name="settings_home_screen_box_art_subtitle">為有 3D 盒裝圖的遊戲顯示 3D 盒裝</string>
+    <string name="settings_home_screen_box_art_option_2d">2D 封面</string>
+    <string name="settings_home_screen_box_art_option_3d">3D 盒裝</string>
     <string name="settings_home_screen_installed_only_subtitle">主畫面僅顯示已下載的遊戲</string>
 
     <string name="settings_saves_section_sync">同步</string>
@@ -506,6 +510,10 @@
     <string name="settings_permissions_screen_capture_description">讓環境LED燈光能在遊玩時擷取螢幕色彩。</string>
     <string name="settings_permissions_display_overlay_title">顯示在其他應用程式上層</string>
     <string name="settings_permissions_display_overlay_description">在外部模擬器中遊玩時顯示存檔偵測通知。</string>
+    <string name="settings_permissions_live_wallpaper_title">動態鎖定畫面</string>
+    <string name="settings_permissions_live_wallpaper_description">在鎖定畫面上以緩慢捲動的封面列展示你的遊戲庫。</string>
+    <string name="lock_screen_wallpaper_label">Argosy 遊戲庫</string>
+    <string name="lock_screen_wallpaper_description">鎖定畫面上捲動展示你遊戲庫的封面，正在啟動的遊戲會在載入時顯示。</string>
     <string name="settings_permissions_status_footer">狀態：已授予%1$d／%2$d項權限</string>
 
     <string name="settings_about_section_version">版本</string>
@@ -550,6 +558,10 @@
     <string name="settings_about_log_path_internal">內部儲存空間</string>
     <string name="settings_about_log_path_sd_card">SD卡／%1$s</string>
     <string name="settings_about_log_level_title">記錄層級</string>
+    <string name="settings_about_log_level_debug">偵錯</string>
+    <string name="settings_about_log_level_info">資訊</string>
+    <string name="settings_about_log_level_warn">警告</string>
+    <string name="settings_about_log_level_error">錯誤</string>
     <string name="settings_about_save_debug_title">存檔偵錯記錄</string>
     <string name="settings_about_save_debug_subtitle_on">已記錄詳細的存檔操作</string>
     <string name="settings_about_save_debug_subtitle_off">記錄存檔同步、快取與頻道事件</string>
@@ -1614,6 +1626,10 @@
     <string name="settings_library_layout_title">版面配置</string>
     <string name="settings_library_layout_grid">格線</string>
     <string name="settings_library_layout_list">清單</string>
+    <string name="settings_library_box_art_title">封面圖</string>
+    <string name="settings_library_box_art_subtitle">為有 3D 盒裝圖的遊戲顯示 3D 盒裝</string>
+    <string name="settings_library_box_art_option_2d">2D 封面</string>
+    <string name="settings_library_box_art_option_3d">3D 盒裝</string>
     <string name="settings_library_grid_density_title">格線密度</string>
     <string name="settings_library_grid_density_compact">緊湊</string>
     <string name="settings_library_grid_density_normal">一般</string>
