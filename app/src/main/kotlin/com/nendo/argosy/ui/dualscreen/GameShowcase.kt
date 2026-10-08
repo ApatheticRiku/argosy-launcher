@@ -490,6 +490,16 @@ private fun ShowcaseSubtitle(subtitle: String, platformSlug: String?) {
 private fun ShowcaseCover(detail: CompanionDetail, art: PresentationArt, height: Dp) {
     val artUrl = detail.artUrl ?: return
     if (art == PresentationArt.TITLE) return
+    val localBox3d = detail.box3dUrl?.takeIf { art == PresentationArt.BOX_3D && it.startsWith("/") }
+    if (localBox3d != null) {
+        AsyncImage(
+            model = rememberFileImageModel(localBox3d),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.height(height)
+        )
+        return
+    }
     val localSpine = detail.spineUrl
         ?.takeIf { art == PresentationArt.BOX_3D && artUrl.startsWith("/") && it.startsWith("/") }
     if (localSpine != null) {

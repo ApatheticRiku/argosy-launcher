@@ -93,6 +93,7 @@ data class HomeGameUi(
     val backgroundPath: String?,
     val boxBackPath: String? = null,
     val boxSpinePath: String? = null,
+    val box3dPath: String? = null,
     val logoPath: String? = null,
     val developer: String?,
     val releaseYear: Int?,
@@ -315,6 +316,7 @@ data class HomeUiState(
     val friendsActivity: Map<Int, List<com.nendo.argosy.data.social.FriendActivity>> = emptyMap(),
     val autoGridConfig: com.nendo.argosy.domain.model.AutoGridConfig =
         com.nendo.argosy.domain.model.AutoGridConfig(),
+    val boxArt3d: Boolean = false,
     val layoutKind: com.nendo.argosy.domain.model.HomeLayoutKind =
         com.nendo.argosy.domain.model.HomeLayoutKind.CAROUSEL,
     val customGridConfig: com.nendo.argosy.domain.model.CustomGridConfig =

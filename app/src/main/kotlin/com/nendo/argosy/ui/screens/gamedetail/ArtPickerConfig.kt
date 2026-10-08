@@ -12,10 +12,11 @@ data class ArtPickerConfig(
     val cropsToTile: Boolean,
     val checkeredBackdrop: Boolean,
     val offersScreenshots: Boolean,
-    val searchNeedsCoverSearch: Boolean
+    val searchNeedsCoverSearch: Boolean,
+    val offersOnlineSearch: Boolean = true
 ) {
     fun canSearch(serverSupportsCoverSearch: Boolean): Boolean =
-        !searchNeedsCoverSearch || serverSupportsCoverSearch
+        offersOnlineSearch && (!searchNeedsCoverSearch || serverSupportsCoverSearch)
 }
 
 val ArtSlot.pickerConfig: ArtPickerConfig
@@ -43,6 +44,15 @@ val ArtSlot.pickerConfig: ArtPickerConfig
             checkeredBackdrop = true,
             offersScreenshots = false,
             searchNeedsCoverSearch = false
+        )
+        ArtSlot.BOX_3D -> ArtPickerConfig(
+            columns = 3,
+            tileAspectRatio = 1f,
+            cropsToTile = false,
+            checkeredBackdrop = true,
+            offersScreenshots = false,
+            searchNeedsCoverSearch = false,
+            offersOnlineSearch = false
         )
     }
 

@@ -232,9 +232,11 @@
     <string name="gamedetail_artwork_row_cover">Cover</string>
     <string name="gamedetail_artwork_row_background">Hintergrund</string>
     <string name="gamedetail_artwork_row_logo">Logo</string>
+    <string name="gamedetail_artwork_row_box_3d">3D-Box</string>
     <string name="gamedetail_artwork_row_revert_cover">Cover zurücksetzen</string>
     <string name="gamedetail_artwork_row_revert_background">Hintergrund zurücksetzen</string>
     <string name="gamedetail_artwork_row_revert_logo">Logo zurücksetzen</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">3D-Box zurücksetzen</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -386,6 +388,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">Cover auswählen</string>
     <string name="gamedetail_art_picker_file_browser_title_background">Hintergrund auswählen</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">Logo auswählen</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">3D-Box auswählen</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 

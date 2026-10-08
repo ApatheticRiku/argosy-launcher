@@ -104,7 +104,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("box_art_inner_effect_thickness", SettingsBackupType.STRING),
         SettingsBackupKey("box_art_outer_effect", SettingsBackupType.STRING),
         SettingsBackupKey("box_art_outer_effect_thickness", SettingsBackupType.STRING),
-        SettingsBackupKey("box_art_cache_enabled", SettingsBackupType.BOOLEAN)
+        SettingsBackupKey("box_art_cache_enabled", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("library_box_art_3d", SettingsBackupType.BOOLEAN)
     )
 
     private val BACKGROUND = listOf(

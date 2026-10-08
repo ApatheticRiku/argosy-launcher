@@ -168,6 +168,7 @@ private val ArtSlot.tabLabelRes: Int
         ArtSlot.COVER -> R.string.gamedetail_artwork_row_cover
         ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_background
         ArtSlot.LOGO -> R.string.gamedetail_artwork_row_logo
+        ArtSlot.BOX_3D -> R.string.gamedetail_artwork_row_box_3d
     }
 
 @get:StringRes
@@ -176,6 +177,7 @@ private val ArtSlot.revertLabelRes: Int
         ArtSlot.COVER -> R.string.gamedetail_artwork_row_revert_cover
         ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_revert_background
         ArtSlot.LOGO -> R.string.gamedetail_artwork_row_revert_logo
+        ArtSlot.BOX_3D -> R.string.gamedetail_artwork_row_revert_box_3d
     }
 
 @Composable
@@ -226,6 +228,7 @@ val ArtSlot.fileBrowserTitleRes: Int
         ArtSlot.COVER -> R.string.gamedetail_art_picker_file_browser_title_cover
         ArtSlot.BACKGROUND -> R.string.gamedetail_art_picker_file_browser_title_background
         ArtSlot.LOGO -> R.string.gamedetail_art_picker_file_browser_title_logo
+        ArtSlot.BOX_3D -> R.string.gamedetail_art_picker_file_browser_title_box_3d
     }
 
 @Composable

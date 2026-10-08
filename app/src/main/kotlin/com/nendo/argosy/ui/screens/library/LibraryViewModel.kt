@@ -235,6 +235,8 @@ data class LibraryGameUi(
     val platformSlug: String,
     val platformDisplayName: String,
     val coverPath: String?,
+    val boxSpinePath: String? = null,
+    val box3dPath: String? = null,
     val gradientColors: Pair<Color, Color>? = null,
     val source: GameSource,
     val isFavorite: Boolean,
@@ -276,6 +278,7 @@ data class LibraryUiState(
     val isCustomGridHome: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val boxArt3d: Boolean = false,
     val saveStates: Map<Long, SaveListState> = emptyMap(),
     val friendsActivity: Map<Int, List<FriendActivity>> = emptyMap(),
     val isLoading: Boolean = true,
@@ -809,6 +812,7 @@ class LibraryViewModel @Inject constructor(
                     it.copy(
                         gridDensity = prefs.gridDensity,
                         libraryLayout = prefs.libraryLayout,
+                        boxArt3d = prefs.libraryBoxArt3d,
                         recentSearches = prefs.libraryRecentSearches,
                         isCustomGridHome = prefs.homeLayout.selected ==
                             com.nendo.argosy.domain.model.HomeLayoutKind.CUSTOM_GRID

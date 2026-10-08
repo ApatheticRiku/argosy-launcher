@@ -71,7 +71,7 @@ data class ImageCacheRequest(
     ) : this(listOf(url), id, type, gameTitle, isSteam, gameId)
 }
 
-enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE, LOGO }
+enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE, LOGO, BOX_3D }
 
 data class CachedGameImages(
     val coverPath: String?,
@@ -222,6 +222,7 @@ class ImageCacheManager @Inject constructor(
         private const val LOGOS_DIR = "_logos"
         private const val BOX_FACE_MAX_WIDTH = 400
         private const val LOGO_MAX_WIDTH = 1000
+        private const val BOX_3D_MAX_WIDTH = 600
         private const val COVER_MAX_WIDTH = 400
         private const val BACKGROUND_MAX_WIDTH = 1280
         private const val BACKGROUND_JPEG_QUALITY = 87
@@ -639,7 +640,7 @@ class ImageCacheManager @Inject constructor(
             val slug = resolveRommPlatformSlug(rommId)
             val prefixes = listOf(
                 "cover_${rommId}_", "bg_${rommId}_", "ss_${rommId}_",
-                "box_back_${rommId}_", "box_spine_${rommId}_", "game_logo_${rommId}_"
+                "box_back_${rommId}_", "box_spine_${rommId}_", "game_logo_${rommId}_", "box_3d_${rommId}_"
             )
             val types = listOf("covers", "backgrounds", "screenshots")
             types.forEach { type ->
@@ -924,6 +925,7 @@ class ImageCacheManager @Inject constructor(
                 else -> queueBackgroundCacheByGameId(url, gameId, title)
             }
             ArtSlot.LOGO -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.LOGO)
+            ArtSlot.BOX_3D -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.BOX_3D)
         }
     }
 
@@ -1240,7 +1242,7 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    enum class BoxFace { BACK, SPINE, LOGO }
+    enum class BoxFace { BACK, SPINE, LOGO, BOX_3D }
 
     fun queueCoverCache(url: String, rommId: Long, gameTitle: String = "") =
         queueCoverCache(listOf(url), rommId, gameTitle)
@@ -1293,6 +1295,14 @@ class ImageCacheManager @Inject constructor(
             BoxFace.BACK -> ImageType.BOX_BACK
             BoxFace.SPINE -> ImageType.BOX_SPINE
             BoxFace.LOGO -> ImageType.LOGO
+            BoxFace.BOX_3D -> ImageType.BOX_3D
+        }
+
+    private val ImageType.artSlot: ArtSlot?
+        get() = when (this) {
+            ImageType.LOGO -> ArtSlot.LOGO
+            ImageType.BOX_3D -> ArtSlot.BOX_3D
+            else -> null
         }
 
     fun queueCoverCacheByGameId(url: String, gameId: Long) =
@@ -1534,8 +1544,9 @@ class ImageCacheManager @Inject constructor(
 
     private suspend fun processBoxFaceRequest(request: ImageCacheRequest) {
         val game = gameDao.getByRommId(request.id) ?: return
-        if (request.type == ImageType.LOGO) {
-            if (isCachedFromSource(request, ArtSlot.LOGO)) return
+        val slot = request.type.artSlot
+        if (slot != null) {
+            if (isCachedFromSource(request, slot)) return
         } else {
             val currentDbPath = boxFacePath(game, request.type)
             if (currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
@@ -1545,14 +1556,20 @@ class ImageCacheManager @Inject constructor(
         val prefix = when (request.type) {
             ImageType.BOX_BACK -> "box_back_${request.id}"
             ImageType.LOGO -> "game_logo_${request.id}"
+            ImageType.BOX_3D -> "box_3d_${request.id}"
             else -> "box_spine_${request.id}"
         }
-        val maxWidth = if (request.type == ImageType.LOGO) LOGO_MAX_WIDTH else BOX_FACE_MAX_WIDTH
+        val maxWidth = when (request.type) {
+            ImageType.LOGO -> LOGO_MAX_WIDTH
+            ImageType.BOX_3D -> BOX_3D_MAX_WIDTH
+            else -> BOX_FACE_MAX_WIDTH
+        }
         val slug = resolveRommPlatformSlug(request.id)
         val coverDir = platformDir(slug, "covers")
         val kind = when (request.type) {
             ImageType.BOX_BACK -> "box back"
             ImageType.LOGO -> "logo"
+            ImageType.BOX_3D -> "3d box"
             else -> "box spine"
         }
         val idLabel = "rommId ${request.id}"
@@ -1600,8 +1617,9 @@ class ImageCacheManager @Inject constructor(
 
     private suspend fun updateGameBoxFace(request: ImageCacheRequest, localPath: String) {
         val game = gameDao.getByRommId(request.id) ?: return
-        if (request.type == ImageType.LOGO) {
-            gameArtDao.setCached(game.id, ArtSlot.LOGO, localPath, request.urls.firstOrNull())
+        val slot = request.type.artSlot
+        if (slot != null) {
+            gameArtDao.setCached(game.id, slot, localPath, request.urls.firstOrNull())
             return
         }
         val current = boxFacePath(game, request.type)
@@ -1625,7 +1643,8 @@ class ImageCacheManager @Inject constructor(
         backgroundUrls: List<String>,
         boxBackUrl: String?,
         boxSpineUrl: String?,
-        logoUrls: List<String> = emptyList()
+        logoUrls: List<String> = emptyList(),
+        box3dUrls: List<String> = emptyList()
     ): CachedGameImages = withContext(Dispatchers.IO) {
         if (coverUrls.isNotEmpty()) {
             processCoverRequest(ImageCacheRequest(coverUrls, rommId, ImageType.COVER, gameTitle, isSteam = false))
@@ -1637,6 +1656,9 @@ class ImageCacheManager @Inject constructor(
         boxSpineUrl?.let { processBoxFaceRequest(ImageCacheRequest(it, rommId, ImageType.BOX_SPINE, gameTitle, isSteam = false)) }
         if (logoUrls.isNotEmpty()) {
             processBoxFaceRequest(ImageCacheRequest(logoUrls, rommId, ImageType.LOGO, gameTitle, isSteam = false))
+        }
+        if (box3dUrls.isNotEmpty()) {
+            processBoxFaceRequest(ImageCacheRequest(box3dUrls, rommId, ImageType.BOX_3D, gameTitle, isSteam = false))
         }
 
         val game = gameDao.getByRommId(rommId)
@@ -1725,7 +1747,7 @@ class ImageCacheManager @Inject constructor(
                 ArtSlot.BACKGROUND -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.jpg"), Bitmap.CompressFormat.JPEG, BACKGROUND_JPEG_QUALITY
                 )
-                ArtSlot.LOGO -> writeValidatedBitmap(
+                ArtSlot.LOGO, ArtSlot.BOX_3D -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.png"), Bitmap.CompressFormat.PNG, 100
                 )
             }
@@ -1789,11 +1811,12 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.COVER -> COVER_MAX_WIDTH
             ArtSlot.BACKGROUND -> BACKGROUND_MAX_WIDTH
             ArtSlot.LOGO -> LOGO_MAX_WIDTH
+            ArtSlot.BOX_3D -> BOX_3D_MAX_WIDTH
         }
 
     private val ArtSlot.directoryName: String
         get() = when (this) {
-            ArtSlot.COVER -> "covers"
+            ArtSlot.COVER, ArtSlot.BOX_3D -> "covers"
             ArtSlot.BACKGROUND -> "backgrounds"
             ArtSlot.LOGO -> "logos"
         }
@@ -1803,6 +1826,7 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.COVER -> "cover_override_"
             ArtSlot.BACKGROUND -> "bg_override_"
             ArtSlot.LOGO -> "logo_override_"
+            ArtSlot.BOX_3D -> "box_3d_override_"
         }
 
     private val badgeQueue = Channel<AchievementBadgeCacheRequest>(256)

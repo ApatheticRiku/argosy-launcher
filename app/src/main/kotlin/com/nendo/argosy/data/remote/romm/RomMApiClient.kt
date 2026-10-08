@@ -61,6 +61,16 @@ class RomMApiClient @Inject constructor(
     fun buildLogoUrls(rom: RomMRom): List<String> =
         (listOfNotNull(buildResourceUrl(rom.ssMetadata?.logoPath)) + rom.clearLogoUrls).distinct()
 
+    fun buildBox3dUrls(rom: RomMRom): List<String> = box3dArt(rom).map { it.url }
+
+    private fun box3dArt(rom: RomMRom): List<ServerArt> = (
+        listOfNotNull(
+            buildResourceUrl(rom.ssMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) },
+            buildResourceUrl(rom.launchboxMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.LAUNCHBOX) },
+            buildResourceUrl(rom.gamelistMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.ROMM) }
+        ) + rom.box3dUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+    ).distinctBy { it.url }
+
     /**
      * The game's background candidates for library sync, in preference order: the ScreenScraper
      * fanart RomM stored, then LaunchBox's "Fanart - Background" images, then screenshots.
@@ -85,6 +95,7 @@ class RomMApiClient @Inject constructor(
             ArtSlot.LOGO -> listOfNotNull(
                 buildResourceUrl(rom.ssMetadata?.logoPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
             ) + rom.clearLogoUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+            ArtSlot.BOX_3D -> box3dArt(rom)
         }
         return tagged.distinctBy { it.url }
     }

@@ -32,6 +32,21 @@ private val aspectRatioCache = ConcurrentHashMap<String, Float>()
  * (not yet cached to disk) keep using [fallback] until they resolve to a file.
  */
 @Composable
+fun rememberGameArtAspectRatio(
+    game: com.nendo.argosy.ui.screens.home.HomeGameUi,
+    useBoxArt: Boolean,
+    coverPath: String?,
+    fallback: Float
+): Float {
+    val box3d = game.box3dPath?.takeIf { useBoxArt }
+    return if (box3d != null) {
+        rememberCoverAspectRatio(box3d, fallback)
+    } else {
+        game.coverAspectRatio ?: rememberCoverAspectRatio(coverPath, fallback)
+    }
+}
+
+@Composable
 fun rememberCoverAspectRatio(path: String?, fallback: Float): Float {
     val cached = path?.let { aspectRatioCache[it] }
     var ratio by remember(path) { mutableStateOf(cached ?: fallback) }

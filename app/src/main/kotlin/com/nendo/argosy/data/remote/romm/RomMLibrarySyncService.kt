@@ -1139,7 +1139,8 @@ class RomMLibrarySyncService @Inject constructor(
         val artSources = mapOf(
             ArtSlot.COVER to apiClient.buildCoverUrls(rom),
             ArtSlot.BACKGROUND to apiClient.buildBackgroundUrls(rom),
-            ArtSlot.LOGO to apiClient.buildLogoUrls(rom)
+            ArtSlot.LOGO to apiClient.buildLogoUrls(rom),
+            ArtSlot.BOX_3D to apiClient.buildBox3dUrls(rom)
         )
 
         val boxBackUrl = if (boxArtCacheEnabledForSync) {

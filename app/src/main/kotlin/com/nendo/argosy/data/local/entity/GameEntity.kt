@@ -224,7 +224,8 @@ data class GameListItem(
     val status: String?,
     val developer: String?,
     val igdbId: Long?,
-    val timeToBeatMainSec: Int?
+    val timeToBeatMainSec: Int?,
+    val boxSpinePath: String?
 ) {
     val isExternallyManaged: Boolean
         get() = steamLauncher != null && steamLauncher != GameEntity.LAUNCHER_UNSPECIFIED

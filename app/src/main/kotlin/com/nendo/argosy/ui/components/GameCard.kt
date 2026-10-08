@@ -131,12 +131,14 @@ fun GameCard(
 
     val borderColor = MaterialTheme.colorScheme.primary
 
+    val box3dImagePath = game.box3dPath?.takeIf { useBoxArt }
     val spinePathFor3d = game.boxSpinePath
-        ?.takeIf { useBoxArt && effectiveCoverPath.isNotEmpty() }
+        ?.takeIf { useBoxArt && box3dImagePath == null && effectiveCoverPath.isNotEmpty() }
+    val drawsAs3d = box3dImagePath != null || spinePathFor3d != null
 
-    val spineActiveForBackground = spinePathFor3d == null && showPlatformBadge &&
+    val spineActiveForBackground = !drawsAs3d && showPlatformBadge &&
         boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
-    val cardBackgroundBrush: androidx.compose.ui.graphics.Brush = if (spinePathFor3d != null) {
+    val cardBackgroundBrush: androidx.compose.ui.graphics.Brush = if (drawsAs3d) {
         SolidColor(Color.Transparent)
     } else if (spineActiveForBackground) {
         val accent = boxArtStyle.accentColor
@@ -171,7 +173,7 @@ fun GameCard(
                 alphaOverride = alphaOverride,
                 artworkGradient = coverGradientColors,
                 background = cardBackgroundBrush,
-                drawBorder = !spineActiveForBackground
+                drawBorder = !spineActiveForBackground && box3dImagePath == null
             )
     ) {
         val spineBlurredBackdrop = spineActiveForBackground &&
@@ -190,9 +192,9 @@ fun GameCard(
         val outerCornerRadiusPx = with(density) { boxArtStyle.cornerRadiusDp.toPx() }
         val frameWidthPx = with(density) { boxArtStyle.borderThicknessDp.toPx() }
         val oneDpPx = with(density) { 1.dp.toPx() }
-        val useGlassBorder = spinePathFor3d == null && !spineActiveForBackground &&
+        val useGlassBorder = !drawsAs3d && !spineActiveForBackground &&
             isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GLASS
-        val useGradientBorder = spinePathFor3d == null && !spineActiveForBackground &&
+        val useGradientBorder = !drawsAs3d && !spineActiveForBackground &&
             isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GRADIENT
 
         val gradientColors = game.gradientColors
@@ -236,7 +238,7 @@ fun GameCard(
 
         val indicatorActive = showPlatformBadge &&
             boxArtStyle.platformIndicatorStyle != com.nendo.argosy.data.preferences.PlatformIndicatorStyle.OFF
-        val spineActive = spinePathFor3d == null && indicatorActive &&
+        val spineActive = !drawsAs3d && indicatorActive &&
             boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
         // Skip the cover's inner edge effect when the spine container wraps the cover;
         // the stroke at the cover's spine-side edge reads as a hard line between spine and cover.
@@ -274,7 +276,27 @@ fun GameCard(
         ) ?: remember { mutableStateOf(0f) }
 
         val coverBody: @Composable () -> Unit = {
-            if (spinePathFor3d != null) {
+            if (box3dImagePath != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = rememberFileImageModel(box3dImagePath),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        colorFilter = saturationColorFilter,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    if (downloadIndicator.isShown) {
+                        DownloadProgressBadge(
+                            progress = downloadIndicator.progress,
+                            badgeSize = Dimens.iconLg,
+                            paused = downloadIndicator.isPaused
+                        )
+                    }
+                }
+            } else if (spinePathFor3d != null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center

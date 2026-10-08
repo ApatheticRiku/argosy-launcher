@@ -202,9 +202,11 @@
     <string name="gamedetail_artwork_row_cover">封面</string>
     <string name="gamedetail_artwork_row_background">背景</string>
     <string name="gamedetail_artwork_row_logo">标志</string>
+    <string name="gamedetail_artwork_row_box_3d">3D 盒装</string>
     <string name="gamedetail_artwork_row_revert_cover">恢复封面</string>
     <string name="gamedetail_artwork_row_revert_background">恢复背景</string>
     <string name="gamedetail_artwork_row_revert_logo">恢复标志</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">恢复 3D 盒装</string>
 
     <string name="gamedetail_status_picker_title">设置状态</string>
     <string name="gamedetail_status_picker_footer_navigate">导航</string>
@@ -335,6 +337,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">选择封面</string>
     <string name="gamedetail_art_picker_file_browser_title_background">选择背景</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">选择标志</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">选择 3D 盒装</string>
 
     <string name="gamedetail_speedrun_segments_title">%1$s - 分段</string>
     <string name="gamedetail_speedrun_title">速通分段</string>

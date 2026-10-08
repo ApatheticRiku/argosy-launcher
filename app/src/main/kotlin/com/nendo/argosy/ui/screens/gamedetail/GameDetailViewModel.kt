@@ -1892,6 +1892,7 @@ class GameDetailViewModel @Inject constructor(
         val picker = pickerModalDelegate.state.value
         if (!picker.showArtPicker || !picker.artPickerCanSearch) return
         val slot = picker.artPickerSlot
+        val artType = RomMCoverArtType.forSlot(slot) ?: return
         val term = query.trim()
         if (term.isEmpty()) {
             showArtCandidates(slot, offlineArtCandidates(slot))
@@ -1900,7 +1901,7 @@ class GameDetailViewModel @Inject constructor(
         pickerModalDelegate.setArtPickerSearching()
         viewModelScope.launch {
             val onServer = offlineArtCandidates(slot)
-            val result = romMRepository.searchCovers(term, RomMCoverArtType.forSlot(slot))
+            val result = romMRepository.searchCovers(term, artType)
             val current = pickerModalDelegate.state.value
             if (!current.showArtPicker || current.artPickerSlot != slot) return@launch
             when (result) {

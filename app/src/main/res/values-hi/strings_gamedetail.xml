@@ -231,9 +231,11 @@
     <string name="gamedetail_artwork_row_cover">कवर</string>
     <string name="gamedetail_artwork_row_background">बैकग्राउंड</string>
     <string name="gamedetail_artwork_row_logo">लोगो</string>
+    <string name="gamedetail_artwork_row_box_3d">3D बॉक्स</string>
     <string name="gamedetail_artwork_row_revert_cover">कवर वापस लाएँ</string>
     <string name="gamedetail_artwork_row_revert_background">बैकग्राउंड वापस लाएँ</string>
     <string name="gamedetail_artwork_row_revert_logo">लोगो वापस लाएँ</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">3D बॉक्स वापस लाएँ</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -385,6 +387,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">कवर आर्ट चुनें</string>
     <string name="gamedetail_art_picker_file_browser_title_background">बैकग्राउंड चुनें</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">लोगो चुनें</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">3D बॉक्स चुनें</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 

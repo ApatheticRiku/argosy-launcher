@@ -8,10 +8,11 @@ enum class RomMCoverArtType(val wireName: String) {
     LOGO("logo");
 
     companion object {
-        fun forSlot(slot: ArtSlot): RomMCoverArtType = when (slot) {
+        fun forSlot(slot: ArtSlot): RomMCoverArtType? = when (slot) {
             ArtSlot.COVER -> GRID
             ArtSlot.BACKGROUND -> HERO
             ArtSlot.LOGO -> LOGO
+            ArtSlot.BOX_3D -> null
         }
     }
 }

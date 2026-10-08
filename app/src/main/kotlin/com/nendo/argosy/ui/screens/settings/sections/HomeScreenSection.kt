@@ -33,6 +33,7 @@ import com.nendo.argosy.ui.components.homeLayoutFieldsFor
 import com.nendo.argosy.ui.components.isHomeLayoutFieldShown
 import com.nendo.argosy.ui.components.homeRailFields
 import com.nendo.argosy.ui.components.toggleHomeLayoutField
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
@@ -92,6 +93,12 @@ internal sealed class HomeScreenItem(
 
     data object LayoutSelector : HomeScreenItem("layoutSelector", "layout")
 
+    data object BoxArt : HomeScreenItem(
+        key = "homeBoxArt",
+        section = "layout",
+        visibleWhen = { it.box3dCapableGames > 0 || it.homeLayout.boxArt3d }
+    )
+
     /**
      * One home setting field, wherever it belongs on this pane. Rail toggles are content rather
      * than layout, so the section and the visibility rule come from the field rather than being
@@ -142,6 +149,7 @@ internal sealed class HomeScreenItem(
                 LayoutHeader,
                 LayoutPreview,
                 LayoutSelector,
+                BoxArt,
                 *HomeLayoutKind.entries
                     .flatMap { homeLayoutFieldsFor(it) }
                     .distinct()
@@ -208,7 +216,9 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.surfaceBackdrop.enabled,
         display.homeBackgroundMode,
         display.homeLayout.selected,
-        display.homeLayout.customGrid.gridKind
+        display.homeLayout.customGrid.gridKind,
+        display.box3dCapableGames,
+        display.homeLayout.boxArt3d
     ) {
         homeScreenLayout.visibleItems(display)
     }
@@ -219,6 +229,8 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         display.homeBackgroundMode,
         display.homeLayout.selected,
         display.homeLayout.customGrid.gridKind,
+        display.box3dCapableGames,
+        display.homeLayout.boxArt3d,
         context
     ) {
         homeScreenLayout.buildSections(display, context)
@@ -245,18 +257,13 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             when (item) {
                 is HomeScreenItem.Header -> HomeScreenSectionHeader(stringResource(item.titleRes))
 
-                HomeScreenItem.Background -> CyclePreference(
+                HomeScreenItem.Background -> SegmentedPreference(
                     title = stringResource(R.string.settings_home_screen_background_title),
                     subtitle = stringResource(R.string.settings_home_screen_background_subtitle),
-                    value = stringResource(homeBackgroundModeLabelRes(display.homeBackgroundMode)),
+                    options = HomeBackgroundMode.entries.map { stringResource(homeBackgroundModeLabelRes(it)) },
+                    selectedIndex = HomeBackgroundMode.entries.indexOf(display.homeBackgroundMode),
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleHomeBackgroundMode() },
-                    onPrev = { viewModel.cycleHomeBackgroundMode(-1) },
-                    options = remember(context) {
-                        HomeBackgroundMode.entries.map { context.getString(homeBackgroundModeLabelRes(it)) }
-                    },
-                    onSelect = { index -> viewModel.setHomeBackgroundMode(HomeBackgroundMode.entries[index]) },
-                    pickerRequestToken = pickerToken(item)
+                    onSelect = { index -> viewModel.setHomeBackgroundMode(HomeBackgroundMode.entries[index]) }
                 )
 
                 HomeScreenItem.GameArtwork -> SwitchPreference(
@@ -380,8 +387,19 @@ fun HomeScreenSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     onToggle = {
                         viewModel.setFocusIndex(homeScreenFocusIndexOf(item, display))
                         viewModel.setHomeLayout(toggleHomeLayoutField(display.homeLayout, item.field))
-                    },
-                    boxArtCapableGames = display.boxArtCapableGames
+                    }
+                )
+
+                HomeScreenItem.BoxArt -> SegmentedPreference(
+                    title = stringResource(R.string.settings_home_screen_box_art_title),
+                    subtitle = stringResource(R.string.settings_home_screen_box_art_subtitle),
+                    options = listOf(
+                        stringResource(R.string.settings_home_screen_box_art_option_2d),
+                        stringResource(R.string.settings_home_screen_box_art_option_3d)
+                    ),
+                    selectedIndex = if (display.homeLayout.boxArt3d) 1 else 0,
+                    isFocused = isFocused(item),
+                    onSelect = { viewModel.setHomeBoxArt3d(it == 1) }
                 )
 
                 HomeScreenItem.InstalledOnly -> SwitchPreference(

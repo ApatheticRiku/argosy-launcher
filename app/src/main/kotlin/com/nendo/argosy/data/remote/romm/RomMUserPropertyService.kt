@@ -240,9 +240,11 @@ class RomMUserPropertyService @Inject constructor(
                 apiClient.buildResourceUrl(rom.ssMetadata?.box2dSidePath)
             } else null
             val logoUrls = apiClient.buildLogoUrls(rom)
+            val box3dUrls = apiClient.buildBox3dUrls(rom)
             gameArtDao.setSourceUrl(game.id, ArtSlot.COVER, coverUrls.firstOrNull())
             gameArtDao.setSourceUrl(game.id, ArtSlot.BACKGROUND, backgroundUrls.firstOrNull())
             gameArtDao.setSourceUrl(game.id, ArtSlot.LOGO, logoUrls.firstOrNull())
+            gameArtDao.setSourceUrl(game.id, ArtSlot.BOX_3D, box3dUrls.firstOrNull())
 
             val cached = imageCacheManager.cacheGameImagesNow(
                 rommId = rom.id,
@@ -251,7 +253,8 @@ class RomMUserPropertyService @Inject constructor(
                 backgroundUrls = backgroundUrls,
                 boxBackUrl = boxBackUrl,
                 boxSpineUrl = boxSpineUrl,
-                logoUrls = logoUrls
+                logoUrls = logoUrls,
+                box3dUrls = box3dUrls
             )
 
             val updatedGame = game.withRomMetadata(rom).copy(

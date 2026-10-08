@@ -140,6 +140,7 @@ class UserPreferencesRepository @Inject constructor(
             folderNameFromRom = storage.folderNameFromRom,
             gridDensity = display.gridDensity,
             libraryLayout = display.libraryLayout,
+            libraryBoxArt3d = display.libraryBoxArt3d,
             libraryDefaultSort = display.libraryDefaultSort,
             libraryDefaultSortDescending = display.libraryDefaultSortDescending,
             sortInstalledFirst = display.sortInstalledFirst,
@@ -303,6 +304,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setFontScale(slot: FontSlot, scale: Int) = displayPrefs.setFontScale(slot, scale)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
     suspend fun setLibraryLayout(layout: LibraryLayout) = displayPrefs.setLibraryLayout(layout)
+
+    suspend fun setLibraryBoxArt3d(enabled: Boolean) = displayPrefs.setLibraryBoxArt3d(enabled)
 
     suspend fun setLibraryDefaultSort(option: String, descending: Boolean) =
         displayPrefs.setLibraryDefaultSort(option, descending)
@@ -839,6 +842,7 @@ data class UserPreferences(
     val folderNameFromRom: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val libraryBoxArt3d: Boolean = false,
     val libraryDefaultSort: String = "TITLE",
     val libraryDefaultSortDescending: Boolean? = null,
     val sortInstalledFirst: Boolean = false,

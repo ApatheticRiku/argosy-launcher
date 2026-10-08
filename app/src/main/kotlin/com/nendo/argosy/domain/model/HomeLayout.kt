@@ -33,8 +33,7 @@ data class CarouselConfig(
     val inverted: Boolean = false,
     val restingScale: Float = 0.5f,
     val neighbourPush: Boolean = true,
-    val showPlatformBadge: Boolean = true,
-    val useBoxArt: Boolean = false
+    val showPlatformBadge: Boolean = true
 ) : HomeLayoutConfig {
     override val kind: HomeLayoutKind get() = HomeLayoutKind.CAROUSEL
 
@@ -52,8 +51,7 @@ data class AutoGridConfig(
     val scrollAxis: HomeScrollAxis = HomeScrollAxis.VERTICAL,
     val laneCount: Int = DEFAULT_LANE_COUNT,
     val showTitles: Boolean = true,
-    val showAllGames: Boolean = false,
-    val useBoxArt: Boolean = false
+    val showAllGames: Boolean = false
 ) : HomeLayoutConfig {
     override val kind: HomeLayoutKind get() = HomeLayoutKind.AUTO_GRID
 }
@@ -276,7 +274,8 @@ data class HomeLayoutSettings(
     val carousel: CarouselConfig = CarouselConfig(),
     val autoGrid: AutoGridConfig = AutoGridConfig(),
     val customGrid: CustomGridConfig = CustomGridConfig(),
-    val rails: HomeRailSettings = HomeRailSettings()
+    val rails: HomeRailSettings = HomeRailSettings(),
+    val boxArt3d: Boolean = false
 ) {
     val active: HomeLayoutConfig
         get() = when (selected) {
@@ -290,6 +289,7 @@ data class HomeLayoutSettings(
 
     fun toJson(): String = JSONObject().apply {
         put(KEY_SELECTED, selected.name)
+        put(KEY_BOX_ART_3D, boxArt3d)
         put(
             KEY_CAROUSEL,
             JSONObject().apply {
@@ -299,7 +299,6 @@ data class HomeLayoutSettings(
                 put(KEY_RESTING_SCALE, carousel.restingScale.toDouble())
                 put(KEY_NEIGHBOUR_PUSH, carousel.neighbourPush)
                 put(KEY_PLATFORM_BADGE, carousel.showPlatformBadge)
-                put(KEY_USE_BOX_ART, carousel.useBoxArt)
             }
         )
         put(
@@ -309,7 +308,6 @@ data class HomeLayoutSettings(
                 put(KEY_LANE_COUNT, autoGrid.laneCount)
                 put(KEY_SHOW_TITLES, autoGrid.showTitles)
                 put(KEY_SHOW_ALL_GAMES, autoGrid.showAllGames)
-                put(KEY_USE_BOX_ART, autoGrid.useBoxArt)
             }
         )
         put(
@@ -359,7 +357,8 @@ data class HomeLayoutSettings(
         private const val KEY_LANE_COUNT = "laneCount"
         private const val KEY_SHOW_TITLES = "showTitles"
         private const val KEY_SHOW_ALL_GAMES = "showAllGames"
-        private const val KEY_USE_BOX_ART = "useBoxArt"
+        private const val KEY_LEGACY_USE_BOX_ART = "useBoxArt"
+        private const val KEY_BOX_ART_3D = "boxArt3d"
         private const val KEY_AUTO_ADD = "autoAdd"
         private const val KEY_EMPTY_SLOTS = "showEmptySlots"
         private const val KEY_PERSIST_PAGES = "persistBlankPages"
@@ -408,9 +407,7 @@ data class HomeLayoutSettings(
                     neighbourPush = carousel?.optBoolean(KEY_NEIGHBOUR_PUSH, defaults.carousel.neighbourPush)
                         ?: defaults.carousel.neighbourPush,
                     showPlatformBadge = carousel?.optBoolean(KEY_PLATFORM_BADGE, defaults.carousel.showPlatformBadge)
-                        ?: defaults.carousel.showPlatformBadge,
-                    useBoxArt = carousel?.optBoolean(KEY_USE_BOX_ART, defaults.carousel.useBoxArt)
-                        ?: defaults.carousel.useBoxArt
+                        ?: defaults.carousel.showPlatformBadge
                 ),
                 autoGrid = AutoGridConfig(
                     scrollAxis = enumOrDefault(
@@ -424,9 +421,7 @@ data class HomeLayoutSettings(
                     showAllGames = autoGrid?.optBoolean(
                         KEY_SHOW_ALL_GAMES,
                         defaults.autoGrid.showAllGames
-                    ) ?: defaults.autoGrid.showAllGames,
-                    useBoxArt = autoGrid?.optBoolean(KEY_USE_BOX_ART, defaults.autoGrid.useBoxArt)
-                        ?: defaults.autoGrid.useBoxArt
+                    ) ?: defaults.autoGrid.showAllGames
                 ),
                 customGrid = customGridAxes(customGrid, defaults.customGrid).copy(
                     autoAdd = enumOrDefault(
@@ -456,7 +451,13 @@ data class HomeLayoutSettings(
                         ?: defaults.rails.showNextUp,
                     showLibraries = rails?.optBoolean(KEY_LIBRARIES, defaults.rails.showLibraries)
                         ?: defaults.rails.showLibraries
-                )
+                ),
+                boxArt3d = if (root.has(KEY_BOX_ART_3D)) {
+                    root.optBoolean(KEY_BOX_ART_3D, defaults.boxArt3d)
+                } else {
+                    carousel?.optBoolean(KEY_LEGACY_USE_BOX_ART) == true ||
+                        autoGrid?.optBoolean(KEY_LEGACY_USE_BOX_ART) == true
+                }
             )
         }
 

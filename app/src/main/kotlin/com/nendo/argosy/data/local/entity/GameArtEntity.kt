@@ -40,6 +40,7 @@ fun Collection<GameArtEntity>.toResolvedArt(): ResolvedGameArt {
         coverPath = cover?.resolvedPath,
         backgroundPath = bySlot[ArtSlot.BACKGROUND.name]?.resolvedPath,
         logoPath = bySlot[ArtSlot.LOGO.name]?.resolvedPath,
+        box3dPath = bySlot[ArtSlot.BOX_3D.name]?.resolvedPath,
         gradientColors = cover?.gradientColors,
         coverAspectRatio = cover?.coverAspectRatio,
         overriddenSlots = mapNotNull { row -> row.artSlot?.takeIf { row.overridePath != null } }.toSet()

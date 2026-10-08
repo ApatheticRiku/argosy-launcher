@@ -454,6 +454,7 @@ class HomeViewModel @Inject constructor(
         homeBackgroundMode = prefs.homeBackgroundMode,
         carouselConfig = prefs.homeLayout.carousel,
         autoGridConfig = prefs.homeLayout.autoGrid,
+        boxArt3d = prefs.homeLayout.boxArt3d,
         customGridConfig = prefs.homeLayout.customGrid,
         layoutKind = prefs.homeLayout.selected,
         homeApps = prefs.secondaryHomeApps.toList()

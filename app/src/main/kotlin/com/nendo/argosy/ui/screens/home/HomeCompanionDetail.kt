@@ -13,6 +13,7 @@ fun HomeGameUi.toCompanionDetail(friends: List<FriendActivity> = emptyList()): C
         backdropUrl = backgroundPath,
         isGameTitle = true,
         spineUrl = boxSpinePath,
+        box3dUrl = box3dPath,
         logoUrl = logoPath,
         gameId = id,
         stats = CompanionGameStats(

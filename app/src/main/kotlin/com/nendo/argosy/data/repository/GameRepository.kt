@@ -606,8 +606,8 @@ class GameRepository @Inject constructor(
         gameDao.countWithLocalPathByOrigin(FileOrigin.ADOPTED)
     }
 
-    suspend fun countBoxArtCapableGames(): Int = withContext(Dispatchers.IO) {
-        gameDao.countBoxArtCapable()
+    suspend fun countBox3dCapableGames(): Int = withContext(Dispatchers.IO) {
+        gameDao.countBox3dCapable(hiddenOwnerId())
     }
 
     suspend fun getAvailableStorageBytes(): Long = withContext(Dispatchers.IO) {

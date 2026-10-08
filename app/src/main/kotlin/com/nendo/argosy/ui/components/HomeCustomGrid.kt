@@ -252,6 +252,7 @@ fun HomeCustomGridPage(
     onCoverLoadFailed: ((Long, String) -> Unit)? = null,
     onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)? = null,
     onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)? = null,
+    useBoxArt: Boolean = false,
     overlappedTileIds: Set<Long> = emptySet(),
     editingTileId: Long? = null,
     onTileDrag: ((GridCell) -> Unit)? = null,
@@ -315,6 +316,7 @@ fun HomeCustomGridPage(
             onCoverLoadFailed = onCoverLoadFailed,
             onCoverLoaded = onCoverLoaded,
             onPosterLoaded = onPosterLoaded,
+            useBoxArt = useBoxArt,
             overlappedTileIds = overlappedTileIds,
             editingTileId = editingTileId,
             dragOffset = dragOffset,
@@ -367,6 +369,7 @@ internal fun CustomGridCells(
     onCoverLoadFailed: ((Long, String) -> Unit)?,
     onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)?,
     onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)?,
+    useBoxArt: Boolean,
     overlappedTileIds: Set<Long>,
     editingTileId: Long?,
     dragOffset: androidx.compose.ui.geometry.Offset,
@@ -412,7 +415,8 @@ internal fun CustomGridCells(
                 downloadIndicatorFor = downloadIndicatorFor,
                 onCoverLoadFailed = null,
                 onCoverLoaded = null,
-                onPosterLoaded = null
+                onPosterLoaded = null,
+                useBoxArt = false
             )
         }
     }
@@ -448,6 +452,7 @@ internal fun CustomGridCells(
                 onCoverLoadFailed = onCoverLoadFailed,
                 onCoverLoaded = onCoverLoaded,
                 onPosterLoaded = onPosterLoaded,
+                useBoxArt = useBoxArt,
                 playbackPath = tilePlayback[tile.id],
                 isEngaged = tile.id == engagedTileId,
                 isPaused = tile.id == engagedTileId && engagedPaused,
@@ -491,6 +496,7 @@ private fun CustomGridCellBox(
     onCoverLoadFailed: ((Long, String) -> Unit)?,
     onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)?,
     onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)?,
+    useBoxArt: Boolean,
     playbackPath: String? = null,
     isEngaged: Boolean = false,
     isPaused: Boolean = false,
@@ -639,11 +645,12 @@ private fun CustomGridCellBox(
         val tileRatio = width / height
         val keepsWholeCover = boxArtStyle.nativeAspectRatio || coverScale == TileCoverScale.FIT
         val artRatio = if (keepsWholeCover) {
-            game.coverAspectRatio
-                ?: com.nendo.argosy.ui.common.rememberCoverAspectRatio(
-                    game.coverPath,
-                    boxArtStyle.aspectRatio
-                )
+            com.nendo.argosy.ui.common.rememberGameArtAspectRatio(
+                game = game,
+                useBoxArt = useBoxArt,
+                coverPath = game.coverPath,
+                fallback = boxArtStyle.aspectRatio
+            )
         } else {
             tileRatio
         }
@@ -674,6 +681,7 @@ private fun CustomGridCellBox(
                     alphaOverride = if (isOverlapped) OVERLAPPED_ALPHA else null,
                     onCoverLoadFailed = onCoverLoadFailed,
                     onCoverLoaded = onCoverLoaded,
+                    useBoxArt = useBoxArt,
                     modifier = Modifier
                         .fillMaxSize()
                         .then(
