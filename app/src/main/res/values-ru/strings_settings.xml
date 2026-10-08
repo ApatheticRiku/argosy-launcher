@@ -576,8 +576,8 @@
     <string name="settings_permissions_display_overlay_description">Показывает уведомления об обнаружении сохранений при игре во внешних эмуляторах.</string>
     <string name="settings_permissions_live_wallpaper_title">Анимированный экран блокировки</string>
     <string name="settings_permissions_live_wallpaper_description">Показывает вашу библиотеку на экране блокировки медленно прокручивающимися рядами обложек.</string>
-    <string name="lock_screen_wallpaper_label">Библиотека Argosy</string>
-    <string name="lock_screen_wallpaper_description">Ряды обложек из вашей библиотеки прокручиваются на экране блокировки, а во время загрузки показывается запускаемая игра.</string>
+    <string name="settings_lock_screen_wallpaper_label">Библиотека Argosy</string>
+    <string name="settings_lock_screen_wallpaper_description">Ряды обложек из вашей библиотеки прокручиваются на экране блокировки, а во время загрузки показывается запускаемая игра.</string>
     <string name="settings_permissions_status_footer">Статус: предоставлено %1$d/%2$d разрешений</string>
 
     <!-- ===== About section ===== -->

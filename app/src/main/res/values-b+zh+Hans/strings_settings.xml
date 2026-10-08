@@ -541,8 +541,8 @@
     <string name="settings_permissions_display_overlay_description">在外部模拟器中游戏时显示存档检测通知。</string>
     <string name="settings_permissions_live_wallpaper_title">动态锁屏</string>
     <string name="settings_permissions_live_wallpaper_description">在锁屏上以缓慢滚动的封面行展示你的游戏库。</string>
-    <string name="lock_screen_wallpaper_label">Argosy 游戏库</string>
-    <string name="lock_screen_wallpaper_description">锁屏上滚动展示你游戏库的封面，正在启动的游戏会在加载时显示。</string>
+    <string name="settings_lock_screen_wallpaper_label">Argosy 游戏库</string>
+    <string name="settings_lock_screen_wallpaper_description">锁屏上滚动展示你游戏库的封面，正在启动的游戏会在加载时显示。</string>
     <string name="settings_permissions_status_footer">状态：已授予%1$d/%2$d项权限</string>
 
     <!-- ===== About section ===== -->

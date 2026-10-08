@@ -280,6 +280,7 @@ class SettingsViewModel @Inject constructor(
         raDelegate.initialize(viewModelScope)
         displayDelegate.loadPreviewGame(viewModelScope)
         displayDelegate.observeScreenCapturePermission(viewModelScope)
+        permissionsDelegate.observeLockScreenArt(viewModelScope)
         routeStartControllerDetectionPolling(this)
         installerDelegate.observeJobs(viewModelScope)
 

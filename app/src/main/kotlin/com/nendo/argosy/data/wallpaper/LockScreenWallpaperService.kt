@@ -1,5 +1,6 @@
 package com.nendo.argosy.data.wallpaper
 
+import android.animation.ValueAnimator
 import android.app.KeyguardManager
 import android.graphics.Canvas
 import android.graphics.Color
@@ -79,7 +80,8 @@ class LockScreenWallpaperService : WallpaperService() {
         }
 
         private fun shouldAnimate(): Boolean =
-            visible && scene is LockScreenScene.Mosaic && (isPreview || keyguard?.isKeyguardLocked == true)
+            visible && scene is LockScreenScene.Mosaic && ValueAnimator.areAnimatorsEnabled() &&
+                (isPreview || keyguard?.isKeyguardLocked == true)
 
         private fun start() {
             if (animating) return

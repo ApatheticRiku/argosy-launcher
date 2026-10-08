@@ -22,15 +22,6 @@ import java.util.concurrent.ConcurrentHashMap
  */
 private val aspectRatioCache = ConcurrentHashMap<String, Float>()
 
-/**
- * Resolves the real aspect ratio (width / height) of a cover image so that box
- * art can be laid out at its native proportions instead of a forced shape.
- *
- * Returns [fallback] immediately (the configured box-art shape ratio) and, for
- * local files, decodes the image bounds off the main thread. Once known, the
- * ratio is cached and the caller recomposes with the real value. Remote paths
- * (not yet cached to disk) keep using [fallback] until they resolve to a file.
- */
 @Composable
 fun rememberGameArtAspectRatio(
     game: com.nendo.argosy.ui.screens.home.HomeGameUi,
@@ -46,6 +37,15 @@ fun rememberGameArtAspectRatio(
     }
 }
 
+/**
+ * Resolves the real aspect ratio (width / height) of a cover image so that box
+ * art can be laid out at its native proportions instead of a forced shape.
+ *
+ * Returns [fallback] immediately (the configured box-art shape ratio) and, for
+ * local files, decodes the image bounds off the main thread. Once known, the
+ * ratio is cached and the caller recomposes with the real value. Remote paths
+ * (not yet cached to disk) keep using [fallback] until they resolve to a file.
+ */
 @Composable
 fun rememberCoverAspectRatio(path: String?, fallback: Float): Float {
     val cached = path?.let { aspectRatioCache[it] }

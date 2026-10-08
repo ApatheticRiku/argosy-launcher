@@ -28,7 +28,6 @@ import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.wallpaper.LockScreenScenes
-import com.nendo.argosy.util.SecondaryHomeComponent
 import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -800,10 +799,8 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun shouldOfferLiveWallpaper(prefs: UserPreferences): Boolean =
-        prefs.lockScreenArt &&
-            !liveWallpaperPromptedThisSession &&
-            SecondaryHomeComponent.isDefaultHome(this) &&
-            LockScreenScenes.isSupported(this) &&
+        !liveWallpaperPromptedThisSession &&
+            LockScreenScenes.canOffer(this, prefs.lockScreenArt) &&
             !LockScreenScenes.isLiveActive(this)
 
 

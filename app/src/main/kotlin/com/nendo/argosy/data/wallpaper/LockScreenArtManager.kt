@@ -296,13 +296,13 @@ class LockScreenArtManager @Inject constructor(
     }
 
     private suspend fun clearIfApplied(removeLiveWallpaper: Boolean = false) {
-        if (LockScreenScenes.isLiveActive(context)) {
+        val liveSlots = LockScreenScenes.liveSlots(context)
+        if (liveSlots != 0) {
             scenes.clear()
             shownKey = null
             if (removeLiveWallpaper) {
-                runCatching {
-                    WallpaperManager.getInstance(context).clear(WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK)
-                }.onFailure { Logger.warn(TAG, "clearIfApplied: could not remove the live wallpaper | ${it.message}") }
+                runCatching { WallpaperManager.getInstance(context).clear(liveSlots) }
+                    .onFailure { Logger.warn(TAG, "clearIfApplied: could not remove the live wallpaper | ${it.message}") }
             }
         }
         if (!displayPrefs.isLockScreenArtApplied()) return

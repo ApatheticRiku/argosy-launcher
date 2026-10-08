@@ -563,8 +563,8 @@
     <string name="settings_permissions_display_overlay_description">Zeigt Benachrichtigungen zur Spielstanderkennung beim Spielen in externen Emulatoren an.</string>
     <string name="settings_permissions_live_wallpaper_title">Animierter Sperrbildschirm</string>
     <string name="settings_permissions_live_wallpaper_description">Zeigt deine Bibliothek auf dem Sperrbildschirm als langsam scrollende Reihen von Cover-Bildern.</string>
-    <string name="lock_screen_wallpaper_label">Argosy-Bibliothek</string>
-    <string name="lock_screen_wallpaper_description">Reihen von Cover-Bildern deiner Bibliothek scrollen über den Sperrbildschirm, und das Spiel, das gerade startet, während es lädt.</string>
+    <string name="settings_lock_screen_wallpaper_label">Argosy-Bibliothek</string>
+    <string name="settings_lock_screen_wallpaper_description">Reihen von Cover-Bildern deiner Bibliothek scrollen über den Sperrbildschirm, und das Spiel, das gerade startet, während es lädt.</string>
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d Berechtigungen erteilt</string>
 
     <!-- ===== About section ===== -->

@@ -14,8 +14,10 @@ import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.ui.screens.settings.PermissionsState
+import com.nendo.argosy.data.preferences.DisplayPreferencesRepository
 import com.nendo.argosy.util.PermissionHelper
-import com.nendo.argosy.util.SecondaryHomeComponent
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,10 +31,22 @@ class PermissionsSettingsDelegate @Inject constructor(
     private val permissionHelper: PermissionHelper,
     private val screenCaptureManager: ScreenCaptureManager,
     private val ledController: LEDController,
-    private val fanController: FanController
+    private val fanController: FanController,
+    private val displayPreferences: DisplayPreferencesRepository
 ) {
     private val _state = MutableStateFlow(PermissionsState())
     val state: StateFlow<PermissionsState> = _state.asStateFlow()
+
+    @Volatile private var lockScreenArt = true
+
+    fun observeLockScreenArt(scope: CoroutineScope) {
+        scope.launch {
+            displayPreferences.preferences.map { it.lockScreenArt }.distinctUntilChanged().collect {
+                lockScreenArt = it
+                refreshPermissions()
+            }
+        }
+    }
 
     fun refreshPermissions() {
         val hasStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -66,8 +80,7 @@ class PermissionsSettingsDelegate @Inject constructor(
                 isScreenCaptureRelevant = isLedAvailable,
                 hasDisplayOverlay = hasDisplayOverlay,
                 hasLiveWallpaper = LockScreenScenes.isLiveActive(application),
-                isLiveWallpaperRelevant = LockScreenScenes.isSupported(application) &&
-                    SecondaryHomeComponent.isDefaultHome(application)
+                isLiveWallpaperRelevant = LockScreenScenes.canOffer(application, lockScreenArt)
             )
         }
     }

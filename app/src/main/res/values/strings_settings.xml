@@ -1081,9 +1081,9 @@
     <!-- Body of that card. -->
     <string name="settings_permissions_live_wallpaper_description">Lets the lock screen show your library as slowly scrolling rows of box art.</string>
     <!-- Name of Argosy's live wallpaper in Android's wallpaper picker. -->
-    <string name="lock_screen_wallpaper_label">Argosy Library</string>
+    <string name="settings_lock_screen_wallpaper_label">Argosy Library</string>
     <!-- Description of that wallpaper in Android's wallpaper picker. -->
-    <string name="lock_screen_wallpaper_description">Rows of your library\'s box art scrolling on the lock screen, and the game you are starting while it loads.</string>
+    <string name="settings_lock_screen_wallpaper_description">Rows of your library\'s box art scrolling on the lock screen, and the game you are starting while it loads.</string>
     <!-- Line under the list. %1$d is how many permissions were given, %2$d how many there are. -->
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d permissions granted</string>
 

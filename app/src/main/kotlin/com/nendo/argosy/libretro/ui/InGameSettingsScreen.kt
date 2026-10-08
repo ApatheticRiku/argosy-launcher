@@ -76,7 +76,6 @@ import com.nendo.argosy.data.platform.PlatformWeightRegistry
 import com.nendo.argosy.ui.screens.settings.libretro.LibretroSettingsSection
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
-import com.nendo.argosy.ui.screens.settings.libretro.isSegmented
 import com.nendo.argosy.ui.screens.settings.libretro.step
 import com.nendo.argosy.ui.screens.settings.menu.SettingsLayout
 import com.nendo.argosy.ui.theme.Dimens
@@ -558,9 +557,7 @@ fun InGameSettingsScreen(
                             accessor.onAction(setting)
                         } else when (setting.type) {
                             is LibretroSettingDef.SettingType.Switch -> accessor.toggle(setting)
-                            is LibretroSettingDef.SettingType.Cycle ->
-                                if (setting.isSegmented) return InputResult.handled(SoundType.SILENT)
-                                else accessor.cycle(setting, 1)
+                            is LibretroSettingDef.SettingType.Cycle -> return InputResult.handled(SoundType.SILENT)
                         }
                     }
                     InGameSettingsTab.CONTROLS -> handleControlsConfirm()
