@@ -78,13 +78,13 @@ class SnapshotChannelServiceTest {
     @Test
     fun `a refused push reports a reason kind, never the server body`() = runBlocking {
         coEvery { api.pushSnapshot("d-1", any()) } returns Response.error(403, "secret detail".toResponseBody())
-        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.REFUSED), service.copyOver(39, channel))
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.REFUSED), service.copyOver(39, channel, 99))
 
         coEvery { api.pushSnapshot("d-1", any()) } returns Response.error(404, "gone".toResponseBody())
-        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.NOT_FOUND), service.copyOver(39, channel))
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.NOT_FOUND), service.copyOver(39, channel, 99))
 
         coEvery { api.pushSnapshot("d-1", any()) } throws java.io.IOException("no route")
-        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.OFFLINE), service.copyOver(39, channel))
+        assertEquals(SnapshotActionResult.Failed(SnapshotFailure.OFFLINE), service.copyOver(39, channel, 99))
     }
 
     @Test
@@ -120,7 +120,7 @@ class SnapshotChannelServiceTest {
 
     @Test
     fun `copying a snapshot over a channel names it as parent on top of that channel's current`() = runBlocking {
-        assertEquals(SnapshotActionResult.Done, service.copyOver(39, channel))
+        assertEquals(SnapshotActionResult.Done, service.copyOver(39, channel, 99))
         val m = manifest()
         assertEquals(99L, m.getLong("rom_file_id"))
         assertEquals("c-default", m.getString("channel_id"))
@@ -143,9 +143,15 @@ class SnapshotChannelServiceTest {
 
     @Test
     fun `an older client's save becomes a snapshot by copy_of`() = runBlocking {
-        assertEquals(SnapshotActionResult.Done, service.makeSnapshot(channel, 1907))
+        assertEquals(SnapshotActionResult.Done, service.makeSnapshot(channel, 1907, 99))
         assertEquals(1907L, manifest().getJSONObject("save").getLong("copy_of"))
         io.mockk.verify(exactly = 0) { screenshots.carrySnapshotThumb(any(), any()) }
+    }
+
+    @Test
+    fun `a channel the server lists without a rom file pushes under the game's rom file`() = runBlocking {
+        assertEquals(SnapshotActionResult.Done, service.copyOver(39, channel.copy(romFileId = null), 99))
+        assertEquals(99L, manifest().getLong("rom_file_id"))
     }
 
     @Test
@@ -153,6 +159,6 @@ class SnapshotChannelServiceTest {
         coEvery { api.pushSnapshot("d-1", any()) } returns
             Response.error(409, """{"current":{"id":44,"digest":"sha256:44"},"branch":{"id":51,"digest":"x"}}""".toResponseBody())
 
-        assertEquals(SnapshotActionResult.Stale, service.copyOver(39, channel))
+        assertEquals(SnapshotActionResult.Stale, service.copyOver(39, channel, 99))
     }
 }

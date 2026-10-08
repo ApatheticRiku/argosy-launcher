@@ -275,7 +275,8 @@ class LaunchWithSyncUseCase @Inject constructor(
                 emit(
                     SyncProgress.LocalModified(
                         gameId, syncResult.localSavePath, syncResult.channelName, syncResult.serverSaveId,
-                        restoreFailed = syncResult.restoreFailed
+                        restoreFailed = syncResult.restoreFailed,
+                        snapshotConflict = syncResult.snapshotConflict
                     )
                 )
             }

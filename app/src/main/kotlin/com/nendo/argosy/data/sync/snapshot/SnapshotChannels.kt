@@ -19,4 +19,14 @@ object SnapshotChannels {
 
     fun isReservedLabel(label: String): Boolean =
         isDefaultLabel(label) || SaveSyncApiClient.isAutosaveChannel(label.trim())
+
+    fun branchLabel(deviceName: String, day: java.time.LocalDate, taken: Collection<String>): String {
+        val base = "${deviceName.trim().ifEmpty { BRANCH_FALLBACK_NAME }} $day"
+        if (taken.none { it.equals(base, ignoreCase = true) }) return base
+        return generateSequence(2) { it + 1 }
+            .map { "$base ($it)" }
+            .first { candidate -> taken.none { it.equals(candidate, ignoreCase = true) } }
+    }
+
+    private const val BRANCH_FALLBACK_NAME = "Argosy"
 }

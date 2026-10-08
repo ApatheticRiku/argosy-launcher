@@ -74,7 +74,8 @@ sealed class PreLaunchSyncResult {
         val serverTimestamp: Instant,
         val channelName: String?,
         val serverSaveId: Long? = null,
-        val restoreFailed: Boolean = false
+        val restoreFailed: Boolean = false,
+        val snapshotConflict: Boolean = false
     ) : PreLaunchSyncResult()
 }
 

@@ -49,6 +49,8 @@
     <string name="save_channels_detail_action_copy_over">複製到…</string>
     <string name="save_channels_detail_action_pin">釘選</string>
     <string name="save_channels_detail_action_unpin">取消釘選</string>
+    <string name="save_channels_detail_action_share">分享</string>
+    <string name="save_channels_detail_action_unshare">停止分享</string>
     <string name="save_channels_detail_action_make_snapshot">建立快照</string>
     <string name="save_channels_copy_picker_title">複製到</string>
     <string name="save_channels_copy_picker_new_channel">新增存檔槽</string>

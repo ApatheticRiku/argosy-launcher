@@ -519,8 +519,6 @@
     <string name="ui_image_cache_change">Modifier</string>
     <string name="ui_image_cache_reset">Réinitialiser</string>
 
-    <string name="ui_home_layout_box_art_subtitle_none">Aucun jeu n\'a de dos de boîtier, donc chaque jeu s\'affiche en jaquette 2D</string>
-    <string name="ui_home_layout_box_art_subtitle">Affiche en boîtier 3D les jeux qui ont un dos, et en jaquette les autres</string>
     <string name="ui_home_layout_row_alignment">Position de la ligne</string>
     <string name="ui_home_layout_focus_position">Ancrage du focus</string>
     <string name="ui_home_layout_inverted">Ordre inversé</string>
@@ -531,8 +529,6 @@
     <string name="ui_home_layout_show_titles">Afficher les titres</string>
     <string name="ui_home_layout_show_all_games">Afficher tous les jeux</string>
     <string name="ui_home_layout_show_all_games_subtitle">Faire défiler toute la bibliothèque d\'une plateforme au lieu de s\'arrêter sur Tout afficher</string>
-    <string name="ui_home_layout_carousel_box_art">Boîtier 3D</string>
-    <string name="ui_home_layout_auto_grid_box_art">Boîtier 3D</string>
     <string name="ui_home_layout_custom_grid_columns">Colonnes</string>
     <string name="ui_home_layout_custom_grid_rows">Lignes</string>
     <string name="ui_home_layout_custom_grid_auto_add">Ajouter les nouveaux téléchargements</string>
@@ -722,6 +718,16 @@
     <string name="ui_sync_overlay_local_modified_apply_subtitle">Définir la sauvegarde locale comme version la plus récente</string>
     <string name="ui_sync_overlay_local_modified_restore">Utiliser la sauvegarde synchronisée</string>
     <string name="ui_sync_overlay_local_modified_restore_subtitle">Écraser la sauvegarde locale avec la dernière version synchronisée (une copie de sauvegarde est créée)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_title">Conflit de sauvegarde</string>
+    <string name="ui_sync_overlay_snapshot_conflict_message">La sauvegarde de cet appareil pour \"%1$s\" et celle du serveur ont toutes deux changé depuis leur dernière correspondance.</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine">Garder la mienne</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">La sauvegarde de cet appareil devient la plus récente sur le serveur</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">Utiliser celle du serveur</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">Remplacer la sauvegarde de cet appareil par la plus récente (une copie de sauvegarde est créée)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch">Garder les deux</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">Déplacer la sauvegarde de cet appareil vers un nouveau canal</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert">Revenir en arrière</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">Revenir à la dernière sauvegarde synchronisée par cet appareil (une copie de sauvegarde est créée)</string>
     <string name="ui_sync_overlay_post_session_title">Conflit de sauvegarde</string>
     <string name="ui_sync_overlay_post_session_subject">\"%1$s\" -- %2$s</string>
     <string name="ui_sync_overlay_post_session_default_slot">Sauvegarde par défaut</string>

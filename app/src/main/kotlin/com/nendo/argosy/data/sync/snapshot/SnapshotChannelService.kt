@@ -134,16 +134,18 @@ class SnapshotChannelService @Inject constructor(
     suspend fun copyOver(
         snapshotId: Long,
         target: RomMChannel,
+        romFileId: Long,
         approveHardcoreDowngrade: Boolean = false
     ): SnapshotActionResult =
-        push(intoChannel(target).put(PARENT_KEY, snapshotId), approveHardcoreDowngrade)
+        push(intoChannel(target, romFileId).put(PARENT_KEY, snapshotId), approveHardcoreDowngrade)
 
     suspend fun makeSnapshot(
         channel: RomMChannel,
         saveId: Long,
+        romFileId: Long,
         approveHardcoreDowngrade: Boolean = false
     ): SnapshotActionResult =
-        push(intoChannel(channel).put("save", JSONObject().put("copy_of", saveId)), approveHardcoreDowngrade)
+        push(intoChannel(channel, romFileId).put("save", JSONObject().put("copy_of", saveId)), approveHardcoreDowngrade)
 
     suspend fun newChannel(romFileId: Long, label: String, fromBackupId: Long?): SnapshotActionResult {
         val api = apiClient.get().getApi() ?: return SnapshotActionResult.Offline
@@ -155,11 +157,14 @@ class SnapshotChannelService @Inject constructor(
             Logger.warn(TAG, "[SaveSync] SNAPSHOT | creating channel $label answered ${response.code()}")
             return SnapshotActionResult.Failed(SnapshotFailure.ofStatus(response.code()))
         }
-        return fromBackupId?.let { makeSnapshot(channel, it) } ?: SnapshotActionResult.Done
+        return fromBackupId?.let { makeSnapshot(channel, it, romFileId) } ?: SnapshotActionResult.Done
     }
 
     suspend fun setPinned(snapshotId: Long, pinned: Boolean): SnapshotActionResult =
         call("pin #$snapshotId") { it.updateSnapshot(snapshotId, RomMSnapshotUpdate(isPinned = pinned)).code() }
+
+    suspend fun setPublic(snapshotId: Long, public: Boolean): SnapshotActionResult =
+        call("share #$snapshotId") { it.updateSnapshot(snapshotId, RomMSnapshotUpdate(isPublic = public)).code() }
 
     suspend fun rename(channelId: String, label: String): SnapshotActionResult =
         call("rename $channelId") { it.updateChannel(channelId, RomMChannelUpdate(label = label)).code() }
@@ -185,9 +190,9 @@ class SnapshotChannelService @Inject constructor(
         )
     }
 
-    private fun intoChannel(channel: RomMChannel): JSONObject =
+    private fun intoChannel(channel: RomMChannel, romFileId: Long): JSONObject =
         JSONObject()
-            .put("rom_file_id", channel.romFileId)
+            .put("rom_file_id", channel.romFileId ?: romFileId)
             .put("channel_id", channel.id)
             .put("expected_current_id", channel.currentSnapshotId ?: JSONObject.NULL)
 

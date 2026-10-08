@@ -513,8 +513,6 @@
     <string name="ui_image_cache_change">Изменить</string>
     <string name="ui_image_cache_reset">Сбросить</string>
 
-    <string name="ui_home_layout_box_art_subtitle_none">Ни у одной игры нет корешка, поэтому все игры отображаются как 2D-обложки</string>
-    <string name="ui_home_layout_box_art_subtitle">Отображать игры с корешком как коробку, а остальные как обложки</string>
     <string name="ui_home_layout_row_alignment">Положение ряда</string>
     <string name="ui_home_layout_focus_position">Точка фокуса</string>
     <string name="ui_home_layout_inverted">Обратный порядок</string>
@@ -525,8 +523,6 @@
     <string name="ui_home_layout_show_titles">Показывать названия</string>
     <string name="ui_home_layout_show_all_games">Показывать все игры</string>
     <string name="ui_home_layout_show_all_games_subtitle">Прокручивать всю библиотеку платформы вместо остановки на плитке \"Смотреть все\"</string>
-    <string name="ui_home_layout_carousel_box_art">Коробки 3D</string>
-    <string name="ui_home_layout_auto_grid_box_art">Коробки 3D</string>
     <string name="ui_home_layout_custom_grid_columns">Столбцы</string>
     <string name="ui_home_layout_custom_grid_rows">Строки</string>
     <string name="ui_home_layout_custom_grid_auto_add">Добавлять новые загрузки</string>
@@ -711,6 +707,16 @@
     <string name="ui_sync_overlay_local_modified_apply_subtitle">Сделать локальное сохранение последней версией</string>
     <string name="ui_sync_overlay_local_modified_restore">Использовать синхронизированное</string>
     <string name="ui_sync_overlay_local_modified_restore_subtitle">Заменить локальное последней синхронизированной версией (будет создана резервная копия)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_title">Конфликт сохранений</string>
+    <string name="ui_sync_overlay_snapshot_conflict_message">Сохранение «%1$s» на этом устройстве и на сервере изменились с момента последнего совпадения.</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine">Оставить моё</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">Сохранение этого устройства станет последним на сервере</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">Взять с сервера</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">Заменить сохранение этого устройства последним (будет создана резервная копия)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch">Оставить оба</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">Перенести сохранение этого устройства в новый канал</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert">Откатить</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">Вернуться к сохранению, которое это устройство синхронизировало последним (будет создана резервная копия)</string>
     <string name="ui_sync_overlay_post_session_title">Конфликт сохранений</string>
     <string name="ui_sync_overlay_post_session_subject">\"%1$s\" -- %2$s</string>
     <string name="ui_sync_overlay_post_session_default_slot">Сохранение по умолчанию</string>

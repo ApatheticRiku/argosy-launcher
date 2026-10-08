@@ -271,7 +271,9 @@ interface RomMApi {
 
     @GET("api/snapshots/{id}")
     suspend fun getSnapshot(
-        @Path("id") snapshotId: Long
+        @Path("id") snapshotId: Long,
+        @Query("device_id") deviceId: String? = null,
+        @Query("hold") hold: Boolean? = null
     ): Response<RomMSnapshot>
 
     @Multipart

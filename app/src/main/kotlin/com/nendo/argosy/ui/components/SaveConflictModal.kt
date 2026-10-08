@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.nendo.argosy.R
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
+import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.common.subtitleRes
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -44,15 +47,20 @@ data class SaveConflictInfo(
     val serverTimestamp: Instant,
     val serverDeviceName: String? = null,
     val conflictId: Long? = null,
-    val isHardcoreDowngrade: Boolean = false
-)
+    val isHardcoreDowngrade: Boolean = false,
+    val snapshotConflict: Boolean = false
+) {
+    val optionCount: Int
+        get() = if (snapshotConflict) SnapshotConflictChoice.entries.size + 1 else 2
+}
 
 @Composable
 fun SaveConflictModal(
     info: SaveConflictInfo,
     focusedButton: Int,
     onKeepLocal: () -> Unit,
-    onOverwrite: () -> Unit
+    onOverwrite: () -> Unit,
+    onSnapshotChoice: (SnapshotConflictChoice) -> Unit
 ) {
     val localIsNewer = info.localTimestamp.isAfter(info.serverTimestamp)
     val context = LocalContext.current
@@ -114,7 +122,21 @@ fun SaveConflictModal(
 
         Spacer(modifier = Modifier.height(Dimens.spacingLg))
 
-        Row(
+        if (info.snapshotConflict) Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+            SnapshotConflictChoice.entries.forEachIndexed { index, choice ->
+                ConflictChoiceRow(
+                    label = stringResource(choice.labelRes),
+                    subtitle = stringResource(choice.subtitleRes),
+                    isFocused = focusedButton == index,
+                    onClick = { onSnapshotChoice(choice) }
+                )
+            }
+            ConflictChoiceRow(
+                label = stringResource(R.string.ui_save_conflict_skip),
+                isFocused = focusedButton == SnapshotConflictChoice.entries.size,
+                onClick = onKeepLocal
+            )
+        } else Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {

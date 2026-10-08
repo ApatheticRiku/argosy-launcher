@@ -288,6 +288,9 @@ class SnapshotViewDelegate @Inject constructor(
                 if (runner.romFileIdFor(channel) != null) add(SnapshotDetailAction.FORK)
                 if (runner.copyTargets(channel).isNotEmpty()) add(SnapshotDetailAction.COPY_OVER)
                 if (canWrite) add(if (card.isPinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN)
+                if (channel.isOwn && card.isArchival) {
+                    add(if (card.isPublic) SnapshotDetailAction.UNSHARE else SnapshotDetailAction.SHARE)
+                }
             }
         }
         holder.updateSnapshot {
@@ -330,6 +333,8 @@ class SnapshotViewDelegate @Inject constructor(
             }
             SnapshotDetailAction.PIN -> runner.setPinned(scope, detail.channelId, snapshotId ?: return, pinned = true)
             SnapshotDetailAction.UNPIN -> runner.setPinned(scope, detail.channelId, snapshotId ?: return, pinned = false)
+            SnapshotDetailAction.SHARE -> runner.setPublic(scope, detail.channelId, snapshotId ?: return, public = true)
+            SnapshotDetailAction.UNSHARE -> runner.setPublic(scope, detail.channelId, snapshotId ?: return, public = false)
             SnapshotDetailAction.MAKE_SNAPSHOT ->
                 runner.push(scope, SnapshotPush.MakeSnapshot(channel, detail.card.saveId ?: return))
         }

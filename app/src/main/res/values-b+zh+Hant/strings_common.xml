@@ -482,8 +482,6 @@
     <string name="ui_image_cache_change">變更</string>
     <string name="ui_image_cache_reset">重設</string>
 
-    <string name="ui_home_layout_box_art_subtitle_none">沒有遊戲具備書背美術圖，因此所有遊戲皆以2D封面顯示</string>
-    <string name="ui_home_layout_box_art_subtitle">具備書背的遊戲以立體盒裝顯示，其餘則以封面顯示</string>
     <string name="ui_home_layout_row_alignment">列位置</string>
     <string name="ui_home_layout_focus_position">焦點錨點</string>
     <string name="ui_home_layout_inverted">反向排序</string>
@@ -494,8 +492,6 @@
     <string name="ui_home_layout_show_titles">顯示標題</string>
     <string name="ui_home_layout_show_all_games">顯示所有遊戲</string>
     <string name="ui_home_layout_show_all_games_subtitle">捲動整個平台的遊戲庫，而不是停在查看全部</string>
-    <string name="ui_home_layout_carousel_box_art">3D盒裝美術圖</string>
-    <string name="ui_home_layout_auto_grid_box_art">3D盒裝美術圖</string>
     <string name="ui_home_layout_custom_grid_columns">欄數</string>
     <string name="ui_home_layout_custom_grid_rows">列數</string>
     <string name="ui_home_layout_custom_grid_auto_add">自動加入新下載項目</string>
@@ -683,6 +679,16 @@
     <string name="ui_sync_overlay_local_modified_apply_subtitle">將本機存檔設為最新版本</string>
     <string name="ui_sync_overlay_local_modified_restore">使用已同步的存檔</string>
     <string name="ui_sync_overlay_local_modified_restore_subtitle">以最後同步的版本覆蓋本機存檔（會建立備份）</string>
+    <string name="ui_sync_overlay_snapshot_conflict_title">存檔衝突</string>
+    <string name="ui_sync_overlay_snapshot_conflict_message">「%1$s」在本裝置上的存檔與伺服器上的存檔自上次一致後都已變更。</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine">保留我的</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">本裝置的存檔成為伺服器上的最新存檔</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">使用伺服器存檔</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">以最新存檔取代本裝置的存檔（會建立備份）</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch">兩者都保留</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">將本裝置的存檔移到新頻道</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert">還原</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">回到本裝置上次同步的存檔（會建立備份）</string>
     <string name="ui_sync_overlay_post_session_title">存檔衝突</string>
     <string name="ui_sync_overlay_post_session_subject">「%1$s」—%2$s</string>
     <string name="ui_sync_overlay_post_session_default_slot">預設存檔</string>

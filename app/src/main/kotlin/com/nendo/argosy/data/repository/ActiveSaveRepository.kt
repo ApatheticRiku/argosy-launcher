@@ -80,6 +80,10 @@ class ActiveSaveRepository @Inject constructor(
         saveCacheDao.clearActive(gameId, ownerUserId)
     }
 
+    suspend fun registerChannel(gameId: Long, channelName: String) {
+        saveChannelDao.registerAndActivate(gameId, channelName, activeOwnerId())
+    }
+
     /**
      * Every slot this device knows of for a game, including ones nothing has been saved into.
      */

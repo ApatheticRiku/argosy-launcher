@@ -59,7 +59,9 @@ class SnapshotUiMapper(
             isCurrent = snapshot.id == channel.currentSnapshotId,
             isBranch = snapshot.isBranch,
             isPinned = snapshot.isPinned,
-            isHardcore = snapshot.isHardcore
+            isHardcore = snapshot.isHardcore,
+            isArchival = snapshot.isArchival,
+            isPublic = snapshot.isPublic
         )
 
     fun olderSaveCard(save: RomMSave): SnapshotCardUi =

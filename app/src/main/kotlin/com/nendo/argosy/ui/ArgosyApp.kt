@@ -148,6 +148,7 @@ fun ArgosyApp(
     val saveConflictButtonIndex by viewModel.saveConflictButtonIndex.collectAsState()
     val backgroundConflictInfo by viewModel.backgroundConflictInfo.collectAsState()
     val backgroundConflictButtonIndex by viewModel.backgroundConflictButtonIndex.collectAsState()
+    val backgroundConflictSnapshot by viewModel.backgroundConflictSnapshot.collectAsState()
     val coreCrashPrompt by viewModel.coreCrashController.prompt.collectAsState()
     val coreCrashFocusIndex by viewModel.coreCrashController.focusIndex.collectAsState()
     val coreCrashDownloading by viewModel.coreCrashController.downloading.collectAsState()
@@ -209,32 +210,6 @@ fun ArgosyApp(
         navBackStackEntry?.let { dsm?.setPrimaryRoute(it.concreteRoute()) }
     }
 
-    LaunchedEffect(dsm) {
-        dsm ?: return@LaunchedEffect
-        dsm.onSaveConflictDismiss = { viewModel.dismissSaveConflict() }
-        dsm.onSaveConflictOverwrite = { viewModel.forceUploadConflictSave() }
-        viewModel.saveConflictInfo.collect { info ->
-            dsm.setSaveConflict(info)
-            if (info != null) {
-                dsm.setDualSyncConflictFromSaveConflict(
-                    com.nendo.argosy.ui.screens.common.SyncOverlayState(
-                        gameTitle = info.gameName,
-                        syncProgress = com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict(
-                            gameTitle = info.gameName,
-                            channelName = info.channelName,
-                            localTimestamp = info.localTimestamp,
-                            serverTimestamp = info.serverTimestamp,
-                            serverDeviceName = info.serverDeviceName,
-                            onSkipSync = { viewModel.dismissSaveConflict() },
-                            onOverwrite = { viewModel.forceUploadConflictSave() }
-                        )
-                    )
-                )
-            } else if (info == null) {
-                dsm.clearDualSyncConflictIfPostSession()
-            }
-        }
-    }
     val handleDeepLink: suspend (android.net.Uri) -> Unit = { uri ->
         android.util.Log.d("ArgosyApp", "Handling deep link: $uri")
         val showDeepLinkNotice: (Int) -> Unit = { messageRes ->
@@ -614,12 +589,7 @@ fun ArgosyApp(
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
-                val buttonIndex = viewModel.saveConflictButtonIndex.value
-                if (buttonIndex == 0) {
-                    viewModel.dismissSaveConflict()
-                } else {
-                    viewModel.forceUploadConflictSave()
-                }
+                viewModel.confirmSaveConflict()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onBack(): InputResult {
@@ -642,8 +612,8 @@ fun ArgosyApp(
     val backgroundConflictInputHandler = remember(viewModel) {
         BackgroundConflictInputHandler(
             moveFocus = viewModel::moveBackgroundConflictFocus,
-            focusedButton = { viewModel.backgroundConflictButtonIndex.value },
-            resolve = viewModel::resolveBackgroundConflict
+            confirm = viewModel::confirmBackgroundConflict,
+            skip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
         )
     }
 
@@ -1373,7 +1343,8 @@ fun ArgosyApp(
                     info = info,
                     focusedButton = saveConflictButtonIndex,
                     onKeepLocal = { viewModel.dismissSaveConflict() },
-                    onOverwrite = { viewModel.forceUploadConflictSave() }
+                    onOverwrite = { viewModel.forceUploadConflictSave() },
+                    onSnapshotChoice = viewModel::answerSnapshotConflict
                 )
             }
 
@@ -1384,7 +1355,9 @@ fun ArgosyApp(
                     focusIndex = backgroundConflictButtonIndex,
                     onKeepLocal = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
                     onKeepServer = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
-                    onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
+                    onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) },
+                    snapshotConflict = backgroundConflictSnapshot,
+                    onSnapshotChoice = viewModel::resolveBackgroundSnapshotConflict
                 )
             }
 

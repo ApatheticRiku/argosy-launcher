@@ -72,7 +72,8 @@ sealed class SyncProgress {
         val localSavePath: String,
         val channelName: String?,
         val serverSaveId: Long? = null,
-        val restoreFailed: Boolean = false
+        val restoreFailed: Boolean = false,
+        val snapshotConflict: Boolean = false
     ) : SyncProgress()
 
     data class PostSessionConflict(

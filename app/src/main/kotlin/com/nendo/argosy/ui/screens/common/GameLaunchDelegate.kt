@@ -20,6 +20,7 @@ import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.domain.model.LaunchPromptOption
 import com.nendo.argosy.domain.model.LaunchStep
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
@@ -118,7 +119,8 @@ class GameLaunchDelegate @Inject constructor(
     private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
     private val retroAchievementsRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
     private val getUnifiedSavesUseCase: com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase,
-    private val launchProgressTracker: LaunchProgressTracker
+    private val launchProgressTracker: LaunchProgressTracker,
+    private val resolveSnapshotConflict: com.nendo.argosy.domain.usecase.savechannel.ResolveSnapshotConflictUseCase
 ) {
     companion object {
         private const val EMULATOR_KILL_DELAY_MS = 500L
@@ -134,6 +136,12 @@ class GameLaunchDelegate @Inject constructor(
         private val RESTORE_FAILED_OPTIONS = listOf(
             LaunchPromptOption.RESTORE_SERVER,
             LaunchPromptOption.LAUNCH_WITHOUT_SYNC
+        )
+        private val SNAPSHOT_CONFLICT_OPTIONS = listOf(
+            LaunchPromptOption.KEEP_MINE,
+            LaunchPromptOption.TAKE_THEIRS,
+            LaunchPromptOption.BRANCH_LOCAL,
+            LaunchPromptOption.REVERT_LOCAL
         )
     }
 
@@ -284,6 +292,7 @@ class GameLaunchDelegate @Inject constructor(
                 var hardcoreConflictChoice: HardcoreConflictChoice? = null
                 var localModifiedInfo: SyncProgress.LocalModified? = null
                 var localModifiedChoice: LocalModifiedChoice? = null
+                var snapshotConflictChoice: SnapshotConflictChoice? = null
 
                 launchWithSyncUseCase.invokeWithProgress(gameId, channelName, skipPreLaunchSync || resolvedVariantId != null).collect { progress ->
                     if (canSync && progress != SyncProgress.Skipped && progress != SyncProgress.Idle) {
@@ -298,7 +307,16 @@ class GameLaunchDelegate @Inject constructor(
                                 }
                                 android.util.Log.d("GameLaunchDelegate", "Hardcore conflict resolved: $hardcoreConflictChoice")
                             }
-                            is SyncProgress.LocalModified -> {
+                            is SyncProgress.LocalModified -> if (progress.snapshotConflict) {
+                                localModifiedInfo = progress
+                                snapshotConflictChoice = when (ticket.ask(progress, SNAPSHOT_CONFLICT_OPTIONS)) {
+                                    LaunchPromptOption.KEEP_MINE -> SnapshotConflictChoice.MINE
+                                    LaunchPromptOption.TAKE_THEIRS -> SnapshotConflictChoice.THEIRS
+                                    LaunchPromptOption.BRANCH_LOCAL -> SnapshotConflictChoice.BRANCH
+                                    LaunchPromptOption.REVERT_LOCAL -> SnapshotConflictChoice.REVERT
+                                    else -> null
+                                }
+                            } else {
                                 localModifiedInfo = progress
                                 val options = if (progress.restoreFailed) RESTORE_FAILED_OPTIONS else LOCAL_MODIFIED_OPTIONS
                                 localModifiedChoice = when (ticket.ask(progress, options)) {
@@ -335,6 +353,11 @@ class GameLaunchDelegate @Inject constructor(
                     }
                     val resolveResult = saveSyncRepository.resolveHardcoreConflict(resolution, repoChoice)
                     android.util.Log.d("GameLaunchDelegate", "Resolution result: $resolveResult")
+                }
+
+                val snapshotChoice = snapshotConflictChoice
+                if (localModifiedInfo != null && snapshotChoice != null && emulatorId != null) {
+                    resolveSnapshotConflict(gameId, emulatorId, localModifiedInfo!!.channelName, snapshotChoice)
                 }
 
                 if (localModifiedInfo != null && localModifiedChoice != null) {

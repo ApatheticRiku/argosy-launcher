@@ -24,7 +24,7 @@ data class StatePart(
 
 sealed class PushOutcome {
     data class Written(val snapshot: RomMSnapshot) : PushOutcome()
-    data class Conflict(val currentId: Long) : PushOutcome()
+    data class Conflict(val currentId: Long?, val branch: RomMSnapshot?, val fromOlder: Boolean) : PushOutcome()
     data object HardcoreDowngrade : PushOutcome()
     data class Failed(val reason: String, val failure: SnapshotFailure) : PushOutcome()
 }
@@ -101,9 +101,13 @@ class SnapshotPusher @Inject constructor(moshi: Moshi) {
             409 -> {
                 val conflict = body?.let { runCatching { conflictAdapter.fromJson(it) }.getOrNull() }
                 when {
-                    conflict?.hardcoreDowngrade == true -> PushOutcome.HardcoreDowngrade
-                    conflict?.current != null -> PushOutcome.Conflict(conflict.current.id)
-                    else -> PushOutcome.Failed("push refused: 409 $body", SnapshotFailure.CONFLICT)
+                    conflict == null -> PushOutcome.Failed("push refused: 409 $body", SnapshotFailure.CONFLICT)
+                    conflict.hardcoreDowngrade -> PushOutcome.HardcoreDowngrade
+                    else -> PushOutcome.Conflict(
+                        currentId = conflict.current?.id,
+                        branch = conflict.branch,
+                        fromOlder = conflict.reason == RomMSnapshotConflict.REASON_MOVED_FROM_OLDER
+                    )
                 }
             }
             else -> PushOutcome.Failed("push refused: $code ${detailOf(body) ?: body}", SnapshotFailure.ofStatus(code))

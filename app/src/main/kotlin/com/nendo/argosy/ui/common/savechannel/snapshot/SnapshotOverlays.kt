@@ -26,7 +26,9 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -325,6 +327,8 @@ private val SnapshotDetailAction.icon: ImageVector
         SnapshotDetailAction.COPY_OVER -> Icons.Filled.ContentCopy
         SnapshotDetailAction.PIN -> Icons.Filled.PushPin
         SnapshotDetailAction.UNPIN -> Icons.Outlined.PushPin
+        SnapshotDetailAction.SHARE -> Icons.Filled.Share
+        SnapshotDetailAction.UNSHARE -> Icons.Outlined.Share
         SnapshotDetailAction.MAKE_SNAPSHOT -> Icons.Filled.Layers
     }
 
@@ -336,6 +340,8 @@ private fun SnapshotDetailAction.label(): String = stringResource(
         SnapshotDetailAction.COPY_OVER -> R.string.save_channels_detail_action_copy_over
         SnapshotDetailAction.PIN -> R.string.save_channels_detail_action_pin
         SnapshotDetailAction.UNPIN -> R.string.save_channels_detail_action_unpin
+        SnapshotDetailAction.SHARE -> R.string.save_channels_detail_action_share
+        SnapshotDetailAction.UNSHARE -> R.string.save_channels_detail_action_unshare
         SnapshotDetailAction.MAKE_SNAPSHOT -> R.string.save_channels_detail_action_make_snapshot
     }
 )

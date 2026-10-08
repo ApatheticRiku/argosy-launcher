@@ -37,4 +37,15 @@ class SnapshotChannelsTest {
         assertTrue(SnapshotChannels.isReservedLabel("autosave"))
         assertFalse(SnapshotChannels.isReservedLabel("Defaulted"))
     }
+
+    @Test
+    fun `a branch is named for the device and day, numbered past labels already taken`() {
+        val day = java.time.LocalDate.of(2026, 10, 8)
+        assertEquals("AYN Thor 2026-10-08", SnapshotChannels.branchLabel("AYN Thor", day, listOf("default")))
+        assertEquals(
+            "AYN Thor 2026-10-08 (3)",
+            SnapshotChannels.branchLabel("AYN Thor", day, listOf("ayn thor 2026-10-08", "AYN Thor 2026-10-08 (2)"))
+        )
+        assertEquals("Argosy 2026-10-08", SnapshotChannels.branchLabel("  ", day, emptyList()))
+    }
 }

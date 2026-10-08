@@ -49,6 +49,8 @@
     <string name="save_channels_detail_action_copy_over">Копировать в…</string>
     <string name="save_channels_detail_action_pin">Закрепить</string>
     <string name="save_channels_detail_action_unpin">Открепить</string>
+    <string name="save_channels_detail_action_share">Поделиться</string>
+    <string name="save_channels_detail_action_unshare">Закрыть доступ</string>
     <string name="save_channels_detail_action_make_snapshot">Создать снимок</string>
     <string name="save_channels_copy_picker_title">Копировать в</string>
     <string name="save_channels_copy_picker_new_channel">Новый канал</string>

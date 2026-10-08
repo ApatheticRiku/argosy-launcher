@@ -45,14 +45,15 @@ class SnapshotSyncRouter @Inject constructor(
             is SnapshotSyncResult.Conflict -> PreLaunchSyncResult.LocalModified(
                 localSavePath = result.localSavePath.orEmpty(),
                 serverTimestamp = timestampOf(result),
-                channelName = channelName
+                channelName = channelName,
+                snapshotConflict = true
             )
             is SnapshotSyncResult.Failed -> {
                 Logger.warn(TAG, "[SaveSync] SNAPSHOT gameId=$gameId | pre-launch sync failed, launching the local save | ${result.reason}")
                 PreLaunchSyncResult.LocalIsNewer
             }
             SnapshotSyncResult.UpToDate, is SnapshotSyncResult.Pushed, is SnapshotSyncResult.Applied,
-            is SnapshotSyncResult.HardcoreDowngrade -> PreLaunchSyncResult.LocalIsNewer
+            is SnapshotSyncResult.Branched, is SnapshotSyncResult.HardcoreDowngrade -> PreLaunchSyncResult.LocalIsNewer
         }
     }
 
@@ -104,6 +105,7 @@ class SnapshotSyncRouter @Inject constructor(
         SnapshotSyncResult.NoConnection -> SaveSyncResult.NotConfigured
         SnapshotSyncResult.UpToDate -> SaveSyncResult.Success(noOp = true)
         is SnapshotSyncResult.Pushed -> SaveSyncResult.Success()
+        is SnapshotSyncResult.Branched -> SaveSyncResult.Success()
         is SnapshotSyncResult.Applied -> SaveSyncResult.Success()
         is SnapshotSyncResult.Conflict -> SaveSyncResult.Conflict(
             gameId = gameId,

@@ -495,8 +495,6 @@
     <string name="ui_image_cache_change">बदलें</string>
     <string name="ui_image_cache_reset">रीसेट करें</string>
 
-    <string name="ui_home_layout_box_art_subtitle_none">किसी भी गेम में स्पाइन आर्ट नहीं है, इसलिए हर गेम 2D कवर के रूप में दिखेगा</string>
-    <string name="ui_home_layout_box_art_subtitle">स्पाइन वाले गेम को बॉक्स के रूप में और बाकी को कवर के रूप में बनाएं</string>
     <string name="ui_home_layout_row_alignment">रो पोज़िशन</string>
     <string name="ui_home_layout_focus_position">फ़ोकस एंकर</string>
     <string name="ui_home_layout_inverted">क्रम उलटें</string>
@@ -507,8 +505,6 @@
     <string name="ui_home_layout_show_titles">टाइटल दिखाएं</string>
     <string name="ui_home_layout_show_all_games">हर गेम दिखाएं</string>
     <string name="ui_home_layout_show_all_games_subtitle">\'सभी देखें\' पर रुकने के बजाय पूरे प्लेटफ़ॉर्म की लाइब्रेरी स्क्रॉल करें</string>
-    <string name="ui_home_layout_carousel_box_art">3D बॉक्स आर्ट</string>
-    <string name="ui_home_layout_auto_grid_box_art">3D बॉक्स आर्ट</string>
     <string name="ui_home_layout_custom_grid_columns">कॉलम</string>
     <string name="ui_home_layout_custom_grid_rows">पंक्तियाँ</string>
     <string name="ui_home_layout_custom_grid_auto_add">नए डाउनलोड जोड़ें</string>
@@ -697,6 +693,16 @@
     <string name="ui_sync_overlay_local_modified_apply_subtitle">लोकल सेव को नवीनतम वर्शन के रूप में सेट करें</string>
     <string name="ui_sync_overlay_local_modified_restore">सिंक की गई सेव इस्तेमाल करें</string>
     <string name="ui_sync_overlay_local_modified_restore_subtitle">लोकल को आखिरी सिंक किए गए वर्शन से ओवरराइट करें (बैकअप बनेगा)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_title">सेव में टकराव</string>
+    <string name="ui_sync_overlay_snapshot_conflict_message">\"%1$s\" का इस डिवाइस वाला सेव और सर्वर वाला सेव, दोनों पिछली बार मेल खाने के बाद बदल गए हैं।</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine">मेरा रखें</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">इस डिवाइस का सेव सर्वर पर सबसे नया बन जाएगा</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">सर्वर का सेव लें</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">इस डिवाइस के सेव को सबसे नए सेव से बदलें (बैकअप बनेगा)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch">दोनों रखें</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">इस डिवाइस के सेव को नए चैनल में ले जाएं</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert">पहले जैसा करें</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">इस डिवाइस के आखिरी सिंक किए गए सेव पर लौटें (बैकअप बनेगा)</string>
     <string name="ui_sync_overlay_post_session_title">सेव कॉन्फ्लिक्ट</string>
     <string name="ui_sync_overlay_post_session_subject">\"%1$s\" -- %2$s</string>
     <string name="ui_sync_overlay_post_session_default_slot">डिफ़ॉल्ट सेव</string>

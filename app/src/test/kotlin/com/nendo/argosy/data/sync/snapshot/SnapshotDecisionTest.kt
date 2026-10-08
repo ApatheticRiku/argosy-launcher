@@ -52,8 +52,8 @@ class SnapshotDecisionTest {
     }
 
     @Test
-    fun `holding current with dirty files pushes expecting current`() {
-        assertEquals(SnapshotAction.Push(41), SnapshotDecision.decide(point(41, a), point(41, a), b))
+    fun `holding current with dirty files pushes expecting current with it as parent`() {
+        assertEquals(SnapshotAction.Push(41, parentSnapshotId = 41), SnapshotDecision.decide(point(41, a), point(41, a), b))
     }
 
     @Test
@@ -104,6 +104,6 @@ class SnapshotDecisionTest {
 
     @Test
     fun `a first save on top of a snapshot without one is dirty`() {
-        assertEquals(SnapshotAction.Push(41), SnapshotDecision.decide(point(41, null), point(41, null), a))
+        assertEquals(SnapshotAction.Push(41, parentSnapshotId = 41), SnapshotDecision.decide(point(41, null), point(41, null), a))
     }
 }

@@ -277,9 +277,11 @@ class SnapshotSyncEngineTest {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
         coEvery { api.pushSnapshot(DEVICE, any()) } returns
-            Response.error(409, """{"current":{"id":43,"digest":"sha256:43"}}""".toResponseBody())
+            Response.error(409, """{"current":{"id":43,"digest":"sha256:43"},"reason":"moved_from_older"}""".toResponseBody())
 
-        assertEquals(SnapshotSyncResult.Conflict(null, 43), engine.sync(GAME_ID, EMULATOR, null))
+        val result = engine.sync(GAME_ID, EMULATOR, null) as SnapshotSyncResult.Conflict
+        assertEquals(43L, result.currentId)
+        assertTrue(result.fromOlder)
         coVerify(exactly = 0) { channelDao.upsert(any()) }
     }
 
@@ -542,25 +544,25 @@ class SnapshotSyncEngineTest {
     }
 
     @Test
-    fun `a newer current on a clean device is placed by the legacy downloader and reported`() = runBlocking {
+    fun `a newer current on a clean device is placed by the legacy downloader and held in the same fetch`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
-        coEvery { api.getSnapshot(42) } returns Response.success(snapshot(42, "theirs"))
+        coEvery { api.getSnapshot(42, any(), any()) } returns Response.success(snapshot(42, "theirs"))
         coEvery {
             downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
         } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
-        coEvery { api.reportSnapshotHeld(42, DEVICE) } returns Response.success(Unit)
 
         assertEquals(SnapshotSyncResult.Applied(42), engine.sync(GAME_ID, EMULATOR, null))
         assertEquals(42L, stored.captured.heldSnapshotId)
-        coVerify { api.reportSnapshotHeld(42, DEVICE) }
+        coVerify { api.getSnapshot(42, DEVICE, true) }
+        coVerify(exactly = 0) { api.reportSnapshotHeld(any(), any()) }
     }
 
     @Test
     fun `the cache row holding an applied snapshot's save becomes the active save`() = runBlocking {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
-        coEvery { api.getSnapshot(42) } returns Response.success(snapshot(42, "theirs"))
+        coEvery { api.getSnapshot(42, any(), any()) } returns Response.success(snapshot(42, "theirs"))
         coEvery {
             downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
         } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
@@ -599,7 +601,7 @@ class SnapshotSyncEngineTest {
         )
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(banked))
-        coEvery { api.getSnapshot(42) } returns Response.success(banked)
+        coEvery { api.getSnapshot(42, any(), any()) } returns Response.success(banked)
         coEvery {
             downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
         } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()
@@ -642,7 +644,7 @@ class SnapshotSyncEngineTest {
         )
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "content-a", "identity-a", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(banked))
-        coEvery { api.getSnapshot(42) } returns Response.success(banked)
+        coEvery { api.getSnapshot(42, any(), any()) } returns Response.success(banked)
         coEvery {
             downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true)
         } returns com.nendo.argosy.data.repository.SaveSyncResult.Success()

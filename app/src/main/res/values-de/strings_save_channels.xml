@@ -49,6 +49,8 @@
     <string name="save_channels_detail_action_copy_over">Kopieren nach…</string>
     <string name="save_channels_detail_action_pin">Anheften</string>
     <string name="save_channels_detail_action_unpin">Lösen</string>
+    <string name="save_channels_detail_action_share">Teilen</string>
+    <string name="save_channels_detail_action_unshare">Nicht mehr teilen</string>
     <string name="save_channels_detail_action_make_snapshot">Snapshot erstellen</string>
     <string name="save_channels_copy_picker_title">Kopieren nach</string>
     <string name="save_channels_copy_picker_new_channel">Neuer Kanal</string>

@@ -49,6 +49,8 @@
     <string name="save_channels_detail_action_copy_over">यहाँ कॉपी करें…</string>
     <string name="save_channels_detail_action_pin">पिन करें</string>
     <string name="save_channels_detail_action_unpin">अनपिन करें</string>
+    <string name="save_channels_detail_action_share">शेयर करें</string>
+    <string name="save_channels_detail_action_unshare">शेयर करना बंद करें</string>
     <string name="save_channels_detail_action_make_snapshot">स्नैपशॉट बनाएं</string>
     <string name="save_channels_copy_picker_title">यहाँ कॉपी करें</string>
     <string name="save_channels_copy_picker_new_channel">नया चैनल</string>

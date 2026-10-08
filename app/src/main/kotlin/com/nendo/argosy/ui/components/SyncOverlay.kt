@@ -60,6 +60,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import com.nendo.argosy.R
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
+import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.common.subtitleRes
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -577,6 +580,58 @@ internal fun LocalModifiedContent(
             }
 
             CancelLaunchOption(isFocused = focusIndex == 2, onClick = onCancelLaunch)
+        }
+    }
+}
+
+@Composable
+internal fun SnapshotConflictContent(
+    gameTitle: String,
+    focusIndex: Int,
+    onChoice: (SnapshotConflictChoice) -> Unit,
+    onCancelLaunch: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.padding(horizontal = Dimens.spacingXl)
+    ) {
+        Icon(
+            imageVector = Icons.Default.Warning,
+            contentDescription = null,
+            tint = LocalLauncherTheme.current.semanticColors.warning,
+            modifier = Modifier.size(Dimens.iconXl + Dimens.spacingSm)
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        Text(
+            text = stringResource(R.string.ui_sync_overlay_snapshot_conflict_title),
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingSm))
+
+        Text(
+            text = stringResource(R.string.ui_sync_overlay_snapshot_conflict_message, gameTitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(Dimens.spacingLg))
+
+        Column(modifier = Modifier.fillMaxWidth(0.85f)) {
+            SnapshotConflictChoice.entries.forEachIndexed { index, choice ->
+                ConflictOption(
+                    label = stringResource(choice.labelRes),
+                    subtitle = stringResource(choice.subtitleRes),
+                    isFocused = focusIndex == index,
+                    onClick = { onChoice(choice) }
+                )
+            }
+            CancelLaunchOption(isFocused = focusIndex == SnapshotConflictChoice.entries.size, onClick = onCancelLaunch)
         }
     }
 }

@@ -495,8 +495,6 @@
     <string name="ui_image_cache_change">Ändern</string>
     <string name="ui_image_cache_reset">Zurücksetzen</string>
 
-    <string name="ui_home_layout_box_art_subtitle_none">Kein Spiel hat ein Rückenbild, daher wird jedes Spiel als 2D-Cover dargestellt</string>
-    <string name="ui_home_layout_box_art_subtitle">Spiele mit Rückenbild als Box darstellen, alle anderen als Cover</string>
     <string name="ui_home_layout_row_alignment">Zeilenposition</string>
     <string name="ui_home_layout_focus_position">Fokusanker</string>
     <string name="ui_home_layout_inverted">Umgekehrte Reihenfolge</string>
@@ -507,8 +505,6 @@
     <string name="ui_home_layout_show_titles">Titel anzeigen</string>
     <string name="ui_home_layout_show_all_games">Alle Spiele anzeigen</string>
     <string name="ui_home_layout_show_all_games_subtitle">Durch die gesamte Bibliothek einer Plattform scrollen, statt bei \"Alle anzeigen\" zu stoppen</string>
-    <string name="ui_home_layout_carousel_box_art">3D-Box-Art</string>
-    <string name="ui_home_layout_auto_grid_box_art">3D-Box-Art</string>
     <string name="ui_home_layout_custom_grid_columns">Spalten</string>
     <string name="ui_home_layout_custom_grid_rows">Zeilen</string>
     <string name="ui_home_layout_custom_grid_auto_add">Neue Downloads hinzufügen</string>
@@ -697,6 +693,16 @@
     <string name="ui_sync_overlay_local_modified_apply_subtitle">Lokalen Spielstand als neueste Version festlegen</string>
     <string name="ui_sync_overlay_local_modified_restore">Synchronisierten Spielstand verwenden</string>
     <string name="ui_sync_overlay_local_modified_restore_subtitle">Lokalen Spielstand mit der letzten synchronisierten Version überschreiben (Sicherung wird erstellt)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_title">Spielstandkonflikt</string>
+    <string name="ui_sync_overlay_snapshot_conflict_message">Der Spielstand auf diesem Gerät für \"%1$s\" und der auf dem Server haben sich beide seit dem letzten Abgleich geändert.</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine">Meinen behalten</string>
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">Der Spielstand dieses Geräts wird der neueste auf dem Server</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">Server-Spielstand verwenden</string>
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">Den Spielstand dieses Geräts durch den neuesten ersetzen (Sicherung wird erstellt)</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch">Beide behalten</string>
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">Den Spielstand dieses Geräts in einen neuen Kanal verschieben</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert">Zurücksetzen</string>
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">Zum zuletzt von diesem Gerät synchronisierten Spielstand zurückkehren (Sicherung wird erstellt)</string>
     <string name="ui_sync_overlay_post_session_title">Spielstandkonflikt</string>
     <string name="ui_sync_overlay_post_session_subject">\"%1$s\" -- %2$s</string>
     <string name="ui_sync_overlay_post_session_default_slot">Standard-Spielstand</string>

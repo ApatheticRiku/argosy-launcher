@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.nendo.argosy.R
 import com.nendo.argosy.data.sync.ConflictInfo
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
+import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.common.subtitleRes
 import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.theme.Dimens
@@ -45,7 +48,9 @@ fun BackgroundSyncConflictDialog(
     focusIndex: Int,
     onKeepLocal: () -> Unit,
     onKeepServer: () -> Unit,
-    onSkip: () -> Unit
+    onSkip: () -> Unit,
+    snapshotConflict: Boolean = false,
+    onSnapshotChoice: (SnapshotConflictChoice) -> Unit = {}
 ) {
     val context = LocalContext.current
     val localTimeStr = conflictInfo.localTimestamp.toRelativeString(context)
@@ -91,7 +96,22 @@ fun BackgroundSyncConflictDialog(
 
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+        if (snapshotConflict) Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+            SnapshotConflictChoice.entries.forEachIndexed { index, choice ->
+                ConflictChoiceRow(
+                    label = stringResource(choice.labelRes),
+                    subtitle = stringResource(choice.subtitleRes),
+                    isFocused = focusIndex == index,
+                    onClick = { onSnapshotChoice(choice) }
+                )
+            }
+            ConflictChoiceRow(
+                label = stringResource(R.string.ui_background_conflict_choice_skip),
+                subtitle = stringResource(R.string.ui_background_conflict_choice_skip_subtitle),
+                isFocused = focusIndex == SnapshotConflictChoice.entries.size,
+                onClick = onSkip
+            )
+        } else Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
             ConflictChoiceRow(
                 icon = Icons.Default.PhoneAndroid,
                 label = stringResource(R.string.ui_background_conflict_choice_local),
@@ -120,7 +140,7 @@ fun BackgroundSyncConflictDialog(
 }
 
 @Composable
-private fun ConflictChoiceRow(
+internal fun ConflictChoiceRow(
     label: String,
     isFocused: Boolean,
     onClick: () -> Unit,

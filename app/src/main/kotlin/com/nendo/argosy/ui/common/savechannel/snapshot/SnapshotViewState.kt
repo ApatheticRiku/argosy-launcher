@@ -33,7 +33,9 @@ data class SnapshotCardUi(
     val isCurrent: Boolean,
     val isBranch: Boolean,
     val isPinned: Boolean,
-    val isHardcore: Boolean
+    val isHardcore: Boolean,
+    val isArchival: Boolean = false,
+    val isPublic: Boolean = false
 ) {
     val isOlderClient: Boolean get() = snapshotId == null
 }
@@ -61,7 +63,7 @@ data class SnapshotBackupUi(
 
 data class SnapshotCoreStatesUi(val core: String, val slots: List<String>)
 
-enum class SnapshotDetailAction { ACTIVATE, FORK, COPY_OVER, PIN, UNPIN, MAKE_SNAPSHOT }
+enum class SnapshotDetailAction { ACTIVATE, FORK, COPY_OVER, PIN, UNPIN, SHARE, UNSHARE, MAKE_SNAPSHOT }
 
 data class SnapshotDetailUi(
     val channelId: String,

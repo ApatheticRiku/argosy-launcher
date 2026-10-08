@@ -12,6 +12,7 @@ data class RomMSnapshot(
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "is_hardcore") val isHardcore: Boolean = false,
     @Json(name = "is_pinned") val isPinned: Boolean = false,
+    @Json(name = "is_public") val isPublic: Boolean = false,
     @Json(name = "emulator") val emulator: String? = null,
     @Json(name = "author_user_id") val authorUserId: Long? = null,
     @Json(name = "device") val device: RomMSnapshotDevice? = null,
@@ -22,8 +23,11 @@ data class RomMSnapshot(
 ) {
     val isBranch: Boolean get() = kind == KIND_BRANCH
 
+    val isArchival: Boolean get() = kind == KIND_ARCHIVAL
+
     companion object {
         const val KIND_BRANCH = "branch"
+        const val KIND_ARCHIVAL = "archival"
     }
 }
 
@@ -90,9 +94,15 @@ data class RomMSnapshotState(
 @JsonClass(generateAdapter = true)
 data class RomMSnapshotConflict(
     @Json(name = "current") val current: RomMSnapshotRef? = null,
+    @Json(name = "branch") val branch: RomMSnapshot? = null,
+    @Json(name = "reason") val reason: String? = null,
     @Json(name = "hardcore_downgrade") val hardcoreDowngrade: Boolean = false,
     @Json(name = "missing") val missing: List<String>? = null
-)
+) {
+    companion object {
+        const val REASON_MOVED_FROM_OLDER = "moved_from_older"
+    }
+}
 
 @JsonClass(generateAdapter = true)
 data class RomMSnapshotRef(
@@ -115,5 +125,6 @@ data class RomMChannelUpdate(
 
 @JsonClass(generateAdapter = true)
 data class RomMSnapshotUpdate(
-    @Json(name = "is_pinned") val isPinned: Boolean? = null
+    @Json(name = "is_pinned") val isPinned: Boolean? = null,
+    @Json(name = "is_public") val isPublic: Boolean? = null
 )

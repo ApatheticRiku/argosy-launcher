@@ -40,7 +40,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
+import android.os.Build
 import java.time.Instant
+import java.time.LocalDate
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -51,8 +53,14 @@ sealed class SnapshotSyncResult {
     data object NoConnection : SnapshotSyncResult()
     data object UpToDate : SnapshotSyncResult()
     data class Pushed(val snapshotId: Long) : SnapshotSyncResult()
+    data class Branched(val snapshotId: Long, val channelLabel: String) : SnapshotSyncResult()
     data class Applied(val snapshotId: Long) : SnapshotSyncResult()
-    data class Conflict(val current: RomMSnapshot?, val currentId: Long, val localSavePath: String? = null) : SnapshotSyncResult()
+    data class Conflict(
+        val current: RomMSnapshot?,
+        val currentId: Long?,
+        val localSavePath: String? = null,
+        val fromOlder: Boolean = false
+    ) : SnapshotSyncResult()
     data class HardcoreDowngrade(val currentId: Long?) : SnapshotSyncResult()
     data class Failed(val reason: String) : SnapshotSyncResult()
 }
@@ -177,8 +185,36 @@ class SnapshotSyncEngine @Inject constructor(
     ): SnapshotSyncResult = locked(gameId) {
         val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
         val local = localSave(ctx.game, emulatorId)
-        val parent = ctx.stored?.takeIf { it.heldByChoice }?.heldSnapshotId
-        pushLocal(ctx, local, emulatorId, channelName, ctx.current?.id, isHardcore, approveHardcoreDowngrade, parent)
+        pushLocal(ctx, local, emulatorId, channelName, ctx.current?.id, isHardcore, approveHardcoreDowngrade, ctx.stored?.heldSnapshotId)
+    }
+
+    /**
+     * Pushes the local save as the first snapshot of a new channel named for this device and day.
+     * The channel the save came from is left as the server has it.
+     */
+    suspend fun branch(gameId: Long, emulatorId: String, isHardcore: Boolean = false): SnapshotSyncResult =
+        locked(gameId) {
+            val label = SnapshotChannels.branchLabel(
+                deviceName = "${Build.MANUFACTURER} ${Build.MODEL}",
+                day = LocalDate.now(),
+                taken = activeSaveRepository.registeredChannels(gameId)
+            )
+            val ctx = load(gameId, label) ?: return@locked notReady(gameId)
+            val local = localSave(ctx.game, emulatorId)
+            when (val pushed = pushLocal(ctx, local, emulatorId, label, null, isHardcore, false)) {
+                is SnapshotSyncResult.Pushed -> SnapshotSyncResult.Branched(pushed.snapshotId, label)
+                else -> pushed
+            }
+        }
+
+    /**
+     * Resolves a conflict by putting back the snapshot this device held before the session. The
+     * local work stays on the server as the branch the refused push made.
+     */
+    suspend fun revert(gameId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult = locked(gameId) {
+        val ctx = load(gameId, channelName) ?: return@locked notReady(gameId)
+        val held = ctx.stored?.heldSnapshotId ?: ctx.current?.id ?: return@locked SnapshotSyncResult.UpToDate
+        apply(ctx, held, emulatorId, channelName, byChoice = held != ctx.current?.id)
     }
 
     /**
@@ -202,7 +238,7 @@ class SnapshotSyncEngine @Inject constructor(
         val format = cacheId?.let { saveCacheDao.getById(it) }?.saveFormat ?: SaveCacheEntity.FORMAT_NATIVE
         val unit = unitFromCache(cacheFile, format) ?: return@locked SnapshotSyncResult.Failed("cached save ${cacheFile.name} is empty")
         val expected = if (onTopOfCurrent) ctx.current?.id else ctx.stored?.heldSnapshotId ?: ctx.current?.id
-        push(ctx, unit, PushSource(emulatorId, cacheId = cacheId), expected, isHardcore, approveHardcoreDowngrade)
+        push(ctx, unit, PushSource(emulatorId, cacheId = cacheId), expected, isHardcore, approveHardcoreDowngrade, ctx.stored?.heldSnapshotId)
     }
 
     suspend fun keepServer(gameId: Long, emulatorId: String, channelName: String?): SnapshotSyncResult = locked(gameId) {
@@ -432,12 +468,16 @@ class SnapshotSyncEngine @Inject constructor(
                 record(ctx, outcome.snapshot.id, outcome.snapshot.digest, SaveHashes(unit.contentHash, unit.identityHash))
                 clearPushedDirtyFlags(ctx)
                 markReached(ctx, unit.contentHash, source.cacheId)
+                source.cacheId?.let { activeSaveRepository.activateCache(ctx.game.id, it) }
                 source.sigilState?.let { sigilSaveHandler.commit(it) }
                 Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | pushed #${outcome.snapshot.id} (${unit.format}) on ${ctx.label}/${ctx.channelId} expecting $expectedCurrentId")
                 SnapshotSyncResult.Pushed(outcome.snapshot.id)
             }
             PushOutcome.HardcoreDowngrade -> SnapshotSyncResult.HardcoreDowngrade(expectedCurrentId)
-            is PushOutcome.Conflict -> SnapshotSyncResult.Conflict(null, outcome.currentId, source.localSavePath)
+            is PushOutcome.Conflict -> {
+                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | push refused, current=${outcome.currentId} kept as branch #${outcome.branch?.id} fromOlder=${outcome.fromOlder}")
+                SnapshotSyncResult.Conflict(null, outcome.currentId, source.localSavePath, outcome.fromOlder)
+            }
             is PushOutcome.Failed -> SnapshotSyncResult.Failed(outcome.reason)
         }
     }
@@ -459,7 +499,8 @@ class SnapshotSyncEngine @Inject constructor(
         channelName: String?,
         byChoice: Boolean = false
     ): SnapshotSyncResult {
-        val snapshot = runCatching { ctx.api.getSnapshot(snapshotId) }.getOrNull()?.takeIf { it.isSuccessful }?.body()
+        val snapshot = runCatching { ctx.api.getSnapshot(snapshotId, ctx.deviceId, hold = true) }
+            .getOrNull()?.takeIf { it.isSuccessful }?.body()
             ?: return SnapshotSyncResult.Failed("could not read snapshot #$snapshotId")
         val staged = when (val stage = stageBank(ctx, snapshot, emulatorId)) {
             BankStage.None -> null
@@ -493,7 +534,6 @@ class SnapshotSyncEngine @Inject constructor(
         }
         save?.let { activatePlacedSave(ctx, it.id) }
         record(ctx, snapshot.id, snapshot.digest, save?.hashes(), byChoice)
-        report(ctx, snapshot.id)
         Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | applied #${snapshot.id} from ${ctx.label}/${ctx.channelId}")
         return SnapshotSyncResult.Applied(snapshot.id)
     }

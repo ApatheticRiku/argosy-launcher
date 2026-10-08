@@ -1001,10 +1001,6 @@
     <!-- Button on the image cache row. Verb: puts the folder back to Argosy's own. -->
     <string name="ui_image_cache_reset">Reset</string>
 
-    <!-- Second line under the 3D box art switch when no game in the library has spine art. -->
-    <string name="ui_home_layout_box_art_subtitle_none">No game has spine art, so every game draws as a 2D cover</string>
-    <!-- Second line under the 3D box art switch otherwise. -->
-    <string name="ui_home_layout_box_art_subtitle">Draw games that have a spine as a box, and the rest as covers</string>
     <!-- Settings row: where a carousel row sits vertically. Noun phrase. -->
     <string name="ui_home_layout_row_alignment">Row Position</string>
     <!-- Settings row: where along a carousel the focused card sits. Noun phrase. -->
@@ -1026,11 +1022,6 @@
     <!-- Second line under that row. "View All" names the card that ends a row and matches
          ui_view_all_outline_label. -->
     <string name="ui_home_layout_show_all_games_subtitle">Scroll a platform\'s whole library instead of stopping at View All</string>
-    <!-- Settings row on the carousel: whether covers draw as 3D boxes. "3D" is the shape, not a
-         word to translate. -->
-    <string name="ui_home_layout_carousel_box_art">3D Box Art</string>
-    <!-- The same row on the automatic grid. -->
-    <string name="ui_home_layout_auto_grid_box_art">3D Box Art</string>
     <!-- Settings row: how many columns of cells the curated grid has. Noun, plural. -->
     <string name="ui_home_layout_custom_grid_columns">Columns</string>
     <!-- Settings row: how many rows of cells the curated grid has. Noun, plural. -->
@@ -1456,6 +1447,26 @@
     <string name="ui_sync_overlay_local_modified_restore">Use Synced Save</string>
     <!-- Second line under that choice. -->
     <string name="ui_sync_overlay_local_modified_restore_subtitle">Overwrite local with last synced version (backup created)</string>
+    <!-- Heading when this device and another both saved the same channel since they last synced. -->
+    <string name="ui_sync_overlay_snapshot_conflict_title">Save Conflict</string>
+    <!-- Body under that heading. %1$s is the game's title. -->
+    <string name="ui_sync_overlay_snapshot_conflict_message">The save on this device for \"%1$s\" and the save on the server both changed since they last matched.</string>
+    <!-- Choice keeping this device's save. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_mine">Keep Mine</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">This device\'s save becomes the latest on the server</string>
+    <!-- Choice taking the save on the server. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">Use Server Save</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">Replace this device\'s save with the latest one (backup created)</string>
+    <!-- Choice keeping both saves by moving this device's save to a new channel. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_branch">Keep Both</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">Move this device\'s save to a new channel</string>
+    <!-- Choice returning to the save this device last synced. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_revert">Revert</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">Go back to the save this device last synced (backup created)</string>
     <!-- Heading when a save changed on both sides while the game was being played. -->
     <string name="ui_sync_overlay_post_session_title">Save Conflict</string>
     <!-- Line naming what is in conflict. %1$s is the game's title, %2$s the save slot. The

@@ -419,9 +419,7 @@ class SecondaryHomeActivity :
      * While the panel is up over a live playback the panel is touch-only, and every key and
      * trigger this window receives is handed to the player's own dispatch instead of being
      * interpreted here. The claim is the player's to make: claiming before forwarding would make
-     * the player's copy of the same physical press look like a duplicate and get dropped. The
-     * conflict overlays and the app drawer keep their priority because this yields nothing while
-     * one is up. A locked player is the deliberate inversion: the viewer asked for the film to run
+     * the player's copy of the same physical press look like a duplicate and get dropped. A locked player is the deliberate inversion: the viewer asked for the film to run
      * untouched, so the pad stays here and drives the panel until the lock is released.
      */
     private fun yieldsKeysToMediaPlayer(): Boolean {
@@ -429,7 +427,6 @@ class SecondaryHomeActivity :
         if (dsm.mediaPlayerControlsLocked.value) return false
         if (!mediaPanelIsSurfaceNow()) return false
         if (dsm.mediaPlayback.value == null) return false
-        if (dsm.dualSyncOverlay.value != null || dsm.dualSaveConflict.value != null) return false
         return true
     }
 

@@ -9,7 +9,9 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.data.remote.romm.RomMChannel
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.remote.romm.RomMSnapshot
 import com.nendo.argosy.data.sync.snapshot.SnapshotActionResult
+import com.nendo.argosy.data.sync.snapshot.SnapshotFailure
 import com.nendo.argosy.data.sync.snapshot.SnapshotChannelEntry
 import com.nendo.argosy.data.sync.snapshot.SnapshotChannelService
 import com.nendo.argosy.domain.usecase.savechannel.UseSnapshotChannelOnDeviceUseCase
@@ -150,10 +152,36 @@ class SnapshotActionRunner @Inject constructor(
         call(scope, NotificationText.Res(R.string.save_channels_notice_deleted)) { service.delete(channelId) }
     }
 
-    fun setPinned(scope: CoroutineScope, channelId: String, snapshotId: Long, pinned: Boolean) {
+    fun setPinned(scope: CoroutineScope, channelId: String, snapshotId: Long, pinned: Boolean) =
+        updateFlag(
+            scope, channelId, snapshotId,
+            request = { service.setPinned(snapshotId, pinned) },
+            applyToSnapshot = { it.copy(isPinned = pinned) },
+            toggled = if (pinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN,
+            pair = setOf(SnapshotDetailAction.PIN, SnapshotDetailAction.UNPIN)
+        )
+
+    fun setPublic(scope: CoroutineScope, channelId: String, snapshotId: Long, public: Boolean) =
+        updateFlag(
+            scope, channelId, snapshotId,
+            request = { service.setPublic(snapshotId, public) },
+            applyToSnapshot = { it.copy(isPublic = public) },
+            toggled = if (public) SnapshotDetailAction.UNSHARE else SnapshotDetailAction.SHARE,
+            pair = setOf(SnapshotDetailAction.SHARE, SnapshotDetailAction.UNSHARE)
+        )
+
+    private fun updateFlag(
+        scope: CoroutineScope,
+        channelId: String,
+        snapshotId: Long,
+        request: suspend () -> SnapshotActionResult,
+        applyToSnapshot: (RomMSnapshot) -> RomMSnapshot,
+        toggled: SnapshotDetailAction,
+        pair: Set<SnapshotDetailAction>
+    ) {
         if (!beginBusy()) return
         scope.launch {
-            val result = service.setPinned(snapshotId, pinned)
+            val result = request()
             holder.updateSnapshot { it.copy(isBusy = false) }
             if (result != SnapshotActionResult.Done) {
                 report(result, retry = null)
@@ -161,7 +189,7 @@ class SnapshotActionRunner @Inject constructor(
             }
             val entry = entryOf(channelId) ?: return@launch
             val history = holder.snapshotHistories.value[channelId].orEmpty().map {
-                if (it.id == snapshotId) it.copy(isPinned = pinned) else it
+                if (it.id == snapshotId) applyToSnapshot(it) else it
             }
             holder.snapshotHistories.update { it + (channelId to history) }
             holder.updateSnapshot { state ->
@@ -170,14 +198,8 @@ class SnapshotActionRunner @Inject constructor(
                     expanded = state.expanded?.takeIf { it.channelId == channelId }?.copy(cards = cards) ?: state.expanded,
                     detail = state.detail?.takeIf { it.card.snapshotId == snapshotId }?.let { detail ->
                         detail.copy(
-                            card = detail.card.copy(isPinned = pinned),
-                            actions = detail.actions.map { action ->
-                                when (action) {
-                                    SnapshotDetailAction.PIN, SnapshotDetailAction.UNPIN ->
-                                        if (pinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN
-                                    else -> action
-                                }
-                            }
+                            card = cards.firstOrNull { it.snapshotId == snapshotId } ?: detail.card,
+                            actions = detail.actions.map { action -> if (action in pair) toggled else action }
                         )
                     } ?: state.detail
                 )
@@ -229,8 +251,12 @@ class SnapshotActionRunner @Inject constructor(
     private suspend fun execute(push: SnapshotPush, approve: Boolean): SnapshotActionResult =
         when (push) {
             is SnapshotPush.Fork -> service.fork(push.romFileId, push.snapshotId, push.label, approve)
-            is SnapshotPush.CopyOver -> service.copyOver(push.snapshotId, push.target, approve)
-            is SnapshotPush.MakeSnapshot -> service.makeSnapshot(push.channel, push.saveId, approve)
+            is SnapshotPush.CopyOver -> romFileIdFor(push.target)
+                ?.let { service.copyOver(push.snapshotId, push.target, it, approve) }
+                ?: SnapshotActionResult.Failed(SnapshotFailure.NOT_FOUND)
+            is SnapshotPush.MakeSnapshot -> romFileIdFor(push.channel)
+                ?.let { service.makeSnapshot(push.channel, push.saveId, it, approve) }
+                ?: SnapshotActionResult.Failed(SnapshotFailure.NOT_FOUND)
         }
 
     private suspend fun settle(result: SnapshotActionResult, done: NotificationText, retry: SnapshotPush?) {

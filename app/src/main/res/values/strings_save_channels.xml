@@ -115,6 +115,10 @@
     <string name="save_channels_detail_action_pin">Pin</string>
     <!-- Detail action: undo Pin. Verb. -->
     <string name="save_channels_detail_action_unpin">Unpin</string>
+    <!-- Detail action on your own archived snapshot: let other players see and use it. Verb. -->
+    <string name="save_channels_detail_action_share">Share</string>
+    <!-- Detail action: undo Share. Verb. -->
+    <string name="save_channels_detail_action_unshare">Stop sharing</string>
     <!-- Detail action on an older client's save: turn it into a snapshot in its channel. -->
     <string name="save_channels_detail_action_make_snapshot">Make snapshot</string>
     <!-- Title of the list of channels a snapshot can be copied over. -->
