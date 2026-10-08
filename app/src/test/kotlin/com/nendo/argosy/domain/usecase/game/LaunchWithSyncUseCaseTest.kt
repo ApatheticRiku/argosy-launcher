@@ -283,6 +283,24 @@ class LaunchWithSyncUseCaseTest {
         val modified = progress.firstOrNull { it is SyncProgress.LocalModified } as? SyncProgress.LocalModified
         assertTrue("Expected LocalModified emission, got $progress", modified != null)
         assertEquals(99L, modified?.serverSaveId)
+        assertTrue("a legacy conflict keeps the two-choice prompt", modified?.snapshotConflict == false)
+    }
+
+    @Test
+    fun `a snapshot conflict reaches the launch prompt flagged`() = runTest {
+        coEvery {
+            saveSyncRepository.preLaunchSyncForGame(gameId, rommId, emulatorId, channelName = null, secureSaves = true)
+        } returns PreLaunchSyncResult.LocalModified(
+            localSavePath = "/saves/test.srm",
+            serverTimestamp = Instant.parse("2025-01-15T12:00:00Z"),
+            channelName = null,
+            snapshotConflict = true
+        )
+
+        val progress = useCase.invokeWithProgress(gameId).toList()
+
+        val modified = progress.firstOrNull { it is SyncProgress.LocalModified } as? SyncProgress.LocalModified
+        assertTrue("Expected a flagged snapshot conflict, got $progress", modified?.snapshotConflict == true)
     }
 
     @Test

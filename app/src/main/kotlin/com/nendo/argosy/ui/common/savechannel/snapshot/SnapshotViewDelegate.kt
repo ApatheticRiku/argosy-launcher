@@ -288,9 +288,6 @@ class SnapshotViewDelegate @Inject constructor(
                 if (runner.romFileIdFor(channel) != null) add(SnapshotDetailAction.FORK)
                 if (runner.copyTargets(channel).isNotEmpty()) add(SnapshotDetailAction.COPY_OVER)
                 if (canWrite) add(if (card.isPinned) SnapshotDetailAction.UNPIN else SnapshotDetailAction.PIN)
-                if (channel.isOwn && card.isArchival) {
-                    add(if (card.isPublic) SnapshotDetailAction.UNSHARE else SnapshotDetailAction.SHARE)
-                }
             }
         }
         holder.updateSnapshot {

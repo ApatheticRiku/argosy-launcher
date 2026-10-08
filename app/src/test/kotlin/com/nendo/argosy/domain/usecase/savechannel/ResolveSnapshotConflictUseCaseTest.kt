@@ -35,7 +35,7 @@ class ResolveSnapshotConflictUseCaseTest {
         coEvery { engine.keepLocal(GAME_ID, EMULATOR, null, false) } returns SnapshotSyncResult.Pushed(1)
         coEvery { engine.keepServer(GAME_ID, EMULATOR, null) } returns SnapshotSyncResult.Applied(2)
         coEvery { engine.revert(GAME_ID, EMULATOR, null) } returns SnapshotSyncResult.Applied(3)
-        coEvery { engine.branch(GAME_ID, EMULATOR, false) } returns SnapshotSyncResult.Branched(4, "Thor 2026-10-08")
+        coEvery { engine.branch(GAME_ID, EMULATOR, null, false) } returns SnapshotSyncResult.Branched(4, "Thor 2026-10-08")
 
         assertEquals(SnapshotSyncResult.Pushed(1), useCase(GAME_ID, EMULATOR, null, SnapshotConflictChoice.MINE))
         assertEquals(SnapshotSyncResult.Applied(2), useCase(GAME_ID, EMULATOR, null, SnapshotConflictChoice.THEIRS))
@@ -48,7 +48,7 @@ class ResolveSnapshotConflictUseCaseTest {
 
     @Test
     fun `a branch becomes this device's active channel`() = runTest {
-        coEvery { engine.branch(GAME_ID, EMULATOR, false) } returns SnapshotSyncResult.Branched(4, "Thor 2026-10-08")
+        coEvery { engine.branch(GAME_ID, EMULATOR, "default", false) } returns SnapshotSyncResult.Branched(4, "Thor 2026-10-08")
 
         useCase(GAME_ID, EMULATOR, "default", SnapshotConflictChoice.BRANCH)
 
@@ -58,11 +58,27 @@ class ResolveSnapshotConflictUseCaseTest {
 
     @Test
     fun `a failed branch leaves the active channel alone`() = runTest {
-        coEvery { engine.branch(GAME_ID, EMULATOR, false) } returns SnapshotSyncResult.NoConnection
+        coEvery { engine.branch(GAME_ID, EMULATOR, "default", false) } returns SnapshotSyncResult.NoConnection
 
         useCase(GAME_ID, EMULATOR, "default", SnapshotConflictChoice.BRANCH)
 
         coVerify(exactly = 0) { activeSaveRepository.activateChannel(any(), any()) }
+    }
+
+    @Test
+    fun `a hardcore save keeps its hardcore flag through keep mine and keep both`() = runTest {
+        val hardcoreRow = io.mockk.mockk<com.nendo.argosy.data.local.entity.SaveCacheEntity>(relaxed = true) {
+            io.mockk.every { isHardcore } returns true
+        }
+        coEvery { activeSaveRepository.getActiveRow(GAME_ID) } returns hardcoreRow
+        coEvery { engine.keepLocal(GAME_ID, EMULATOR, "default", true) } returns SnapshotSyncResult.Pushed(1)
+        coEvery { engine.branch(GAME_ID, EMULATOR, "default", true) } returns SnapshotSyncResult.Branched(2, "Thor 2026-10-08")
+
+        useCase(GAME_ID, EMULATOR, "default", SnapshotConflictChoice.MINE)
+        useCase(GAME_ID, EMULATOR, "default", SnapshotConflictChoice.BRANCH)
+
+        coVerify { engine.keepLocal(GAME_ID, EMULATOR, "default", true) }
+        coVerify { engine.branch(GAME_ID, EMULATOR, "default", true) }
     }
 
     @Test

@@ -59,4 +59,16 @@ class SnapshotSyncRouterTest {
 
         coVerify { engine.keepLocal(5, "argosy", null, false, true) }
     }
+
+    @Test
+    fun `a pre-launch snapshot conflict asks with the snapshot choices`() = runBlocking {
+        coEvery { engine.isEligible(5) } returns true
+        coEvery { engine.sync(5, "argosy", null) } returns SnapshotSyncResult.Conflict(null, 43, "/saves/lunar.srm")
+
+        val result = router.preLaunch(5, "argosy", null)
+
+        val modified = result as com.nendo.argosy.data.repository.PreLaunchSyncResult.LocalModified
+        assertTrue(modified.snapshotConflict)
+        org.junit.Assert.assertEquals("/saves/lunar.srm", modified.localSavePath)
+    }
 }

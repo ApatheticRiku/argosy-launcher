@@ -281,7 +281,6 @@ class SnapshotSyncEngineTest {
 
         val result = engine.sync(GAME_ID, EMULATOR, null) as SnapshotSyncResult.Conflict
         assertEquals(43L, result.currentId)
-        assertTrue(result.fromOlder)
         coVerify(exactly = 0) { channelDao.upsert(any()) }
     }
 
@@ -556,6 +555,79 @@ class SnapshotSyncEngineTest {
         assertEquals(42L, stored.captured.heldSnapshotId)
         coVerify { api.getSnapshot(42, DEVICE, true) }
         coVerify(exactly = 0) { api.reportSnapshotHeld(any(), any()) }
+    }
+
+    @Test
+    fun `keep both forks a new channel from the held snapshot, numbered past a label the server already has`() = runBlocking {
+        val base = SnapshotChannels.branchLabel("${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}", java.time.LocalDate.now(), emptyList())
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns Response.success(listOf(
+            RomMChannel(id = CHANNEL, label = "default", currentSnapshotId = 42, romFileId = FILE_ID, current = snapshot(42, "theirs")),
+            RomMChannel(id = "other-device", label = base, romFileId = FILE_ID)
+        ))
+        val parts = slot<List<MultipartBody.Part>>()
+        coEvery { api.pushSnapshot(DEVICE, capture(parts)) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(50, "content-a")).toResponseBody())
+
+        val result = engine.branch(GAME_ID, EMULATOR, null)
+
+        assertEquals(SnapshotSyncResult.Branched(50, "$base (2)"), result)
+        val manifest = manifestOf(parts.captured)
+        assertEquals("$base (2)", manifest.getString("label"))
+        assertTrue(manifest.isNull("expected_current_id"))
+        assertEquals(41L, manifest.getLong("parent_snapshot_id"))
+    }
+
+    @Test
+    fun `revert places the held snapshot over a newer current and keeps it by choice`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 39, "d", "old", "old-identity", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
+        coEvery { api.getSnapshot(39, any(), any()) } returns Response.success(snapshot(39, "old"))
+        coEvery { downloader.downloadSave(GAME_ID, EMULATOR, null, false, 390L, true) } returns
+            com.nendo.argosy.data.repository.SaveSyncResult.Success()
+
+        assertEquals(SnapshotSyncResult.Applied(39), engine.revert(GAME_ID, EMULATOR, null))
+        assertEquals(39L, stored.captured.heldSnapshotId)
+        assertTrue(stored.captured.heldByChoice)
+    }
+
+    @Test
+    fun `revert with nothing held places current without holding it by choice`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns null
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
+        coEvery { api.getSnapshot(42, any(), any()) } returns Response.success(snapshot(42, "theirs"))
+        coEvery { downloader.downloadSave(GAME_ID, EMULATOR, null, false, 420L, true) } returns
+            com.nendo.argosy.data.repository.SaveSyncResult.Success()
+
+        assertEquals(SnapshotSyncResult.Applied(42), engine.revert(GAME_ID, EMULATOR, null))
+        assertEquals(42L, stored.captured.heldSnapshotId)
+        assertTrue(!stored.captured.heldByChoice)
+    }
+
+    @Test
+    fun `restoring an older snapshot on this device holds it by choice`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 42, "d", "theirs", "theirs", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(42, "theirs")))
+        coEvery { api.getSnapshot(37, any(), any()) } returns Response.success(snapshot(37, "older"))
+        coEvery { downloader.downloadSave(GAME_ID, EMULATOR, null, false, 370L, true) } returns
+            com.nendo.argosy.data.repository.SaveSyncResult.Success()
+
+        assertEquals(SnapshotSyncResult.Applied(37), engine.restoreLocally(GAME_ID, EMULATOR, null, 37))
+        assertEquals(37L, stored.captured.heldSnapshotId)
+        assertTrue(stored.captured.heldByChoice)
+    }
+
+    @Test
+    fun `an offline chain push leaves the active save alone`() = runBlocking {
+        coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
+        coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
+        coEvery { api.pushSnapshot(DEVICE, any()) } returns
+            Response.success(201, snapshotJson.toJson(snapshot(42, "content-a")).toResponseBody())
+        val cacheFile = tempDir.newFile("chain-1.srm").apply { writeBytes(byteArrayOf(4, 5, 6)) }
+
+        engine.pushCached(GAME_ID, EMULATOR, null, cacheFile, onTopOfCurrent = true, cacheId = 77L)
+
+        coVerify(exactly = 0) { activeSaves.activateCache(any(), any()) }
     }
 
     @Test

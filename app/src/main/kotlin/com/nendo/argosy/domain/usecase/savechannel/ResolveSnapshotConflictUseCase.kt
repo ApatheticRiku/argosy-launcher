@@ -30,16 +30,16 @@ class ResolveSnapshotConflictUseCase @Inject constructor(
         emulatorId: String?,
         channelName: String?,
         choice: SnapshotConflictChoice,
-        isHardcore: Boolean = false,
         pendingConflictId: Long? = null
     ): SnapshotSyncResult {
         val emulator = emulatorId ?: emulatorFor(gameId, pendingConflictId)
             ?: return SnapshotSyncResult.Failed("No emulator resolves for game $gameId")
+        val isHardcore = activeSaveRepository.getActiveRow(gameId)?.isHardcore == true
         val result = when (choice) {
             SnapshotConflictChoice.MINE -> engine.keepLocal(gameId, emulator, channelName, isHardcore)
             SnapshotConflictChoice.THEIRS -> engine.keepServer(gameId, emulator, channelName)
             SnapshotConflictChoice.REVERT -> engine.revert(gameId, emulator, channelName)
-            SnapshotConflictChoice.BRANCH -> engine.branch(gameId, emulator, isHardcore).also { branched ->
+            SnapshotConflictChoice.BRANCH -> engine.branch(gameId, emulator, channelName, isHardcore).also { branched ->
                 if (branched is SnapshotSyncResult.Branched) {
                     activeSaveRepository.registerChannel(gameId, branched.channelLabel)
                     activeSaveRepository.activateChannel(gameId, branched.channelLabel)

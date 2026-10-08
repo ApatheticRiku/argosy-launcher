@@ -331,7 +331,8 @@ class ArgosyViewModel @Inject constructor(
             syncQueueManager.pendingConflicts.collect { conflicts ->
                 val first = conflicts.firstOrNull()
                 if (first != null) {
-                    _backgroundConflictSnapshot.value = resolveSnapshotConflict.appliesTo(first.gameId)
+                    val parkedDowngrade = first.conflictId?.let { pendingConflictDao.getById(it) }?.isHardcoreDowngrade == true
+                    _backgroundConflictSnapshot.value = !parkedDowngrade && resolveSnapshotConflict.appliesTo(first.gameId)
                     _backgroundConflictInfo.value = first
                     _backgroundConflictButtonIndex.value = 0
                 } else {
@@ -716,6 +717,13 @@ class ArgosyViewModel @Inject constructor(
 
     fun answerSnapshotConflict(choice: SnapshotConflictChoice) {
         val info = _saveConflictInfo.value ?: return
+        if (info.conflictId != null) {
+            when (choice) {
+                SnapshotConflictChoice.MINE -> return answerSaveConflict(ConflictResolution.KEEP_LOCAL)
+                SnapshotConflictChoice.THEIRS -> return answerSaveConflict(ConflictResolution.KEEP_SERVER)
+                SnapshotConflictChoice.BRANCH, SnapshotConflictChoice.REVERT -> Unit
+            }
+        }
         _saveConflictInfo.value = null
         _saveConflictButtonIndex.value = 0
         playSessionTracker.clearPendingSessionConflict()
@@ -747,6 +755,11 @@ class ArgosyViewModel @Inject constructor(
     }
 
     fun resolveBackgroundSnapshotConflict(choice: SnapshotConflictChoice) {
+        when (choice) {
+            SnapshotConflictChoice.MINE -> return resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL)
+            SnapshotConflictChoice.THEIRS -> return resolveBackgroundConflict(ConflictResolution.KEEP_SERVER)
+            SnapshotConflictChoice.BRANCH, SnapshotConflictChoice.REVERT -> Unit
+        }
         val info = _backgroundConflictInfo.value ?: return
         val conflictId = info.conflictId
         if (conflictId == null) {
