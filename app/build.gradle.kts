@@ -169,6 +169,7 @@ composeCompiler {
             layout.projectDirectory.file("compose_stability_config.conf")
         )
     }
+    featureFlags.add(org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag.IntrinsicRemember.disabled())
     if (project.hasProperty("composeMetrics")) {
         val dir = layout.buildDirectory.dir("compose_metrics")
         metricsDestination.set(dir)
