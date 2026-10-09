@@ -7,8 +7,12 @@ import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
 import com.nendo.argosy.libretro.LibretroBuildbot
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
+import com.nendo.argosy.libretro.ControllerTypeSelection
+import com.nendo.argosy.libretro.CorePortDeviceCatalog
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.NetplaySupportLevel
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.libretro.shader.ShaderChainConfig
 import com.nendo.argosy.libretro.shader.ShaderChainManager
 import com.nendo.argosy.libretro.shader.ShaderPreviewRenderer
@@ -1347,6 +1351,59 @@ internal fun routeCyclePlatformContext(vm: SettingsViewModel, direction: Int) {
             ),
             focusedIndex = 0
         )
+    }
+    routeLoadControllerPorts(vm)
+}
+
+internal fun routeLoadControllerPorts(vm: SettingsViewModel) {
+    val platform = vm._uiState.value.builtinVideo.currentPlatformContext
+    val devices = platform?.let { CorePortDeviceCatalog.devicesFor(it.platformSlug) }.orEmpty()
+    if (platform == null || devices.size < 2) {
+        vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(controllerPorts = emptyList())) }
+        return
+    }
+    vm.viewModelScope.launch {
+        val stored = ControllerTypeSelection.decode(vm.configureEmulatorUseCase.getControllerTypesForPlatform(platform.platformId))
+        val ports = (0 until CorePortDeviceCatalog.PORT_COUNT).map { port ->
+            ControllerPortChoiceUi(
+                port = port,
+                deviceIds = devices.map { it.id },
+                deviceNames = devices.map { it.name },
+                selectedIndex = devices.indexOfFirst { it.id == stored[port] }.coerceAtLeast(0)
+            )
+        }
+        vm._uiState.update { state ->
+            if (state.builtinVideo.currentPlatformContext?.platformId != platform.platformId) return@update state
+            state.copy(builtinControls = state.builtinControls.copy(controllerPorts = ports))
+        }
+    }
+}
+
+internal fun routeSelectControllerType(vm: SettingsViewModel, port: Int, index: Int) {
+    val platform = vm._uiState.value.builtinVideo.currentPlatformContext ?: return
+    val choice = vm._uiState.value.builtinControls.controllerPorts.firstOrNull { it.port == port } ?: return
+    val deviceId = choice.deviceIds.getOrNull(index) ?: return
+    vm._uiState.update { state ->
+        state.copy(
+            builtinControls = state.builtinControls.copy(
+                controllerPorts = state.builtinControls.controllerPorts.map {
+                    if (it.port == port) it.copy(selectedIndex = index) else it
+                }
+            )
+        )
+    }
+    vm.viewModelScope.launch {
+        val stored = ControllerTypeSelection.decode(vm.configureEmulatorUseCase.getControllerTypesForPlatform(platform.platformId))
+        val updated = if (index == 0) stored - port else stored + (port to deviceId)
+        vm.configureEmulatorUseCase.setControllerTypesForPlatform(platform.platformId, ControllerTypeSelection.encode(updated))
+    }
+}
+
+internal fun routeStepControllerType(vm: SettingsViewModel, port: Int, delta: Int): InputResult {
+    val choice = vm._uiState.value.builtinControls.controllerPorts.firstOrNull { it.port == port }
+        ?: return InputResult.UNHANDLED
+    return stepOption(choice.deviceIds.indices.toList(), choice.selectedIndex, delta) { index ->
+        routeSelectControllerType(vm, port, index)
     }
 }
 

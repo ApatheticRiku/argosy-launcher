@@ -1301,6 +1301,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">按鍵對應</string>
     <string name="settings_builtin_controls_mapping_subtitle">為各控制器重新對應按鍵</string>
+    <string name="settings_builtin_controls_controller_type_title">玩家 %1$d 控制器</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">遊戲識別到的控制器。下次啟動遊戲時生效。</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">左搖桿作為方向鍵</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">將左類比搖桿對應至方向鍵輸入</string>

@@ -304,10 +304,7 @@ const val SEGMENTED_MAX_OPTIONS = 4
 @Composable
 fun segmentedInlineWidth(count: Int): Dp {
     val s = LocalUiScale.current.scale
-    val segment = ComponentDefaults.Segmented.minSegmentWidthDp * s
-    val gap = ComponentDefaults.Segmented.gapDp * s
-    val padding = ComponentDefaults.Segmented.trackPaddingDp * s
-    return (segment * count + gap * (count - 1).coerceAtLeast(0) + padding * 2).dp
+    return segmentedTrackWidth(ComponentDefaults.Segmented.minSegmentWidthDp * s, count, s)
 }
 
 @Composable
@@ -321,9 +318,12 @@ fun segmentedInlineWidth(options: List<String>): Dp {
     }
     val minimum = ComponentDefaults.Segmented.minSegmentWidthDp * s
     val segment = with(density) { longest.toDp() + Dimens.spacingMd * 2 }.value.coerceAtLeast(minimum)
-    val gap = ComponentDefaults.Segmented.gapDp * s
-    val padding = ComponentDefaults.Segmented.trackPaddingDp * s
-    val count = options.size
+    return segmentedTrackWidth(segment, options.size, s)
+}
+
+private fun segmentedTrackWidth(segment: Float, count: Int, scale: Float): Dp {
+    val gap = ComponentDefaults.Segmented.gapDp * scale
+    val padding = ComponentDefaults.Segmented.trackPaddingDp * scale
     return (segment * count + gap * (count - 1).coerceAtLeast(0) + padding * 2).dp
 }
 

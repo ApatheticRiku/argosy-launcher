@@ -90,6 +90,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val AMBIENT_LIBRARY_WIDE = -1L
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext internal val context: Context,
@@ -159,10 +161,13 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private var jellyfinSignInJob: Job? = null
-    private var ambientCovers: List<String>? = null
+    private val ambientCovers = java.util.concurrent.ConcurrentHashMap<Long, List<String>>()
 
-    suspend fun ambientShowcaseCovers(): List<String> =
-        ambientCovers ?: gameRepository.showcaseCovers(null, oneEntryPerGroup = false).also { ambientCovers = it }
+    suspend fun ambientShowcaseCovers(platformId: Long?): List<String> {
+        val key = platformId ?: AMBIENT_LIBRARY_WIDE
+        return ambientCovers[key] ?: gameRepository.showcaseCovers(platformId, oneEntryPerGroup = true)
+            .also { ambientCovers[key] = it }
+    }
 
     /**
      * The most recently played game, drawn the way home presents a focused game, so the
@@ -274,7 +279,7 @@ class SettingsViewModel @Inject constructor(
         observeSocialConnectionState()
         observeAvatarPreferences()
         routeObservePlatformLibretroSettings(this)
-        routeLoadAvailablePlatformsForLibretro(this)
+        routeObservePlatforms(this)
         loadSettings()
         driversDelegate.loadGpuInfo()
         raDelegate.initialize(viewModelScope)
@@ -289,6 +294,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun cyclePlatformContext(direction: Int) = routeCyclePlatformContext(this, direction)
+
+    fun stepControllerType(port: Int, delta: Int) = routeStepControllerType(this, port, delta)
+
+    fun selectControllerType(port: Int, index: Int) = routeSelectControllerType(this, port, index)
 
     internal fun loadSettings() = routeLoadSettings(this)
 

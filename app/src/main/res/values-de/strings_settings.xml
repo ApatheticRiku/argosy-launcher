@@ -1418,6 +1418,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Eingabezuordnung</string>
     <string name="settings_builtin_controls_mapping_subtitle">Tasten für jeden Controller neu belegen</string>
+    <string name="settings_builtin_controls_controller_type_title">Controller Spieler %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">Der Controller, den das Spiel sieht. Gilt ab dem nächsten Spielstart.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Linker Stick als D-Pad</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Linken Analogstick auf D-Pad-Eingaben abbilden</string>

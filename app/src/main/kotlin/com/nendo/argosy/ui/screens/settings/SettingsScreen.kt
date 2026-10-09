@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -600,9 +601,9 @@ fun SettingsScreen(
                 .blur(soundPickerBlur)
                 .surfaceBackdrop(BackdropRole.CONTENT)
         ) {
+            SettingsAmbientPresentation(uiState, viewModel)
             if (uiState.currentSection != SettingsSection.SHADER_STACK &&
                 uiState.currentSection != SettingsSection.FRAME_PICKER) {
-                SettingsAmbientPresentation(uiState, viewModel)
                 SettingsHeader(
                     title = settingsSectionTitle(uiState),
                     rightContent = if ((uiState.currentSection == SettingsSection.BUILTIN_VIDEO ||
@@ -1496,15 +1497,19 @@ private fun settingsSectionTitle(uiState: SettingsUiState): String = when (uiSta
 private fun SettingsAmbientPresentation(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val active = DualScreenManagerHolder.instance
         ?.isCompanionActive?.collectAsState()?.value == true
-    if (!active) return
-    var covers by remember { mutableStateOf(emptyList<String>()) }
-    LaunchedEffect(Unit) { covers = viewModel.ambientShowcaseCovers() }
+    if (!active || uiState.currentSection in SECTIONS_WITH_OWN_PRESENTATION) return
+    val scope = settingsPlatformScope(uiState)
+    val name = scope?.platformName?.uppercase() ?: settingsSectionTitle(uiState)
+    val covers by produceState<List<String>?>(initialValue = null, scope?.platformId) {
+        value = viewModel.ambientShowcaseCovers(scope?.platformId)
+    }
+    val shown = covers?.takeIf { it.isNotEmpty() } ?: return
     PresentOnCompanion(
         SlotOwner("settings.ambient"),
         PresentationSlot.PlatformShowcase(
-            name = settingsSectionTitle(uiState),
+            name = name,
             yearSpan = null,
-            coverPaths = covers,
+            coverPaths = shown,
             facts = emptyList()
         )
     )

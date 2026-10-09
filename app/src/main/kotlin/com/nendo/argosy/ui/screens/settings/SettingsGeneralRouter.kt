@@ -130,7 +130,11 @@ private fun routeApplySectionEntry(vm: SettingsViewModel, section: SettingsSecti
             vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
         }
         SettingsSection.SAVES -> vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
-        SettingsSection.SYNC_SETTINGS -> vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
+        SettingsSection.SYNC_SETTINGS -> {
+            vm.syncDelegate.loadLibrarySettings(vm.viewModelScope)
+            vm.syncDelegate.refreshPlatformsFromServer(vm.viewModelScope)
+        }
+        SettingsSection.BUILTIN_CONTROLS -> routeLoadControllerPorts(vm)
         SettingsSection.STORAGE -> {
             vm.attributionDelegate.latchSteamTileVisible(storageSteamVisibleLive(vm._uiState.value))
             vm.attributionDelegate.latchMediaTileVisible(storageMediaVisibleLive(vm._uiState.value))

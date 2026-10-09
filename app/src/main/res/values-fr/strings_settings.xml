@@ -1451,6 +1451,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Mappage des entrées</string>
     <string name="settings_builtin_controls_mapping_subtitle">Réattribuer les boutons pour chaque manette</string>
+    <string name="settings_builtin_controls_controller_type_title">Manette du joueur %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">La manette que voit le jeu. S\'applique au prochain lancement d\'un jeu.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Stick gauche comme croix directionnelle</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Associer le stick analogique gauche aux entrées de la croix directionnelle</string>

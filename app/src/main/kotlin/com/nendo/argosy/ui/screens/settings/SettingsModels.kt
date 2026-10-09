@@ -715,7 +715,15 @@ data class ShaderStackEntry(
     val params: Map<String, String> = emptyMap()
 )
 
+data class ControllerPortChoiceUi(
+    val port: Int,
+    val deviceIds: List<Int>,
+    val deviceNames: List<String>,
+    val selectedIndex: Int
+)
+
 data class BuiltinControlsState(
+    val controllerPorts: List<ControllerPortChoiceUi> = emptyList(),
     val rumbleEnabled: Boolean = true,
     val limitHotkeysToPlayer1: Boolean = true,
     val speedrunStartOnReset: Boolean = true,

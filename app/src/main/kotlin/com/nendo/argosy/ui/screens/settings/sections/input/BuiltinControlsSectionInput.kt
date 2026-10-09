@@ -98,13 +98,15 @@ internal class BuiltinControlsSectionInput(
                 viewModel.adjustSpeedrunPanelWidth(5)
                 InputResult.handled(SoundType.TOGGLE)
             }
+            is BuiltinControlsItem.ControllerType -> InputResult.handled(SoundType.SILENT)
             else -> InputResult.UNHANDLED
         }
     }
 
     override fun onLeft(): InputResult {
         val state = viewModel.uiState.value
-        return when (builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+        return when (val item = builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+            is BuiltinControlsItem.ControllerType -> viewModel.stepControllerType(item.port, -1)
             BuiltinControlsItem.SpeedrunPanelWidth -> {
                 viewModel.adjustSpeedrunPanelWidth(-5)
                 InputResult.handled(SoundType.TOGGLE)
@@ -115,7 +117,8 @@ internal class BuiltinControlsSectionInput(
 
     override fun onRight(): InputResult {
         val state = viewModel.uiState.value
-        return when (builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+        return when (val item = builtinControlsItemAtFocusIndex(state.focusedIndex, state.builtinControls)) {
+            is BuiltinControlsItem.ControllerType -> viewModel.stepControllerType(item.port, 1)
             BuiltinControlsItem.SpeedrunPanelWidth -> {
                 viewModel.adjustSpeedrunPanelWidth(5)
                 InputResult.handled(SoundType.TOGGLE)

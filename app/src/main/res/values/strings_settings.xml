@@ -2668,6 +2668,10 @@
     <string name="settings_builtin_controls_mapping_title">Input Mapping</string>
     <!-- Second line of that row. -->
     <string name="settings_builtin_controls_mapping_subtitle">Remap buttons for each controller</string>
+    <!-- Row title. %1$d is the player number (1-4). "Controller" means the device the game sees, such as a Wiimote with a Nunchuk. -->
+    <string name="settings_builtin_controls_controller_type_title">Player %1$d Controller</string>
+    <!-- Second line under that row. -->
+    <string name="settings_builtin_controls_controller_type_subtitle">The controller the game sees. Takes effect the next time a game starts.</string>
 
     <!-- Row title. Noun phrase: the left stick sends the same inputs as the direction pad.
          "D-Pad" is the cross-shaped direction control; keep the abbreviation. -->

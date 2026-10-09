@@ -1408,6 +1408,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">इनपुट मैपिंग</string>
     <string name="settings_builtin_controls_mapping_subtitle">हर कंट्रोलर के लिए बटन रीमैप करें</string>
+    <string name="settings_builtin_controls_controller_type_title">खिलाड़ी %1$d का कंट्रोलर</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">वह कंट्रोलर जो गेम देखता है। अगली बार गेम शुरू होने पर लागू होता है।</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">लेफ़्ट स्टिक को D-Pad बनाएँ</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">लेफ़्ट एनालॉग स्टिक को D-pad इनपुट से मैप करें</string>

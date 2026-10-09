@@ -29,6 +29,7 @@ import com.nendo.argosy.ui.components.PLATFORM_HEADER_COUNT
 import com.nendo.argosy.ui.components.ReorderStep
 import com.nendo.argosy.ui.components.PLATFORM_HEADER_SEARCH
 import com.nendo.argosy.ui.components.PLATFORM_HEADER_SORT
+import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.PlatformFilterLogic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -37,6 +38,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -76,7 +78,40 @@ class SyncSettingsDelegate @Inject constructor(
     private var isSyncing = false
 
     fun updateState(newState: SyncSettingsState) {
-        _state.value = newState
+        _state.update { current ->
+            newState.copy(
+                platformFiltersAllPlatforms = current.platformFiltersAllPlatforms,
+                platformFiltersList = current.platformFiltersList,
+                enabledPlatformCount = current.enabledPlatformCount,
+                totalPlatforms = current.totalPlatforms,
+                totalGames = current.totalGames
+            )
+        }
+    }
+
+    fun observePlatforms(scope: CoroutineScope) {
+        scope.launch {
+            platformRepository.observeAllPlatforms().distinctUntilChanged().collect { platforms ->
+                val items = platforms.map { entity ->
+                    PlatformFilterItem(
+                        id = entity.id,
+                        name = entity.name,
+                        slug = entity.slug,
+                        romCount = entity.gameCount,
+                        syncEnabled = entity.syncEnabled
+                    )
+                }
+                _state.update {
+                    it.copy(
+                        platformFiltersAllPlatforms = items,
+                        enabledPlatformCount = items.count { item -> item.syncEnabled },
+                        totalPlatforms = items.size,
+                        totalGames = platforms.sumOf { entity -> entity.gameCount }
+                    )
+                }
+                applyPlatformFilters()
+            }
+        }
     }
 
     fun setDownloadCategoryDefault(scope: CoroutineScope, categoryKey: String, include: Boolean) {
@@ -88,14 +123,20 @@ class SyncSettingsDelegate @Inject constructor(
         }
     }
 
+    fun refreshPlatformsFromServer(scope: CoroutineScope) {
+        scope.launch {
+            rommRepository.syncPlatformsOnly().onFailure {
+                Logger.debug(TAG, "refreshPlatformsFromServer: skipped | ${it.message}")
+            }
+        }
+    }
+
     fun loadLibrarySettings(scope: CoroutineScope) {
         scope.launch {
             val prefs = preferencesRepository.preferences.first()
             val hasStoragePermission = checkStoragePermission()
             val hasNotificationPermission = checkNotificationPermission()
             val pendingCounts = saveCacheRepository.getPendingSyncCounts()
-            val enabledPlatformCount = platformRepository.getEnabledPlatformCount()
-            val totalPlatformCount = platformRepository.getTotalPlatformCount()
             val cacheCounts = saveCacheRepository.getCounts()
             val downloadDefaults = preferencesRepository.getGlobalDownloadDefaults()
             _state.update {
@@ -112,8 +153,6 @@ class SyncSettingsDelegate @Inject constructor(
                     pendingUploadsCount = pendingCounts.pendingUploads,
                     imageCachePath = prefs.imageCachePath,
                     defaultImageCachePath = imageCacheManager.getDefaultCachePath(),
-                    enabledPlatformCount = enabledPlatformCount,
-                    totalPlatforms = totalPlatformCount,
                     saveCacheCount = cacheCounts.saveCacheCount,
                     stateCacheCount = cacheCounts.stateCacheCount,
                     pathCacheCount = cacheCounts.pathCacheCount
@@ -502,6 +541,7 @@ class SyncSettingsDelegate @Inject constructor(
 
     companion object {
         val SAVE_CACHE_LIMIT_VALUES = listOf(5, 7, 10, 15, 20)
+        private const val TAG = "SyncSettingsDelegate"
     }
 
     fun cycleSaveCacheLimit(scope: CoroutineScope, direction: Int = 1) {
@@ -686,32 +726,8 @@ class SyncSettingsDelegate @Inject constructor(
                 )
             }
 
-            val allPlatforms = platformRepository.getAllPlatformsOrdered().map { entity ->
-                PlatformFilterItem(
-                    id = entity.id,
-                    name = entity.name,
-                    slug = entity.slug,
-                    romCount = entity.gameCount,
-                    syncEnabled = entity.syncEnabled
-                )
-            }
-            val filtered = PlatformFilterLogic.filterAndSortPlatformFilterItems(
-                items = allPlatforms,
-                searchQuery = _state.value.platformFilterSearchQuery,
-                filterMode = _state.value.platformFilterMode,
-                sortMode = _state.value.platformFilterSortMode
-            )
-            val enabledCount = allPlatforms.count { it.syncEnabled }
-            _state.update {
-                it.copy(
-                    platformFiltersAllPlatforms = allPlatforms,
-                    platformFiltersList = filtered,
-                    isLoadingPlatforms = false,
-                    platformFiltersModalFocusIndex = 0,
-                    enabledPlatformCount = enabledCount,
-                    totalPlatforms = allPlatforms.size
-                )
-            }
+            _state.update { it.copy(isLoadingPlatforms = false) }
+            applyPlatformFilters(resetFocus = true)
         }
     }
 
@@ -865,21 +881,7 @@ class SyncSettingsDelegate @Inject constructor(
     fun togglePlatformSyncEnabled(scope: CoroutineScope, platformId: Long) {
         scope.launch {
             val platform = platformRepository.getById(platformId) ?: return@launch
-            val newEnabled = !platform.syncEnabled
-            platformRepository.updateSyncEnabled(platformId, newEnabled)
-
-            _state.update { state ->
-                val updatedAllPlatforms = state.platformFiltersAllPlatforms.map { item ->
-                    if (item.id == platformId) item.copy(syncEnabled = newEnabled) else item
-                }
-                val enabledCount = updatedAllPlatforms.count { it.syncEnabled }
-
-                state.copy(
-                    platformFiltersAllPlatforms = updatedAllPlatforms,
-                    enabledPlatformCount = enabledCount
-                )
-            }
-            applyPlatformFilters()
+            platformRepository.updateSyncEnabled(platformId, !platform.syncEnabled)
         }
     }
 

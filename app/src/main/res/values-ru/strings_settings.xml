@@ -1491,6 +1491,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Раскладка кнопок</string>
     <string name="settings_builtin_controls_mapping_subtitle">Переназначить кнопки для каждого контроллера</string>
+    <string name="settings_builtin_controls_controller_type_title">Контроллер игрока %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">Контроллер, который видит игра. Применяется при следующем запуске игры.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Левый стик как D-Pad</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Сопоставить левый аналоговый стик с D-pad</string>
