@@ -10,6 +10,7 @@ import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 private const val FALLBACK_MAX_BRIGHTNESS = 255
 private const val FALLBACK_MIN_BRIGHTNESS = 1
@@ -54,7 +55,7 @@ class SystemSettings @Inject constructor(
     }
 
     private fun brightnessValueFor(fraction: Float): Int =
-        (fraction * maxBrightness).toInt().coerceIn(minBrightness, maxBrightness)
+        (fraction * maxBrightness).roundToInt().coerceIn(minBrightness, maxBrightness)
 
     private fun storeBrightnessPrivileged(value: Int): Boolean {
         when {

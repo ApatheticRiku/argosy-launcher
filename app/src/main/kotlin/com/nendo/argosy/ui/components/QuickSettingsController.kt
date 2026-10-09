@@ -45,6 +45,7 @@ import kotlin.math.roundToInt
 private const val LEVEL_STEP = 0.05f
 private const val DEFAULT_BRIGHTNESS = 0.5f
 private const val VOLUME_ECHO_GUARD_MS = 250L
+private const val BRIGHTNESS_ECHO_GUARD_MS = 750L
 private const val DEVICE_SETTLE_MS = 100L
 private const val SETTING_FAN_MODE = "fan_mode"
 private const val SETTING_FAN_SPEED = "fan_speed"
@@ -105,6 +106,7 @@ class QuickSettingsController(
     private val dualScreen = MutableStateFlow(DualScreenFlags())
     private val levels = MutableStateFlow(readDisplayLevels(DEFAULT_BRIGHTNESS))
     private var volumeInputTimestamp = 0L
+    @Volatile private var brightnessInputTimestamp = 0L
 
     private val hudEnabled = preferencesRepository.getBuiltinEmulatorSettings()
         .map { it.hudEnabled }
@@ -167,11 +169,14 @@ class QuickSettingsController(
     }
 
     fun refreshDisplayLevels() {
-        val volumeFresh = System.currentTimeMillis() - volumeInputTimestamp > VOLUME_ECHO_GUARD_MS
+        val now = System.currentTimeMillis()
+        val volumeFresh = now - volumeInputTimestamp > VOLUME_ECHO_GUARD_MS
+        val brightnessFresh = now - brightnessInputTimestamp > BRIGHTNESS_ECHO_GUARD_MS
         levels.update { current ->
             val read = readDisplayLevels(current.brightness)
             read.copy(
                 volume = if (volumeFresh) read.volume else current.volume,
+                brightness = if (brightnessFresh) read.brightness else current.brightness,
                 secondaryBrightness = current.secondaryBrightness
             )
         }
@@ -285,8 +290,10 @@ class QuickSettingsController(
 
     fun setScreenBrightness(brightness: Float) {
         val coerced = brightness.coerceIn(0f, 1f)
+        brightnessInputTimestamp = System.currentTimeMillis()
         levels.update { it.copy(brightness = coerced) }
         scope.launch(deviceDispatcher) {
+            brightnessInputTimestamp = System.currentTimeMillis()
             if (!brightnessController.setPrimaryBrightness(coerced)) {
                 brightnessController.getBrightness().primary?.let { stored ->
                     levels.update { it.copy(brightness = stored) }
