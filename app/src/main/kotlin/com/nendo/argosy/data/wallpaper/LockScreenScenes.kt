@@ -21,6 +21,11 @@ sealed interface LockScreenScene {
 
 private const val TAG = "LockScreenScenes"
 
+internal fun liveWallpaperSlots(homeIsOurs: Boolean, lockIsOurs: Boolean?): Int {
+    val onLock = lockIsOurs ?: homeIsOurs
+    return (if (homeIsOurs) WallpaperManager.FLAG_SYSTEM else 0) or (if (onLock) WallpaperManager.FLAG_LOCK else 0)
+}
+
 class MosaicRow(val strip: Bitmap, val top: Float, val period: Float, val pixelsPerSecond: Float)
 
 @Singleton
@@ -47,14 +52,13 @@ class LockScreenScenes @Inject constructor() {
             val ours = component(context)
             return runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    val onHome = manager.getWallpaperInfo(WallpaperManager.FLAG_SYSTEM)?.component == ours
                     val lockInfo = manager.getWallpaperInfo(WallpaperManager.FLAG_LOCK)
-                    val onLock = lockInfo?.component == ours || (lockInfo == null && onHome)
-                    (if (onHome) WallpaperManager.FLAG_SYSTEM else 0) or (if (onLock) WallpaperManager.FLAG_LOCK else 0)
-                } else if (manager.wallpaperInfo?.component == ours) {
-                    WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
+                    liveWallpaperSlots(
+                        homeIsOurs = manager.getWallpaperInfo(WallpaperManager.FLAG_SYSTEM)?.component == ours,
+                        lockIsOurs = lockInfo?.let { it.component == ours }
+                    )
                 } else {
-                    0
+                    liveWallpaperSlots(homeIsOurs = manager.wallpaperInfo?.component == ours, lockIsOurs = null)
                 }
             }.onFailure { Logger.warn(TAG, "liveSlots: could not read the wallpaper info | ${it.message}") }
                 .getOrDefault(0)
