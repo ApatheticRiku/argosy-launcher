@@ -32,7 +32,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -1500,8 +1499,10 @@ private fun SettingsAmbientPresentation(uiState: SettingsUiState, viewModel: Set
     if (!active || uiState.currentSection in SECTIONS_WITH_OWN_PRESENTATION) return
     val scope = settingsPlatformScope(uiState)
     val name = scope?.platformName?.uppercase() ?: settingsSectionTitle(uiState)
-    val covers by produceState<List<String>?>(initialValue = null, scope?.platformId) {
-        value = viewModel.ambientShowcaseCovers(scope?.platformId)
+    val platformId = scope?.platformId
+    var covers by remember(platformId) { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(platformId) {
+        covers = viewModel.ambientShowcaseCovers(platformId)
     }
     val shown = covers?.takeIf { it.isNotEmpty() } ?: return
     PresentOnCompanion(
