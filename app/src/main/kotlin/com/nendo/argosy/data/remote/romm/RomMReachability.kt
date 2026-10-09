@@ -29,8 +29,13 @@ private const val HEARTBEAT_PATH = "api/heartbeat"
 
 class RomMUnreachableException(message: String) : IOException(message)
 
+private val GATEWAY_FAILURE_CODES = setOf(502, 503, 504)
+
+internal fun isGatewayFailure(code: Int): Boolean = code in GATEWAY_FAILURE_CODES
+
 internal fun heartbeatGotAnyResponse(callFactory: Call.Factory, root: String): Boolean = try {
-    callFactory.newCall(Request.Builder().url(root + HEARTBEAT_PATH).build()).execute().use { true }
+    callFactory.newCall(Request.Builder().url(root + HEARTBEAT_PATH).build()).execute()
+        .use { !isGatewayFailure(it.code) }
 } catch (_: Exception) {
     false
 }
@@ -99,7 +104,9 @@ class RomMReachability @Inject constructor(
 
     private fun proceedRecording(chain: Interceptor.Chain, request: Request, root: String): Response =
         try {
-            chain.proceed(request).also { recordReachable(root) }
+            chain.proceed(request).also { response ->
+                if (isGatewayFailure(response.code)) ledger.recordUnreachable(root) else recordReachable(root)
+            }
         } catch (e: IOException) {
             if (chain.call().isCanceled()) throw e
             ledger.recordUnreachable(root)
