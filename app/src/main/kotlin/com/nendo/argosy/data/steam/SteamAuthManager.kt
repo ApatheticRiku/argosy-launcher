@@ -7,6 +7,7 @@ import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.NotificationType
 import com.nendo.argosy.data.local.entity.SteamAccountEntity
+import `in`.dragonbra.javasteam.enums.EOSType
 import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthPollResult
 import `in`.dragonbra.javasteam.steam.authentication.AuthSessionDetails
@@ -58,8 +59,15 @@ class SteamAuthManager @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context
 ) {
     private val loginID: Int by lazy {
-        val raw = "${android.os.Build.MANUFACTURER}_${android.os.Build.MODEL}_${android.os.Build.SERIAL}_argosy"
-        raw.hashCode() and 0x7FFFFFFF
+        val androidId = android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            android.provider.Settings.Secure.ANDROID_ID
+        ).orEmpty()
+        "${android.os.Build.MANUFACTURER}_${android.os.Build.MODEL}_${androidId}_argosy".hashCode() and 0x7FFFFFFF
+    }
+
+    private val machineName: String by lazy {
+        "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -243,7 +251,9 @@ class SteamAuthManager @Inject constructor(
             try {
                 Log.d(TAG, "Starting QR auth session")
                 val authDetails = AuthSessionDetails()
-                authDetails.deviceFriendlyName = "Argosy Launcher"
+                authDetails.deviceFriendlyName = "Argosy on $machineName"
+                authDetails.persistentSession = true
+                authDetails.clientOSType = EOSType.AndroidUnknown
 
                 val session = client.authentication.beginAuthSessionViaQR(authDetails).await()
                 qrAuthSession = session
@@ -306,13 +316,16 @@ class SteamAuthManager @Inject constructor(
         }
 
         Log.d(TAG, "Logging in with auth result for ${result.accountName} (client connected: ${client.isConnected}, loginID=$loginID)")
-        val logonDetails = LogOnDetails()
-        logonDetails.username = result.accountName
-        logonDetails.accessToken = result.refreshToken
-        logonDetails.shouldRememberPassword = true
-        logonDetails.loginID = loginID
+        user.logOn(logOnDetails(result.accountName, result.refreshToken))
+    }
 
-        user.logOn(logonDetails)
+    private fun logOnDetails(username: String, refreshToken: String?) = LogOnDetails().apply {
+        this.username = username
+        accessToken = refreshToken
+        shouldRememberPassword = true
+        loginID = this@SteamAuthManager.loginID
+        machineName = this@SteamAuthManager.machineName
+        clientOSType = EOSType.AndroidUnknown
     }
 
     private fun loginWithRefreshToken(account: SteamAccountEntity) {
@@ -323,13 +336,7 @@ class SteamAuthManager @Inject constructor(
         }
 
         Log.d(TAG, "Auto-login with saved token for ${account.username} (loginID=$loginID)")
-        val logonDetails = LogOnDetails()
-        logonDetails.username = account.username
-        logonDetails.accessToken = account.refreshToken
-        logonDetails.shouldRememberPassword = true
-        logonDetails.loginID = loginID
-
-        user.logOn(logonDetails)
+        user.logOn(logOnDetails(account.username, account.refreshToken))
     }
 
     private suspend fun saveAccount(steamId: SteamID, result: AuthPollResult) {
