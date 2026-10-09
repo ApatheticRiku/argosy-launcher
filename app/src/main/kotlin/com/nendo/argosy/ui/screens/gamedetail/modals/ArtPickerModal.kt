@@ -47,6 +47,7 @@ import com.nendo.argosy.ui.primitives.FocusIndicators
 import com.nendo.argosy.ui.primitives.argosyFocusIndicators
 import com.nendo.argosy.ui.screens.gamedetail.ArtCandidate
 import com.nendo.argosy.ui.screens.gamedetail.ArtPickerConfig
+import com.nendo.argosy.ui.screens.gamedetail.PICKABLE_ART_SLOTS
 import com.nendo.argosy.ui.screens.gamedetail.components.OptionItem
 import com.nendo.argosy.ui.screens.gamedetail.pickerConfig
 import com.nendo.argosy.ui.screens.gamedetail.stepped
@@ -169,6 +170,7 @@ private val ArtSlot.tabLabelRes: Int
         ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_background
         ArtSlot.LOGO -> R.string.gamedetail_artwork_row_logo
         ArtSlot.BOX_3D -> R.string.gamedetail_artwork_row_box_3d
+        ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> error("$this has no artwork picker tab")
     }
 
 @get:StringRes
@@ -178,6 +180,7 @@ private val ArtSlot.revertLabelRes: Int
         ArtSlot.BACKGROUND -> R.string.gamedetail_artwork_row_revert_background
         ArtSlot.LOGO -> R.string.gamedetail_artwork_row_revert_logo
         ArtSlot.BOX_3D -> R.string.gamedetail_artwork_row_revert_box_3d
+        ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> error("$this has no artwork picker tab")
     }
 
 @Composable
@@ -190,7 +193,7 @@ private fun ArtSlotTabs(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) {
-        ArtSlot.entries.forEach { slot ->
+        PICKABLE_ART_SLOTS.forEach { slot ->
             val isSelected = slot == selected
             val shape = RoundedCornerShape(Dimens.radiusLg)
             Box(
@@ -229,6 +232,7 @@ val ArtSlot.fileBrowserTitleRes: Int
         ArtSlot.BACKGROUND -> R.string.gamedetail_art_picker_file_browser_title_background
         ArtSlot.LOGO -> R.string.gamedetail_art_picker_file_browser_title_logo
         ArtSlot.BOX_3D -> R.string.gamedetail_art_picker_file_browser_title_box_3d
+        ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> error("$this has no artwork picker tab")
     }
 
 @Composable

@@ -4032,6 +4032,32 @@ object Migration_206_207 : Migration(206, 207) {
     }
 }
 
+object Migration_207_208 : Migration(207, 208) {
+    private fun copyBoxFace(db: SupportSQLiteDatabase, slot: String, column: String) {
+        val path = "NULLIF(`$column`, '')"
+        val isLocal = "substr($path, 1, 1) = '/'"
+        db.execSQL(
+            "INSERT OR IGNORE INTO `game_art` (`gameId`, `slot`, `sourceUrl`, `cachedPath`) " +
+                "SELECT `id`, '$slot', " +
+                "CASE WHEN $isLocal THEN NULL ELSE $path END, " +
+                "CASE WHEN $isLocal THEN $path ELSE NULL END " +
+                "FROM `games` WHERE $path IS NOT NULL"
+        )
+    }
+
+    override fun migrate(db: SupportSQLiteDatabase) {
+        copyBoxFace(db, "BOX_SPINE", "boxSpinePath")
+        copyBoxFace(db, "BOX_BACK", "boxBackPath")
+        db.execSQL("UPDATE `games` SET `boxSpinePath` = NULL, `boxBackPath` = NULL")
+        db.execSQL(
+            "UPDATE `game_art` SET `cachedPath` = NULL, `cachedFromUrl` = NULL, " +
+                "`gradientColors` = NULL, `coverAspectRatio` = NULL " +
+                "WHERE `slot` = 'COVER' AND `overridePath` IS NULL AND `gameId` IN " +
+                "(SELECT `gameId` FROM `game_art` WHERE `slot` = 'BOX_3D' AND `sourceUrl` IS NOT NULL)"
+        )
+    }
+}
+
 object Migration_203_204 : Migration(203, 204) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(

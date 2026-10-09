@@ -51,27 +51,40 @@ private data class BoxFaces(
     val spineRatio: Float get() = (spine.width.toFloat() / spine.height).coerceAtMost(MAX_SPINE_RATIO)
 }
 
-/** Interactive 3D box from flat scans: idle yaw sway, drag to rotate, settles to a safe angle. */
+private val loggedDecodeFailures = java.util.Collections.newSetFromMap(
+    java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+)
+
+/**
+ * Interactive 3D box from flat scans: idle yaw sway, drag to rotate, settles to a safe angle.
+ * Calls [onUnavailable] once and draws nothing when the front or spine scan cannot be decoded.
+ */
 @Composable
 fun Box3dCover(
     frontPath: String,
     spinePath: String,
     backPath: String? = null,
     modifier: Modifier = Modifier,
-    isInteractive: Boolean = true
+    isInteractive: Boolean = true,
+    onUnavailable: () -> Unit = {}
 ) {
     var faces by remember(frontPath, spinePath, backPath) { mutableStateOf<BoxFaces?>(null) }
+    val reportUnavailable by androidx.compose.runtime.rememberUpdatedState(onUnavailable)
     androidx.compose.runtime.LaunchedEffect(frontPath, spinePath, backPath) {
-        faces = withContext(Dispatchers.IO) {
+        val decoded = withContext(Dispatchers.IO) {
             val front = decode(frontPath)
             val spine = decode(spinePath)?.let(::uprightSpine)
             if (front == null || spine == null) {
-                Logger.warn("Box3dCover", "decode failed front=${front != null} spine=${spine != null} frontPath=$frontPath spinePath=$spinePath")
+                if (loggedDecodeFailures.add("$frontPath|$spinePath")) {
+                    Logger.warn("Box3dCover", "decode failed front=${front != null} spine=${spine != null} frontPath=$frontPath spinePath=$spinePath")
+                }
                 null
             } else {
                 BoxFaces(front, spine, backPath?.let { decode(it) })
             }
         }
+        faces = decoded
+        if (decoded == null) reportUnavailable()
     }
 
     val yaw = remember(frontPath, spinePath, backPath) { Animatable(REST_YAW_DEG) }

@@ -9,6 +9,8 @@ data class ResolvedGameArt(
     val backgroundPath: String? = null,
     val logoPath: String? = null,
     val box3dPath: String? = null,
+    val boxSpinePath: String? = null,
+    val boxBackPath: String? = null,
     val gradientColors: String? = null,
     val coverAspectRatio: Float? = null,
     val overriddenSlots: Set<ArtSlot> = emptySet()
@@ -18,6 +20,8 @@ data class ResolvedGameArt(
         ArtSlot.BACKGROUND -> backgroundPath
         ArtSlot.LOGO -> logoPath
         ArtSlot.BOX_3D -> box3dPath
+        ArtSlot.BOX_SPINE -> boxSpinePath
+        ArtSlot.BOX_BACK -> boxBackPath
     }
 
     companion object {

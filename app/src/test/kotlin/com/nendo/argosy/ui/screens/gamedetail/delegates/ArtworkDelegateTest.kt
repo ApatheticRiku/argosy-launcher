@@ -39,6 +39,13 @@ class ArtworkDelegateTest {
     }
 
     @Test
+    fun `slot tabs never land on the box spine or back scans`() {
+        val visited = generateSequence(ArtSlot.COVER) { it.stepped(1) }.take(ArtSlot.entries.size * 2).toSet()
+
+        assertEquals(setOf(ArtSlot.COVER, ArtSlot.BACKGROUND, ArtSlot.LOGO, ArtSlot.BOX_3D), visited)
+    }
+
+    @Test
     fun `an overridden slot leads with a revert tile`() {
         val listed = withRevertTile(ArtSlot.LOGO, setOf(ArtSlot.LOGO), found)
 

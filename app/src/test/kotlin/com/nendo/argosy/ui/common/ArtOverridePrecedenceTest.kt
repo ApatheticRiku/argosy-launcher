@@ -112,6 +112,18 @@ class ArtOverridePrecedenceTest {
     }
 
     @Test
+    fun `box spine and back resolve from their own rows`() {
+        val art = listOf(
+            row(ArtSlot.BOX_SPINE, "https://romm/side/42.png", "/cache/snes/covers/box_spine_42_abc.png"),
+            row(ArtSlot.BOX_BACK, "https://romm/back/42.png")
+        ).toResolvedArt()
+
+        assertEquals("/cache/snes/covers/box_spine_42_abc.png", art.boxSpinePath)
+        assertEquals("https://romm/back/42.png", art.boxBackPath)
+        assertNull(art.coverPath)
+    }
+
+    @Test
     fun `gradient and aspect come from the cover row only`() {
         val art = listOf(
             row(ArtSlot.COVER, source).copy(gradientColors = "{}", coverAspectRatio = 0.7f),

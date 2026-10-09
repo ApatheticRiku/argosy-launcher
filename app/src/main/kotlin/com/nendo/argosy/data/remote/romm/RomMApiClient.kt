@@ -63,6 +63,18 @@ class RomMApiClient @Inject constructor(
 
     fun buildBox3dUrls(rom: RomMRom): List<String> = box3dArt(rom).map { it.url }
 
+    fun buildBoxSpineUrls(rom: RomMRom): List<String> = boxSpineArt(rom).map { it.url }
+
+    fun buildBoxBackUrls(rom: RomMRom): List<String> = boxBackArt(rom).map { it.url }
+
+    private fun boxSpineArt(rom: RomMRom): List<ServerArt> = listOfNotNull(
+        buildResourceUrl(rom.ssMetadata?.box2dSidePath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+    )
+
+    private fun boxBackArt(rom: RomMRom): List<ServerArt> = listOfNotNull(
+        buildResourceUrl(rom.ssMetadata?.box2dBackPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+    )
+
     private fun box3dArt(rom: RomMRom): List<ServerArt> = (
         listOfNotNull(
             buildResourceUrl(rom.ssMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) },
@@ -96,6 +108,8 @@ class RomMApiClient @Inject constructor(
                 buildResourceUrl(rom.ssMetadata?.logoPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
             ) + rom.clearLogoUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
             ArtSlot.BOX_3D -> box3dArt(rom)
+            ArtSlot.BOX_SPINE -> boxSpineArt(rom)
+            ArtSlot.BOX_BACK -> boxBackArt(rom)
         }
         return tagged.distinctBy { it.url }
     }

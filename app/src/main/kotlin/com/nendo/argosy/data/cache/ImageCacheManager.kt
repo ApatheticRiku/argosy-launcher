@@ -73,11 +73,13 @@ data class ImageCacheRequest(
 
 enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE, LOGO, BOX_3D }
 
+internal val ImageType.isBoxFace: Boolean
+    get() = this == ImageType.BOX_BACK || this == ImageType.BOX_SPINE ||
+        this == ImageType.LOGO || this == ImageType.BOX_3D
+
 data class CachedGameImages(
     val coverPath: String?,
     val backgroundPath: String?,
-    val boxBackPath: String?,
-    val boxSpinePath: String?,
     val logoPath: String?
 )
 
@@ -221,6 +223,7 @@ class ImageCacheManager @Inject constructor(
         private const val FALLBACK_PLATFORM = "_misc"
         private const val LOGOS_DIR = "_logos"
         private const val BOX_FACE_MAX_WIDTH = 400
+        private val BOX_FACE_SLOT_NAMES = setOf(ArtSlot.BOX_SPINE.name, ArtSlot.BOX_BACK.name)
         private const val LOGO_MAX_WIDTH = 1000
         private const val BOX_3D_MAX_WIDTH = 600
         private const val COVER_MAX_WIDTH = 400
@@ -848,12 +851,14 @@ class ImageCacheManager @Inject constructor(
     /**
      * Queues every art slot whose cached file does not come from its current source url. Rows
      * cached before `cachedFromUrl` existed are matched by file name first and only queued when
-     * the name does not carry the source url's hash. Known-missing urls are skipped.
+     * the name does not carry the source url's hash. Known-missing urls are skipped, and so are
+     * box spine and back scans unless [includeBoxFaces].
      */
-    fun resumePendingArt() {
+    fun resumePendingArt(includeBoxFaces: Boolean) {
         scope.launch {
             val pending = gameArtDao.getPending()
                 .filterNot { missingArt.isKnownMissing(it.sourceUrl) }
+                .filter { includeBoxFaces || it.slot !in BOX_FACE_SLOT_NAMES }
             val (backfill, stale) = pending.partition { it.canBackfillCachedFromUrl() }
             if (backfill.isNotEmpty()) gameArtDao.backfillCachedFromUrls(backfill)
             stale.forEach { art ->
@@ -880,7 +885,8 @@ class ImageCacheManager @Inject constructor(
     /**
      * Queues [slot] for [gameId] unless its cached file already comes from the first of [urls],
      * which is the source url library sync stored. A row with a cached file but no recorded
-     * source is matched by file name before anything is downloaded.
+     * source is matched by file name before anything is downloaded. A cached file that is
+     * genuinely gone from a readable volume is forgotten and downloaded again.
      */
     suspend fun queueArtIfStale(
         gameId: Long,
@@ -892,14 +898,28 @@ class ImageCacheManager @Inject constructor(
     ) {
         val source = urls.firstOrNull() ?: return
         val row = gameArtDao.get(gameId, slot.name)
-        val cachedPath = row?.cachedPath
         val cachedFrom = row?.cachedFromUrl
+        val cachedPath = row?.cachedPath?.takeUnless { volumeHealth.newProbe().isGenuinelyAbsent(it) }
+        if (cachedPath == null && row?.cachedPath != null) gameArtDao.clearCached(gameId, slot)
         if (cachedPath != null && cachedFrom == source) return
         if (cachedPath != null && cachedFrom == null && isCachedFileFrom(cachedPath, source)) {
             gameArtDao.backfillCachedFromUrl(gameId, slot.name, cachedPath, source)
             return
         }
         queueArt(gameId, slot, urls, rommId, steamAppId, title, cachedPath)
+    }
+
+    /**
+     * Downloads [slot] for [gameId] again when its cached file is gone, for a screen that just
+     * failed to draw it. A file that is still on disk, or a slot with no recorded source, is left
+     * alone.
+     */
+    fun repairMissingArt(gameId: Long, slot: ArtSlot) {
+        scope.launch {
+            val source = gameArtDao.get(gameId, slot.name)?.sourceUrl ?: return@launch
+            val game = gameDao.getById(gameId) ?: return@launch
+            queueArtIfStale(gameId, slot, listOf(source), game.rommId, game.steamAppId, game.title)
+        }
     }
 
     private fun queueArt(
@@ -926,6 +946,8 @@ class ImageCacheManager @Inject constructor(
             }
             ArtSlot.LOGO -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.LOGO)
             ArtSlot.BOX_3D -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.BOX_3D)
+            ArtSlot.BOX_SPINE -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.SPINE)
+            ArtSlot.BOX_BACK -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.BACK)
         }
     }
 
@@ -1279,9 +1301,6 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    fun queueBoxFaceCache(url: String, rommId: Long, gameTitle: String = "", face: BoxFace) =
-        queueBoxFaceCache(listOf(url), rommId, gameTitle, face)
-
     fun queueBoxFaceCache(urls: List<String>, rommId: Long, gameTitle: String = "", face: BoxFace) {
         if (urls.isEmpty()) return
         scope.launch {
@@ -1298,11 +1317,12 @@ class ImageCacheManager @Inject constructor(
             BoxFace.BOX_3D -> ImageType.BOX_3D
         }
 
-    private val ImageType.artSlot: ArtSlot?
+    private val ImageType.boxFaceSlot: ArtSlot
         get() = when (this) {
             ImageType.LOGO -> ArtSlot.LOGO
             ImageType.BOX_3D -> ArtSlot.BOX_3D
-            else -> null
+            ImageType.BOX_BACK -> ArtSlot.BOX_BACK
+            else -> ArtSlot.BOX_SPINE
         }
 
     fun queueCoverCacheByGameId(url: String, gameId: Long) =
@@ -1332,10 +1352,7 @@ class ImageCacheManager @Inject constructor(
                         currentGameTitle = request.gameTitle,
                         currentType = "cover"
                     )
-                    when (request.type) {
-                        ImageType.BOX_BACK, ImageType.BOX_SPINE, ImageType.LOGO -> processBoxFaceRequest(request)
-                        else -> processCoverRequest(request)
-                    }
+                    if (request.type.isBoxFace) processBoxFaceRequest(request) else processCoverRequest(request)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process cover for ${request.id}: ${e.message}")
                 }
@@ -1543,16 +1560,7 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun processBoxFaceRequest(request: ImageCacheRequest) {
-        val game = gameDao.getByRommId(request.id) ?: return
-        val slot = request.type.artSlot
-        if (slot != null) {
-            if (isCachedFromSource(request, slot)) return
-        } else {
-            val currentDbPath = boxFacePath(game, request.type)
-            if (currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
-                return
-            }
-        }
+        if (isCachedFromSource(request, request.type.boxFaceSlot)) return
         val prefix = when (request.type) {
             ImageType.BOX_BACK -> "box_back_${request.id}"
             ImageType.LOGO -> "game_logo_${request.id}"
@@ -1609,25 +1617,9 @@ class ImageCacheManager @Inject constructor(
         logAllCandidatesRejected(kind, idLabel, request)
     }
 
-    private fun boxFacePath(game: com.nendo.argosy.data.local.entity.GameEntity, type: ImageType): String? =
-        when (type) {
-            ImageType.BOX_BACK -> game.boxBackPath
-            else -> game.boxSpinePath
-        }
-
     private suspend fun updateGameBoxFace(request: ImageCacheRequest, localPath: String) {
         val game = gameDao.getByRommId(request.id) ?: return
-        val slot = request.type.artSlot
-        if (slot != null) {
-            gameArtDao.setCached(game.id, slot, localPath, request.urls.firstOrNull())
-            return
-        }
-        val current = boxFacePath(game, request.type)
-        if (current?.startsWith("/") == true && File(current).exists()) return
-        when (request.type) {
-            ImageType.BOX_BACK -> gameDao.updateBoxBackPath(game.id, localPath)
-            else -> gameDao.updateBoxSpinePath(game.id, localPath)
-        }
+        gameArtDao.setCached(game.id, request.type.boxFaceSlot, localPath, request.urls.firstOrNull())
     }
 
     /**
@@ -1641,8 +1633,8 @@ class ImageCacheManager @Inject constructor(
         gameTitle: String,
         coverUrls: List<String>,
         backgroundUrls: List<String>,
-        boxBackUrl: String?,
-        boxSpineUrl: String?,
+        boxBackUrls: List<String> = emptyList(),
+        boxSpineUrls: List<String> = emptyList(),
         logoUrls: List<String> = emptyList(),
         box3dUrls: List<String> = emptyList()
     ): CachedGameImages = withContext(Dispatchers.IO) {
@@ -1652,13 +1644,15 @@ class ImageCacheManager @Inject constructor(
         if (backgroundUrls.isNotEmpty()) {
             processRequest(ImageCacheRequest(backgroundUrls, rommId, ImageType.BACKGROUND, gameTitle, isSteam = false))
         }
-        boxBackUrl?.let { processBoxFaceRequest(ImageCacheRequest(it, rommId, ImageType.BOX_BACK, gameTitle, isSteam = false)) }
-        boxSpineUrl?.let { processBoxFaceRequest(ImageCacheRequest(it, rommId, ImageType.BOX_SPINE, gameTitle, isSteam = false)) }
-        if (logoUrls.isNotEmpty()) {
-            processBoxFaceRequest(ImageCacheRequest(logoUrls, rommId, ImageType.LOGO, gameTitle, isSteam = false))
-        }
-        if (box3dUrls.isNotEmpty()) {
-            processBoxFaceRequest(ImageCacheRequest(box3dUrls, rommId, ImageType.BOX_3D, gameTitle, isSteam = false))
+        listOf(
+            ImageType.BOX_BACK to boxBackUrls,
+            ImageType.BOX_SPINE to boxSpineUrls,
+            ImageType.LOGO to logoUrls,
+            ImageType.BOX_3D to box3dUrls
+        ).forEach { (type, urls) ->
+            if (urls.isNotEmpty()) {
+                processBoxFaceRequest(ImageCacheRequest(urls, rommId, type, gameTitle, isSteam = false))
+            }
         }
 
         val game = gameDao.getByRommId(rommId)
@@ -1666,28 +1660,8 @@ class ImageCacheManager @Inject constructor(
         CachedGameImages(
             coverPath = art[ArtSlot.COVER.name]?.cachedPath,
             backgroundPath = art[ArtSlot.BACKGROUND.name]?.cachedPath,
-            boxBackPath = game?.boxBackPath,
-            boxSpinePath = game?.boxSpinePath,
             logoPath = art[ArtSlot.LOGO.name]?.cachedPath
         )
-    }
-
-    fun resumePendingBoxFaceCache() {
-        scope.launch {
-            val uncached = gameDao.getGamesWithUncachedBoxFaces()
-            if (uncached.isEmpty()) return@launch
-
-            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached box faces")
-            uncached.forEach { game ->
-                val rommId = game.rommId ?: return@forEach
-                game.boxBackPath?.takeIf { it.startsWith("http") }?.let {
-                    queueBoxFaceCache(it, rommId, game.title, BoxFace.BACK)
-                }
-                game.boxSpinePath?.takeIf { it.startsWith("http") }?.let {
-                    queueBoxFaceCache(it, rommId, game.title, BoxFace.SPINE)
-                }
-            }
-        }
     }
 
     private fun downloadSteamCoverFallback(steamAppId: Long): Bitmap? {
@@ -1747,6 +1721,7 @@ class ImageCacheManager @Inject constructor(
                 ArtSlot.BACKGROUND -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.jpg"), Bitmap.CompressFormat.JPEG, BACKGROUND_JPEG_QUALITY
                 )
+                ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> writeCoverBitmap(bitmap, dir, baseName)
                 ArtSlot.LOGO, ArtSlot.BOX_3D -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.png"), Bitmap.CompressFormat.PNG, 100
                 )
@@ -1812,11 +1787,12 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.BACKGROUND -> BACKGROUND_MAX_WIDTH
             ArtSlot.LOGO -> LOGO_MAX_WIDTH
             ArtSlot.BOX_3D -> BOX_3D_MAX_WIDTH
+            ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> BOX_FACE_MAX_WIDTH
         }
 
     private val ArtSlot.directoryName: String
         get() = when (this) {
-            ArtSlot.COVER, ArtSlot.BOX_3D -> "covers"
+            ArtSlot.COVER, ArtSlot.BOX_3D, ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> "covers"
             ArtSlot.BACKGROUND -> "backgrounds"
             ArtSlot.LOGO -> "logos"
         }
@@ -1827,6 +1803,8 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.BACKGROUND -> "bg_override_"
             ArtSlot.LOGO -> "logo_override_"
             ArtSlot.BOX_3D -> "box_3d_override_"
+            ArtSlot.BOX_SPINE -> "box_spine_override_"
+            ArtSlot.BOX_BACK -> "box_back_override_"
         }
 
     private val badgeQueue = Channel<AchievementBadgeCacheRequest>(256)

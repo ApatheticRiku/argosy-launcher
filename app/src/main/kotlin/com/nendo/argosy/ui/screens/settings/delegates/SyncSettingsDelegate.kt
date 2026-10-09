@@ -434,7 +434,7 @@ class SyncSettingsDelegate @Inject constructor(
             val newValue = !currentValue
             preferencesRepository.setBoxArtCacheEnabled(newValue)
             if (newValue) {
-                imageCacheManager.resumePendingBoxFaceCache()
+                imageCacheManager.resumePendingArt(includeBoxFaces = true)
             }
         }
     }

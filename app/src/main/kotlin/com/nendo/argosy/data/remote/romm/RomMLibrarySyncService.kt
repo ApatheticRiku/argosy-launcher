@@ -1141,29 +1141,13 @@ class RomMLibrarySyncService @Inject constructor(
             ArtSlot.BACKGROUND to apiClient.buildBackgroundUrls(rom),
             ArtSlot.LOGO to apiClient.buildLogoUrls(rom),
             ArtSlot.BOX_3D to apiClient.buildBox3dUrls(rom)
-        )
-
-        val boxBackUrl = if (boxArtCacheEnabledForSync) {
-            apiClient.buildResourceUrl(rom.ssMetadata?.box2dBackPath)
-        } else null
-        val cachedBoxBack = when {
-            !contentChanged && existing?.boxBackPath?.startsWith("/") == true -> existing.boxBackPath
-            boxBackUrl != null -> {
-                imageCacheManager.queueBoxFaceCache(boxBackUrl, rom.id, rom.name, ImageCacheManager.BoxFace.BACK)
-                boxBackUrl
-            }
-            else -> null
-        }
-        val boxSpineUrl = if (boxArtCacheEnabledForSync) {
-            apiClient.buildResourceUrl(rom.ssMetadata?.box2dSidePath)
-        } else null
-        val cachedBoxSpine = when {
-            !contentChanged && existing?.boxSpinePath?.startsWith("/") == true -> existing.boxSpinePath
-            boxSpineUrl != null -> {
-                imageCacheManager.queueBoxFaceCache(boxSpineUrl, rom.id, rom.name, ImageCacheManager.BoxFace.SPINE)
-                boxSpineUrl
-            }
-            else -> null
+        ) + if (boxArtCacheEnabledForSync) {
+            mapOf(
+                ArtSlot.BOX_SPINE to apiClient.buildBoxSpineUrls(rom),
+                ArtSlot.BOX_BACK to apiClient.buildBoxBackUrls(rom)
+            )
+        } else {
+            emptyMap()
         }
 
         val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
@@ -1201,8 +1185,6 @@ class RomMLibrarySyncService @Inject constructor(
                 localDataSource?.localPath != null -> GameSource.ROMM_SYNCED
                 else -> GameSource.ROMM_REMOTE
             },
-            boxBackPath = cachedBoxBack,
-            boxSpinePath = cachedBoxSpine,
             screenshotPaths = screenshotUrls.joinToString(","),
             userRating = localDataSource?.userRating ?: 0,
             userDifficulty = localDataSource?.userDifficulty ?: 0,

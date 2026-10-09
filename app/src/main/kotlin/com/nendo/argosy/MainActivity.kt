@@ -751,9 +751,6 @@ class MainActivity : ComponentActivity() {
                 imageCacheManager.migrateFlatToSharded()
             }
 
-            if (prefs.boxArtCacheEnabled) {
-                imageCacheManager.resumePendingBoxFaceCache()
-            }
             imageCacheManager.resumePendingLogoCache()
             imageCacheManager.resumePendingBadgeCache()
 
@@ -776,7 +773,7 @@ class MainActivity : ComponentActivity() {
                 if (validationResult.deletedFiles > 0 || validationResult.clearedPaths > 0) {
                     Log.i(TAG, "Cache validation: ${validationResult.deletedFiles} files deleted, ${validationResult.clearedPaths} paths cleared")
                 }
-                imageCacheManager.resumePendingArt()
+                imageCacheManager.resumePendingArt(includeBoxFaces = prefs.boxArtCacheEnabled)
             }
 
             if (shouldInitializeScreenCapture(prefs)) {

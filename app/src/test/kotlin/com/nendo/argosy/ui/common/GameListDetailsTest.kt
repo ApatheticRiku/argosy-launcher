@@ -63,8 +63,7 @@ class GameListDetailsTest {
         status = "finished",
         developer = "Square",
         igdbId = 1234L,
-        timeToBeatMainSec = 90_000,
-        boxSpinePath = null
+        timeToBeatMainSec = 90_000
     )
 
     private val entity = GameEntity(

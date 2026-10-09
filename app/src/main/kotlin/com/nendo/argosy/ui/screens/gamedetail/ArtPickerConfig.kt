@@ -45,7 +45,7 @@ val ArtSlot.pickerConfig: ArtPickerConfig
             offersScreenshots = false,
             searchNeedsCoverSearch = false
         )
-        ArtSlot.BOX_3D -> ArtPickerConfig(
+        ArtSlot.BOX_3D, ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> ArtPickerConfig(
             columns = 3,
             tileAspectRatio = 1f,
             cropsToTile = false,
@@ -56,8 +56,12 @@ val ArtSlot.pickerConfig: ArtPickerConfig
         )
     }
 
-fun ArtSlot.stepped(delta: Int): ArtSlot =
-    ArtSlot.entries[(ordinal + delta).mod(ArtSlot.entries.size)]
+val PICKABLE_ART_SLOTS: List<ArtSlot> = listOf(ArtSlot.COVER, ArtSlot.BACKGROUND, ArtSlot.LOGO, ArtSlot.BOX_3D)
+
+fun ArtSlot.stepped(delta: Int): ArtSlot {
+    val index = PICKABLE_ART_SLOTS.indexOf(this).coerceAtLeast(0)
+    return PICKABLE_ART_SLOTS[(index + delta).mod(PICKABLE_ART_SLOTS.size)]
+}
 
 /**
  * [candidates] as the picker lists them for [slot]: led by a tile that puts the server's art

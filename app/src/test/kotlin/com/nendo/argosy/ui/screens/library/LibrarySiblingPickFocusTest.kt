@@ -147,8 +147,7 @@ class LibrarySiblingPickFocusTest {
         status = null,
         developer = null,
         igdbId = null,
-        timeToBeatMainSec = null,
-        boxSpinePath = null
+        timeToBeatMainSec = null
     )
 
     private fun viewModel() = LibraryViewModel(

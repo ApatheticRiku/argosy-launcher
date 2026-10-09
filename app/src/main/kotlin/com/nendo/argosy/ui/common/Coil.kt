@@ -1,6 +1,7 @@
 package com.nendo.argosy.ui.common
 
 import androidx.compose.runtime.Composable
+import com.nendo.argosy.data.model.ArtSlot
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,6 +47,16 @@ fun rememberResolvedArt(gameId: Long): ResolvedGameArt? {
     val flow = remember(manager, gameId) { manager.observeArt(gameId) }
     val art by flow.collectAsState(initial = manager.artFor(gameId))
     return art
+}
+
+/**
+ * A callback that asks the image cache to download a game's art slot again, for art a screen
+ * failed to draw. Does nothing where no image cache is provided.
+ */
+@Composable
+fun rememberArtRepair(): (gameId: Long, slot: ArtSlot) -> Unit {
+    val manager = LocalImageCacheManager.current
+    return remember(manager) { { gameId, slot -> manager?.repairMissingArt(gameId, slot) } }
 }
 
 @Composable

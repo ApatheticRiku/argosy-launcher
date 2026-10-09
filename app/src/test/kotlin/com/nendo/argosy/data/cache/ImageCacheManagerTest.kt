@@ -139,6 +139,38 @@ class ImageCacheManagerTest {
     }
 
     @Test
+    fun `a cached file gone from a readable volume is forgotten so it downloads again`() = runTest {
+        val probe = mockk<VolumeProbe> { every { isGenuinelyAbsent(cachedFromOld) } returns true }
+        every { volumeHealth.newProbe() } returns probe
+        stubArt(ArtSlot.BOX_SPINE, cachedPath = cachedFromOld, cachedFromUrl = oldUrl)
+
+        imageCacheManager.queueArtIfStale(7L, ArtSlot.BOX_SPINE, listOf(oldUrl), 42L, null, "Game")
+
+        coVerify(exactly = 1) { gameArtDao.updateCached(7L, ArtSlot.BOX_SPINE.name, null, null) }
+    }
+
+    @Test
+    fun `a cached file the volume cannot vouch for is kept`() = runTest {
+        val probe = mockk<VolumeProbe> { every { isGenuinelyAbsent(cachedFromOld) } returns false }
+        every { volumeHealth.newProbe() } returns probe
+        stubArt(ArtSlot.BOX_SPINE, cachedPath = cachedFromOld, cachedFromUrl = oldUrl)
+
+        imageCacheManager.queueArtIfStale(7L, ArtSlot.BOX_SPINE, listOf(oldUrl), 42L, null, "Game")
+
+        coVerify(exactly = 0) { gameArtDao.updateCached(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `every box face type routes to the box face cache, never the cover slot`() {
+        assertTrue(ImageType.BOX_3D.isBoxFace)
+        assertTrue(ImageType.BOX_SPINE.isBoxFace)
+        assertTrue(ImageType.BOX_BACK.isBoxFace)
+        assertTrue(ImageType.LOGO.isBoxFace)
+        assertFalse(ImageType.COVER.isBoxFace)
+        assertFalse(ImageType.BACKGROUND.isBoxFace)
+    }
+
+    @Test
     fun `a migrated row whose file came from another url is not backfilled`() = runTest {
         stubArt(ArtSlot.COVER, cachedPath = cachedFromOld)
 

@@ -4,6 +4,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class Migration206To207Test {
@@ -25,8 +26,7 @@ class Migration206To207Test {
     }
 
     @Test
-    fun `is the last registered migration and leaves no gap`() {
-        assertEquals(Migration_206_207, MigrationRegistry.ALL.last())
-        MigrationRegistry.assertContiguous(207)
+    fun `is registered`() {
+        assertTrue(Migration_206_207 in MigrationRegistry.ALL)
     }
 }

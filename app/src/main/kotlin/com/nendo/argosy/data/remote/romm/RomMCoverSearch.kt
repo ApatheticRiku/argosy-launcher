@@ -12,7 +12,7 @@ enum class RomMCoverArtType(val wireName: String) {
             ArtSlot.COVER -> GRID
             ArtSlot.BACKGROUND -> HERO
             ArtSlot.LOGO -> LOGO
-            ArtSlot.BOX_3D -> null
+            ArtSlot.BOX_3D, ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> null
         }
     }
 }

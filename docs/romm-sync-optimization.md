@@ -349,7 +349,7 @@ Stays at sync time:
 | `metadatum` genres / game modes | library filter options, and `SyncVirtualCollectionsUseCase` runs inside the pass |
 | `metadatum` rating / first release date | library and home sort keys, part of the `GameListItem` grid projection |
 | `metadatum` franchises / collections | `GetRelatedGamesUseCase` queries *other* games' columns; a per-game fetch cannot fill the neighbours |
-| `ss_metadata` box art paths | `boxSpinePath` / `boxBackPath` render on the library card itself |
+| `ss_metadata` box art paths | the `BOX_SPINE` / `BOX_BACK` art slots render on the library card itself |
 | `launchbox_metadata` background and screenshot urls | `backgroundPath` is home hero art; the screenshot cache job selects rows where `screenshotPaths` is non-null, so a null column never backfills |
 | `regions`, `youtubeVideoId`, developer, release year | dedup grouping and save-channel naming; home video wallpaper |
 | siblings, sibling roms, disc variants | consumed inside the page loop before any row exists - `groupFor`, `isComplete`, `chooseWinner`, the folder-multi-disc skip |

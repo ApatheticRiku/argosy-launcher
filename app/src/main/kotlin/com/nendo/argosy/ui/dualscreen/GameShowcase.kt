@@ -58,7 +58,11 @@ import com.nendo.argosy.domain.model.PresentationStat
 import com.nendo.argosy.domain.model.PresentationStyle
 import com.nendo.argosy.ui.common.playerCountGlyph
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.ui.components.Box3dCover
+import com.nendo.argosy.ui.components.BoxArtRoute
+import com.nendo.argosy.ui.components.boxArtRoutes
+import com.nendo.argosy.ui.components.firstWorking
 import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.components.PlatformIconAssets
 import com.nendo.argosy.ui.components.friends.FriendsActivityBadge
@@ -488,37 +492,50 @@ private fun ShowcaseSubtitle(subtitle: String, platformSlug: String?) {
 
 @Composable
 private fun ShowcaseCover(detail: CompanionDetail, art: PresentationArt, height: Dp) {
-    val artUrl = detail.artUrl ?: return
     if (art == PresentationArt.TITLE) return
-    val localBox3d = detail.box3dUrl?.takeIf { art == PresentationArt.BOX_3D && it.startsWith("/") }
-    if (localBox3d != null) {
-        AsyncImage(
-            model = rememberFileImageModel(localBox3d),
+    val artUrl = detail.artUrl
+    val repairArt = com.nendo.argosy.ui.common.rememberArtRepair()
+    val repair: (ArtSlot) -> Unit = { slot -> detail.gameId?.let { repairArt(it, slot) } }
+    var failedRoutes by remember(detail.spineUrl, detail.box3dUrl, artUrl) {
+        mutableStateOf(emptySet<BoxArtRoute>())
+    }
+    val routes = boxArtRoutes(art == PresentationArt.BOX_3D, detail.spineUrl, detail.box3dUrl, artUrl)
+    when (routes.firstWorking(failedRoutes)) {
+        BoxArtRoute.SPINE_RENDER -> Box3dCover(
+            frontPath = artUrl.orEmpty(),
+            spinePath = detail.spineUrl.orEmpty(),
+            isInteractive = false,
+            modifier = Modifier.height(height),
+            onUnavailable = {
+                failedRoutes = failedRoutes + BoxArtRoute.SPINE_RENDER
+                repair(ArtSlot.BOX_SPINE)
+                repair(ArtSlot.COVER)
+            }
+        )
+        BoxArtRoute.BOX_3D_IMAGE -> AsyncImage(
+            model = rememberFileImageModel(detail.box3dUrl),
             contentDescription = null,
             contentScale = ContentScale.Fit,
-            modifier = Modifier.height(height)
+            modifier = Modifier.height(height),
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.BOX_3D_IMAGE
+                repair(ArtSlot.BOX_3D)
+            }
         )
-        return
-    }
-    val localSpine = detail.spineUrl
-        ?.takeIf { art == PresentationArt.BOX_3D && artUrl.startsWith("/") && it.startsWith("/") }
-    if (localSpine != null) {
-        Box3dCover(
-            frontPath = artUrl,
-            spinePath = localSpine,
-            isInteractive = false,
-            modifier = Modifier.height(height)
+        BoxArtRoute.FLAT_COVER -> AsyncImage(
+            model = rememberFileImageModel(artUrl),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .height(height)
+                .clip(RoundedCornerShape(Dimens.radiusSm)),
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.FLAT_COVER
+                repair(ArtSlot.COVER)
+            }
         )
-        return
+        BoxArtRoute.TEXT -> Unit
     }
-    AsyncImage(
-        model = rememberFileImageModel(artUrl),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .height(height)
-            .clip(RoundedCornerShape(Dimens.radiusSm))
-    )
 }
 
 @Composable
