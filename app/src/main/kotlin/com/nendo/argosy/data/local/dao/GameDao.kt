@@ -827,20 +827,10 @@ interface GameDao {
     @Query(
         """
         SELECT COUNT(*) FROM games
-        $COVER_ART_JOIN
         WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
-          AND (
-            EXISTS (
-              SELECT 1 FROM game_art box WHERE box.gameId = games.id AND box.slot = 'BOX_3D'
-                AND COALESCE(box.overridePath, box.cachedPath) LIKE '/%'
-            )
-            OR (
-              EXISTS (
-                SELECT 1 FROM game_art spine WHERE spine.gameId = games.id AND spine.slot = 'BOX_SPINE'
-                  AND COALESCE(spine.overridePath, spine.cachedPath) LIKE '/%'
-              )
-              AND COALESCE(art.overridePath, art.cachedPath) LIKE '/%'
-            )
+          AND EXISTS (
+            SELECT 1 FROM game_art box WHERE box.gameId = games.id AND box.slot = 'BOX_3D'
+              AND COALESCE(box.overridePath, box.cachedPath) LIKE '/%'
           )
         """
     )
