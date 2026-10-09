@@ -564,9 +564,9 @@
     <string name="settings_permissions_display_overlay_title">Affichage par-dessus les autres applications</string>
     <string name="settings_permissions_display_overlay_description">Affiche des notifications de détection de sauvegarde en jouant avec des émulateurs externes.</string>
     <string name="settings_permissions_live_wallpaper_title">Écran de verrouillage animé</string>
-    <string name="settings_permissions_live_wallpaper_description">Affiche votre bibliothèque sur l\'écran de verrouillage en rangées de jaquettes qui défilent lentement.</string>
+    <string name="settings_permissions_live_wallpaper_description">Autorisez Argosy à appliquer un écran de verrouillage animé.</string>
     <string name="settings_lock_screen_wallpaper_label">Bibliothèque Argosy</string>
-    <string name="settings_lock_screen_wallpaper_description">Des rangées de jaquettes de votre bibliothèque défilent sur l\'écran de verrouillage, puis le jeu en cours de lancement pendant son chargement.</string>
+    <string name="settings_lock_screen_wallpaper_description">Autorisez Argosy à appliquer un écran de verrouillage animé.</string>
     <string name="settings_permissions_status_footer">État : %1$d/%2$d autorisations accordées</string>
 
     <!-- ===== Section A propos ===== -->

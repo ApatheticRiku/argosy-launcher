@@ -552,9 +552,9 @@
     <string name="settings_permissions_display_overlay_title">अन्य ऐप्स के ऊपर दिखाएँ</string>
     <string name="settings_permissions_display_overlay_description">बाहरी एमुलेटर में गेम खेलते समय सेव पहचान नोटिफ़िकेशन दिखाता है।</string>
     <string name="settings_permissions_live_wallpaper_title">एनिमेटेड लॉक स्क्रीन</string>
-    <string name="settings_permissions_live_wallpaper_description">लॉक स्क्रीन पर आपकी लाइब्रेरी को धीरे-धीरे स्क्रॉल होती बॉक्स आर्ट की पंक्तियों के रूप में दिखाता है।</string>
+    <string name="settings_permissions_live_wallpaper_description">Argosy को एनिमेटेड लॉक स्क्रीन लागू करने की अनुमति दें।</string>
     <string name="settings_lock_screen_wallpaper_label">Argosy लाइब्रेरी</string>
-    <string name="settings_lock_screen_wallpaper_description">लॉक स्क्रीन पर आपकी लाइब्रेरी की बॉक्स आर्ट की स्क्रॉल होती पंक्तियाँ, और लोड होते समय शुरू हो रहा गेम।</string>
+    <string name="settings_lock_screen_wallpaper_description">Argosy को एनिमेटेड लॉक स्क्रीन लागू करने की अनुमति दें।</string>
     <string name="settings_permissions_status_footer">स्थिति: %1$d/%2$d अनुमतियाँ दी गईं</string>
 
     <!-- ===== About section ===== -->

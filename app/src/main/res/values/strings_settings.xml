@@ -1079,11 +1079,11 @@
     <!-- Card title. Noun phrase naming Argosy's animated wallpaper, which Android asks the user to apply once. -->
     <string name="settings_permissions_live_wallpaper_title">Animated Lock Screen</string>
     <!-- Body of that card. -->
-    <string name="settings_permissions_live_wallpaper_description">Lets the lock screen show your library as slowly scrolling rows of box art.</string>
+    <string name="settings_permissions_live_wallpaper_description">Allow Argosy to apply an animated lock screen.</string>
     <!-- Name of Argosy's live wallpaper in Android's wallpaper picker. -->
     <string name="settings_lock_screen_wallpaper_label">Argosy Library</string>
-    <!-- Description of that wallpaper in Android's wallpaper picker. -->
-    <string name="settings_lock_screen_wallpaper_description">Rows of your library\'s box art scrolling on the lock screen, and the game you are starting while it loads.</string>
+    <!-- Description of that wallpaper in Android's wallpaper picker, which Argosy opens on startup while Lock Screen Art is on. -->
+    <string name="settings_lock_screen_wallpaper_description">Allow Argosy to apply an animated lock screen.</string>
     <!-- Line under the list. %1$d is how many permissions were given, %2$d how many there are. -->
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d permissions granted</string>
 

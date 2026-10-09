@@ -18,8 +18,8 @@
     <string name="save_channels_section_backups_title">Backups</string>
     <!-- Heading over channels other users on the server have shared. -->
     <string name="save_channels_section_community_title">Community</string>
-    <!-- Label under the plus tile after the user's own channels that starts a new save channel (playthrough). "Save" is a noun. -->
-    <string name="save_channels_section_mine_new">New save</string>
+    <!-- Label under the plus tile after the user's own channels that starts a new save channel (playthrough). -->
+    <string name="save_channels_section_mine_new">New channel</string>
     <!-- Shown under Mine when the user has no channels at all. -->
     <string name="save_channels_section_mine_empty">No channels yet</string>
     <!-- Shown when the channel list could not be fetched from the server. -->

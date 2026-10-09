@@ -3,7 +3,7 @@
     <string name="save_channels_section_mine_title">मेरे</string>
     <string name="save_channels_section_backups_title">बैकअप</string>
     <string name="save_channels_section_community_title">कम्युनिटी</string>
-    <string name="save_channels_section_mine_new">नया सेव</string>
+    <string name="save_channels_section_mine_new">नया चैनल</string>
     <string name="save_channels_section_mine_empty">अभी तक कोई चैनल नहीं</string>
     <string name="save_channels_load_failed">चैनल लोड नहीं हो सके</string>
 
