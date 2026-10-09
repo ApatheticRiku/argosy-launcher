@@ -108,6 +108,7 @@ import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -899,8 +900,9 @@ fun ArgosyApp(
     }
 
     // Collect gamepad events (Menu toggles drawer, L3 toggles quick menu, R3 toggles quick settings)
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.eventFlow().collect { input ->            val result = inputDispatcher.dispatch(input)
+    val inputLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.eventFlow().flowWithLifecycle(inputLifecycle).collect { input ->            val result = inputDispatcher.dispatch(input)
             val event = input.event
             val isBumper = event == GamepadEvent.PrevSection || event == GamepadEvent.NextSection
             if (!isBumper || inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
@@ -1008,8 +1010,8 @@ fun ArgosyApp(
         onDispose { handler.detachShortcutGate(shortcutGate) }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.shortcutEventFlow().collect { shortcut ->
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.shortcutEventFlow().flowWithLifecycle(inputLifecycle).collect { shortcut ->
             when (shortcut) {
                 UiShortcut.OPEN_NAVIGATION -> {
                     if (isDrawerOpen) {
@@ -1033,9 +1035,8 @@ fun ArgosyApp(
         }
     }
 
-    // Collect Home button events (from system Home button press)
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.homeEventFlow().collect {
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.homeEventFlow().flowWithLifecycle(inputLifecycle).collect {
             if (isEmulatorRunning) {
                 // No-op: onUserLeaveHint in LibretroActivity handles HOME quit
             } else {

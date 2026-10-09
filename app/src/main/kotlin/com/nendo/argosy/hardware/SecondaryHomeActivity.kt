@@ -100,8 +100,8 @@ class SecondaryHomeActivity :
     private var mediaDimCollectJob: kotlinx.coroutines.Job? = null
 
     private var isMediaPanelVisible by mutableStateOf(false)
-    var isShowcaseRole by mutableStateOf(false)
-        private set
+    private val isShowcaseRole: Boolean
+        get() = ::dsm.isInitialized && dsm.isRolesSwapped.value
 
     var swapAB = false; private set
     var swapXY = false; private set
@@ -205,7 +205,8 @@ class SecondaryHomeActivity :
         val gameDisplay by dsm.emulatorDisplay.collectAsState()
         val hereDisplayId = androidx.core.content.ContextCompat.getDisplayOrDefault(this).displayId
         val showsDashboard = gameActive && dsm.primaryShowsDashboard(hereDisplayId, gameDisplay)
-        if (!isShowcaseRole && !showsDashboard) {
+        val rolesSwapped by dsm.isRolesSwapped.collectAsState()
+        if (!rolesSwapped && !showsDashboard) {
             com.nendo.argosy.ui.ArgosyApp(
                 onStartupComplete = { dsm.stopStartupGuard() }
             )
@@ -494,9 +495,7 @@ class SecondaryHomeActivity :
 
     override fun onOverlayRequested(eventName: String) = Unit
 
-    override fun onRoleSwapped(isSwapped: Boolean) {
-        isShowcaseRole = isSwapped
-    }
+    override fun onRoleSwapped(isSwapped: Boolean) = Unit
 
     override fun onOverlayClosed() = Unit
 
@@ -724,7 +723,6 @@ class SecondaryHomeActivity :
 
     private fun loadInitialState() {
         val store = dsm.sessionStateStore
-        isShowcaseRole = dsm.isRolesSwapped.value
         isArgosyForeground = store.isArgosyForeground()
         isGameActive = store.hasActiveSession()
         isWizardActive = store.isWizardActive() || !store.isFirstRunComplete()

@@ -63,20 +63,28 @@ where an app-target screen must survive a swap.
 
 ## What each surface renders
 
-Both activities choose from the same flow, with opposite polarity:
+Both activities choose from DSM flows:
 
 ```
 MainActivity                         SecondaryHomeActivity
-  companionHoldsPrimary                !companionHoldsPrimary
-  || game on another screen            || game on another screen
+  companionHoldsPrimary                isRolesSwapped
+  || game on another screen            || game shows the dashboard here
     ? PresentationSlotContent(slot)      ? PresentationSlotContent(slot)
     : ArgosyApp()                        : ArgosyApp()
 ```
 
-RULE: an activity's render choice reads `DualScreenManager.companionHoldsPrimary`, the same
-flow its input routing reads. A render flag held on the activity (a `mutableStateOf` set from
-role callbacks) is a second copy of "who is hosting" and violates the law above.
-`SecondaryHomeActivity.isShowcaseRole` is that second copy today and is due to be replaced.
+RULE: an activity's render choice reads DSM flows at composition time, never a flag the
+activity holds itself. A `mutableStateOf` set from role callbacks is a second copy of "who is
+hosting"; one (`isShowcaseRole`) let both screens compose `ArgosyApp` after sleep, a role swap
+or a game closing, and every press moved menus twice.
+
+The two gates are not exact mirrors: while the companion is stopped (screen off, `onStop`)
+`companionHoldsPrimary` is false, so MainActivity composes `ArgosyApp` while the stopped
+companion's composition still exists. What keeps that safe is the next rule.
+
+RULE: `ArgosyApp` collects the gamepad, shortcut and home event flows with
+`flowWithLifecycle`, so a composition whose activity is stopped dispatches nothing. Any new
+collector of a `GamepadInputHandler` flow must do the same.
 
 `ArgosyApp` takes no dual-screen parameters. It reads `DualScreenManagerHolder.instance`.
 
@@ -152,8 +160,11 @@ button without freezing the screen behind it; the new-monitor prompt is its only
 Every other tier is all-or-nothing.
 
 `GamepadInputHandler` is a `@Singleton` and `eventFlow()` is a SharedFlow. Both activities feed
-it; only the composed `ArgosyApp` collects it, and only one is composed at a time. So an activity
-"routing input" means calling `gamepadInputHandler.handleKeyEvent(event)`.
+it; every composed `ArgosyApp` collects it while its activity is started. Two compositions can
+exist briefly (see the render gates above), and the SharedFlow broadcasts to both, so the
+lifecycle gate is what keeps one press from dispatching twice; `claimInput` dedup runs before
+the emit and cannot catch it. So an activity "routing input" means calling
+`gamepadInputHandler.handleKeyEvent(event)`.
 
 Dedup: every dispatch path calls `dsm.claimInput(event)` first; first claimant wins.
 
