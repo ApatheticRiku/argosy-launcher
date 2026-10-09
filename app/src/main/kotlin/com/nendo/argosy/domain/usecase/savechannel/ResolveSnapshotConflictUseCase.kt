@@ -25,6 +25,9 @@ class ResolveSnapshotConflictUseCase @Inject constructor(
 ) {
     suspend fun appliesTo(gameId: Long): Boolean = engine.isEligible(gameId)
 
+    suspend fun isParkedDowngrade(pendingConflictId: Long?): Boolean =
+        pendingConflictId?.let { pendingConflictDao.getById(it) }?.isHardcoreDowngrade == true
+
     suspend operator fun invoke(
         gameId: Long,
         emulatorId: String?,

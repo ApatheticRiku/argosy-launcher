@@ -481,7 +481,7 @@ class SnapshotSyncEngine @Inject constructor(
             }
             PushOutcome.HardcoreDowngrade -> SnapshotSyncResult.HardcoreDowngrade(expectedCurrentId)
             is PushOutcome.Conflict -> {
-                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | push refused, current=${outcome.currentId} kept as branch #${outcome.branch?.id} fromOlder=${outcome.fromOlder}")
+                Logger.info(TAG, "[SaveSync] SNAPSHOT gameId=${ctx.game.id} | push refused, current=${outcome.currentId}")
                 SnapshotSyncResult.Conflict(null, outcome.currentId, source.localSavePath)
             }
             is PushOutcome.Failed -> SnapshotSyncResult.Failed(outcome.reason)

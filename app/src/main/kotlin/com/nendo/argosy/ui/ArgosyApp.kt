@@ -144,11 +144,11 @@ fun ArgosyApp(
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
     val quickMenuState by quickMenuViewModel.uiState.collectAsState()
-    val saveConflictInfo by viewModel.saveConflictInfo.collectAsState()
-    val saveConflictButtonIndex by viewModel.saveConflictButtonIndex.collectAsState()
-    val backgroundConflictInfo by viewModel.backgroundConflictInfo.collectAsState()
-    val backgroundConflictButtonIndex by viewModel.backgroundConflictButtonIndex.collectAsState()
-    val backgroundConflictSnapshot by viewModel.backgroundConflictSnapshot.collectAsState()
+    val saveConflictInfo by viewModel.saveConflicts.saveConflictInfo.collectAsState()
+    val saveConflictButtonIndex by viewModel.saveConflicts.saveConflictButtonIndex.collectAsState()
+    val backgroundConflictInfo by viewModel.saveConflicts.backgroundConflictInfo.collectAsState()
+    val backgroundConflictButtonIndex by viewModel.saveConflicts.backgroundConflictButtonIndex.collectAsState()
+    val backgroundConflictSnapshot by viewModel.saveConflicts.backgroundConflictSnapshot.collectAsState()
     val coreCrashPrompt by viewModel.coreCrashController.prompt.collectAsState()
     val coreCrashFocusIndex by viewModel.coreCrashController.focusIndex.collectAsState()
     val coreCrashDownloading by viewModel.coreCrashController.downloading.collectAsState()
@@ -573,27 +573,27 @@ fun ArgosyApp(
     val saveConflictInputHandler = remember(viewModel) {
         object : InputHandler {
             override fun onLeft(): InputResult {
-                viewModel.moveSaveConflictFocus(-1)
+                viewModel.saveConflicts.moveSaveConflictFocus(-1)
                 return InputResult.HANDLED
             }
             override fun onRight(): InputResult {
-                viewModel.moveSaveConflictFocus(1)
+                viewModel.saveConflicts.moveSaveConflictFocus(1)
                 return InputResult.HANDLED
             }
             override fun onUp(): InputResult {
-                viewModel.moveSaveConflictFocus(-1)
+                viewModel.saveConflicts.moveSaveConflictFocus(-1)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
-                viewModel.moveSaveConflictFocus(1)
+                viewModel.saveConflicts.moveSaveConflictFocus(1)
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
-                viewModel.confirmSaveConflict()
+                viewModel.saveConflicts.confirmSaveConflict()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onBack(): InputResult {
-                viewModel.dismissSaveConflict()
+                viewModel.saveConflicts.dismissSaveConflict()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onMenu() = InputResult.HANDLED
@@ -611,9 +611,9 @@ fun ArgosyApp(
 
     val backgroundConflictInputHandler = remember(viewModel) {
         BackgroundConflictInputHandler(
-            moveFocus = viewModel::moveBackgroundConflictFocus,
-            confirm = viewModel::confirmBackgroundConflict,
-            skip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
+            moveFocus = viewModel.saveConflicts::moveBackgroundConflictFocus,
+            confirm = viewModel.saveConflicts::confirmBackgroundConflict,
+            skip = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.SKIP) }
         )
     }
 
@@ -1342,9 +1342,9 @@ fun ArgosyApp(
                 SaveConflictModal(
                     info = info,
                     focusedButton = saveConflictButtonIndex,
-                    onKeepLocal = { viewModel.dismissSaveConflict() },
-                    onOverwrite = { viewModel.forceUploadConflictSave() },
-                    onSnapshotChoice = viewModel::answerSnapshotConflict
+                    onKeepLocal = { viewModel.saveConflicts.dismissSaveConflict() },
+                    onOverwrite = { viewModel.saveConflicts.forceUploadConflictSave() },
+                    onSnapshotChoice = viewModel.saveConflicts::answerSnapshotConflict
                 )
             }
 
@@ -1353,11 +1353,11 @@ fun ArgosyApp(
                 BackgroundSyncConflictDialog(
                     conflictInfo = info,
                     focusIndex = backgroundConflictButtonIndex,
-                    onKeepLocal = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
-                    onKeepServer = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
-                    onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) },
+                    onKeepLocal = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
+                    onKeepServer = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
+                    onSkip = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.SKIP) },
                     snapshotConflict = backgroundConflictSnapshot,
-                    onSnapshotChoice = viewModel::resolveBackgroundSnapshotConflict
+                    onSnapshotChoice = viewModel.saveConflicts::resolveBackgroundSnapshotConflict
                 )
             }
 

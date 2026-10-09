@@ -94,15 +94,9 @@ data class RomMSnapshotState(
 @JsonClass(generateAdapter = true)
 data class RomMSnapshotConflict(
     @Json(name = "current") val current: RomMSnapshotRef? = null,
-    @Json(name = "branch") val branch: RomMSnapshot? = null,
-    @Json(name = "reason") val reason: String? = null,
     @Json(name = "hardcore_downgrade") val hardcoreDowngrade: Boolean = false,
     @Json(name = "missing") val missing: List<String>? = null
-) {
-    companion object {
-        const val REASON_MOVED_FROM_OLDER = "moved_from_older"
-    }
-}
+)
 
 @JsonClass(generateAdapter = true)
 data class RomMSnapshotRef(

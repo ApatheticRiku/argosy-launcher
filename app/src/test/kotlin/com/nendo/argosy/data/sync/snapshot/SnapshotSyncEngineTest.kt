@@ -277,7 +277,7 @@ class SnapshotSyncEngineTest {
         coEvery { channelDao.get(3L, GAME_ID, "default") } returns SnapshotChannelEntity(3L, GAME_ID, "default", CHANNEL, FILE_ID, 41, "d", "old", "old-identity", 0)
         coEvery { api.listChannels(listOf(FILE_ID)) } returns channelsOf(listOf(snapshot(41, "old")))
         coEvery { api.pushSnapshot(DEVICE, any()) } returns
-            Response.error(409, """{"current":{"id":43,"digest":"sha256:43"},"reason":"moved_from_older"}""".toResponseBody())
+            Response.error(409, """{"current":{"id":43,"digest":"sha256:43"}}""".toResponseBody())
 
         val result = engine.sync(GAME_ID, EMULATOR, null) as SnapshotSyncResult.Conflict
         assertEquals(43L, result.currentId)
@@ -431,6 +431,16 @@ class SnapshotSyncEngineTest {
         engine.keepLocal(GAME_ID, EMULATOR, null)
 
         coVerify { saveCacheDao.markSynced(7L, any()) }
+    }
+
+    @Test
+    fun `a native push of the save on disk makes its row the active save`(): Unit = runBlocking {
+        stubNativeSave(ByteArray(64))
+        stubDirtyDefaultChannel()
+
+        engine.keepLocal(GAME_ID, EMULATOR, null)
+
+        coVerify { activeSaves.activateCache(GAME_ID, 7L) }
     }
 
     @Test
