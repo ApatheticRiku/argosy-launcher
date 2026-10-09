@@ -123,6 +123,23 @@ class SaveDownloaderCacheHitTest {
     }
 
     @Test
+    fun `the save the server named is fetched even when the sync row still points at an older one`() = runTest {
+        val newerId = 43L
+        coEvery { api.getSaveWithDevice(newerId, "device-abc") } returns Response.success(
+            RomMSave(
+                id = newerId, romId = 100L, userId = 1L, emulator = "mgba",
+                fileName = "test-newer.sav", updatedAt = "2026-10-02T00:00:00Z", contentHash = "newer-hash"
+            )
+        )
+
+        downloader.downloadSave(gameId, "mgba", knownServerSaveId = newerId)
+
+        coVerify { api.getSaveWithDevice(newerId, "device-abc") }
+        coVerify(exactly = 0) { api.getSaveWithDevice(serverSaveId, any()) }
+        coVerify(exactly = 0) { saveCacheManager.restoreSave(cachedId, any()) }
+    }
+
+    @Test
     fun `a cached copy from another channel is never restored or activated for a named channel`() = runTest {
         downloader.downloadSave(gameId, "mgba", channelName = "Main Game")
 

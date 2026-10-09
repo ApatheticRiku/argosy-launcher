@@ -188,7 +188,7 @@ class SaveDownloader @Inject constructor(
             return@withContext SaveSyncResult.Error("No save tracking found")
         }
 
-        val saveId = (if (fromSnapshot) knownServerSaveId else null) ?: syncEntity.rommSaveId
+        val saveId = knownServerSaveId ?: syncEntity.rommSaveId
         if (saveId == null) {
             Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | No server save ID in sync entity")
             return@withContext SaveSyncResult.Error("No server save ID")

@@ -711,6 +711,15 @@ object SavePathRegistry {
             supported = true
         ),
 
+        "${BUILTIN_EMULATOR_ID}_wii" to SavePathConfig(
+            emulatorId = BUILTIN_EMULATOR_ID,
+            defaultPaths = listOf("$BUILTIN_SAVES_TOKEN/User/Wii/title/00010000"),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true,
+            usesInternalStorage = true,
+            supported = true
+        ),
+
         /**
          * The two built-in DS cores disagree on the extension: melonds writes a .sav cartridge
          * battery save, melondsds writes .srm and its own migration guide tells users to rename

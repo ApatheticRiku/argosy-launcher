@@ -189,6 +189,10 @@ the PARAM.SFO test that keeps installed game data out of the bundle.
 <base>/<save_id>
 ```
 
+For Wii the base is the NAND's `Wii/title/00010000`: under the standalone app's files for
+`dolphin_wii`, and `<builtin saves>/User/Wii/title/00010000` for the built-in Dolphin core
+(`argosy_wii`). Both upload through the same handler, so a game's save moves between the two.
+
 ### GameCube (`GciSaveHandler`)
 
 Not id-derived from sigil. The 6-character game id is parsed from the ROM
