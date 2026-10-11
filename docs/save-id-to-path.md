@@ -189,6 +189,10 @@ the PARAM.SFO test that keeps installed game data out of the bundle.
 <base>/<save_id>
 ```
 
+For Wii the base is the NAND's `Wii/title/00010000`: under the standalone app's files for
+`dolphin_wii`, and `<builtin saves>/User/Wii/title/00010000` for the built-in Dolphin core
+(`argosy_wii`). Both upload through the same handler, so a game's save moves between the two.
+
 ### GameCube (`GciSaveHandler`)
 
 Not id-derived from sigil. The 6-character game id is parsed from the ROM
@@ -247,6 +251,19 @@ aPS3e base:
 The user segment is hardcoded to `00000001` in aPS3e, so the config names it.
 Desktop RPCS3 can hold several, so a desktop path added later has to discover
 that level rather than inherit this constant.
+
+ARMSX3 bases (`com.armsx3` GitHub build, `com.armsx3.play` Play build):
+
+```
+{extStorage}/Android/data/com.armsx3/files/config/dev_hdd0/home/00000001/savedata
+{extStorage}/Android/data/com.armsx3.play/files/config/dev_hdd0/home/00000001/savedata
+```
+
+ARMSX3 also passes user `00000001` (`Rpcs3Bridge.kt` in ARMSX2/ARMSX3), and its
+root defaults to `getExternalFilesDir`. A root moved to the SD card or a custom
+folder in its onboarding needs the user's save path set to match. Saves are
+written to `.working_<dir>` and renamed into place, so dot-prefixed siblings are
+transient.
 
 ### Xbox 360 (`Xbox360FolderHandler`)
 

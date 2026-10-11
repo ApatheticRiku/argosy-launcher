@@ -1,10 +1,13 @@
 package com.nendo.argosy.ui.common
 
+import com.nendo.argosy.data.local.entity.GameArtEntity
 import com.nendo.argosy.data.local.entity.GameEntity
+import com.nendo.argosy.data.local.entity.toResolvedArt
+import com.nendo.argosy.data.local.entity.toResolvedArtByGame
 import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.resolveArtPath
 import com.nendo.argosy.data.repository.DownloadFileStatusRepository
-import com.nendo.argosy.ui.screens.collections.toCollectionGameUi
 import com.nendo.argosy.ui.screens.gamedetail.toGameDetailUi
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
@@ -15,23 +18,13 @@ import org.junit.Test
 
 class ArtOverridePrecedenceTest {
 
-    private val serverCover = "/cache/snes/covers/cover_42_server.jpg"
-    private val serverBackground = "/cache/snes/backgrounds/bg_42_server.jpg"
-    private val serverLogo = "/cache/snes/covers/game_logo_42_server.png"
-    private val userCover = "/cache/snes/covers/cover_override_9_a.jpg"
-    private val userBackground = "/cache/snes/backgrounds/bg_override_9_b.jpg"
-    private val userLogo = "/cache/snes/logos/logo_override_9_c.png"
+    private val source = "https://romm/covers/42.png"
+    private val cached = "/cache/snes/covers/cover_42_abc.jpg"
+    private val override = "/cache/snes/covers/cover_override_9_a.jpg"
 
     private val downloadStatus = mockk<DownloadFileStatusRepository>(relaxed = true)
 
-    private fun game(
-        coverOverridePath: String? = null,
-        backgroundOverridePath: String? = null,
-        logoOverridePath: String? = null,
-        coverPath: String? = serverCover,
-        backgroundPath: String? = serverBackground,
-        logoPath: String? = serverLogo
-    ) = GameEntity(
+    private fun game() = GameEntity(
         id = 9L,
         platformId = 1L,
         platformSlug = "snes",
@@ -40,122 +33,171 @@ class ArtOverridePrecedenceTest {
         localPath = null,
         rommId = 42L,
         igdbId = null,
-        source = GameSource.ROMM_REMOTE,
-        coverPath = coverPath,
-        backgroundPath = backgroundPath,
-        logoPath = logoPath,
-        coverOverridePath = coverOverridePath,
-        backgroundOverridePath = backgroundOverridePath,
-        logoOverridePath = logoOverridePath
+        source = GameSource.ROMM_REMOTE
+    )
+
+    private fun row(
+        slot: ArtSlot,
+        sourceUrl: String? = null,
+        cachedPath: String? = null,
+        overridePath: String? = null,
+        gameId: Long = 9L
+    ) = GameArtEntity(
+        gameId = gameId,
+        slot = slot.name,
+        sourceUrl = sourceUrl,
+        cachedPath = cachedPath,
+        overridePath = overridePath
     )
 
     @Test
-    fun `display paths prefer each override over its server column`() {
-        val overridden = game(userCover, userBackground, userLogo)
-
-        assertEquals(userCover, overridden.displayCoverPath)
-        assertEquals(userBackground, overridden.displayBackgroundPath)
-        assertEquals(userLogo, overridden.displayLogoPath)
+    fun `override wins over cached and source`() {
+        assertEquals(override, resolveArtPath(override, cached, source))
     }
 
     @Test
-    fun `display paths fall back to the server column without an override`() {
-        val plain = game()
-
-        assertEquals(serverCover, plain.displayCoverPath)
-        assertEquals(serverBackground, plain.displayBackgroundPath)
-        assertEquals(serverLogo, plain.displayLogoPath)
+    fun `override wins over cached alone`() {
+        assertEquals(override, resolveArtPath(override, cached, null))
     }
 
     @Test
-    fun `an override shows even when the server has no art for that slot`() {
-        val overridden = game(
-            coverOverridePath = userCover,
-            coverPath = null,
-            backgroundPath = null,
-            logoPath = null
-        )
-
-        assertEquals(userCover, overridden.displayCoverPath)
-        assertNull(overridden.displayBackgroundPath)
-        assertNull(overridden.displayLogoPath)
+    fun `override wins over source alone`() {
+        assertEquals(override, resolveArtPath(override, null, source))
     }
 
     @Test
-    fun `overridePath answers per slot`() {
-        val overridden = game(userCover, null, userLogo)
-
-        assertEquals(userCover, overridden.overridePath(ArtSlot.COVER))
-        assertNull(overridden.overridePath(ArtSlot.BACKGROUND))
-        assertEquals(userLogo, overridden.overridePath(ArtSlot.LOGO))
+    fun `override alone is used`() {
+        assertEquals(override, resolveArtPath(override, null, null))
     }
 
     @Test
-    fun `home tiles and the companion read the override`() = runTest {
-        val ui = game(userCover, userBackground, userLogo).toHomeGameUi(downloadStatus)
-
-        assertEquals(userCover, ui.coverPath)
-        assertEquals(userBackground, ui.backgroundPath)
-        assertEquals(userLogo, ui.logoPath)
+    fun `cached wins over source without an override`() {
+        assertEquals(cached, resolveArtPath(null, cached, source))
     }
 
     @Test
-    fun `home tiles read the server art without an override`() = runTest {
-        val ui = game().toHomeGameUi(downloadStatus)
-
-        assertEquals(serverCover, ui.coverPath)
-        assertEquals(serverBackground, ui.backgroundPath)
-        assertEquals(serverLogo, ui.logoPath)
+    fun `cached alone is used`() {
+        assertEquals(cached, resolveArtPath(null, cached, null))
     }
 
     @Test
-    fun `library tiles read the cover override`() = runTest {
-        val ui = game(coverOverridePath = userCover).toLibraryGameUi(downloadStatus)
-
-        assertEquals(userCover, ui.coverPath)
+    fun `source is used when nothing local exists`() {
+        assertEquals(source, resolveArtPath(null, null, source))
     }
 
     @Test
-    fun `game detail reads the overrides and flags each overridden slot`() {
-        val detail = game(userCover, userBackground).toGameDetailUi(
+    fun `nothing resolves to null`() {
+        assertNull(resolveArtPath(null, null, null))
+    }
+
+    @Test
+    fun `a row resolves through the same rule`() {
+        assertEquals(override, row(ArtSlot.COVER, source, cached, override).resolvedPath)
+        assertEquals(cached, row(ArtSlot.COVER, source, cached).resolvedPath)
+        assertEquals(source, row(ArtSlot.COVER, source).resolvedPath)
+    }
+
+    @Test
+    fun `rows resolve per slot and only the overridden slots are flagged`() {
+        val art = listOf(
+            row(ArtSlot.COVER, source, cached, override),
+            row(ArtSlot.BACKGROUND, "https://romm/bg/42.jpg", "/cache/snes/backgrounds/bg_42_def.jpg"),
+            row(ArtSlot.LOGO, "https://romm/logo/42.png")
+        ).toResolvedArt()
+
+        assertEquals(override, art.coverPath)
+        assertEquals("/cache/snes/backgrounds/bg_42_def.jpg", art.backgroundPath)
+        assertEquals("https://romm/logo/42.png", art.logoPath)
+        assertEquals(setOf(ArtSlot.COVER), art.overriddenSlots)
+    }
+
+    @Test
+    fun `box spine and back resolve from their own rows`() {
+        val art = listOf(
+            row(ArtSlot.BOX_SPINE, "https://romm/side/42.png", "/cache/snes/covers/box_spine_42_abc.png"),
+            row(ArtSlot.BOX_BACK, "https://romm/back/42.png")
+        ).toResolvedArt()
+
+        assertEquals("/cache/snes/covers/box_spine_42_abc.png", art.boxSpinePath)
+        assertEquals("https://romm/back/42.png", art.boxBackPath)
+        assertNull(art.coverPath)
+    }
+
+    @Test
+    fun `gradient and aspect come from the cover row only`() {
+        val art = listOf(
+            row(ArtSlot.COVER, source).copy(gradientColors = "{}", coverAspectRatio = 0.7f),
+            row(ArtSlot.BACKGROUND, source).copy(gradientColors = "{\"bg\":1}", coverAspectRatio = 1.7f)
+        ).toResolvedArt()
+
+        assertEquals("{}", art.gradientColors)
+        assertEquals(0.7f, art.coverAspectRatio)
+    }
+
+    @Test
+    fun `rows group by game`() {
+        val byGame = listOf(
+            row(ArtSlot.COVER, source, gameId = 1L),
+            row(ArtSlot.COVER, cachedPath = cached, gameId = 2L)
+        ).toResolvedArtByGame()
+
+        assertEquals(source, byGame[1L]?.coverPath)
+        assertEquals(cached, byGame[2L]?.coverPath)
+    }
+
+    @Test
+    fun `home tiles read the resolved art`() = runTest {
+        val art = listOf(
+            row(ArtSlot.COVER, source, cached, override),
+            row(ArtSlot.BACKGROUND, cachedPath = "/cache/bg.jpg"),
+            row(ArtSlot.LOGO, overridePath = "/cache/logo.png")
+        ).toResolvedArt()
+
+        val ui = game().toHomeGameUi(downloadStatus, art, firstScreenshotUrl = null)
+
+        assertEquals(override, ui.coverPath)
+        assertEquals("/cache/bg.jpg", ui.backgroundPath)
+        assertEquals("/cache/logo.png", ui.logoPath)
+    }
+
+    @Test
+    fun `library tiles read the resolved cover`() = runTest {
+        val art = listOf(row(ArtSlot.COVER, source, cached)).toResolvedArt()
+
+        assertEquals(cached, game().toLibraryGameUi(downloadStatus, art).coverPath)
+    }
+
+    @Test
+    fun `game detail reads the resolved art and flags each overridden slot`() {
+        val art = listOf(
+            row(ArtSlot.COVER, source, cached, override),
+            row(ArtSlot.BACKGROUND, overridePath = "/cache/bg_override.jpg")
+        ).toResolvedArt()
+
+        val detail = game().toGameDetailUi(
+            art = art,
+            screenshotRows = emptyList(),
             platformName = "SNES",
             emulatorName = null,
             canPlay = false
         )
 
-        assertEquals(userCover, detail.coverPath)
-        assertEquals(userBackground, detail.backgroundPath)
+        assertEquals(override, detail.coverPath)
+        assertEquals("/cache/bg_override.jpg", detail.backgroundPath)
         assertEquals(setOf(ArtSlot.COVER, ArtSlot.BACKGROUND), detail.overriddenArtSlots)
     }
 
     @Test
-    fun `game detail flags a logo override on its own`() {
-        val detail = game(logoOverridePath = userLogo).toGameDetailUi(
-            platformName = "SNES",
-            emulatorName = null,
-            canPlay = false
-        )
-
-        assertEquals(setOf(ArtSlot.LOGO), detail.overriddenArtSlots)
-    }
-
-    @Test
-    fun `game detail without an override shows server art`() {
+    fun `game detail without art shows nothing overridden`() {
         val detail = game().toGameDetailUi(
+            art = null,
+            screenshotRows = emptyList(),
             platformName = "SNES",
             emulatorName = null,
             canPlay = false
         )
 
-        assertEquals(serverCover, detail.coverPath)
-        assertEquals(serverBackground, detail.backgroundPath)
+        assertNull(detail.coverPath)
         assertTrue(detail.overriddenArtSlots.isEmpty())
-    }
-
-    @Test
-    fun `collection rows read the cover override`() = runTest {
-        val row = game(coverOverridePath = userCover).toCollectionGameUi("SNES", downloadStatus)
-
-        assertEquals(userCover, row.coverPath)
     }
 }

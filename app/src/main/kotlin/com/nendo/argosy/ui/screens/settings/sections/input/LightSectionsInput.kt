@@ -1,14 +1,31 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
+import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.data.preferences.ControlsPreferences
+import com.nendo.argosy.data.preferences.GridDensity
+import com.nendo.argosy.data.preferences.GripReserveMode
+import com.nendo.argosy.data.preferences.HomeBackgroundMode
+import com.nendo.argosy.data.preferences.MediaStreamingQuality
+import com.nendo.argosy.data.preferences.MenuWrapMode
+import com.nendo.argosy.data.preferences.SelectSwapMode
+import com.nendo.argosy.ui.screens.settings.delegates.ControlsSettingsDelegate
+import com.nendo.argosy.util.LogLevel
+import com.nendo.argosy.data.preferences.LibraryLayout
 import com.nendo.argosy.domain.model.HomeLayoutKind
+import com.nendo.argosy.ui.common.hudCornerFromStored
+import com.nendo.argosy.ui.components.HudCorner
+import com.nendo.argosy.ui.components.isHomeLayoutFieldAtBound
+import com.nendo.argosy.ui.screens.settings.ARCHITECTURE_OPTIONS
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.stepOption
+import com.nendo.argosy.ui.screens.settings.sections.librarySourceKeys
 import com.nendo.argosy.ui.screens.settings.SettingsInputHandler
 import com.nendo.argosy.ui.screens.settings.SettingsSection
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.components.rommConfigIndices
 import com.nendo.argosy.ui.screens.settings.sections.AboutItem
+import com.nendo.argosy.ui.screens.settings.sections.PresentationItem
 import com.nendo.argosy.ui.screens.settings.sections.adjustPresentationItem
 import com.nendo.argosy.ui.screens.settings.sections.presentationItemAtFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.presentationSections
@@ -190,10 +207,12 @@ internal class LightSectionsInput(
     private fun handleControllerGripLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         return when (controllerGripItemAtFocusIndex(state.focusedIndex, state.display)) {
-            ControllerGripItem.Mode -> {
-                viewModel.cycleGripReserveMode(direction)
-                InputResult.HANDLED
-            }
+            ControllerGripItem.Mode -> stepOption(
+                GripReserveMode.entries,
+                state.display.gripReserveMode,
+                direction,
+                viewModel::setGripReserveMode
+            )
             ControllerGripItem.ReservedHeight -> {
                 viewModel.adjustGripReservePercent(direction * GRIP_RESERVE_PERCENT_STEP)
                 InputResult.HANDLED
@@ -207,6 +226,9 @@ internal class LightSectionsInput(
         val item = presentationItemAtFocusIndex(viewModel.uiState.value.focusedIndex, style)
             ?: return InputResult.UNHANDLED
         val adjusted = adjustPresentationItem(style, item, direction) ?: return InputResult.UNHANDLED
+        if (adjusted == style) {
+            return InputResult.handled(if (item is PresentationItem.Stat) SoundType.SILENT else SoundType.BOUNDARY)
+        }
         viewModel.setPresentationStyle(adjusted)
         return InputResult.HANDLED
     }
@@ -216,7 +238,12 @@ internal class LightSectionsInput(
         val display = state.display
         val step = SettingsInputHandler.SLIDER_STEP
         when (val focused = homeScreenItemAtFocusIndex(state.focusedIndex, display)) {
-            HomeScreenItem.Background -> { viewModel.cycleHomeBackgroundMode(direction); return InputResult.HANDLED }
+            HomeScreenItem.Background -> return stepOption(
+                HomeBackgroundMode.entries,
+                display.homeBackgroundMode,
+                direction,
+                viewModel::setHomeBackgroundMode
+            )
             HomeScreenItem.Blur -> { viewModel.adjustBackgroundBlur(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Saturation -> { viewModel.adjustBackgroundSaturation(direction * step); return InputResult.HANDLED }
             HomeScreenItem.Opacity -> { viewModel.adjustBackgroundOpacity(direction * step); return InputResult.HANDLED }
@@ -229,13 +256,17 @@ internal class LightSectionsInput(
                 return toggleLeftRight(direction, display.videoWallpaperMuted) { viewModel.setVideoWallpaperMuted(it) }
             HomeScreenItem.InstalledOnly ->
                 return toggleLeftRight(direction, display.installedOnlyHome) { viewModel.setInstalledOnlyHome(it) }
-            HomeScreenItem.LayoutSelector -> {
-                val kinds = HomeLayoutKind.entries
-                val next = kinds[(kinds.indexOf(display.homeLayout.selected) + direction).mod(kinds.size)]
-                viewModel.setHomeLayout(display.homeLayout.copy(selected = next))
-                return InputResult.HANDLED
-            }
+            HomeScreenItem.BoxArt ->
+                return stepOption(listOf(false, true), display.homeLayout.boxArt3d, direction, viewModel::setHomeBoxArt3d)
+            HomeScreenItem.LayoutSelector -> return stepOption(
+                HomeLayoutKind.entries,
+                display.homeLayout.selected,
+                direction
+            ) { viewModel.setHomeLayout(display.homeLayout.copy(selected = it)) }
             is HomeScreenItem.LayoutField -> {
+                if (isHomeLayoutFieldAtBound(display.homeLayout, focused.field, direction)) {
+                    return InputResult.handled(SoundType.BOUNDARY)
+                }
                 viewModel.adjustHomeLayoutField(focused.field, direction)
                 return InputResult.HANDLED
             }
@@ -254,7 +285,12 @@ internal class LightSectionsInput(
             }
             NavigationItem.HapticFeedback ->
                 return toggleLeftRight(direction, controls.hapticEnabled) { viewModel.setHapticEnabled(it) }
-            NavigationItem.ControllerLayout -> { viewModel.cycleControllerLayout(direction); return InputResult.HANDLED }
+            NavigationItem.ControllerLayout -> return stepOption(
+                ControlsSettingsDelegate.LAYOUT_OPTIONS,
+                controls.controllerLayout,
+                direction,
+                viewModel::setControllerLayout
+            )
             NavigationItem.SwapAB ->
                 return toggleLeftRight(direction, controls.swapAB) { viewModel.setSwapAB(it) }
             NavigationItem.SwapXY ->
@@ -263,10 +299,22 @@ internal class LightSectionsInput(
                 return toggleLeftRight(direction, controls.swapStartSelect) { viewModel.setSwapStartSelect(it) }
             NavigationItem.QuickNavigation ->
                 return toggleLeftRight(direction, controls.quickNavigation) { viewModel.setQuickNavigation(it) }
-            NavigationItem.SelectLCombo -> { viewModel.cycleSelectLCombo(direction); return InputResult.HANDLED }
-            NavigationItem.SelectRCombo -> { viewModel.cycleSelectRCombo(direction); return InputResult.HANDLED }
-            NavigationItem.MenuWrap -> { viewModel.cycleMenuWrapMode(direction); return InputResult.HANDLED }
-            NavigationItem.SelectSwap -> { viewModel.cycleSelectSwapMode(direction); return InputResult.HANDLED }
+            NavigationItem.SelectLCombo -> return stepOption(
+                ControlsSettingsDelegate.COMBO_OPTIONS,
+                controls.selectLCombo,
+                direction,
+                viewModel::setSelectLCombo
+            )
+            NavigationItem.SelectRCombo -> return stepOption(
+                ControlsSettingsDelegate.COMBO_OPTIONS,
+                controls.selectRCombo,
+                direction,
+                viewModel::setSelectRCombo
+            )
+            NavigationItem.MenuWrap ->
+                return stepOption(MenuWrapMode.entries, controls.menuWrapMode, direction, viewModel::setMenuWrapMode)
+            NavigationItem.SelectSwap ->
+                return stepOption(SelectSwapMode.entries, controls.selectSwapMode, direction, viewModel::setSelectSwapMode)
             else -> {}
         }
         return InputResult.UNHANDLED
@@ -307,7 +355,12 @@ internal class LightSectionsInput(
         if (state.jellyfin.configuring || state.jellyfin.showLoginForm) return InputResult.UNHANDLED
         val layoutState = JellyfinLayoutState.from(state)
         when (jellyfinItemAtFocusIndex(state.focusedIndex, layoutState)) {
-            JellyfinItem.StreamingQuality -> viewModel.cycleJellyfinStreamingQuality(direction)
+            JellyfinItem.StreamingQuality -> return stepOption(
+                MediaStreamingQuality.entries,
+                state.jellyfin.streamingQuality,
+                direction,
+                viewModel::setJellyfinStreamingQuality
+            )
             JellyfinItem.AudioLanguage -> viewModel.cycleJellyfinAudioLanguage(direction)
             JellyfinItem.Subtitles -> viewModel.cycleJellyfinSubtitleMode(direction)
             JellyfinItem.SubtitleLanguage -> viewModel.cycleJellyfinSubtitleLanguage(direction)
@@ -335,7 +388,8 @@ internal class LightSectionsInput(
         val hasChangelog = aboutHasChangelog(state.updateCheck)
         when (aboutItemAtFocusIndex(state.focusedIndex, hasLogPath, hasChangelog)) {
             AboutItem.CheckUpdates -> { viewModel.moveUpdateActionFocus(direction); return InputResult.HANDLED }
-            AboutItem.LogLevel -> { viewModel.cycleFileLogLevel(direction); return InputResult.HANDLED }
+            AboutItem.LogLevel ->
+                return stepOption(LogLevel.entries, state.fileLogLevel, direction, viewModel::setFileLogLevel)
             AboutItem.BetaUpdates ->
                 return toggleLeftRight(direction, state.betaUpdatesEnabled) { viewModel.setBetaUpdatesEnabled(it) }
             AboutItem.FileLogging -> if (hasLogPath) {
@@ -351,13 +405,23 @@ internal class LightSectionsInput(
     private fun handleLibraryViewLeftRight(direction: Int): InputResult {
         val state = viewModel.uiState.value
         val layoutState = LibraryLayoutState.from(state)
+        val display = state.display
         when (libraryItemAtFocusIndex(state.focusedIndex, layoutState)) {
-            LibraryItem.LayoutItem -> viewModel.cycleLibraryLayout(direction)
-            LibraryItem.GridDensityItem -> viewModel.cycleGridDensity(direction)
+            LibraryItem.LayoutItem ->
+                return stepOption(LibraryLayout.entries, display.libraryLayout, direction, viewModel::setLibraryLayout)
+            LibraryItem.GridDensityItem ->
+                return stepOption(GridDensity.entries, display.gridDensity, direction, viewModel::setGridDensity)
+            LibraryItem.BoxArtItem ->
+                return stepOption(listOf(false, true), display.libraryBoxArt3d, direction, viewModel::setLibraryBoxArt3d)
             LibraryItem.DefaultSort -> viewModel.cycleLibraryDefaultSort(direction)
             LibraryItem.DefaultPlatform ->
                 viewModel.cycleLibraryDefaultPlatform(direction, libraryPlatformTokens(layoutState))
-            LibraryItem.DefaultSource -> viewModel.cycleLibraryDefaultSource(direction)
+            LibraryItem.DefaultSource -> return stepOption(
+                librarySourceKeys(),
+                display.libraryDefaultSource,
+                direction,
+                viewModel::setLibraryDefaultSource
+            )
             LibraryItem.DefaultPlayers -> viewModel.cycleLibraryDefaultPlayers(direction)
             else -> return InputResult.UNHANDLED
         }
@@ -368,14 +432,17 @@ internal class LightSectionsInput(
         val state = viewModel.uiState.value
         if (!state.emulators.builtinLibretroEnabled) return InputResult.UNHANDLED
         return when (state.focusedIndex) {
-            BuiltinEmulatorItem.ARCHITECTURE.focusIndex -> {
-                viewModel.cycleBuiltinArchitecture(direction)
-                InputResult.HANDLED
-            }
-            BuiltinEmulatorItem.HUD_CORNER.focusIndex -> {
-                viewModel.cycleHudCorner(direction > 0)
-                InputResult.HANDLED
-            }
+            BuiltinEmulatorItem.ARCHITECTURE.focusIndex -> stepOption(
+                ARCHITECTURE_OPTIONS,
+                state.emulators.architectureDisplay,
+                direction,
+                viewModel::setBuiltinArchitecture
+            )
+            BuiltinEmulatorItem.HUD_CORNER.focusIndex -> stepOption(
+                HudCorner.entries,
+                hudCornerFromStored(state.emulators.hudCorner),
+                direction
+            ) { viewModel.setHudCorner(it.name) }
             else -> InputResult.UNHANDLED
         }
     }

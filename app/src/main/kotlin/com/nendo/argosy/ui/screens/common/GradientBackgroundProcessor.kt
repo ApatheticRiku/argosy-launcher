@@ -27,12 +27,11 @@ class GradientBackgroundProcessor @Inject constructor(
         if (job?.isActive == true) return
         paused = false
         job = scope.launch(dispatcher) {
-            val localGames = gameRepository.getLocalGamesNeedingGradients()
-            for (game in localGames) {
+            val candidates = gameRepository.getGradientCandidates()
+            for (candidate in candidates) {
                 yield()
                 if (paused) return@launch
-                val coverPath = game.coverPath ?: continue
-                processGame(game.id, coverPath, onGameProcessed)
+                processGame(candidate.gameId, candidate.coverPath, onGameProcessed)
             }
         }
     }

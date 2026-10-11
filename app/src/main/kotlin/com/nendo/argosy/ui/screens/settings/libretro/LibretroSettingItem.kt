@@ -9,6 +9,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.NavigationPreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 
 @Composable
@@ -59,6 +60,18 @@ fun LibretroSettingItem(
             showResetButton = isPerPlatform && hasOverride && isFocused,
             onToggle = { accessor.toggle(setting) },
             onReset = { accessor.reset(setting) }
+        )
+    } else if (setting.isSegmented) {
+        val cycleType = setting.type as LibretroSettingDef.SettingType.Cycle
+        val current = cycleType.options.indexOf(accessor.getValue(setting))
+        SegmentedPreference(
+            title = stringResource(setting.title),
+            subtitle = subtitle,
+            options = cycleType.labels.map { stringResource(it) },
+            selectedIndex = current,
+            isFocused = isFocused,
+            onSelect = { index -> accessor.cycle(setting, index - current.coerceAtLeast(0)) },
+            onReset = if (isPerPlatform && hasOverride && isFocused) ({ accessor.reset(setting) }) else null
         )
     } else {
         val cycleType = setting.type as? LibretroSettingDef.SettingType.Cycle

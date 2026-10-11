@@ -620,6 +620,9 @@
     <string name="gamedetail_artwork_row_background">Background</string>
     <!-- Row in the artwork menu. Noun: the game's title logo; opens a picker to replace it. -->
     <string name="gamedetail_artwork_row_logo">Logo</string>
+    <!-- Row in the artwork menu. Noun: a picture of the game's box drawn at an angle so the spine
+         shows; opens a picker to replace it. -->
+    <string name="gamedetail_artwork_row_box_3d">3D Box</string>
     <!-- Row in the artwork menu, shown only after the user replaced the box art. Verb phrase: goes
          back to the box art the server supplies. -->
     <string name="gamedetail_artwork_row_revert_cover">Revert cover</string>
@@ -629,6 +632,9 @@
     <!-- Row in the artwork menu, shown only after the user replaced the title logo. Verb phrase:
          goes back to the logo the server supplies. -->
     <string name="gamedetail_artwork_row_revert_logo">Revert logo</string>
+    <!-- Row in the artwork menu, shown only after the user replaced the 3D box picture. Verb
+         phrase: goes back to the 3D box the server supplies. -->
+    <string name="gamedetail_artwork_row_revert_box_3d">Revert 3D box</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -967,6 +973,9 @@
     <!-- Heading of the file browser opened to pick the game's title logo from the device. Verb
          phrase addressed to the user. -->
     <string name="gamedetail_art_picker_file_browser_title_logo">Choose a logo</string>
+    <!-- Heading of the file browser opened to pick the game's 3D box picture from the device. Verb
+         phrase addressed to the user. -->
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">Choose a 3D box</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 

@@ -38,7 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.components.preferenceContentColor
 import com.nendo.argosy.data.preferences.SettingsBackupRepository
@@ -164,8 +165,6 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: AboutItem): Boolean =
         uiState.focusedIndex == aboutLayout.focusIndexOf(item, layoutState)
 
-    fun pickerToken(item: AboutItem): Int =
-        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
 
     if (showLicensesDialog) {
         LicensesDialog(onDismiss = { showLicensesDialog = false })
@@ -327,15 +326,12 @@ fun AboutSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     }
                 }
 
-                AboutItem.LogLevel -> CyclePreference(
+                AboutItem.LogLevel -> SegmentedPreference(
                     title = stringResource(R.string.settings_about_log_level_title),
-                    value = uiState.fileLogLevel.name,
+                    options = LogLevel.entries.map { stringResource(it.labelRes) },
+                    selectedIndex = LogLevel.entries.indexOf(uiState.fileLogLevel),
                     isFocused = isFocused(item),
-                    onClick = { viewModel.cycleFileLogLevel() },
-                    onPrev = { viewModel.cycleFileLogLevel(-1) },
-                    options = remember { LogLevel.entries.map { it.name } },
-                    onSelect = { viewModel.setFileLogLevel(LogLevel.entries[it]) },
-                    pickerRequestToken = pickerToken(item)
+                    onSelect = { viewModel.setFileLogLevel(LogLevel.entries[it]) }
                 )
 
                 AboutItem.SaveDebugLogging -> SwitchPreference(

@@ -507,6 +507,13 @@
     <string name="ui_save_conflict_skip">Skip Sync</string>
     <!-- Button replacing the server's copy. Verb. -->
     <string name="ui_save_conflict_overwrite">Overwrite</string>
+    <!-- Heading of the prompt shown when a save made outside RetroAchievements hardcore mode would
+         replace a channel's hardcore save on the server. -->
+    <string name="ui_save_conflict_hardcore_title">Replace a hardcore save?</string>
+    <!-- Body of that prompt. -->
+    <string name="ui_save_conflict_hardcore_message">This channel\'s current save was made in hardcore mode. Keeping this save replaces it as current. The hardcore save stays in the history.</string>
+    <!-- Button replacing the hardcore save with this one. Verb. -->
+    <string name="ui_save_conflict_hardcore_replace">Replace</string>
     <!-- Stands in for a game's name when the library no longer holds it. -->
     <string name="ui_save_conflict_unknown_game">Unknown Game</string>
     <!-- Age of a save whose clock is ahead of this device's. Adverb phrase. -->
@@ -994,10 +1001,6 @@
     <!-- Button on the image cache row. Verb: puts the folder back to Argosy's own. -->
     <string name="ui_image_cache_reset">Reset</string>
 
-    <!-- Second line under the 3D box art switch when no game in the library has spine art. -->
-    <string name="ui_home_layout_box_art_subtitle_none">No game has spine art, so every game draws as a 2D cover</string>
-    <!-- Second line under the 3D box art switch otherwise. -->
-    <string name="ui_home_layout_box_art_subtitle">Draw games that have a spine as a box, and the rest as covers</string>
     <!-- Settings row: where a carousel row sits vertically. Noun phrase. -->
     <string name="ui_home_layout_row_alignment">Row Position</string>
     <!-- Settings row: where along a carousel the focused card sits. Noun phrase. -->
@@ -1019,11 +1022,6 @@
     <!-- Second line under that row. "View All" names the card that ends a row and matches
          ui_view_all_outline_label. -->
     <string name="ui_home_layout_show_all_games_subtitle">Scroll a platform\'s whole library instead of stopping at View All</string>
-    <!-- Settings row on the carousel: whether covers draw as 3D boxes. "3D" is the shape, not a
-         word to translate. -->
-    <string name="ui_home_layout_carousel_box_art">3D Box Art</string>
-    <!-- The same row on the automatic grid. -->
-    <string name="ui_home_layout_auto_grid_box_art">3D Box Art</string>
     <!-- Settings row: how many columns of cells the curated grid has. Noun, plural. -->
     <string name="ui_home_layout_custom_grid_columns">Columns</string>
     <!-- Settings row: how many rows of cells the curated grid has. Noun, plural. -->
@@ -1097,67 +1095,138 @@
 
     <!-- Title of the main page of the panel that slides in from the side, holding display, audio
          and haptic rows. Noun phrase. -->
-    <string name="ui_quick_settings_title">Quick Settings</string>
+    <string name="ui_quick_settings_title">Settings</string>
     <!-- Row of that panel: how hard the device is allowed to work. Noun. -->
     <string name="ui_quick_settings_performance">Performance</string>
-    <!-- Shown in place of that row's value when Argosy cannot reach the device's settings. -->
-    <string name="ui_quick_settings_performance_disabled">Permission required</string>
     <!-- Row of that panel: how the cooling fan runs. Noun. -->
     <string name="ui_quick_settings_fan">Fan</string>
-    <!-- Shown in place of that row's value when Argosy cannot reach the device's settings. -->
-    <string name="ui_quick_settings_fan_disabled">Permission required</string>
-    <!-- Fan setting: as quiet as the device allows. Adjective. -->
+    <!-- Fan setting: as quiet as the device allows. Adjective; shown on a narrow segment, keep
+         short. -->
     <string name="ui_quick_settings_fan_quiet">Quiet</string>
-    <!-- Fan setting: the device decides. Adjective. -->
+    <!-- Fan setting: the device decides. Adjective; shown on a narrow segment, keep short. -->
     <string name="ui_quick_settings_fan_smart">Smart</string>
-    <!-- Fan setting: cooling favoured over noise. Adjective. -->
+    <!-- Fan setting: cooling favoured over noise. Adjective; shown on a narrow segment, keep
+         short. -->
     <string name="ui_quick_settings_fan_sport">Sport</string>
-    <!-- Fan setting: the reader sets the speed themselves. The plus sign is part of the
-         label. -->
-    <string name="ui_quick_settings_fan_custom">Turbo+</string>
-    <!-- Performance setting: the device's ordinary mode. Adjective. -->
+    <!-- Fan setting: the reader sets the speed themselves on the slider below. Adjective; shown
+         on a narrow segment, keep short. -->
+    <string name="ui_quick_settings_fan_custom">Custom</string>
+    <!-- Performance mode: the device's ordinary mode. Adjective; shown on a segment, keep
+         short. -->
     <string name="ui_quick_settings_performance_standard">Standard</string>
-    <!-- Performance setting: faster, warmer. Noun phrase. -->
-    <string name="ui_quick_settings_performance_high">High Performance</string>
-    <!-- Performance setting: as fast as the device goes. Noun phrase. -->
-    <string name="ui_quick_settings_performance_max">Max Performance</string>
-    <!-- Label over the slider that sets fan speed by hand. Noun. -->
-    <string name="ui_quick_settings_fan_speed">Speed</string>
-    <!-- Label over the slider that sets how hard the device buzzes. Noun. -->
-    <string name="ui_quick_settings_vibration_strength">Strength</string>
+    <!-- Performance mode: faster, warmer. Adjective; shown on a segment, keep short. -->
+    <string name="ui_quick_settings_performance_high">High</string>
+    <!-- Performance mode: as fast as the device goes. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_max">Max</string>
+    <!-- Performance mode: slowest clocks for the longest battery life. Adjective; shown on a
+         segment, keep short. -->
+    <string name="ui_quick_settings_performance_eco">Eco</string>
+    <!-- Performance mode: the device's everyday clocks. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_balanced">Balanced</string>
+    <!-- Performance mode tuned for streaming games from a PC or console. Noun; shown on a
+         segment, keep short. -->
+    <string name="ui_quick_settings_performance_streaming">Streaming</string>
+    <!-- Performance mode for playing games on the device. Noun; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_performance_gaming">Gaming</string>
+    <!-- Row of the Performance page that picks the performance mode. Noun. -->
+    <string name="ui_quick_settings_performance_mode">Mode</string>
+    <!-- Label of the slider that sets the fan speed by hand when the fan is on Custom. Noun
+         phrase. -->
+    <string name="ui_quick_settings_fan_speed">Custom speed</string>
+    <!-- Row of the Performance page: how many times per second the screen redraws. Noun
+         phrase. -->
+    <string name="ui_quick_settings_refresh_rate">Refresh rate</string>
+    <!-- Refresh rate option: the system picks the rate. Adjective; shown on a segment, keep
+         short. -->
+    <string name="ui_quick_settings_refresh_auto">Auto</string>
+    <!-- Refresh rate option. %1$d is a rate in hertz, such as 120. Keep the unit abbreviation. -->
+    <string name="ui_quick_settings_refresh_hz">%1$d Hz</string>
+    <!-- Row of the Performance page: shows frame rate, battery and clock over games played
+         in Argosy's own emulator. Noun phrase. -->
+    <string name="ui_quick_settings_hud">Stats overlay</string>
+    <!-- Second line of that row: where the overlay appears. Prepositional phrase. -->
+    <string name="ui_quick_settings_hud_description">In built-in games</string>
+    <!-- Notice at the top of the Performance page when Argosy cannot change the device's
+         performance and fan settings. Full sentence. -->
+    <string name="ui_quick_settings_device_access_notice">Argosy needs permission to change these.</string>
+    <!-- Button beside that notice that opens the permission settings. Verb. -->
+    <string name="ui_quick_settings_device_access_allow">Allow</string>
     <!-- Row of that panel: light or dark. Noun. -->
     <string name="ui_quick_settings_theme">Theme</string>
-    <!-- Row of that panel: whether the device buzzes on a press. Noun, plural. -->
+    <!-- Row of that panel that picks the interface's highlight colour by sliding along the
+         colour wheel. Noun. -->
+    <string name="ui_quick_settings_accent">Accent color</string>
+    <!-- Value of that row while it uses the theme's own colour instead of a custom one.
+         Adjective. -->
+    <string name="ui_quick_settings_accent_default">Default</string>
+    <!-- Theme option on a narrow segment: always light. Adjective. -->
+    <string name="ui_quick_settings_theme_light">Light</string>
+    <!-- Theme option on a narrow segment: always dark. Adjective. -->
+    <string name="ui_quick_settings_theme_dark">Dark</string>
+    <!-- Theme option on a narrow segment: follow the device's light or dark setting
+         automatically. Keep very short. -->
+    <string name="ui_quick_settings_theme_system">Auto</string>
+    <!-- Row of that panel: whether the device buzzes on a press, and how hard. Noun,
+         plural. -->
     <string name="ui_quick_settings_haptics">Haptics</string>
     <!-- Row of that panel: whether the launcher makes a sound on a press. Noun phrase. -->
     <string name="ui_quick_settings_ui_sounds">UI Sounds</string>
+    <!-- Row of that panel that swaps the confirm and back buttons on the controller. "A" and
+         "B" are the controller button names; keep them as letters. -->
+    <string name="ui_quick_settings_swap_ab">Swap A/B</string>
+    <!-- Row of that panel that swaps the X and Y buttons on the controller. "X" and "Y" are the
+         controller button names; keep them as letters. -->
+    <string name="ui_quick_settings_swap_xy">Swap X/Y</string>
+    <!-- Row of that panel that swaps the Start and Select buttons on the controller. "Start"
+         and "Select" are the controller button names. -->
+    <string name="ui_quick_settings_swap_start_select">Swap Start/Select</string>
     <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
          other's role. -->
-    <string name="ui_quick_settings_swap_displays">Swap Displays</string>
-    <!-- Row of that panel, on a device with two screens. Verb phrase: puts each screen in the
-         other's role. -->
+    <string name="ui_quick_settings_swap_displays">Swap screens</string>
     <!-- Row of that panel. "QuayPass" is the name of an Argosy feature; leave it
          untranslated. -->
     <string name="ui_quick_settings_quaypass">QuayPass</string>
     <!-- Label beside the system volume slider. Noun. -->
     <string name="ui_quick_settings_volume">Volume</string>
-    <!-- Label beside the screen brightness slider. Noun. -->
+    <!-- Label beside the screen brightness slider on a device with one screen. Noun. -->
     <string name="ui_quick_settings_brightness">Brightness</string>
-    <!-- Title of the page of that panel for a device with two screens. Noun, plural. -->
-    <string name="ui_quick_settings_page_screens">Screens</string>
+    <!-- Label of the brightness slider for the screen that shows the launcher, on a device
+         with two screens. Noun phrase. -->
+    <string name="ui_quick_settings_brightness_main">Main screen</string>
+    <!-- Label of the brightness slider for the other screen, on a device with two screens.
+         Noun phrase. -->
+    <string name="ui_quick_settings_brightness_second">Second screen</string>
+    <!-- Value shown on a switched slider while the setting is turned off. Adjective. -->
+    <string name="ui_quick_settings_off">Off</string>
+    <!-- A slider value as a percentage, for example "40%". %1$d is the number. -->
+    <string name="ui_quick_settings_percent">%1$d%%</string>
     <!-- Title of the page of that panel holding the performance and fan rows. Noun. -->
     <string name="ui_quick_settings_page_performance">Performance</string>
     <!-- Title of the page of that panel holding the social rows. Noun, plural. -->
     <string name="ui_quick_settings_page_friends">Friends</string>
     <!-- Title of the page of that panel holding the background music row. Noun. -->
     <string name="ui_quick_settings_page_music">Music</string>
-    <!-- Sub-heading on that panel over the theme and brightness rows. Noun. -->
+    <!-- Section heading on that panel over the theme and brightness rows. Noun. Shown in
+         capitals. -->
     <string name="ui_quick_settings_group_display">Display</string>
-    <!-- Sub-heading on that panel over the volume and UI sound rows. Noun. -->
-    <string name="ui_quick_settings_group_audio">Audio</string>
-    <!-- Sub-heading on that panel over the remaining rows, such as haptics. Adjective used as a
-         noun: everything else. -->
-    <string name="ui_quick_settings_group_other">Other</string>
+    <!-- Section heading on that panel over the volume and UI sound rows. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_audio">Sound</string>
+    <!-- Section heading on that panel over the haptics and button swap rows. Noun, plural.
+         Shown in capitals. -->
+    <string name="ui_quick_settings_group_controls">Controls</string>
+    <!-- Section heading on the Performance page over the mode and refresh rate rows. Noun.
+         Shown in capitals. -->
+    <string name="ui_quick_settings_group_performance">Performance</string>
+    <!-- Section heading on the Performance page over the fan rows. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_fan">Fan</string>
+    <!-- Section heading on the Performance page over the stats overlay row. Noun. Shown in
+         capitals. -->
+    <string name="ui_quick_settings_group_overlay">Overlay</string>
     <!-- Music page of that panel: shown in place of a song title when nothing is queued. -->
     <string name="ui_quick_settings_music_nothing_playing">Nothing playing</string>
     <!-- Music page: name of the playlist the reader builds in Argosy's own music settings. Noun
@@ -1165,6 +1234,12 @@
     <string name="ui_quick_settings_music_source_launcher">Launcher music</string>
     <!-- Music page: position of the current song in the playing list, for example "3 of 12". -->
     <string name="ui_quick_settings_music_track_position">%1$d of %2$d</string>
+    <!-- Music page heading over the queued songs, shown in capitals. %1$s is the position
+         text above, for example "3 of 12". The dot is a separator. -->
+    <string name="ui_quick_settings_music_up_next">Up next &#183; %1$s</string>
+    <!-- Music page row that turns launcher music on or off and sets how loud it plays. Noun
+         phrase. -->
+    <string name="ui_quick_settings_music_volume">Music volume</string>
     <!-- Music page button description: goes to the previous song. -->
     <string name="ui_quick_settings_music_previous">Previous track</string>
     <!-- Music page button description: starts the music. Verb. -->
@@ -1175,6 +1250,8 @@
     <string name="ui_quick_settings_music_next">Next track</string>
     <!-- Music page button description: plays the list in random order. Verb. -->
     <string name="ui_quick_settings_music_shuffle">Shuffle</string>
+    <!-- Music page button description: keeps music playing while the screen is off. -->
+    <string name="ui_quick_settings_music_play_in_background">Play in background</string>
     <!-- Heading of the Music page list of playlists. Noun, plural. -->
     <string name="ui_quick_settings_music_playlists">Playlists</string>
     <!-- Heading of the Music page list of games whose soundtrack can be played. Noun
@@ -1216,10 +1293,14 @@
     <string name="ui_quick_settings_music_notice_sign_in_playlists">Sign in to RomM again to see your server playlists</string>
     <!-- Footer hint on the playlist list. Verb phrase: opens the RomM sign-in settings. -->
     <string name="ui_quick_settings_music_hint_sign_in">Sign in again</string>
-    <!-- Footer hint on the quick panel's friends page: marks the focused friend as a favorite. -->
-    <string name="ui_quick_settings_friends_hint_favorite">Favorite</string>
-    <!-- Footer hint on the quick panel's friends page: removes the focused friend from favorites. -->
-    <string name="ui_quick_settings_friends_hint_unfavorite">Remove favorite</string>
+    <!-- Row in a friend's options on the quick panel: marks that friend as a favorite. Verb. -->
+    <string name="ui_quick_friends_options_favorite">Favorite</string>
+    <!-- Row in a friend's options on the quick panel: removes that friend from favorites. -->
+    <string name="ui_quick_friends_options_unfavorite">Remove favorite</string>
+    <!-- Row in a friend's options on the quick panel: opens that friend's profile. -->
+    <string name="ui_quick_friends_options_profile">View profile</string>
+    <!-- Row in the reader's own options on the quick panel: opens the avatar drawing editor. -->
+    <string name="ui_quick_friends_options_edit_avatar">Edit avatar</string>
     <!-- Shown where the track list of the Music page would be when nothing is queued. -->
     <string name="ui_quick_settings_music_queue_empty">Pick a playlist or soundtrack to start</string>
     <!-- Under a playlist name: who made the playlist. %1$s is a user name. -->
@@ -1238,10 +1319,19 @@
 
     <!-- Shown on the quick panel's Friends page when the reader has no friends yet. -->
     <string name="ui_drawer_friends_empty">No friends yet</string>
-    <!-- Heading over the reachable friends. %1$d is how many. Rendered in caps in English. -->
-    <string name="ui_drawer_friends_online">ONLINE (%1$d)</string>
-    <!-- Heading over the unreachable friends. %1$d is how many. Rendered in caps in English. -->
-    <string name="ui_drawer_friends_offline">OFFLINE (%1$d)</string>
+    <!-- Heading over the reachable friends, shown in capitals. %1$d is how many. The dot is a
+         separator. -->
+    <string name="ui_drawer_friends_online">Online &#183; %1$d</string>
+    <!-- Heading over the unreachable friends, shown in capitals. %1$d is how many. The dot is
+         a separator. -->
+    <string name="ui_drawer_friends_offline">Offline &#183; %1$d</string>
+    <!-- Under the reader's own name on the Friends page while connected to the social
+         service. Adjective. -->
+    <string name="ui_quick_friends_status_online">Online</string>
+    <!-- Under the reader's own name on the Friends page while not connected. Adjective. -->
+    <string name="ui_quick_friends_status_offline">Offline</string>
+    <!-- Toggle row on the Friends page: when off, friends see the reader as offline. -->
+    <string name="ui_quick_friends_appear_online">Appear online</string>
     <!-- Second line under a friend hosting a netplay game. %1$s is the game's title. -->
     <string name="ui_drawer_friend_hosting">Hosting %1$s</string>
     <!-- Second line under a friend in a game on their own. %1$s is the game's title. -->
@@ -1357,6 +1447,26 @@
     <string name="ui_sync_overlay_local_modified_restore">Use Synced Save</string>
     <!-- Second line under that choice. -->
     <string name="ui_sync_overlay_local_modified_restore_subtitle">Overwrite local with last synced version (backup created)</string>
+    <!-- Heading when this device and another both saved the same channel since they last synced. -->
+    <string name="ui_sync_overlay_snapshot_conflict_title">Save Conflict</string>
+    <!-- Body under that heading. %1$s is the game's title. -->
+    <string name="ui_sync_overlay_snapshot_conflict_message">The save on this device for \"%1$s\" and the save on the server both changed since they last matched.</string>
+    <!-- Choice keeping this device's save. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_mine">Keep Mine</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_mine_subtitle">This device\'s save becomes the latest on the server</string>
+    <!-- Choice taking the save on the server. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_theirs">Use Server Save</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_theirs_subtitle">Replace this device\'s save with the latest one (backup created)</string>
+    <!-- Choice keeping both saves by moving this device's save to a new channel. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_branch">Keep Both</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_branch_subtitle">Move this device\'s save to a new channel</string>
+    <!-- Choice returning to the save this device last synced. Verb phrase. -->
+    <string name="ui_sync_overlay_snapshot_conflict_revert">Revert</string>
+    <!-- Second line under that choice. -->
+    <string name="ui_sync_overlay_snapshot_conflict_revert_subtitle">Go back to the save this device last synced (backup created)</string>
     <!-- Heading when a save changed on both sides while the game was being played. -->
     <string name="ui_sync_overlay_post_session_title">Save Conflict</string>
     <!-- Line naming what is in conflict. %1$s is the game's title, %2$s the save slot. The

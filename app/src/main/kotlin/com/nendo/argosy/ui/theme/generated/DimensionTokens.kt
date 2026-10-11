@@ -73,7 +73,11 @@ object DimensionTokens {
         const val footerHeightCompact = 30
         const val modalWidth = 400
         const val modalWidthLg = 520
-        const val quickPanelWidthFriends = 456
+        const val quickPanelWidthWide = 456
+        const val navDrawerWidth = 252
+        const val quickPanelWidthMedia = 520
+        const val quickPanelRailWidth = 56
+        const val quickPanelHeaderHeight = 56
         const val modalWidthXl = 575
         const val menuBreakpointWide = 600
         const val inGameMenuWidth = 300
@@ -121,6 +125,20 @@ object DimensionTokens {
         const val companionRailCoverWidth = 44
         const val companionSessionCoverWidth = 72
         const val achievementRowBadge = 56
+        const val saveChannelTileWidth = 168
+        const val saveChannelCardWidth = 136
+        const val saveChannelRowHeight = 252
+        const val saveChannelModalWidth = 680
+        const val saveTimelineColumnWidth = 88
+        const val saveTimelineLaneHeight = 84
+        const val saveTimelineLabelWidth = 184
+        const val saveTimelineDot = 16
+        const val saveTimelineDotCurrent = 24
+        const val saveTimelinePinMark = 8
+        const val saveTimelineFloaterWidth = 360
+        const val saveTimelineFloaterThumb = 152
+        const val saveTimelineHeaderCover = 56
+        const val saveTimelineBackdropBlur = 48
     }
 
     object Elevation {

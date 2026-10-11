@@ -27,6 +27,7 @@ import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.local.dao.DownloadQueueDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.preferences.UserPreferences
+import com.nendo.argosy.data.wallpaper.LockScreenScenes
 import com.nendo.argosy.data.repository.CollectionRepository
 import com.nendo.argosy.data.repository.PlatformRepository
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -40,7 +41,6 @@ import com.nendo.argosy.ui.audio.AmbientAudioManager
 import com.nendo.argosy.ui.input.GamepadInputHandler
 import com.nendo.argosy.ui.input.gamepadEventToKeyCode
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
-import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
 import com.nendo.argosy.ui.theme.ALauncherTheme
 import android.view.Display
 import com.nendo.argosy.hardware.SecondaryHomeActivity
@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "MainActivity"
+private const val AUDIO_FOCUS_WINDOW = "main"
 private val LAUNCH_EXTRA_KEYS = listOf("path", "romm_id", "game_id", "channel")
 internal fun shouldInitializeScreenCapture(prefs: UserPreferences): Boolean =
     prefs.ambientLedEnabled && prefs.ambientLedScreenEnabled
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var jellyfinConnectionManager: com.nendo.argosy.data.remote.jellyfin.JellyfinConnectionManager
     @Inject lateinit var preferencesRepository: UserPreferencesRepository
     @Inject lateinit var syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
+    @Inject lateinit var displayPreferencesRepository: com.nendo.argosy.data.preferences.DisplayPreferencesRepository
     @Inject lateinit var homeTileRepository: com.nendo.argosy.data.repository.HomeTileRepository
     @Inject lateinit var homeTilePromptQueue: com.nendo.argosy.data.repository.HomeTilePromptQueue
     @Inject lateinit var appsRepository: com.nendo.argosy.data.repository.AppsRepository
@@ -126,7 +128,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var advanceCollectionFocusUseCase: com.nendo.argosy.domain.usecase.collection.AdvanceCollectionFocusUseCase
     @Inject lateinit var prepareCollectionQueueUseCase: com.nendo.argosy.domain.usecase.collection.PrepareCollectionQueueUseCase
     @Inject lateinit var getGamesForPinnedCollectionUseCase: com.nendo.argosy.domain.usecase.collection.GetGamesForPinnedCollectionUseCase
-    @Inject lateinit var gameLaunchDelegate: GameLaunchDelegate
+    @Inject lateinit var sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator
     @Inject lateinit var saveCacheManager: SaveCacheManager
     @Inject lateinit var prefetchGameSaveDataUseCase:
         com.nendo.argosy.domain.usecase.sync.PrefetchGameSaveDataUseCase
@@ -270,7 +272,7 @@ class MainActivity : ComponentActivity() {
                 downloadManager = downloadManagerInstance,
                 gameActionsDelegate = gameActionsDelegate,
                 platformSyncQueue = platformSyncQueue,
-                gameLaunchDelegate = gameLaunchDelegate,
+                sessionEndCoordinator = sessionEndCoordinator,
                 saveCacheManager = saveCacheManager,
                 prefetchGameSaveDataUseCase = prefetchGameSaveDataUseCase,
                 raRepository = raRepository,
@@ -428,7 +430,6 @@ class MainActivity : ComponentActivity() {
 
         dualScreenManager.broadcastForegroundState(true)
 
-        cleanupStaleSession()
         revalidateDownloadedFiles()
 
         if (hasResumedBefore) {
@@ -448,7 +449,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        ambientAudioManager.suspend()
+        if (!ambientAudioManager.keepsPlayingAsleep()) ambientAudioManager.suspend()
         if (!dualScreenManager.isCompanionActive.value) {
             dualScreenManager.broadcastForegroundState(false)
         }
@@ -471,13 +472,6 @@ class MainActivity : ComponentActivity() {
         if (!dualScreenManager.claimInput(event)) return true
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
             Logger.verbose(TAG) { "dispatchKeyEvent: key=${event.keyCode} isHome=$isOnHomeScreen swapped=${dualScreenManager.isRolesSwapped.value} gameOnSecondary=${dualScreenManager.swappedIsGameActive.value} companion=${dualScreenManager.isCompanionActive.value} overlay=$isOverlayFocused" }
-            if (dualScreenManager.handleConflictInput(
-                    event.keyCode,
-                    sessionStateStore.getSwapAB(),
-                    sessionStateStore.getSwapXY(),
-                    sessionStateStore.getSwapStartSelect()
-                )
-            ) return true
         }
 
         if (dualScreenManager.swappedIsGameActive.value && !isOverlayFocused && isGameOnOtherDisplay()) {
@@ -643,6 +637,8 @@ class MainActivity : ComponentActivity() {
             }
             window.hideSystemBars()
             window.decorView.requestFocus()
+            if (::dualScreenManager.isInitialized) dualScreenManager.onLauncherWindowFocused(this)
+            ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
             ambientAudioManager.fadeIn()
             ambientLedManager.setContext(AmbientLedContext.ARGOSY_UI)
             ambientLedManager.clearInGameColors()
@@ -656,7 +652,7 @@ class MainActivity : ComponentActivity() {
             ) {
                 yieldedFocusToGame = true
             }
-            ambientAudioManager.fadeOut()
+            ambientAudioManager.onLauncherWindowUnfocused(AUDIO_FOCUS_WINDOW)
             ambientLedManager.setContext(AmbientLedContext.IN_GAME)
             if (::dualScreenManager.isInitialized) {
                 val emulatorDisplay = dualScreenManager.emulatorDisplayId
@@ -723,33 +719,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * The launcher UI returning to the foreground ends the session only once the emulator is
-     * actually gone. An emulator that hands off between its own activities drops the launcher
-     * in front for an instant, and a two-display device leaves the game running unfocused on the
-     * other panel, so neither the launcher resuming nor the display it resumed on says anything
-     * about whether the game is still there. Only a session on a different display survives
-     * outright, since the game and the launcher UI legitimately coexist.
-     */
-    private fun cleanupStaleSession() {
-        activityScope.launch {
-            if (!::dualScreenManager.isInitialized) return@launch
-            if (dualScreenManager.isMovingGame) return@launch
-            val emulatorDisplay = dualScreenManager.emulatorDisplayId
-            val ownDisplay = window.decorView.display?.displayId
-            if (emulatorDisplay != null && ownDisplay != null && emulatorDisplay != ownDisplay) return@launch
-            val emulatorGone = dualScreenManager.emulatorLeftScreen(this@MainActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            }
-            if (!emulatorGone) return@launch
-            if (playSessionTracker.activeSession.value == null &&
-                preferencesRepository.getPersistedSession() == null
-            ) return@launch
-
-            dualScreenManager.endSessionAfterEmulatorLeft()
-        }
-    }
-
     private fun revealCallerWhenExternalSessionCloses() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -782,20 +751,8 @@ class MainActivity : ComponentActivity() {
                 imageCacheManager.migrateFlatToSharded()
             }
 
-            imageCacheManager.resumePendingCache()
-            imageCacheManager.resumePendingCoverCache()
-            if (preferencesRepository.preferences.first().boxArtCacheEnabled) {
-                imageCacheManager.resumePendingBoxFaceCache()
-            }
             imageCacheManager.resumePendingLogoCache()
             imageCacheManager.resumePendingBadgeCache()
-
-            val validationResult = imageCacheManager.validateAndCleanCache()
-            if (validationResult.deletedFiles > 0 || validationResult.clearedPaths > 0) {
-                Log.i(TAG, "Cache validation: ${validationResult.deletedFiles} files deleted, ${validationResult.clearedPaths} paths cleared")
-            }
-
-            imageCacheManager.recoverMissingCovers()
 
             androidGameScanner.ensureAndroidPlatformExists()
 
@@ -811,6 +768,14 @@ class MainActivity : ComponentActivity() {
             }
             lifecycleScope.launch { steamLibraryRepair.repairCovers() }
 
+            launch(Dispatchers.IO) {
+                val validationResult = imageCacheManager.validateAndCleanCache()
+                if (validationResult.deletedFiles > 0 || validationResult.clearedPaths > 0) {
+                    Log.i(TAG, "Cache validation: ${validationResult.deletedFiles} files deleted, ${validationResult.clearedPaths} paths cleared")
+                }
+                imageCacheManager.resumePendingArt(includeBoxFaces = prefs.boxArtCacheEnabled)
+            }
+
             if (shouldInitializeScreenCapture(prefs)) {
                 if (screenCaptureManager.hasPermission.value && !screenCaptureManager.isCapturing.value) {
                     screenCaptureManager.startCapture()
@@ -821,8 +786,19 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+
+            if (shouldOfferLiveWallpaper(prefs)) {
+                displayPreferencesRepository.setLiveWallpaperOffered()
+                runCatching { startActivity(LockScreenScenes.pickerIntent(this@MainActivity)) }
+                    .onFailure { Log.w(TAG, "Live wallpaper picker unavailable: ${it.message}") }
+            }
         }
     }
+
+    private suspend fun shouldOfferLiveWallpaper(prefs: UserPreferences): Boolean =
+        LockScreenScenes.canOffer(this, prefs.lockScreenArt) &&
+            !LockScreenScenes.isLiveActive(this) &&
+            !displayPreferencesRepository.isLiveWallpaperOffered()
 
 
 

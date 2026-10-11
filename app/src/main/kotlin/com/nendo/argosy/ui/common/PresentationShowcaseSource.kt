@@ -49,7 +49,7 @@ class PresentationShowcaseSource @Inject constructor(
         val layout = DualScreenManagerHolder.instance?.presentationStyle?.value?.layout
         if (layout != PresentationLayout.LOGO) return false
         val game = gameRepository.getById(gameId) ?: return false
-        if (game.displayLogoPath != null || game.rommId == null) return false
+        if (gameRepository.getArt(gameId).logoPath != null || game.rommId == null) return false
         return romMRepository.fetchLogo(gameId)?.startsWith("/") == true
     }
 
@@ -68,7 +68,11 @@ class PresentationShowcaseSource @Inject constructor(
     ): CompanionDetail {
         val platformName = platformRepository.getById(game.platformId)?.getDisplayName()
         val friends = game.igdbId?.let { friendsByIgdbId[it.toInt()] }.orEmpty()
-        return game.toHomeGameUi(downloadStatus, platformDisplayName = platformName)
-            .toCompanionDetail(friends)
+        return game.toHomeGameUi(
+            downloadStatus,
+            gameRepository.getArt(game.id),
+            gameRepository.getScreenshots(game.id).firstOrNull()?.sourceUrl,
+            platformDisplayName = platformName
+        ).toCompanionDetail(friends)
     }
 }

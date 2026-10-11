@@ -131,6 +131,37 @@ class RomMServerArtTest {
     }
 
     @Test
+    fun `3d box lists ScreenScraper, LaunchBox and gamelist files, then remote LaunchBox images`() {
+        val boxed = rom.copy(
+            ssMetadata = rom.ssMetadata?.copy(box3dPath = "roms/1/7/box3d/ss.png"),
+            launchboxMetadata = RomMLaunchboxMetadata(
+                images = listOf(
+                    lb("Box - 3D", "https://lb.test/box3d.png"),
+                    lb("Box - 3D", "launchbox-file:///box3d.png")
+                ),
+                box3dPath = "roms/1/7/box3d/lb.png"
+            ),
+            gamelistMetadata = RomMGamelistMetadata(box3dPath = "roms/1/7/box3d/gl.png")
+        )
+
+        assertEquals(
+            listOf(
+                ServerArt("$base/assets/romm/resources/roms/1/7/box3d/ss.png", ArtProvider.SCREENSCRAPER),
+                ServerArt("$base/assets/romm/resources/roms/1/7/box3d/lb.png", ArtProvider.LAUNCHBOX),
+                ServerArt("$base/assets/romm/resources/roms/1/7/box3d/gl.png", ArtProvider.ROMM),
+                ServerArt("https://lb.test/box3d.png", ArtProvider.LAUNCHBOX)
+            ),
+            client.serverArt(boxed, ArtSlot.BOX_3D)
+        )
+        assertEquals(client.serverArt(boxed, ArtSlot.BOX_3D).map { it.url }, client.buildBox3dUrls(boxed))
+    }
+
+    @Test
+    fun `a rom with no 3d box offers none`() {
+        assertEquals(emptyList<ServerArt>(), client.serverArt(rom, ArtSlot.BOX_3D))
+    }
+
+    @Test
     fun `a rom without metadata offers nothing`() {
         val bare = rom.copy(coverLarge = null, launchboxMetadata = null, ssMetadata = null)
 

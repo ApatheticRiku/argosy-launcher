@@ -354,6 +354,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Videoton stummschalten</string>
 
     <string name="settings_home_screen_installed_only_title">Nur installierte Spiele</string>
+    <string name="settings_home_screen_box_art_title">Box-Art</string>
+    <string name="settings_home_screen_box_art_subtitle">Zeigt eine 3D-Box für Spiele, die eine haben</string>
+    <string name="settings_home_screen_box_art_option_2d">2D-Cover</string>
+    <string name="settings_home_screen_box_art_option_3d">3D-Box</string>
     <string name="settings_home_screen_installed_only_subtitle">Nur heruntergeladene Spiele auf dem Startbildschirm anzeigen</string>
 
     <!-- ===== Saves section ===== -->
@@ -557,6 +561,10 @@
     <string name="settings_permissions_screen_capture_description">Ermöglicht Ambient-LED-Beleuchtung, die Bildschirmfarben während des Spielens abtastet.</string>
     <string name="settings_permissions_display_overlay_title">Über anderen Apps anzeigen</string>
     <string name="settings_permissions_display_overlay_description">Zeigt Benachrichtigungen zur Spielstanderkennung beim Spielen in externen Emulatoren an.</string>
+    <string name="settings_permissions_live_wallpaper_title">Animierter Sperrbildschirm</string>
+    <string name="settings_permissions_live_wallpaper_description">Erlaube Argosy, einen animierten Sperrbildschirm einzurichten.</string>
+    <string name="settings_lock_screen_wallpaper_label">Argosy-Bibliothek</string>
+    <string name="settings_lock_screen_wallpaper_description">Erlaube Argosy, einen animierten Sperrbildschirm einzurichten.</string>
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d Berechtigungen erteilt</string>
 
     <!-- ===== About section ===== -->
@@ -603,6 +611,10 @@
     <string name="settings_about_log_path_internal">Intern</string>
     <string name="settings_about_log_path_sd_card">SD-Karte/%1$s</string>
     <string name="settings_about_log_level_title">Protokollstufe</string>
+    <string name="settings_about_log_level_debug">Debug</string>
+    <string name="settings_about_log_level_info">Info</string>
+    <string name="settings_about_log_level_warn">Warnung</string>
+    <string name="settings_about_log_level_error">Fehler</string>
     <string name="settings_about_save_debug_title">Spielstand-Debug-Protokollierung</string>
     <string name="settings_about_save_debug_subtitle_on">Detaillierte Spielstandvorgänge werden protokolliert</string>
     <string name="settings_about_save_debug_subtitle_off">Protokolliert Spielstand-Sync-, Cache- und Kanalereignisse</string>
@@ -1355,6 +1367,14 @@
         <item quantity="one">%d Update</item>
         <item quantity="other">%d Updates</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d Update</item>
+        <item quantity="other">%d Updates</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d Update</item>
+        <item quantity="other">%d Updates</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Core-Optionen</string>
     <string name="settings_builtin_core_options_subtitle">Einstellungen und Overrides je Core</string>
 
@@ -1398,6 +1418,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Eingabezuordnung</string>
     <string name="settings_builtin_controls_mapping_subtitle">Tasten für jeden Controller neu belegen</string>
+    <string name="settings_builtin_controls_controller_type_title">Controller Spieler %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">Der Controller, den das Spiel sieht. Gilt ab dem nächsten Spielstart.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Linker Stick als D-Pad</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Linken Analogstick auf D-Pad-Eingaben abbilden</string>
@@ -1742,6 +1764,10 @@
     <string name="settings_library_layout_title">Layout</string>
     <string name="settings_library_layout_grid">Raster</string>
     <string name="settings_library_layout_list">Liste</string>
+    <string name="settings_library_box_art_title">Box-Art</string>
+    <string name="settings_library_box_art_subtitle">Zeigt eine 3D-Box für Spiele, die eine haben</string>
+    <string name="settings_library_box_art_option_2d">2D-Cover</string>
+    <string name="settings_library_box_art_option_3d">3D-Box</string>
     <string name="settings_library_grid_density_title">Rasterdichte</string>
     <string name="settings_library_grid_density_compact">Kompakt</string>
     <string name="settings_library_grid_density_normal">Normal</string>
@@ -2397,6 +2423,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Gilt nur für Casual-Spiele</string>
     <string name="settings_libretro_def_auto_restore_state_title">Savestate beim Start wiederherstellen</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Gilt nur für Casual-Spiele</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Neueren Server-Spielstand bevorzugen</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Savestate zum automatischen Fortsetzen überspringen, wenn ein neuerer Spielstand vom Server heruntergeladen wurde</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin- und Flycast-Savestates</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Experimentell; diese Cores können schwarz bleiben oder nicht fortsetzen. Wirkt sich erst beim nächsten Start aus, nur Casual-Spiele</string>
 

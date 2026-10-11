@@ -4,6 +4,6 @@
          otherwise be indistinguishable from the main launcher entry. "Argosy" is the product
          name and stays as is; translate only the word describing the companion screen. -->
     <string name="secondary_home_label">Argosy Compañero</string>
-    <!-- Spoken by the screen reader for the accessibility service that pins gamepad focus. -->
-    <string name="focus_accessibility_description">Mantiene el enfoque del mando en la pantalla de juego durante el juego en dos pantallas</string>
+    <!-- Spoken by the screen reader for the accessibility service that pins gamepad focus and captures a screenshot of the game screen when a game save file is written. -->
+    <string name="focus_accessibility_description">Mantiene el enfoque del mando en la pantalla de juego durante el juego en dos pantallas y toma en silencio una captura del juego cuando se escribe una partida guardada</string>
 </resources>

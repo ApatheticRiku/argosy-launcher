@@ -483,11 +483,7 @@ private fun ControllerRow(
     } else {
         Color.Transparent
     }
-    val borderColor = if (isFocused) {
-        theme.focusAccent
-    } else {
-        MaterialTheme.colorScheme.outlineVariant
-    }
+    val borderColor = MaterialTheme.colorScheme.outlineVariant
     val contentColor = if (isFocused) {
         lerp(theme.focusAccent, Color.White, 0.45f)
     } else {
@@ -631,11 +627,7 @@ private fun ButtonMappingRow(
     } else {
         Color.Transparent
     }
-    val borderColor = if (isFocused) {
-        theme.focusAccent
-    } else {
-        MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-    }
+    val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
     val contentColor = if (isFocused) {
         lerp(theme.focusAccent, Color.White, 0.45f)
     } else {

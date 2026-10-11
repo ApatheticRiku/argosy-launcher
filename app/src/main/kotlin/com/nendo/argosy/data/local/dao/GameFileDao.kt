@@ -79,13 +79,14 @@ interface GameFileDao {
         SELECT
             g.id AS gameId,
             g.title AS title,
-            COALESCE(g.coverOverridePath, g.coverPath) AS coverPath,
+            $RESOLVED_ART_SQL AS coverPath,
             g.platformSlug AS platformSlug,
             SUM(CASE WHEN gf.category = 'update' THEN 1 ELSE 0 END) AS updateCount,
             SUM(CASE WHEN gf.category = 'dlc' THEN 1 ELSE 0 END) AS dlcCount,
             SUM(gf.fileSize) AS totalSize
         FROM game_files gf
         INNER JOIN games g ON gf.gameId = g.id
+        LEFT JOIN game_art art ON art.gameId = g.id AND art.slot = 'COVER'
         WHERE gf.localPath IS NULL
         GROUP BY gf.gameId
         ORDER BY g.title ASC

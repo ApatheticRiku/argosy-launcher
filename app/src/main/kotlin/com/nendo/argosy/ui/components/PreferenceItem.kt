@@ -10,7 +10,11 @@ import com.nendo.argosy.ui.util.clickableNoFocus
 import com.nendo.argosy.ui.util.focusBackground
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -55,13 +59,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import com.nendo.argosy.ui.primitives.ArgosyToggle
 import com.nendo.argosy.ui.primitives.ArgosyTrackSlider
 import com.nendo.argosy.ui.primitives.EnumValueControl
+import com.nendo.argosy.ui.primitives.SegmentedControl
 import com.nendo.argosy.ui.primitives.StepperControl
+import com.nendo.argosy.ui.primitives.segmentedInlineWidth
 import com.nendo.argosy.ui.theme.AspectRatioClass
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -98,18 +103,12 @@ internal fun preferenceModifier(
         animationSpec = Motion.focusColorSpec,
         label = "pref-bg"
     )
-    val borderAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.8f else 0f,
-        animationSpec = Motion.focusSpring,
-        label = "pref-border"
-    )
 
     return Modifier
         .fillMaxWidth()
         .heightIn(min = Dimens.settingsItemMinHeight)
         .clip(preferenceShape)
         .background(background)
-        .border(Dimens.borderThin, accent.copy(alpha = borderAlpha), preferenceShape)
         .then(
             when {
                 onClick != null -> Modifier.clickableNoFocus(onClick = onClick)
@@ -148,7 +147,8 @@ fun NavigationPreference(
     title: String,
     subtitle: String,
     isFocused: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    badge: String? = null
 ) {
     Row(
         modifier = preferenceModifier(isFocused, onClick = onClick),
@@ -173,6 +173,10 @@ fun NavigationPreference(
                 style = MaterialTheme.typography.bodySmall,
                 color = preferenceSecondaryColor(isFocused)
             )
+        }
+        if (badge != null) {
+            PreferenceBadge(badge)
+            Spacer(modifier = Modifier.width(Dimens.spacingSm))
         }
         Icon(
             Icons.Default.ChevronRight,
@@ -248,23 +252,7 @@ fun CyclePreference(
                 horizontalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
             ) {
                 if (showResetButton && onReset != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(Dimens.iconMd)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
-                            .clickableNoFocus(onClick = onReset),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = stringResource(
-                                R.string.ui_cycle_preference_reset_to_global
-                            ),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(Dimens.iconSm)
-                        )
-                    }
+                    PreferenceResetButton(onReset)
                 }
                 EnumValueControl(
                     value = value,
@@ -294,6 +282,120 @@ fun CyclePreference(
             onDismiss = { pickerVisible = false },
             visible = pickerVisible
         )
+    }
+}
+
+@Composable
+fun SegmentedPreference(
+    title: String,
+    options: List<String>,
+    selectedIndex: Int,
+    isFocused: Boolean,
+    onSelect: (Int) -> Unit,
+    subtitle: String? = null,
+    alwaysStacked: Boolean = false,
+    onReset: (() -> Unit)? = null
+) {
+    val trackWidth = segmentedInlineWidth(options)
+    val titleStyle = MaterialTheme.typography.titleMedium
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val titleWidth = remember(title, titleStyle, density) {
+        with(density) { measurer.measure(title, titleStyle).size.width.toDp() }
+    }
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val rowContentWidth = maxWidth - Dimens.spacingMd * 2
+        val inline = !alwaysStacked && trackWidth + titleWidth + Dimens.spacingSm <= rowContentWidth &&
+            trackWidth <= rowContentWidth * INLINE_TRACK_MAX_SHARE
+        SegmentedPreferenceRow(title, subtitle, options, selectedIndex, isFocused, onSelect, inline, trackWidth, onReset)
+    }
+}
+
+private const val INLINE_TRACK_MAX_SHARE = 0.6f
+
+@Composable
+private fun PreferenceResetButton(onReset: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(Dimens.iconMd)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.2f))
+            .clickableNoFocus(onClick = onReset),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = stringResource(R.string.ui_cycle_preference_reset_to_global),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(Dimens.iconSm)
+        )
+    }
+}
+
+@Composable
+private fun SegmentedPreferenceRow(
+    title: String,
+    subtitle: String?,
+    options: List<String>,
+    selectedIndex: Int,
+    isFocused: Boolean,
+    onSelect: (Int) -> Unit,
+    inline: Boolean,
+    trackWidth: Dp,
+    onReset: (() -> Unit)?
+) {
+    val labels: @Composable () -> Unit = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = preferenceContentColor(isFocused)
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = preferenceSecondaryColor(isFocused)
+                    )
+                }
+            }
+            if (onReset != null) {
+                PreferenceResetButton(onReset)
+            }
+        }
+    }
+    if (inline) {
+        Row(
+            modifier = preferenceModifier(isFocused),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = Dimens.spacingSm)
+            ) { labels() }
+            SegmentedControl(
+                options = options,
+                selectedIndex = selectedIndex,
+                onSelect = onSelect,
+                focused = isFocused,
+                modifier = Modifier.width(trackWidth)
+            )
+        }
+    } else {
+        Column(modifier = preferenceModifier(isFocused)) {
+            labels()
+            SegmentedControl(
+                options = options,
+                selectedIndex = selectedIndex,
+                onSelect = onSelect,
+                focused = isFocused,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = Dimens.spacingXs)
+            )
+        }
     }
 }
 
@@ -687,24 +789,27 @@ fun ActionPreference(
                                 else preferenceSecondaryColor(isFocused).copy(alpha = 0.5f)
                     )
                 }
-                if (badge != null) {
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.secondary,
-                                shape = RoundedCornerShape(Dimens.radiusSm)
-                            )
-                            .padding(horizontal = Dimens.spacingXs, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = badge,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondary
-                        )
-                    }
-                }
+                if (badge != null) PreferenceBadge(badge)
             }
         }
+    }
+}
+
+@Composable
+private fun PreferenceBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = MaterialTheme.colorScheme.secondary,
+                shape = RoundedCornerShape(Dimens.radiusSm)
+            )
+            .padding(horizontal = Dimens.spacingXs, vertical = Dimens.borderMedium)
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondary
+        )
     }
 }
 

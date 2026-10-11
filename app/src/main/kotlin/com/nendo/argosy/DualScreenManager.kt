@@ -38,7 +38,6 @@ import com.nendo.argosy.core.game.toAchievementUi
 import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.notification.showSuccess
 import com.nendo.argosy.ui.screens.common.GameActionsDelegate
-import com.nendo.argosy.ui.screens.common.GameLaunchDelegate
 import com.nendo.argosy.hardware.FocusAccessibilityService
 import com.nendo.argosy.hardware.FocusDirectorActivity
 import com.nendo.argosy.hardware.SecondaryHomeActivity
@@ -84,7 +83,7 @@ class DualScreenManager(
     internal val downloadManager: DownloadManager,
     private val gameActionsDelegate: GameActionsDelegate,
     private val platformSyncQueue: com.nendo.argosy.data.sync.PlatformSyncQueue,
-    private val gameLaunchDelegate: GameLaunchDelegate,
+    private val sessionEndCoordinator: com.nendo.argosy.ui.screens.common.SessionEndCoordinator,
     private val saveCacheManager: SaveCacheManager,
     internal val raRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
     internal val raTileContentRepository: com.nendo.argosy.data.repository.RaTileContentRepository,
@@ -994,6 +993,18 @@ class DualScreenManager(
         _primaryOnHome.value = onHome
     }
 
+    private val _primaryRoute = MutableStateFlow<String?>(null)
+
+    /**
+     * The concrete route the hosting launcher is showing, so the launcher composed on the other
+     * activity after a role swap opens on the same screen.
+     */
+    val primaryRoute: StateFlow<String?> = _primaryRoute
+
+    fun setPrimaryRoute(route: String?) {
+        _primaryRoute.value = route
+    }
+
     /**
      * What the player has open, mirrored here so the companion reads playback the same way it reads
      * every other cross-display fact. The player is still the only writer; this is the door the
@@ -1309,127 +1320,11 @@ class DualScreenManager(
     private fun onActiveAccountChanged() {
         Log.i(TAG, "Active RomM account changed, resetting companion-visible state")
         clearCompanionAchievements()
-        _dualSyncOverlay.value = null
-        _dualSaveConflict.value = null
         eachCompanion { it.onAccountSwitched() }
     }
 
     @Volatile private var menuWrapMode: com.nendo.argosy.data.preferences.MenuWrapMode =
         com.nendo.argosy.data.preferences.MenuWrapMode.HARD_STOP
-
-    private val _dualSyncOverlay = MutableStateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?>(null)
-    val dualSyncOverlay: StateFlow<com.nendo.argosy.ui.screens.common.SyncOverlayState?> = _dualSyncOverlay
-
-    private val _dualSyncOverlayFocusIndex = MutableStateFlow(0)
-    val dualSyncOverlayFocusIndex: StateFlow<Int> = _dualSyncOverlayFocusIndex
-
-    fun moveSyncConflictFocus(direction: Int) {
-        val state = _dualSyncOverlay.value ?: return
-        val maxIndex = when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> 1
-            else -> return
-        }
-        _dualSyncOverlayFocusIndex.value = (_dualSyncOverlayFocusIndex.value + direction).coerceIn(0, maxIndex)
-    }
-
-    fun handleConflictInput(keyCode: Int, swapAB: Boolean, swapXY: Boolean, swapStartSelect: Boolean): Boolean {
-        if (!_isDualScreenDevice.value) return false
-        if (_dualSyncOverlay.value == null && _dualSaveConflict.value == null) return false
-        val event = com.nendo.argosy.ui.input.mapKeycodeToGamepadEvent(keyCode, swapAB, swapXY, swapStartSelect)
-            ?: return true
-        if (_dualSyncOverlay.value != null) {
-            when (event) {
-                com.nendo.argosy.ui.input.GamepadEvent.Up -> moveSyncConflictFocus(-1)
-                com.nendo.argosy.ui.input.GamepadEvent.Down -> moveSyncConflictFocus(1)
-                com.nendo.argosy.ui.input.GamepadEvent.Confirm -> confirmSyncConflict()
-                com.nendo.argosy.ui.input.GamepadEvent.Back -> dismissSyncConflict()
-                else -> {}
-            }
-            return true
-        }
-        if (_dualSaveConflict.value != null) {
-            when (event) {
-                com.nendo.argosy.ui.input.GamepadEvent.Left,
-                com.nendo.argosy.ui.input.GamepadEvent.Up -> moveSaveConflictFocus(-1)
-                com.nendo.argosy.ui.input.GamepadEvent.Right,
-                com.nendo.argosy.ui.input.GamepadEvent.Down -> moveSaveConflictFocus(1)
-                com.nendo.argosy.ui.input.GamepadEvent.Confirm -> confirmSaveConflict()
-                com.nendo.argosy.ui.input.GamepadEvent.Back -> dismissSaveConflict()
-                else -> {}
-            }
-            return true
-        }
-        return false
-    }
-
-    fun confirmSyncConflict() {
-        val state = _dualSyncOverlay.value ?: return
-        val wasPostSession = state.syncProgress is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict
-        val index = _dualSyncOverlayFocusIndex.value
-        when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> when (index) {
-                0 -> state.syncProgress.onSkipSync?.invoke()
-                1 -> state.syncProgress.onOverwrite?.invoke()
-            }
-            else -> {}
-        }
-        _dualSyncOverlay.value = null
-        _dualSyncOverlayFocusIndex.value = 0
-    }
-
-    fun dismissSyncConflict() {
-        val state = _dualSyncOverlay.value ?: return
-        when (state.syncProgress) {
-            is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict -> state.syncProgress.onSkipSync?.invoke()
-            else -> {}
-        }
-        _dualSyncOverlay.value = null
-        _dualSyncOverlayFocusIndex.value = 0
-    }
-
-    fun setDualSyncConflictFromSaveConflict(state: com.nendo.argosy.ui.screens.common.SyncOverlayState) {
-        _dualSyncOverlayFocusIndex.value = 0
-        _dualSyncOverlay.value = state
-    }
-
-    fun clearDualSyncConflictIfPostSession() {
-        if (_dualSyncOverlay.value?.syncProgress is com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict) {
-            _dualSyncOverlay.value = null
-            _dualSyncOverlayFocusIndex.value = 0
-        }
-    }
-
-    private val _dualSaveConflict = MutableStateFlow<com.nendo.argosy.ui.components.SaveConflictInfo?>(null)
-    val dualSaveConflict: StateFlow<com.nendo.argosy.ui.components.SaveConflictInfo?> = _dualSaveConflict
-
-    private val _dualSaveConflictFocusIndex = MutableStateFlow(0)
-    val dualSaveConflictFocusIndex: StateFlow<Int> = _dualSaveConflictFocusIndex
-
-    var onSaveConflictDismiss: (() -> Unit)? = null
-    var onSaveConflictOverwrite: (() -> Unit)? = null
-
-    fun setSaveConflict(info: com.nendo.argosy.ui.components.SaveConflictInfo?) {
-        _dualSaveConflict.value = info
-        _dualSaveConflictFocusIndex.value = 0
-    }
-
-    fun moveSaveConflictFocus(direction: Int) {
-        _dualSaveConflictFocusIndex.value = (_dualSaveConflictFocusIndex.value + direction).coerceIn(0, 1)
-    }
-
-    fun confirmSaveConflict() {
-        _dualSaveConflict.value ?: return
-        val idx = _dualSaveConflictFocusIndex.value
-        if (idx == 0) onSaveConflictDismiss?.invoke() else onSaveConflictOverwrite?.invoke()
-        _dualSaveConflict.value = null
-        _dualSaveConflictFocusIndex.value = 0
-    }
-
-    fun dismissSaveConflict() {
-        onSaveConflictDismiss?.invoke()
-        _dualSaveConflict.value = null
-        _dualSaveConflictFocusIndex.value = 0
-    }
 
     private val _pendingOverlayEvent = MutableStateFlow<String?>(null)
     val pendingOverlayEvent: StateFlow<String?> = _pendingOverlayEvent
@@ -1780,31 +1675,45 @@ class DualScreenManager(
      * Ends the session whose emulator [emulatorLeftScreen] reported gone. On a dual-screen device it
      * then kills the stopped emulator along with any presentation window it left on the other
      * display, retrying until the process is cached or a new session starts. On any other device
-     * the emulator is stopped once, after the session end completes, when
-     * [GameLaunchDelegate.shouldStopAfterSession] allows it.
+     * [SessionEndCoordinator] stops the emulator once its session end completes.
      */
     fun endSessionAfterEmulatorLeft() {
         val emulatorPackage = sessionStateStore.getEmulatorPackage()
         emulatorDisplayId = null
         sessionStateStore.clearSession()
-        val sessionEnd = playSessionTracker.endSessionInBackground()
+        val sessionEnd = sessionEndCoordinator.endClosedSession()
         broadcastSessionCleared()
-        if (emulatorPackage == null) return
+        if (emulatorPackage == null || !_isDualScreenDevice.value) return
         if (emulatorPackage == com.nendo.argosy.data.emulator.EmulatorRegistry.BUILTIN_PACKAGE) return
         scope.launch {
             sessionEnd.join()
-            if (!_isDualScreenDevice.value) {
-                if (sessionStateStore.hasActiveSession()) return@launch
-                if (gameLaunchDelegate.shouldStopAfterSession(emulatorPackage)) {
-                    gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
-                }
-                return@launch
-            }
             repeat(EMULATOR_RELEASE_ATTEMPTS) {
                 if (sessionStateStore.hasActiveSession()) return@launch
-                gameLaunchDelegate.stopBackgroundEmulator(emulatorPackage)
+                sessionEndCoordinator.stopBackgroundEmulator(emulatorPackage)
                 delay(EMULATOR_RELEASE_INTERVAL_MS)
             }
+        }
+    }
+
+    private var focusCheck: kotlinx.coroutines.Job? = null
+
+    /**
+     * A launcher window gaining focus on the display its game ran on is the launcher's signal that
+     * the game closed. The session ends once [emulatorLeftScreen] confirms it; a game on another
+     * display keeps running.
+     */
+    fun onLauncherWindowFocused(activity: android.app.Activity) {
+        if (isMovingGame || focusCheck?.isActive == true) return
+        val ownDisplay = activity.window.decorView.display?.displayId ?: return
+        val gameDisplay = emulatorDisplayId
+        if (gameDisplay != null && gameDisplay != ownDisplay) return
+        focusCheck = scope.launch {
+            if (playSessionTracker.activeSession.value == null &&
+                preferencesRepository.getPersistedSession() == null
+            ) return@launch
+            if (!emulatorLeftScreen(activity) { activity.hasWindowFocus() }) return@launch
+            Log.d(TAG, "Launcher focused on display $ownDisplay and the game is gone, ending session")
+            endSessionAfterEmulatorLeft()
         }
     }
 
@@ -1935,6 +1844,7 @@ class DualScreenManager(
             scope.launch { refreshCompanionAchievements(gameId) }
             scope.launch(Dispatchers.IO) {
                 val game = gameDao.getById(gameId) ?: return@launch
+                val art = imageCacheManager.loadArt(gameId)
                 val platform = platformRepository.getById(game.platformId)
                 val documents = com.nendo.argosy.ui.screens.gamedetail.components.gameDocuments(
                     game = game,
@@ -1945,7 +1855,7 @@ class DualScreenManager(
                     com.nendo.argosy.hardware.CompanionInGameState(
                         gameId = gameId,
                         title = game.title,
-                        coverPath = game.displayCoverPath,
+                        coverPath = art.coverPath,
                         platformName = platform?.getDisplayName() ?: game.platformSlug,
                         developer = game.developer,
                         releaseYear = game.releaseYear,
@@ -1958,7 +1868,7 @@ class DualScreenManager(
                         isHardcore = sessionStateStore.isHardcore(),
                         isDirty = sessionStateStore.isSaveDirty(),
                         isLoaded = true,
-                        backgroundPath = game.displayBackgroundPath,
+                        backgroundPath = art.backgroundPath,
                         manual = documents.firstOrNull {
                             it.category == com.nendo.argosy.data.model.VariantCategory.MANUAL.key
                         },

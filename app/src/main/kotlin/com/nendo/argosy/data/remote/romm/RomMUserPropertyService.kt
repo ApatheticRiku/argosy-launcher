@@ -2,9 +2,13 @@ package com.nendo.argosy.data.remote.romm
 
 import com.nendo.argosy.data.cache.ImageCacheManager
 import kotlinx.coroutines.flow.first
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.GameScreenshotDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
+import com.nendo.argosy.data.local.dao.resolved
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.local.entity.SyncType
 import com.nendo.argosy.data.sync.SyncCoordinator
@@ -30,7 +34,9 @@ class RomMUserPropertyService @Inject constructor(
     private val userPreferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository,
     private val gameFileSync: RomMGameFileSync,
     private val gameFileDao: GameFileDao,
-    private val siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository
+    private val siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository,
+    private val gameArtDao: GameArtDao,
+    private val gameScreenshotDao: GameScreenshotDao
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
 
@@ -184,24 +190,21 @@ class RomMUserPropertyService @Inject constructor(
     suspend fun fetchLogo(gameId: Long): String? {
         val currentApi = api ?: return null
         val game = gameDao.getById(gameId) ?: return null
-        game.logoPath?.let { return it }
+        gameArtDao.resolved(gameId).logoPath?.let { return it }
         val rommId = game.rommId ?: return null
         val rom = runCatching { currentApi.getRom(rommId) }.getOrNull()
             ?.takeIf { it.isSuccessful }?.body() ?: return null
         val logoUrls = apiClient.buildLogoUrls(rom)
         if (logoUrls.isEmpty()) return null
+        gameArtDao.setSourceUrl(gameId, ArtSlot.LOGO, logoUrls.first())
         val cached = imageCacheManager.cacheGameImagesNow(
             rommId = rommId,
             gameTitle = rom.name,
             coverUrls = emptyList(),
             backgroundUrls = emptyList(),
-            boxBackUrl = null,
-            boxSpineUrl = null,
             logoUrls = logoUrls
         )
-        val path = cached.logoPath ?: logoUrls.first()
-        gameDao.updateLogoPath(gameId, path)
-        return path
+        return cached.logoPath ?: logoUrls.first()
     }
 
     suspend fun refreshGameData(gameId: Long): RomMResult<Unit> {
@@ -218,6 +221,7 @@ class RomMUserPropertyService @Inject constructor(
             val rom = response.body() ?: return RomMResult.Error("Empty response")
 
             imageCacheManager.deleteGameImages(rommId)
+            imageCacheManager.forgetCachedArt(game.id)
 
             val screenshotUrls = rom.screenshotUrls.ifEmpty {
                 rom.screenshotPaths?.mapNotNull { apiClient.buildMediaUrl(it) } ?: emptyList()
@@ -229,31 +233,32 @@ class RomMUserPropertyService @Inject constructor(
             val coverUrls = apiClient.buildCoverUrls(rom)
 
             val boxArtEnabled = userPreferencesRepository.userPreferences.first().boxArtCacheEnabled
-            val boxBackUrl = if (boxArtEnabled) {
-                apiClient.buildResourceUrl(rom.ssMetadata?.box2dBackPath)
-            } else null
-            val boxSpineUrl = if (boxArtEnabled) {
-                apiClient.buildResourceUrl(rom.ssMetadata?.box2dSidePath)
-            } else null
+            val boxBackUrls = if (boxArtEnabled) apiClient.buildBoxBackUrls(rom) else emptyList()
+            val boxSpineUrls = if (boxArtEnabled) apiClient.buildBoxSpineUrls(rom) else emptyList()
             val logoUrls = apiClient.buildLogoUrls(rom)
+            val box3dUrls = apiClient.buildBox3dUrls(rom)
+            gameArtDao.setSourceUrl(game.id, ArtSlot.COVER, coverUrls.firstOrNull())
+            gameArtDao.setSourceUrl(game.id, ArtSlot.BACKGROUND, backgroundUrls.firstOrNull())
+            gameArtDao.setSourceUrl(game.id, ArtSlot.LOGO, logoUrls.firstOrNull())
+            gameArtDao.setSourceUrl(game.id, ArtSlot.BOX_3D, box3dUrls.firstOrNull())
+            if (boxArtEnabled) {
+                gameArtDao.setSourceUrl(game.id, ArtSlot.BOX_SPINE, boxSpineUrls.firstOrNull())
+                gameArtDao.setSourceUrl(game.id, ArtSlot.BOX_BACK, boxBackUrls.firstOrNull())
+            }
+            gameScreenshotDao.replaceSources(game.id, screenshotUrls)
 
-            val cached = imageCacheManager.cacheGameImagesNow(
+            imageCacheManager.cacheGameImagesNow(
                 rommId = rom.id,
                 gameTitle = rom.name,
                 coverUrls = coverUrls,
                 backgroundUrls = backgroundUrls,
-                boxBackUrl = boxBackUrl,
-                boxSpineUrl = boxSpineUrl,
-                logoUrls = logoUrls
+                boxBackUrls = boxBackUrls,
+                boxSpineUrls = boxSpineUrls,
+                logoUrls = logoUrls,
+                box3dUrls = box3dUrls
             )
 
             val updatedGame = game.withRomMetadata(rom).copy(
-                coverPath = cached.coverPath ?: coverUrls.firstOrNull(),
-                backgroundPath = cached.backgroundPath ?: backgroundUrls.firstOrNull(),
-                screenshotPaths = screenshotUrls.joinToString(","),
-                boxBackPath = cached.boxBackPath ?: boxBackUrl ?: game.boxBackPath,
-                boxSpinePath = cached.boxSpinePath ?: boxSpineUrl ?: game.boxSpinePath,
-                logoPath = cached.logoPath ?: logoUrls.firstOrNull() ?: game.logoPath,
                 rommFileName = rom.fileName ?: game.rommFileName
             )
 

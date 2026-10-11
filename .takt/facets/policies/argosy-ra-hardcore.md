@@ -18,8 +18,10 @@ acceptable as a standalone change that says so.
 - Resume grants hardcore only through `isValidHardcoreSave` (flag and trailer); the demote-to-casual
   branch stays.
 - The hardcore flag and trailer survive end to end, and trailer bytes are stripped before bytes
-  reach the core or disk. Hardcore saves never go into a named channel. Isolation never keys on the
-  deprecated `"HARDCORE"` slot string.
+  reach the core or disk. Isolation never keys on the deprecated `"HARDCORE"` slot string.
+- On servers without snapshots, hardcore saves never go into a named channel. On RomM snapshot
+  servers, hardcore saves stay in the active channel and isolation is the `isHardcore` column plus
+  the trailer. `SnapshotSyncRouter.sessionChannel` is the only place that decides this.
 - `restoreSaveForLaunchMode` takes no timestamp parameter, and `activeSaveApplied` is not overridden.
 - SRAM fallback in resume-hardcore never touches state slots.
 - `libretro/speedrun/` references no hardcore, save state, SRAM, rewind or core memory code.

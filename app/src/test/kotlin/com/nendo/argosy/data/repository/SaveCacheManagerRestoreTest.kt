@@ -60,6 +60,7 @@ class SaveCacheManagerRestoreTest {
             saveOwnershipDao = mockk(relaxed = true),
             saveUnitResolver = mockk(relaxed = true),
             gciSaveHandler = GciSaveHandler(context, fal, saveArchiver),
+            sigilSaveHandler = com.nendo.argosy.data.sync.fixtures.notRoutedSigil(),
         )
     }
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.social.SocialRepository
 import com.nendo.argosy.ui.screens.doodle.GamePickerItem
+import com.nendo.argosy.ui.screens.doodle.toGamePickerItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -134,8 +135,7 @@ class PostEditorViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            val recent = gameRepository.getRecentlyPlayed(10)
-            val items = recent.map { it.toPickerItem() }
+            val items = gameRepository.getRecentlyPlayed(10).toGamePickerItems(gameRepository)
             _uiState.update { it.copy(gamePickerResults = items) }
         }
     }
@@ -149,15 +149,15 @@ class PostEditorViewModel @Inject constructor(
         gameSearchJob?.cancel()
         if (query.isBlank()) {
             viewModelScope.launch {
-                val recent = gameRepository.getRecentlyPlayed(10)
-                _uiState.update { it.copy(gamePickerResults = recent.map { g -> g.toPickerItem() }) }
+                val items = gameRepository.getRecentlyPlayed(10).toGamePickerItems(gameRepository)
+                _uiState.update { it.copy(gamePickerResults = items) }
             }
             return
         }
         gameSearchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
-            val results = gameRepository.searchForQuickMenu(query, 10).first()
-            _uiState.update { it.copy(gamePickerResults = results.map { g -> g.toPickerItem() }) }
+            val items = gameRepository.searchForQuickMenu(query, 10).first().toGamePickerItems(gameRepository)
+            _uiState.update { it.copy(gamePickerResults = items) }
         }
     }
 
@@ -277,12 +277,4 @@ class PostEditorViewModel @Inject constructor(
             }
         }
     }
-
-    private fun com.nendo.argosy.data.local.entity.GameEntity.toPickerItem() = GamePickerItem(
-        id = id,
-        igdbId = igdbId?.toInt(),
-        title = title,
-        platform = platformSlug,
-        coverPath = coverPath
-    )
 }

@@ -1,12 +1,11 @@
 package com.nendo.argosy.ui.input
 
 import com.nendo.argosy.core.input.SoundType
-import com.nendo.argosy.data.sync.ConflictResolution
 
 class BackgroundConflictInputHandler(
     private val moveFocus: (Int) -> Unit,
-    private val focusedButton: () -> Int,
-    private val resolve: (ConflictResolution) -> Unit
+    private val confirm: () -> Unit,
+    private val skip: () -> Unit
 ) : CapturingInputHandler {
 
     override fun onUp(): InputResult {
@@ -20,16 +19,12 @@ class BackgroundConflictInputHandler(
     }
 
     override fun onConfirm(): InputResult {
-        when (focusedButton()) {
-            0 -> resolve(ConflictResolution.KEEP_LOCAL)
-            1 -> resolve(ConflictResolution.KEEP_SERVER)
-            2 -> resolve(ConflictResolution.SKIP)
-        }
+        confirm()
         return InputResult.handled(SoundType.CLOSE_MODAL)
     }
 
     override fun onBack(): InputResult {
-        resolve(ConflictResolution.SKIP)
+        skip()
         return InputResult.handled(SoundType.CLOSE_MODAL)
     }
 }

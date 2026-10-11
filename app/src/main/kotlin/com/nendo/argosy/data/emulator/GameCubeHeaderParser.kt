@@ -63,14 +63,7 @@ object GameCubeHeaderParser {
                 raf.read(nameBytes)
                 val gameName = String(nameBytes).substringBefore('\u0000').trim()
 
-                // Determine region from last character of game ID
-                val region = when (gameId.lastOrNull()) {
-                    'E' -> "USA"
-                    'P' -> "EUR"
-                    'J' -> "JAP"
-                    'K' -> "KOR"
-                    else -> "USA" // Default to USA
-                }
+                val region = regionFolderFor(gameId)
 
                 GameCubeGameInfo(
                     gameId = gameId,
@@ -115,14 +108,7 @@ object GameCubeHeaderParser {
                 raf.read(filenameBytes)
                 val internalFilename = String(filenameBytes).substringBefore('\u0000').trim()
 
-                // Determine region from game ID
-                val region = when (gameId.lastOrNull()) {
-                    'E' -> "USA"
-                    'P' -> "EUR"
-                    'J' -> "JAP"
-                    'K' -> "KOR"
-                    else -> "USA"
-                }
+                val region = regionFolderFor(gameId)
 
                 if (!looksLikeGciField(gameId, 4) || !looksLikeGciField(makerCode, 2)) {
                     Logger.warn(
@@ -158,11 +144,17 @@ object GameCubeHeaderParser {
         return "$baseDir/$region/Card A/$gciFilename"
     }
 
-    private val VALID_REGIONS = listOf("USA", "EUR", "JAP", "KOR")
+    val REGION_FOLDERS = listOf("USA", "EUR", "JAP")
+
+    private fun regionFolderFor(gameId: String): String = when (gameId.lastOrNull()) {
+        'P' -> "EUR"
+        'J', 'K' -> "JAP"
+        else -> "USA"
+    }
 
     fun isValidGciPath(path: String): Boolean {
         if (!path.endsWith(".gci", ignoreCase = true)) return false
-        return VALID_REGIONS.any { region -> path.contains("/$region/Card A/") }
+        return REGION_FOLDERS.any { region -> path.contains("/$region/Card A/") }
     }
 
 }

@@ -7,6 +7,7 @@ import com.nendo.argosy.data.repository.BiosRepository
 import com.nendo.argosy.data.repository.RomMAccountRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.async
@@ -26,19 +27,31 @@ class RomMConnectionManagerTest {
     private val api: RomMApi = mockk(relaxed = true)
     private val heartbeats = AtomicInteger()
 
+    private val preferences: UserPreferencesRepository = mockk(relaxed = true)
+
     private fun manager(
         serverVersion: String = "5.4.0",
-        stored: UserPreferences = UserPreferences()
+        stored: UserPreferences = UserPreferences(),
+        reachable: Boolean = true,
+        rememberedSnapshots: Boolean? = null,
+        snapshots: Boolean = false
     ): RomMConnectionManager {
-        val preferences: UserPreferencesRepository = mockk(relaxed = true)
         every { preferences.preferences } returns flowOf(stored)
+        coEvery { preferences.getRommSnapshotSupport(any()) } returns null
+        coEvery { preferences.getRommSnapshotSupport("romm.local") } returns rememberedSnapshots
         val apiFactory: RomMApiFactory = mockk()
         every { apiFactory.create(any(), any(), any()) } returns api
         every { apiFactory.reachability } returns mockk(relaxed = true)
         coEvery { api.heartbeat() } coAnswers {
             heartbeats.incrementAndGet()
             delay(HEARTBEAT_DELAY_MS)
-            Response.success(RomMHeartbeatResponse(system = RomMSystem(version = serverVersion)))
+            if (!reachable) throw java.io.IOException("unreachable")
+            Response.success(
+                RomMHeartbeatResponse(
+                    system = RomMSystem(version = serverVersion),
+                    saveSync = RomMSaveSyncFeatures(snapshots = snapshots)
+                )
+            )
         }
         coEvery { api.getCurrentUser() } returns Response.success(
             RomMUser(id = 1L, username = "player", enabled = true, role = "admin")
@@ -118,6 +131,45 @@ class RomMConnectionManagerTest {
 
         assertTrue(connectedNow)
         assertTrue(heartbeats.get() > afterFirst)
+    }
+
+    @Test
+    fun `connecting remembers whether the server supports snapshots`() = runBlocking {
+        val manager = manager(stored = storedAccount(), snapshots = true)
+
+        manager.initialize()
+
+        assertTrue(manager.snapshotsEnabled())
+        coVerify { preferences.setRommSnapshotSupport("romm.local", true) }
+    }
+
+    @Test
+    fun `offline, a server last seen with snapshots keeps snapshot saves`() = runBlocking {
+        val manager = manager(stored = storedAccount(), reachable = false, rememberedSnapshots = true)
+
+        manager.initialize()
+
+        assertFalse(manager.isConnected())
+        assertTrue(manager.snapshotsEnabled())
+    }
+
+    @Test
+    fun `offline, a server never reached keeps legacy saves`() = runBlocking {
+        val manager = manager(stored = storedAccount(), reachable = false, rememberedSnapshots = null)
+
+        manager.initialize()
+
+        assertFalse(manager.snapshotsEnabled())
+    }
+
+    @Test
+    fun `connected, the live server decides over the remembered value`() = runBlocking {
+        val manager = manager(serverVersion = "5.5.0", stored = storedAccount(), rememberedSnapshots = true)
+
+        manager.initialize()
+
+        assertFalse(manager.snapshotsEnabled())
+        coVerify { preferences.setRommSnapshotSupport("romm.local", false) }
     }
 
     private companion object {

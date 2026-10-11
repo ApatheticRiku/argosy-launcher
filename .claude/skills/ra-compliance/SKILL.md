@@ -227,9 +227,14 @@ slot name:
   anything keying on the "HARDCORE" slot string is a regression.
 - Session save caching carries the flag end-to-end: `LibretroActivity` starts
   the play session with `hardcoreMode`; `data/emulator/PlaySessionTracker.kt`
-  passes `isHardcore` into `saveCacheManager.cacheCurrentSave` (hardcore
-  sessions also force `channelName = null` - hardcore saves live outside named
-  channels, see `SaveCacheManager.resolveDefaultChannel`).
+  passes `isHardcore` into `saveCacheManager.cacheCurrentSave`. Which channel
+  a hardcore session saves into depends on the server, and
+  `SnapshotSyncRouter.sessionChannel` is the single place that decides it. On
+  servers without snapshots (before RomM 5.5) hardcore sessions force
+  `channelName = null`, so hardcore saves live outside named channels (see
+  `SaveCacheManager.resolveDefaultChannel`). On RomM snapshot servers hardcore
+  sessions keep the active channel; isolation there is the `isHardcore` column
+  plus the trailer, and the snapshot's own `is_hardcore`.
 - **Trailer write**: `SaveCacheManager.cacheCurrentSave` appends the trailer
   to the cached copy when `isHardcore`, via
   `SaveArchiver.appendHardcoreTrailer`: `{"h":true,"v":1}` + LE length +
@@ -429,8 +434,10 @@ Run when hardcore logic changed. Log tag anchors:
 1. Create a casual save (in-game SRAM save), exit.
 2. "New Hardcore" for the same game: verify a rollback backup is logged
    before the fresh start and prior state slots are gone.
-3. Play, save in-game, exit. Verify the cached save logs `[HARDCORE]` and
-   the hardcore save is not listed under a named channel.
+3. Play, save in-game, exit. Verify the cached save logs `[HARDCORE]`. On a
+   server without snapshots, the hardcore save is not listed under a named
+   channel. On a RomM snapshot server, it lands in the active channel with
+   `isHardcore` set and the trailer intact.
 4. Plain "Resume" now enters hardcore (ratchet via valid trailer).
 5. Corrupt/strip the trailer on the cached hardcore file (test env only):
    Resume demotes to casual with the trailer warning in logs.

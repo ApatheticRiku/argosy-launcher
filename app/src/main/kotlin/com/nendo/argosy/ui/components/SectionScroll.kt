@@ -17,11 +17,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.nendo.argosy.ui.theme.Dimens
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlin.math.abs
 
 private const val FAR_JUMP_VIEWPORTS = 2
+
+@Composable
+private fun footerOverlapPx(): Int {
+    val footerVisible = LocalFooterHost.current.isBarVisible
+    val footerPx = with(LocalDensity.current) { Dimens.footerClearance.roundToPx() }
+    return if (footerVisible) footerPx else 0
+}
 
 /**
  * Scrolls to [index] with animation, but pre-snaps to within a couple of
@@ -76,7 +84,13 @@ suspend fun LazyStaggeredGridState.fastAnimateScrollToItem(index: Int, scrollOff
  * item is not yet laid out, its height is estimated from the average visible item, so
  * rows of differing heights settle within one estimate of true centre.
  */
-suspend fun LazyListState.animateScrollToItemCentered(index: Int) {
+suspend fun LazyListState.animateScrollToItemCentered(index: Int) = scrollToItemCentered(index, animate = true)
+
+/**
+ * [animateScrollToItemCentered] with the motion optional: [animate] false jumps straight to the
+ * centred position, for reduced motion.
+ */
+suspend fun LazyListState.scrollToItemCentered(index: Int, animate: Boolean) {
     if (index < 0) return
     if (layoutInfo.totalItemsCount == 0) {
         snapshotFlow { layoutInfo.totalItemsCount }.first { it > 0 }
@@ -86,14 +100,14 @@ suspend fun LazyListState.animateScrollToItemCentered(index: Int) {
     if (!canScrollForward && !canScrollBackward) return
     val visible = info.visibleItemsInfo
     if (visible.isEmpty()) {
-        animateScrollToItem(index)
+        if (animate) animateScrollToItem(index) else scrollToItem(index)
         return
     }
     val viewportHeight = info.viewportEndOffset - info.viewportStartOffset
     val itemHeight = visible.firstOrNull { it.index == index }?.size
         ?: (visible.sumOf { it.size } / visible.size)
     val centerOffset = (viewportHeight - itemHeight) / 2
-    animateScrollToItem(index, -centerOffset)
+    if (animate) animateScrollToItem(index, -centerOffset) else scrollToItem(index, -centerOffset)
 }
 
 /**
@@ -135,8 +149,9 @@ fun FocusedScroll(
     focusedIndex: Int
 ) {
     var isInitialPass by remember(listState) { mutableStateOf(true) }
+    val footerPx = footerOverlapPx()
 
-    LaunchedEffect(focusedIndex) {
+    LaunchedEffect(focusedIndex, footerPx) {
         val layoutInfo = listState.layoutInfo
         val visibleItems = layoutInfo.visibleItemsInfo
 
@@ -151,7 +166,8 @@ fun FocusedScroll(
         val instant = isInitialPass
         isInitialPass = false
 
-        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+        val visibleEnd = layoutInfo.viewportEndOffset - footerPx
+        val viewportHeight = visibleEnd - layoutInfo.viewportStartOffset
         val targetItem = visibleItems.find { it.index == focusedIndex }
         val itemHeight = targetItem?.size ?: visibleItems.maxOfOrNull { it.size } ?: 80
         val lastListIndex = layoutInfo.totalItemsCount - 1
@@ -159,7 +175,7 @@ fun FocusedScroll(
         if (focusedIndex >= lastListIndex) {
             val alreadyWhole = targetItem != null &&
                 targetItem.offset >= layoutInfo.viewportStartOffset &&
-                targetItem.offset + targetItem.size <= layoutInfo.viewportEndOffset
+                targetItem.offset + targetItem.size <= visibleEnd
             if (alreadyWhole) return@LaunchedEffect
             val bottomAlignOffset = if (targetItem != null) itemHeight - viewportHeight else 0
             if (instant) {
@@ -197,8 +213,9 @@ fun SectionHeaderLockScroll(
 ) {
     var previousSection by remember(listState) { mutableIntStateOf(Int.MIN_VALUE) }
     var isInitialPass by remember(listState) { mutableStateOf(true) }
+    val footerPx = footerOverlapPx()
 
-    LaunchedEffect(focusedIndex, sections) {
+    LaunchedEffect(focusedIndex, sections, footerPx) {
         val sectionIndex = sections.indexOfLast { focusedIndex >= it.focusStartIndex }
         val sectionChanged = sectionIndex != previousSection
         previousSection = sectionIndex
@@ -213,14 +230,19 @@ fun SectionHeaderLockScroll(
             val header = headerListIndexOf(sections[sectionIndex])
                 .coerceIn(0, listState.layoutInfo.totalItemsCount - 1)
             if (instant) listState.scrollToItem(header, 0) else listState.fastAnimateScrollToItem(header, 0)
-            listState.keepFocusedVisible(listIndex, headerListIndices, instant = true)
+            listState.keepFocusedVisible(listIndex, headerListIndices, instant = true, footerPx)
             return@LaunchedEffect
         }
-        listState.keepFocusedVisible(listIndex, headerListIndices, instant)
+        listState.keepFocusedVisible(listIndex, headerListIndices, instant, footerPx)
     }
 }
 
-private suspend fun LazyListState.keepFocusedVisible(listIndex: Int, headerListIndices: Set<Int>, instant: Boolean) {
+private suspend fun LazyListState.keepFocusedVisible(
+    listIndex: Int,
+    headerListIndices: Set<Int>,
+    instant: Boolean,
+    footerPx: Int
+) {
     if (listIndex < 0 || listIndex >= layoutInfo.totalItemsCount) return
     if (!canScrollForward && !canScrollBackward) return
     val item = layoutInfo.visibleItemsInfo.firstOrNull { it.index == listIndex }
@@ -235,7 +257,7 @@ private suspend fun LazyListState.keepFocusedVisible(listIndex: Int, headerListI
         ?.coerceAtLeast(0)
         ?: 0
     val safeTop = info.viewportStartOffset + pinnedHeader
-    val safeBottom = info.viewportEndOffset
+    val safeBottom = info.viewportEndOffset - footerPx
     val itemBottom = item.offset + item.size
     val delta = when {
         item.offset < safeTop -> item.offset - safeTop
@@ -271,7 +293,7 @@ fun GridFocusedScroll(
 ) {
     val density = LocalDensity.current
     val topInsetPx = with(density) { topInset.roundToPx() }
-    val bottomInsetPx = with(density) { bottomInset.roundToPx() }
+    val bottomInsetPx = with(density) { bottomInset.roundToPx() } + footerOverlapPx()
     var isInitialPass by remember(gridState) { mutableStateOf(true) }
 
     LaunchedEffect(focusedIndex, topInsetPx, bottomInsetPx) {
@@ -322,8 +344,9 @@ fun SectionFocusedScroll(
 ) {
     var previousFocusIndex by remember { mutableIntStateOf(focusedIndex) }
     var isInitialPass by remember(listState) { mutableStateOf(true) }
+    val footerPx = footerOverlapPx()
 
-    LaunchedEffect(focusedIndex) {
+    LaunchedEffect(focusedIndex, footerPx) {
         val jumped = abs(focusedIndex - previousFocusIndex) > 1
         previousFocusIndex = focusedIndex
 
@@ -336,7 +359,7 @@ fun SectionFocusedScroll(
         val instant = jumped || isInitialPass
         isInitialPass = false
 
-        val viewportHeight = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+        val viewportHeight = layoutInfo.viewportEndOffset - footerPx - layoutInfo.viewportStartOffset
         val listIndex = focusToListIndex(focusedIndex)
         val targetItem = visibleItems.find { it.index == listIndex }
         val itemHeight = targetItem?.size ?: visibleItems.maxOfOrNull { it.size } ?: 80

@@ -18,6 +18,8 @@ import com.nendo.argosy.data.local.entity.GameDiscEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.local.entity.SyncType
+import com.nendo.argosy.data.cache.recordArtSource
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.InstalledAppResolver
@@ -95,11 +97,14 @@ class RomMLibrarySyncService @Inject constructor(
     private val siblingSplitRepair: SiblingSplitRepair,
     private val siblingConfigCarryOver: SiblingConfigCarryOver,
     private val siblingGroupRepository: com.nendo.argosy.data.repository.SiblingGroupRepository,
-    private val variantFileCleanup: com.nendo.argosy.data.emulator.VariantFileCleanup
+    private val variantFileCleanup: com.nendo.argosy.data.emulator.VariantFileCleanup,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao,
+    private val gameScreenshotDao: com.nendo.argosy.data.local.dao.GameScreenshotDao
 ) {
     private val api: RomMApi? get() = connectionManager.getApi()
     private val syncMutex = Mutex()
     private var boxArtCacheEnabledForSync = true
+    private var screenshotCacheEnabledForSync = false
     private var decodedImageCacheDirty = false
 
     private val _syncProgress = MutableStateFlow(SyncProgress())
@@ -158,6 +163,7 @@ class RomMLibrarySyncService @Inject constructor(
         val prefs = userPreferencesRepository.preferences.first()
         val filters = prefs.syncFilters
         boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
+        screenshotCacheEnabledForSync = prefs.syncScreenshotsEnabled
         val scope = resolveSyncScope(currentApi)
         val syncStartedAt = Instant.now()
         val queryFrom = since.minus(CHANGES_OVERLAP)
@@ -289,7 +295,9 @@ class RomMLibrarySyncService @Inject constructor(
                 is RomMResult.Error -> return@withContext fetched
             }
             syncMutex.withLock {
-                boxArtCacheEnabledForSync = userPreferencesRepository.preferences.first().boxArtCacheEnabled
+                val prefs = userPreferencesRepository.preferences.first()
+                boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
+                screenshotCacheEnabledForSync = prefs.syncScreenshotsEnabled
                 try {
                     if (!ensurePlatformRow(currentApi, rom.platformId)) {
                         return@withLock RomMResult.Error("Platform ${rom.platformId} not found on the server")
@@ -332,6 +340,7 @@ class RomMLibrarySyncService @Inject constructor(
         val prefs = userPreferencesRepository.preferences.first()
         val filters = prefs.syncFilters
         boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
+        screenshotCacheEnabledForSync = prefs.syncScreenshotsEnabled
         val scope = resolveSyncScope(currentApi)
 
         _syncProgress.update {
@@ -573,6 +582,7 @@ class RomMLibrarySyncService @Inject constructor(
         val prefs = userPreferencesRepository.preferences.first()
         val filters = prefs.syncFilters
         boxArtCacheEnabledForSync = prefs.boxArtCacheEnabled
+        screenshotCacheEnabledForSync = prefs.syncScreenshotsEnabled
         val scope = resolveSyncScope(currentApi)
 
         _syncProgress.value = SyncProgress(isSyncing = true)
@@ -1133,66 +1143,18 @@ class RomMLibrarySyncService @Inject constructor(
             decodedImageCacheDirty = true
         }
 
-        val backgroundUrls = apiClient.buildBackgroundUrls(rom)
-        val cachedBackground = when {
-            !contentChanged && existing?.backgroundPath?.startsWith("/") == true -> {
-                if (backgroundUrls.isNotEmpty() && !imageCacheManager.isCachedFromAny(existing.backgroundPath, backgroundUrls)) {
-                    imageCacheManager.queueBackgroundRevalidation(existing.backgroundPath, backgroundUrls, rom.id, rom.name)
-                }
-                existing.backgroundPath
-            }
-            backgroundUrls.isNotEmpty() -> {
-                imageCacheManager.queueBackgroundCache(backgroundUrls, rom.id, rom.name)
-                backgroundUrls.first()
-            }
-            else -> null
-        }
-
-        val coverUrls = apiClient.buildCoverUrls(rom)
-        val cachedCover = when {
-            !contentChanged && existing?.coverPath?.startsWith("/") == true -> {
-                if (coverUrls.isNotEmpty() && !imageCacheManager.isCachedFromAny(existing.coverPath, coverUrls)) {
-                    imageCacheManager.queueCoverRevalidation(existing.coverPath, coverUrls, rom.id, rom.name)
-                }
-                existing.coverPath
-            }
-            coverUrls.isNotEmpty() -> {
-                imageCacheManager.queueCoverCache(coverUrls, rom.id, rom.name)
-                coverUrls.first()
-            }
-            else -> null
-        }
-
-        val boxBackUrl = if (boxArtCacheEnabledForSync) {
-            apiClient.buildResourceUrl(rom.ssMetadata?.box2dBackPath)
-        } else null
-        val cachedBoxBack = when {
-            !contentChanged && existing?.boxBackPath?.startsWith("/") == true -> existing.boxBackPath
-            boxBackUrl != null -> {
-                imageCacheManager.queueBoxFaceCache(boxBackUrl, rom.id, rom.name, ImageCacheManager.BoxFace.BACK)
-                boxBackUrl
-            }
-            else -> null
-        }
-        val boxSpineUrl = if (boxArtCacheEnabledForSync) {
-            apiClient.buildResourceUrl(rom.ssMetadata?.box2dSidePath)
-        } else null
-        val cachedBoxSpine = when {
-            !contentChanged && existing?.boxSpinePath?.startsWith("/") == true -> existing.boxSpinePath
-            boxSpineUrl != null -> {
-                imageCacheManager.queueBoxFaceCache(boxSpineUrl, rom.id, rom.name, ImageCacheManager.BoxFace.SPINE)
-                boxSpineUrl
-            }
-            else -> null
-        }
-        val logoUrls = apiClient.buildLogoUrls(rom)
-        val cachedLogo = when {
-            !contentChanged && existing?.logoPath?.startsWith("/") == true -> existing.logoPath
-            logoUrls.isNotEmpty() -> {
-                imageCacheManager.queueBoxFaceCache(logoUrls, rom.id, rom.name, ImageCacheManager.BoxFace.LOGO)
-                logoUrls.first()
-            }
-            else -> null
+        val artSources = mapOf(
+            ArtSlot.COVER to apiClient.buildCoverUrls(rom),
+            ArtSlot.BACKGROUND to apiClient.buildBackgroundUrls(rom),
+            ArtSlot.LOGO to apiClient.buildLogoUrls(rom),
+            ArtSlot.BOX_3D to apiClient.buildBox3dUrls(rom)
+        ) + if (boxArtCacheEnabledForSync) {
+            mapOf(
+                ArtSlot.BOX_SPINE to apiClient.buildBoxSpineUrls(rom),
+                ArtSlot.BOX_BACK to apiClient.buildBoxBackUrls(rom)
+            )
+        } else {
+            emptyMap()
         }
 
         val isSiblingBasedMultiDisc = rom.hasDiscSiblings && !rom.isFolderMultiDisc
@@ -1230,15 +1192,6 @@ class RomMLibrarySyncService @Inject constructor(
                 localDataSource?.localPath != null -> GameSource.ROMM_SYNCED
                 else -> GameSource.ROMM_REMOTE
             },
-            coverPath = cachedCover,
-            backgroundPath = cachedBackground,
-            boxBackPath = cachedBoxBack,
-            boxSpinePath = cachedBoxSpine,
-            logoPath = cachedLogo,
-            coverOverridePath = localDataSource?.coverOverridePath,
-            backgroundOverridePath = localDataSource?.backgroundOverridePath,
-            logoOverridePath = localDataSource?.logoOverridePath,
-            screenshotPaths = screenshotUrls.joinToString(","),
             userRating = localDataSource?.userRating ?: 0,
             userDifficulty = localDataSource?.userDifficulty ?: 0,
             completion = localDataSource?.completion ?: 0,
@@ -1271,6 +1224,7 @@ class RomMLibrarySyncService @Inject constructor(
                     migrationSources.map { it.id },
                     migrationSources.size
                 )
+                carryArtOverrides(mergedId, migrationSources.map { it.id })
             }
             migrationSources.forEach { source ->
                 gameDao.delete(source.id)
@@ -1280,6 +1234,12 @@ class RomMLibrarySyncService @Inject constructor(
 
         val savedGame = gameDao.getByRommId(rom.id)
         if (savedGame != null) {
+            if (contentChanged) imageCacheManager.forgetCachedArt(savedGame.id)
+            writeArtSources(savedGame.id, rom, artSources)
+            val screenshots = gameScreenshotDao.replaceSources(savedGame.id, screenshotUrls)
+            if (screenshotCacheEnabledForSync && screenshots.any { !it.isCachedFromSource }) {
+                imageCacheManager.queueScreenshotCache(savedGame.id, rom.id, rom.name)
+            }
             applyRomUserProperties(savedGame.id, rom, scope)
             syncGameFiles(savedGame.id, rom, platformSlug)
             if (rom.isFolderMultiDisc) {
@@ -1292,6 +1252,25 @@ class RomMLibrarySyncService @Inject constructor(
         }
 
         return isNew to game
+    }
+
+    private suspend fun writeArtSources(gameId: Long, rom: RomMRom, sources: Map<ArtSlot, List<String>>) {
+        sources.forEach { (slot, urls) ->
+            if (urls.isEmpty()) imageCacheManager.forgetCachedArt(gameId, slot)
+            recordArtSource(gameArtDao, imageCacheManager, gameId, slot, urls, rom.name, rommId = rom.id)
+        }
+    }
+
+    private suspend fun carryArtOverrides(targetGameId: Long, sourceGameIds: List<Long>) {
+        val current = gameArtDao.getForGame(targetGameId).associateBy { it.slot }
+        val sourceRows = gameArtDao.getForGames(sourceGameIds)
+        ArtSlot.entries.forEach { slot ->
+            if (current[slot.name]?.overridePath != null) return@forEach
+            val override = sourceGameIds.firstNotNullOfOrNull { id ->
+                sourceRows.firstOrNull { it.gameId == id && it.slot == slot.name }?.overridePath
+            } ?: return@forEach
+            gameArtDao.setOverride(targetGameId, slot, override)
+        }
     }
 
     private suspend fun findUnlistedMigrationSources(

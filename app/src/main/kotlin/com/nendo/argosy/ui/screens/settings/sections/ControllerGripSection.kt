@@ -8,14 +8,13 @@ import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.GripReserveMode
 import com.nendo.argosy.domain.model.GripAutoController
-import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.NavigationPreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.screens.settings.DisplayState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -90,16 +89,12 @@ private fun gripModeLabelRes(mode: GripReserveMode): Int = when (mode) {
 @Composable
 fun ControllerGripSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val display = uiState.display
-    val context = LocalContext.current
 
     val visibleItems = remember(display) { controllerGripLayout.visibleItems(display) }
     val sections = remember(display) { controllerGripLayout.buildSections(display) }
 
     fun isFocused(item: ControllerGripItem): Boolean =
         uiState.focusedIndex == controllerGripLayout.focusIndexOf(item, display)
-
-    fun pickerToken(item: ControllerGripItem): Int =
-        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
 
     SectionPaneLayout(
         items = visibleItems,
@@ -114,22 +109,17 @@ fun ControllerGripSection(uiState: SettingsUiState, viewModel: SettingsViewModel
         verticalArrangement = Arrangement.spacedBy(Dimens.spacingSm)
     ) { item ->
         when (item) {
-            ControllerGripItem.Mode -> CyclePreference(
+            ControllerGripItem.Mode -> SegmentedPreference(
                 title = stringResource(R.string.settings_grip_mode_title),
-                value = stringResource(gripModeLabelRes(display.gripReserveMode)),
                 subtitle = when (display.gripReserveMode) {
                     GripReserveMode.OFF -> stringResource(R.string.settings_grip_mode_subtitle_off)
                     GripReserveMode.ON -> stringResource(R.string.settings_grip_mode_subtitle_on)
                     GripReserveMode.AUTO -> stringResource(R.string.settings_grip_mode_subtitle_auto)
                 },
+                options = GripReserveMode.entries.map { stringResource(gripModeLabelRes(it)) },
+                selectedIndex = GripReserveMode.entries.indexOf(display.gripReserveMode),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleGripReserveMode(1) },
-                onPrev = { viewModel.cycleGripReserveMode(-1) },
-                options = remember(context) {
-                    GripReserveMode.entries.map { context.getString(gripModeLabelRes(it)) }
-                },
-                onSelect = { index -> viewModel.setGripReserveMode(GripReserveMode.entries[index]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { index -> viewModel.setGripReserveMode(GripReserveMode.entries[index]) }
             )
 
             ControllerGripItem.Controllers -> NavigationPreference(

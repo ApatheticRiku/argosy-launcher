@@ -169,7 +169,9 @@ class RomMLibrarySyncUnsentUserPropsTest {
             siblingSplitRepair = mockk(relaxed = true),
             siblingConfigCarryOver = mockk(relaxed = true),
             siblingGroupRepository = mockk(relaxed = true),
-            variantFileCleanup = mockk(relaxed = true)
+            variantFileCleanup = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            gameScreenshotDao = mockk(relaxed = true)
         )
     }
 

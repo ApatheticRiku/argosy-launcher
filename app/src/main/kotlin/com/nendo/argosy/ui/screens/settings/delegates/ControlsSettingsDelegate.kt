@@ -80,11 +80,6 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleControllerLayout(scope: CoroutineScope, direction: Int = 1) {
-        val index = LAYOUT_CYCLE.indexOf(_state.value.controllerLayout).coerceAtLeast(0)
-        setControllerLayout(scope, LAYOUT_CYCLE[(index + direction).mod(LAYOUT_CYCLE.size)])
-    }
-
     fun refreshDetectedLayout() {
         val result = ControllerDetector.detectFromActiveGamepad()
         val layoutName = when (result.layout) {
@@ -137,20 +132,9 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleSelectLCombo(scope: CoroutineScope, direction: Int = 1) =
-        setSelectLCombo(scope, cycleComboValue(_state.value.selectLCombo, direction))
-
-    fun cycleSelectRCombo(scope: CoroutineScope, direction: Int = 1) =
-        setSelectRCombo(scope, cycleComboValue(_state.value.selectRCombo, direction))
-
     companion object {
-        val LAYOUT_CYCLE = listOf("auto", "xbox", "nintendo")
-        val COMBO_CYCLE = listOf("quick_menu", "quick_settings", "none")
-
-        fun cycleComboValue(current: String, direction: Int = 1): String {
-            val index = COMBO_CYCLE.indexOf(current).coerceAtLeast(0)
-            return COMBO_CYCLE[(index + direction).mod(COMBO_CYCLE.size)]
-        }
+        val LAYOUT_OPTIONS = listOf("auto", "xbox", "nintendo")
+        val COMBO_OPTIONS = listOf("quick_menu", "quick_settings", "none")
 
         @StringRes
         fun comboDisplayNameRes(value: String): Int = when (value) {
@@ -174,21 +158,11 @@ class ControlsSettingsDelegate @Inject constructor(
         }
     }
 
-    fun cycleMenuWrapMode(scope: CoroutineScope, direction: Int = 1) {
-        val current = _state.value.menuWrapMode
-        setMenuWrapMode(scope, MenuWrapMode.entries[(current.ordinal + direction).mod(MenuWrapMode.entries.size)])
-    }
-
     fun setSelectSwapMode(scope: CoroutineScope, mode: SelectSwapMode) {
         scope.launch {
             preferencesRepository.setSelectSwapMode(mode)
             _state.update { it.copy(selectSwapMode = mode) }
         }
-    }
-
-    fun cycleSelectSwapMode(scope: CoroutineScope, direction: Int = 1) {
-        val current = _state.value.selectSwapMode
-        setSelectSwapMode(scope, SelectSwapMode.entries[(current.ordinal + direction).mod(SelectSwapMode.entries.size)])
     }
 
     fun showNavRingModal() {

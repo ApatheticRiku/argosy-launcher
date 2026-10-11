@@ -156,7 +156,7 @@ fun CollectionDetailScreen(
                                     title = game.title,
                                     platformSlug = game.platformSlug,
                                     platformDisplayName = game.platformDisplayName,
-                                    coverPath = game.coverPath,
+                                    coverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, null),
                                     details = game.details,
                                     isDownloaded = game.isDownloaded,
                                     isFocused = !hasDialogOpen && uiState.focusedIndex == index,

@@ -100,8 +100,8 @@ class SecondaryHomeActivity :
     private var mediaDimCollectJob: kotlinx.coroutines.Job? = null
 
     private var isMediaPanelVisible by mutableStateOf(false)
-    var isShowcaseRole by mutableStateOf(false)
-        private set
+    private val isShowcaseRole: Boolean
+        get() = ::dsm.isInitialized && dsm.isRolesSwapped.value
 
     var swapAB = false; private set
     var swapXY = false; private set
@@ -205,7 +205,8 @@ class SecondaryHomeActivity :
         val gameDisplay by dsm.emulatorDisplay.collectAsState()
         val hereDisplayId = androidx.core.content.ContextCompat.getDisplayOrDefault(this).displayId
         val showsDashboard = gameActive && dsm.primaryShowsDashboard(hereDisplayId, gameDisplay)
-        if (!isShowcaseRole && !showsDashboard) {
+        val rolesSwapped by dsm.isRolesSwapped.collectAsState()
+        if (!rolesSwapped && !showsDashboard) {
             com.nendo.argosy.ui.ArgosyApp(
                 onStartupComplete = { dsm.stopStartupGuard() }
             )
@@ -242,7 +243,6 @@ class SecondaryHomeActivity :
         dsm.notifyUserActivity("companionResume")
         syncFromSessionStore()
         dsm.onCompanionResumed()
-        endSessionIfEmulatorGone()
     }
 
     private fun syncFromSessionStore() {
@@ -251,26 +251,6 @@ class SecondaryHomeActivity :
         isGameActive = store.hasActiveSession()
         isHardcore = store.isHardcore()
         currentChannelName = store.getChannelName()
-    }
-
-    /**
-     * Ends a session whose emulator has left this display. The companion getting its display back is
-     * the one event that says a game running on it is over, and it is the only one there is: nothing
-     * else observes an emulator the launcher does not own.
-     */
-    private fun endSessionIfEmulatorGone() {
-        if (!isGameActive || dsm.isMovingGame) return
-        val emulatorDisplay = dsm.emulatorDisplayId ?: return
-        val ownDisplay = window.decorView.display?.displayId ?: return
-        if (emulatorDisplay != ownDisplay) return
-        lifecycleScope.launch {
-            val emulatorGone = dsm.emulatorLeftScreen(this@SecondaryHomeActivity) {
-                lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
-            }
-            if (!emulatorGone || !dsm.sessionStateStore.hasActiveSession()) return@launch
-            android.util.Log.d("SecondaryHome", "Companion resumed and the emulator is gone, ending session")
-            dsm.endSessionAfterEmulatorLeft()
-        }
     }
 
     override fun onStop() {
@@ -440,9 +420,7 @@ class SecondaryHomeActivity :
      * While the panel is up over a live playback the panel is touch-only, and every key and
      * trigger this window receives is handed to the player's own dispatch instead of being
      * interpreted here. The claim is the player's to make: claiming before forwarding would make
-     * the player's copy of the same physical press look like a duplicate and get dropped. The
-     * conflict overlays and the app drawer keep their priority because this yields nothing while
-     * one is up. A locked player is the deliberate inversion: the viewer asked for the film to run
+     * the player's copy of the same physical press look like a duplicate and get dropped. A locked player is the deliberate inversion: the viewer asked for the film to run
      * untouched, so the pad stays here and drives the panel until the lock is released.
      */
     private fun yieldsKeysToMediaPlayer(): Boolean {
@@ -450,7 +428,6 @@ class SecondaryHomeActivity :
         if (dsm.mediaPlayerControlsLocked.value) return false
         if (!mediaPanelIsSurfaceNow()) return false
         if (dsm.mediaPlayback.value == null) return false
-        if (dsm.dualSyncOverlay.value != null || dsm.dualSaveConflict.value != null) return false
         return true
     }
 
@@ -518,9 +495,7 @@ class SecondaryHomeActivity :
 
     override fun onOverlayRequested(eventName: String) = Unit
 
-    override fun onRoleSwapped(isSwapped: Boolean) {
-        isShowcaseRole = isSwapped
-    }
+    override fun onRoleSwapped(isSwapped: Boolean) = Unit
 
     override fun onOverlayClosed() = Unit
 
@@ -751,7 +726,6 @@ class SecondaryHomeActivity :
 
     private fun loadInitialState() {
         val store = dsm.sessionStateStore
-        isShowcaseRole = dsm.isRolesSwapped.value
         isArgosyForeground = store.isArgosyForeground()
         isGameActive = store.hasActiveSession()
         isWizardActive = store.isWizardActive() || !store.isFirstRunComplete()
@@ -836,7 +810,6 @@ class SecondaryHomeActivity :
             initializeCompanion()
             syncFromSessionStore()
             dsm.onCompanionResumed()
-            endSessionIfEmulatorGone()
         }
     }
 
@@ -896,10 +869,18 @@ class SecondaryHomeActivity :
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) window.hideSystemBars()
+        if (!::dsm.isInitialized) return
+        if (hasFocus) {
+            dsm.onLauncherWindowFocused(this)
+            dsm.ambientAudioManager.onLauncherWindowFocused(AUDIO_FOCUS_WINDOW)
+        } else {
+            dsm.ambientAudioManager.onLauncherWindowUnfocused(AUDIO_FOCUS_WINDOW)
+        }
     }
 }
 
 private const val CONFIRM_HOLD_MS = 500L
+private const val AUDIO_FOCUS_WINDOW = "companion"
 private const val HAND_BACK_THROTTLE_MS = 1500L
 
 /**

@@ -35,6 +35,7 @@ class SaveSyncRepositoryUploadMutexTest {
             apiClient, conflictResolver, orchestrator, entityManager,
             stateCacheManager, syncQueueManager, saveSyncDao, saveCacheDao,
             mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true),
+            com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter(),
         )
     }
 

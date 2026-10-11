@@ -2,11 +2,14 @@ package com.nendo.argosy.ui.common.savechannel
 
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveSyncRepository
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewDelegate
 import com.nendo.argosy.ui.input.SoundFeedbackManager
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.gamedetail.components.SaveStatusEvent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -16,11 +19,14 @@ class SaveChannelDelegate @Inject constructor(
     private val holder: SaveChannelStateHolder,
     val savesDelegate: SaveChannelSavesDelegate,
     val statesDelegate: SaveChannelStatesDelegate,
+    val snapshotDelegate: SnapshotViewDelegate,
     private val saveSyncRepository: SaveSyncRepository,
     private val activeSaveRepository: ActiveSaveRepository,
     private val soundManager: SoundFeedbackManager
 ) {
     val state: StateFlow<SaveChannelState> = holder.state.asStateFlow()
+
+    val saveStatusEvents: SharedFlow<SaveStatusEvent> = holder.saveStatusEvents.asSharedFlow()
 
     private val _state get() = holder.state
 
@@ -59,12 +65,18 @@ class SaveChannelDelegate @Inject constructor(
                 emulatorPackage = emulatorPackage,
                 currentCoreId = currentCoreId,
                 currentCoreVersion = currentCoreVersion,
-                isDeviceAwareMode = isDeviceAware
+                isDeviceAwareMode = isDeviceAware,
+                snapshot = null
             )
         }
         soundManager.play(SoundType.OPEN_MODAL)
 
         scope.launch {
+            val snapshotMode = snapshotDelegate.isAvailable(gameId)
+            if (snapshotMode) {
+                snapshotDelegate.start(scope, showsTimeline = true)
+                _state.update { it.copy(isLoading = false, selectedTab = SaveTab.SAVES) }
+            }
             val activeRow = activeSaveRepository.getActiveRow(gameId)
             val activeSaveTimestamp = activeRow?.cachedAt?.toEpochMilli()
             val activeSaveCacheId = activeRow?.id
@@ -91,7 +103,9 @@ class SaveChannelDelegate @Inject constructor(
                     saveSlots = localSlots,
                     statesEntries = states,
                     supportsStates = stateConfigExists,
-                    selectedTab = if (savePath == null && stateConfigExists) {
+                    selectedTab = if (snapshotMode) {
+                        it.selectedTab
+                    } else if (savePath == null && stateConfigExists && it.snapshot == null) {
                         SaveTab.STATES
                     } else {
                         SaveTab.SAVES
@@ -104,10 +118,11 @@ class SaveChannelDelegate @Inject constructor(
                     activeSaveCacheId = activeSaveCacheId,
                     activeSaveServerId = activeSaveServerId,
                     isLoading = false,
-                    isLoadingServer = true
+                    isLoadingServer = !snapshotMode
                 )
             }
             savesDelegate.updateHistoryForFocusedSlot()
+            if (snapshotMode) return@launch
 
             val fullEntries = savesDelegate.loadInitialEntries()
             val fullSlots = savesDelegate.buildSaveSlots(
@@ -134,6 +149,7 @@ class SaveChannelDelegate @Inject constructor(
 
     fun dismiss() {
         holder.rawEntries = emptyList()
+        snapshotDelegate.clear()
         _state.update {
             SaveChannelState(activeChannel = it.activeChannel, savePath = it.savePath)
         }
@@ -143,7 +159,7 @@ class SaveChannelDelegate @Inject constructor(
     fun switchTab(tab: SaveTab) {
         val state = _state.value
         if (state.showSlotPicker) return
-        if (tab == SaveTab.STATES && !state.supportsStates) return
+        if (tab == SaveTab.STATES && !state.showsStatesTab) return
         if (tab == state.selectedTab) return
 
         _state.update {

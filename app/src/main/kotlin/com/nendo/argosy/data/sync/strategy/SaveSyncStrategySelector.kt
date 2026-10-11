@@ -13,6 +13,6 @@ class SaveSyncStrategySelector @Inject constructor(
 ) {
     fun current(): SaveSyncStrategy {
         val caps = connectionManager.getCapabilities()
-        return if (caps.supportsSyncNegotiate) negotiator.get() else legacy.get()
+        return if (caps.supportsSyncNegotiate && !caps.supportsSnapshots) negotiator.get() else legacy.get()
     }
 }

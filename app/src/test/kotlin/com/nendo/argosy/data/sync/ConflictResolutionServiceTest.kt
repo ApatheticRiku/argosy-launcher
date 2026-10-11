@@ -18,24 +18,96 @@ class ConflictResolutionServiceTest {
     private val saveCacheManager: com.nendo.argosy.data.repository.SaveCacheManager = mockk(relaxed = true)
     private val service = ConflictResolutionService(pendingConflictDao, saveSyncRepository, gameDao) { saveCacheManager }
 
-    @Test
-    fun `keep local for a named slot uploads that slot's newest cached version, not the disk`() = runTest {
-        val named = conflict.copy(slot = "Before boss")
-        val older = com.nendo.argosy.data.local.entity.SaveCacheEntity(
-            id = 20L, gameId = 1L, emulatorId = "retroarch", cachedAt = java.time.Instant.parse("2026-10-01T00:00:00Z"),
-            saveSize = 3, cachePath = "1/a/save.srm", channelName = "Before boss", contentHash = "old"
+    private fun version(id: Long, day: Int, hash: String, rommSaveId: Long? = null, channel: String = "Before boss") =
+        com.nendo.argosy.data.local.entity.SaveCacheEntity(
+            id = id, gameId = 1L, emulatorId = "retroarch",
+            cachedAt = java.time.Instant.parse("2026-10-0${day}T00:00:00Z"),
+            saveSize = 3, cachePath = "1/$id/save.srm", channelName = channel, contentHash = hash,
+            rommSaveId = rommSaveId
         )
-        val newest = older.copy(id = 21L, cachedAt = java.time.Instant.parse("2026-10-02T00:00:00Z"), contentHash = "new")
-        val otherSlot = older.copy(id = 22L, cachedAt = java.time.Instant.parse("2026-10-03T00:00:00Z"), channelName = "autosave")
-        coEvery { gameDao.getById(1L) } returns mockk(relaxed = true) { io.mockk.every { rommId } returns 100L }
-        coEvery { saveCacheManager.getCachesForGameOnce(1L) } returns listOf(older, newest, otherSlot)
-        val file = java.io.File("/cache/1/a/save.srm")
-        io.mockk.every { saveCacheManager.getCacheFile(newest) } returns file
-        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success(rommSaveId = 11L)
 
-        assertTrue(service.resolve(named, ConflictResolution.KEEP_LOCAL) is ConflictResolutionOutcome.Resolved)
-        coVerify { saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "Before boss", file, "new", true, 21L, any()) }
+    private fun givenSlot(vararg versions: com.nendo.argosy.data.local.entity.SaveCacheEntity) {
+        coEvery { gameDao.getById(1L) } returns mockk(relaxed = true) { io.mockk.every { rommId } returns 100L }
+        coEvery { saveCacheManager.getCachesForGameOnce(1L) } returns versions.toList()
+        versions.forEach { v -> io.mockk.every { saveCacheManager.getCacheFile(v) } returns java.io.File("/cache/${v.id}") }
+        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns SaveSyncResult.Success(rommSaveId = 11L)
+    }
+
+    @Test
+    fun `keep local for a named slot uploads every unsynced version oldest first, not the disk`() = runTest {
+        givenSlot(version(20L, 1, "a"), version(21L, 2, "b"), version(22L, 3, "c", channel = "autosave"))
+
+        assertTrue(service.resolve(conflict.copy(slot = "Before boss"), ConflictResolution.KEEP_LOCAL) is ConflictResolutionOutcome.Resolved)
+
+        io.mockk.coVerifyOrder {
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "Before boss", java.io.File("/cache/20"), "a", true, 20L, any())
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "Before boss", java.io.File("/cache/21"), "b", false, 21L, any())
+        }
+        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 22L, any()) }
         coVerify(exactly = 0) { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `keeping saves over a hardcore one uploads the unsynced chain with the approval on the first push`() = runTest {
+        givenSlot(
+            version(19L, 1, "pushed", channel = "autosave").copy(lastSyncedAt = java.time.Instant.parse("2026-10-01T00:00:00Z")),
+            version(20L, 2, "a", channel = "autosave"),
+            version(21L, 3, "b", channel = "autosave")
+        )
+
+        assertTrue(
+            service.resolve(conflict.copy(slot = null, rommSaveId = null, isHardcoreDowngrade = true), ConflictResolution.KEEP_LOCAL)
+                is ConflictResolutionOutcome.Resolved
+        )
+
+        io.mockk.coVerifyOrder {
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "autosave", java.io.File("/cache/20"), "a", true, 20L, any(), true)
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "retroarch", "autosave", java.io.File("/cache/21"), "b", false, 21L, any(), false)
+        }
+        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 19L, any(), any()) }
+        coVerify(exactly = 0) { saveSyncRepository.approveHardcoreDowngrade(any(), any(), any()) }
+        coVerify(exactly = 0) { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `a hardcore approval with nothing cached pushes the live save approved`() = runTest {
+        givenSlot()
+        coEvery { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) } returns SaveSyncResult.Success()
+
+        service.resolve(conflict.copy(slot = null, isHardcoreDowngrade = true), ConflictResolution.KEEP_LOCAL)
+
+        coVerify { saveSyncRepository.approveHardcoreDowngrade(1L, "retroarch", null) }
+    }
+
+    @Test
+    fun `versions older than the last synced one stay local`() = runTest {
+        givenSlot(version(19L, 1, "old"), version(20L, 2, "synced", rommSaveId = 7L), version(21L, 3, "new"))
+
+        service.resolve(conflict.copy(slot = "Before boss"), ConflictResolution.KEEP_LOCAL)
+
+        coVerify(exactly = 1) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), "new", true, 21L, any()) }
+    }
+
+    @Test
+    fun `keep local keeps the other device's save in local history before uploading`() = runTest {
+        givenSlot(version(21L, 2, "b"))
+
+        service.resolve(conflict.copy(slot = "Before boss"), ConflictResolution.KEEP_LOCAL)
+
+        io.mockk.coVerifyOrder {
+            saveSyncRepository.downloadAndCacheSave(9L, 1L, "Before boss", false)
+            saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 21L, any())
+        }
+    }
+
+    @Test
+    fun `a failed link stops the chain`() = runTest {
+        givenSlot(version(20L, 1, "a"), version(21L, 2, "b"))
+        coEvery { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 20L, any()) } returns SaveSyncResult.Error("offline")
+
+        assertTrue(service.resolve(conflict.copy(slot = "Before boss"), ConflictResolution.KEEP_LOCAL) is ConflictResolutionOutcome.Failed)
+        coVerify(exactly = 0) { saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), 21L, any()) }
     }
 
     private val conflict = PendingConflictEntity(

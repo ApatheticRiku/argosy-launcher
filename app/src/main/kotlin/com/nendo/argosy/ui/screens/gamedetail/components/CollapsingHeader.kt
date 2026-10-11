@@ -30,6 +30,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -45,6 +49,13 @@ import coil.compose.AsyncImage
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.common.rememberCoverAspectRatio
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.data.model.ArtSlot
+import com.nendo.argosy.ui.common.rememberArtRepair
+import com.nendo.argosy.ui.common.rememberResolvedArt
+import com.nendo.argosy.ui.components.BoxArtRoute
+import com.nendo.argosy.ui.components.boxArtRoutes
+import com.nendo.argosy.ui.components.firstWorking
+import com.nendo.argosy.ui.common.rememberResolvedCoverPath
 import com.nendo.argosy.ui.components.Box3dCover
 import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.screens.gamedetail.GameDetailUi
@@ -138,8 +149,9 @@ private fun LandscapeExpandedHeader(
     modifier: Modifier = Modifier
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
+    val coverPath = rememberResolvedCoverPath(game.id, game.coverPath)
     val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
-        rememberCoverAspectRatio(game.coverPath, boxArtStyle.aspectRatio)
+        rememberCoverAspectRatio(coverPath, boxArtStyle.aspectRatio)
     } else {
         boxArtStyle.aspectRatio
     }
@@ -149,22 +161,14 @@ private fun LandscapeExpandedHeader(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXl)
     ) {
-        if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
-            Box3dCover(
-                frontPath = game.coverPath,
-                spinePath = game.boxSpinePath,
-                backPath = game.boxBackPath,
-                modifier = Modifier.height(coverHeight)
-            )
-        } else {
-            CoverArtImage(
-                coverPath = game.coverPath,
-                contentDescription = game.title,
-                modifier = Modifier
-                    .width(EXPANDED_COVER_WIDTH)
-                    .height(coverHeight)
-            )
-        }
+        HeaderBoxArt(
+            game = game,
+            coverPath = coverPath,
+            coverHeight = coverHeight,
+            flatModifier = Modifier
+                .width(EXPANDED_COVER_WIDTH)
+                .height(coverHeight)
+        )
 
         Column(modifier = Modifier.weight(1f)) {
             TitleSection(game = game, friends = friends)
@@ -177,6 +181,72 @@ private fun LandscapeExpandedHeader(
 }
 
 @Composable
+private fun HeaderBoxArt(
+    game: GameDetailUi,
+    coverPath: String?,
+    coverHeight: androidx.compose.ui.unit.Dp,
+    flatModifier: Modifier
+) {
+    val art = rememberResolvedArt(game.id)
+    val spinePath = art?.boxSpinePath ?: game.boxSpinePath
+    val backPath = (art?.boxBackPath ?: game.boxBackPath)?.takeIf { it.startsWith("/") }
+    val box3dPath = art?.box3dPath
+    val repairArt = rememberArtRepair()
+    var failedRoutes by remember(spinePath, box3dPath, coverPath) { mutableStateOf(emptySet<BoxArtRoute>()) }
+    when (boxArtRoutes(useBoxArt = true, spinePath, box3dPath, coverPath).firstWorking(failedRoutes)) {
+        BoxArtRoute.SPINE_RENDER -> Box3dCover(
+            frontPath = coverPath.orEmpty(),
+            spinePath = spinePath.orEmpty(),
+            backPath = backPath,
+            modifier = Modifier.height(coverHeight),
+            onUnavailable = {
+                failedRoutes = failedRoutes + BoxArtRoute.SPINE_RENDER
+                repairArt(game.id, ArtSlot.BOX_SPINE)
+                repairArt(game.id, ArtSlot.COVER)
+            }
+        )
+        BoxArtRoute.BOX_3D_IMAGE -> AsyncImage(
+            model = rememberFileImageModel(box3dPath),
+            contentDescription = game.title,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.height(coverHeight),
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.BOX_3D_IMAGE
+                repairArt(game.id, ArtSlot.BOX_3D)
+            }
+        )
+        BoxArtRoute.FLAT_COVER -> CoverArtImage(
+            coverPath = coverPath,
+            contentDescription = game.title,
+            modifier = flatModifier,
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.FLAT_COVER
+                repairArt(game.id, ArtSlot.COVER)
+            }
+        )
+        BoxArtRoute.TEXT -> TitleCover(title = game.title, modifier = flatModifier)
+    }
+}
+
+@Composable
+private fun TitleCover(title: String, modifier: Modifier) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(Dimens.radiusLg))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(Dimens.spacingSm)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
 private fun PortraitExpandedHeader(
     game: GameDetailUi,
     friends: List<com.nendo.argosy.data.social.FriendActivity>,
@@ -184,8 +254,9 @@ private fun PortraitExpandedHeader(
     modifier: Modifier = Modifier
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
+    val coverPath = rememberResolvedCoverPath(game.id, game.coverPath)
     val coverAspectRatio = if (boxArtStyle.nativeAspectRatio) {
-        rememberCoverAspectRatio(game.coverPath, boxArtStyle.aspectRatio)
+        rememberCoverAspectRatio(coverPath, boxArtStyle.aspectRatio)
     } else {
         boxArtStyle.aspectRatio
     }
@@ -202,22 +273,14 @@ private fun PortraitExpandedHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
-            if (game.boxSpinePath != null && game.coverPath?.startsWith("/") == true) {
-                Box3dCover(
-                    frontPath = game.coverPath,
-                    spinePath = game.boxSpinePath,
-                    backPath = game.boxBackPath,
-                    modifier = Modifier.height(coverHeight)
-                )
-            } else {
-                CoverArtImage(
-                    coverPath = game.coverPath,
-                    contentDescription = game.title,
-                    modifier = Modifier
-                        .widthIn(max = coverWidth)
-                        .height(coverHeight)
-                )
-            }
+            HeaderBoxArt(
+                game = game,
+                coverPath = coverPath,
+                coverHeight = coverHeight,
+                flatModifier = Modifier
+                    .widthIn(max = coverWidth)
+                    .height(coverHeight)
+            )
 
             PortraitStatChips(game = game, modifier = Modifier.weight(1f))
         }
@@ -228,7 +291,8 @@ private fun PortraitExpandedHeader(
 private fun CoverArtImage(
     coverPath: String?,
     contentDescription: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onError: () -> Unit = {}
 ) {
     AsyncImage(
         model = rememberFileImageModel(coverPath),
@@ -236,7 +300,8 @@ private fun CoverArtImage(
         contentScale = ContentScale.Crop,
         modifier = modifier
             .clip(RoundedCornerShape(Dimens.radiusLg))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        onError = { onError() }
     )
 }
 
@@ -470,7 +535,7 @@ internal fun CollapsedHeader(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
     ) {
         AsyncImage(
-            model = rememberFileImageModel(game.coverPath),
+            model = rememberFileImageModel(rememberResolvedCoverPath(game.id, game.coverPath)),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier

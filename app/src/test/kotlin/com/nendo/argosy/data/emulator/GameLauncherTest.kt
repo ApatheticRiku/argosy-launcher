@@ -65,6 +65,7 @@ class GameLauncherTest {
     private lateinit var libretroStatePathResolver: LibretroStatePathResolver
     private lateinit var libretroSavePathResolver: LibretroSavePathResolver
     private lateinit var launcher: GameLauncher
+    private val overlayWriter = mockk<com.nendo.argosy.data.repository.GameUserOverlayWriter>(relaxed = true)
 
     @Before
     fun setup() {
@@ -112,7 +113,7 @@ class GameLauncherTest {
         launcher = GameLauncher(
             context = context,
             gameDao = gameDao,
-            overlayWriter = mockk<com.nendo.argosy.data.repository.GameUserOverlayWriter>(relaxed = true),
+            overlayWriter = overlayWriter,
             platformDao = platformDao,
             gameDiscDao = gameDiscDao,
             emulatorConfigDao = emulatorConfigDao,
@@ -216,6 +217,27 @@ class GameLauncherTest {
     // -----------------------------------------------------------------------
     // Basic launch preconditions
     // -----------------------------------------------------------------------
+
+    @Test
+    fun `a gamenative store launch records the play start that puts the game in recent`() = runTest {
+        val store = com.nendo.argosy.data.launcher.GameNativeStore.entries.first()
+        val game = createGame(platformSlug = store.slug, source = GameSource.GAMENATIVE).copy(steamAppId = 42L)
+        coEvery { gameDao.getById(game.id) } returns game
+        io.mockk.mockkObject(com.nendo.argosy.data.launcher.GameNativeLauncher)
+        try {
+            every { com.nendo.argosy.data.launcher.GameNativeLauncher.isInstalled(any()) } returns true
+            every {
+                com.nendo.argosy.data.launcher.GameNativeLauncher.createSourcedLaunchIntent(any(), any())
+            } returns mockk(relaxed = true)
+
+            val result = launcher.launch(game.id)
+
+            assertTrue(result is LaunchResult.Success)
+            coVerify { overlayWriter.recordPlayStart(game.id, any()) }
+        } finally {
+            io.mockk.unmockkObject(com.nendo.argosy.data.launcher.GameNativeLauncher)
+        }
+    }
 
     @Test
     fun `returns error when game not found`() = runTest {

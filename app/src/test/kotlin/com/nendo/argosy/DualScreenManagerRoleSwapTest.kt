@@ -234,7 +234,7 @@ class DualScreenManagerRoleSwapTest {
         downloadManager = mockk(relaxed = true),
         gameActionsDelegate = mockk(relaxed = true),
         platformSyncQueue = mockk(relaxed = true),
-        gameLaunchDelegate = mockk(relaxed = true),
+        sessionEndCoordinator = mockk(relaxed = true),
         saveCacheManager = mockk(relaxed = true),
         raRepository = mockk(relaxed = true),
         raTileContentRepository = mockk(relaxed = true),

@@ -22,7 +22,8 @@ fun SaveSyncResult.Conflict.toPendingConflict(
     localHash = localContentHash,
     serverHash = serverContentHash,
     reason = serverDeviceName?.let { "Server has newer save from $it" } ?: "Server has newer save",
-    ownerUserId = ownerUserId
+    ownerUserId = ownerUserId,
+    isHardcoreDowngrade = isHardcoreDowngrade
 )
 
 suspend fun PendingConflictDao.record(conflict: PendingConflictEntity): Long {

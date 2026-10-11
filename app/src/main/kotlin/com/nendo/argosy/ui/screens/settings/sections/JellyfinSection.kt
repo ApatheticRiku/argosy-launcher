@@ -36,6 +36,7 @@ import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.NavigationPreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.JellyfinState
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -375,16 +376,13 @@ private fun JellyfinContent(uiState: SettingsUiState, viewModel: SettingsViewMod
                 )
             }
 
-            JellyfinItem.StreamingQuality -> CyclePreference(
+            JellyfinItem.StreamingQuality -> SegmentedPreference(
                 title = stringResource(R.string.settings_jellyfin_streaming_title),
-                value = stringResource(jellyfin.streamingQuality.labelRes),
                 subtitle = stringResource(streamingQualitySubtitleRes(jellyfin.streamingQuality)),
-                isFocused = isFocused(item),
-                onClick = { viewModel.cycleJellyfinStreamingQuality(1) },
-                onPrev = { viewModel.cycleJellyfinStreamingQuality(-1) },
                 options = MediaStreamingQuality.entries.map { stringResource(it.labelRes) },
-                onSelect = { viewModel.setJellyfinStreamingQuality(MediaStreamingQuality.entries[it]) },
-                pickerRequestToken = if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
+                selectedIndex = MediaStreamingQuality.entries.indexOf(jellyfin.streamingQuality),
+                isFocused = isFocused(item),
+                onSelect = { viewModel.setJellyfinStreamingQuality(MediaStreamingQuality.entries[it]) }
             )
 
             JellyfinItem.AudioLanguage -> CyclePreference(

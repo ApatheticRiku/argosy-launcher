@@ -59,7 +59,20 @@ object Dimens {
     val saveSyncRowCover: Dp @Composable get() = DimensionTokens.Layout.saveSyncRowCover.dp * scale
     val saveSyncAttentionCover: Dp @Composable get() = DimensionTokens.Layout.saveSyncAttentionCover.dp * scale
     val screenMapCardWidth: Dp @Composable get() =DimensionTokens.Layout.screenMapCardWidth.dp * scale
-
+    val saveChannelTileWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelTileWidth.dp * scale
+    val saveChannelCardWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelCardWidth.dp * scale
+    val saveChannelRowHeight: Dp @Composable get() = DimensionTokens.Layout.saveChannelRowHeight.dp * scale
+    val saveChannelModalWidth: Dp @Composable get() = DimensionTokens.Layout.saveChannelModalWidth.dp * scale
+    val saveTimelineColumnWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineColumnWidth.dp * scale
+    val saveTimelineLaneHeight: Dp @Composable get() = DimensionTokens.Layout.saveTimelineLaneHeight.dp * scale
+    val saveTimelineLabelWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineLabelWidth.dp * scale
+    val saveTimelineDot: Dp @Composable get() = DimensionTokens.Layout.saveTimelineDot.dp * scale
+    val saveTimelineDotCurrent: Dp @Composable get() = DimensionTokens.Layout.saveTimelineDotCurrent.dp * scale
+    val saveTimelinePinMark: Dp @Composable get() = DimensionTokens.Layout.saveTimelinePinMark.dp * scale
+    val saveTimelineFloaterWidth: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterWidth.dp * scale
+    val saveTimelineFloaterThumb: Dp @Composable get() = DimensionTokens.Layout.saveTimelineFloaterThumb.dp * scale
+    val saveTimelineHeaderCover: Dp @Composable get() = DimensionTokens.Layout.saveTimelineHeaderCover.dp * scale
+    val saveTimelineBackdropBlur: Dp @Composable get() = DimensionTokens.Layout.saveTimelineBackdropBlur.dp
     val dotSm: Dp @Composable get() = DimensionTokens.Dot.sm.dp * scale
     val dotLg: Dp @Composable get() = DimensionTokens.Dot.lg.dp * scale
     val avatarXs: Dp @Composable get() = DimensionTokens.Avatar.xs.dp * scale
@@ -77,9 +90,14 @@ object Dimens {
     val headerHeightLg: Dp @Composable get() = DimensionTokens.Layout.headerHeightLg.dp * scale
     val breadcrumbMaxWidth: Dp @Composable get() = DimensionTokens.Layout.breadcrumbMaxWidth.dp * scale
     val footerHeight: Dp @Composable get() = footerHeightBase.dp * scale
+    val footerClearance: Dp @Composable get() = footerHeight + spacingMd
     val modalWidth: Dp @Composable get() = DimensionTokens.Layout.modalWidth.dp * scale
     val modalWidthLg: Dp @Composable get() = DimensionTokens.Layout.modalWidthLg.dp * scale
-    val quickPanelWidthFriends: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthFriends.dp * scale
+    val quickPanelWidthWide: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthWide.dp * scale
+    val navDrawerWidth: Dp get() = DimensionTokens.Layout.navDrawerWidth.dp
+    val quickPanelWidthMedia: Dp @Composable get() = DimensionTokens.Layout.quickPanelWidthMedia.dp * scale
+    val quickPanelRailWidth: Dp @Composable get() = DimensionTokens.Layout.quickPanelRailWidth.dp * scale
+    val quickPanelHeaderHeight: Dp @Composable get() = DimensionTokens.Layout.quickPanelHeaderHeight.dp * scale
     val modalWidthXl: Dp @Composable get() = DimensionTokens.Layout.modalWidthXl.dp * scale
 
     val playerTransportHeight: Dp @Composable get() = DimensionTokens.Layout.playerTransportHeight.dp * scale

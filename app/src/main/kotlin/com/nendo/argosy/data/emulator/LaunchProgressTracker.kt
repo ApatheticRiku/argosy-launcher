@@ -4,6 +4,7 @@ import com.nendo.argosy.domain.model.LaunchProgress
 import com.nendo.argosy.domain.model.LaunchPromptOption
 import com.nendo.argosy.domain.model.LaunchStep
 import com.nendo.argosy.domain.model.SyncProgress
+import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -14,11 +15,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TAG = "LaunchProgressTracker"
 private const val LAUNCHING_HOLD_MS = 8_000L
+private const val PREVIOUS_LAUNCH_WAIT_MS = 15_000L
 
 /**
  * The one launch in progress, from the press that started it until its game screen opens.
@@ -102,7 +105,9 @@ class LaunchProgressTracker internal constructor(private val scope: CoroutineSco
         }
         if (previous != null) {
             ticket.step(LaunchStep.FinishingPrevious)
-            previous.awaitFinished()
+            if (withTimeoutOrNull(PREVIOUS_LAUNCH_WAIT_MS) { previous.awaitFinished() } == null) {
+                Logger.warn(TAG, "A cancelled launch of ${previous.gameTitle} is still running after ${PREVIOUS_LAUNCH_WAIT_MS}ms, starting without it")
+            }
         }
         if (ticket.isCancelled) {
             finish(ticket, launched = false)

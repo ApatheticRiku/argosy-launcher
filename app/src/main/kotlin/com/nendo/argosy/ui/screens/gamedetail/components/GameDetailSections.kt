@@ -105,7 +105,9 @@ fun GameHeader(
         horizontalArrangement = Arrangement.spacedBy(Dimens.spacingXl)
     ) {
         AsyncImage(
-            model = rememberFileImageModel(game.coverPath),
+            model = rememberFileImageModel(
+                com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath)
+            ),
             contentDescription = game.title,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -482,11 +484,8 @@ fun ScreenshotsSection(
     val cacheManager = com.nendo.argosy.ui.common.LocalImageCacheManager.current
     LaunchedEffect(gameId, cacheEnabled, screenshots) {
         if (!cacheEnabled || cacheManager == null || gameId == 0L) return@LaunchedEffect
-        val missingRemotes = screenshots
-            .filter { it.cachedPath == null && it.remoteUrl.isNotBlank() }
-            .map { it.remoteUrl }
-        if (missingRemotes.isNotEmpty()) {
-            cacheManager.queueScreenshotCacheByGameId(gameId, missingRemotes)
+        if (screenshots.any { it.cachedPath == null }) {
+            cacheManager.queueScreenshotCacheByGameId(gameId)
         }
     }
 

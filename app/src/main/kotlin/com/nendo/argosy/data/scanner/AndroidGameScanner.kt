@@ -2,7 +2,9 @@ package com.nendo.argosy.data.scanner
 
 import android.util.Log
 import com.nendo.argosy.data.local.dao.AppCategoryDao
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.emulator.EmulatorRegistry
@@ -31,7 +33,8 @@ class AndroidGameScanner @Inject constructor(
     private val gameDao: GameDao,
     private val platformDao: PlatformDao,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
-    private val metadataFetcher: AndroidAppMetadataFetcher
+    private val metadataFetcher: AndroidAppMetadataFetcher,
+    private val gameArtDao: GameArtDao
 ) {
 
     /**
@@ -117,9 +120,9 @@ class AndroidGameScanner @Inject constructor(
      * A cover alone is not evidence of a successful lookup, because a failed one still caches the
      * launcher icon as the cover. The description is the honest signal that the store answered.
      */
-    private fun needsMetadata(game: GameEntity): Boolean =
+    private suspend fun needsMetadata(game: GameEntity): Boolean =
         game.source == GameSource.ANDROID_APP &&
-            (game.description.isNullOrBlank() || game.coverPath == null)
+            (game.description.isNullOrBlank() || gameArtDao.resolved(game.id).coverPath == null)
 
     /**
      * The Android platform exists whether or not anything is on it, because its own settings
@@ -175,7 +178,10 @@ class AndroidGameScanner @Inject constructor(
             val match = byPackage ?: byTitle ?: continue
             val holder = gameDao.getByPackageName(match.packageName)
             if (holder != null && (holder.id == game.id || holder.rommId != null)) continue
-            if (holder != null) gameDao.delete(holder.id)
+            if (holder != null) {
+                gameArtDao.fillMissingFrom(targetGameId = game.id, sourceGameId = holder.id)
+                gameDao.delete(holder.id)
+            }
             gameDao.update(
                 game.copy(
                     packageName = match.packageName,
@@ -185,11 +191,7 @@ class AndroidGameScanner @Inject constructor(
                     isFavorite = game.isFavorite || holder?.isFavorite == true,
                     playCount = game.playCount + (holder?.playCount ?: 0),
                     playTimeMinutes = game.playTimeMinutes + (holder?.playTimeMinutes ?: 0),
-                    lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull(),
-                    coverPath = game.coverPath ?: holder?.coverPath,
-                    coverOverridePath = game.coverOverridePath ?: holder?.coverOverridePath,
-                    backgroundOverridePath = game.backgroundOverridePath ?: holder?.backgroundOverridePath,
-                    logoOverridePath = game.logoOverridePath ?: holder?.logoOverridePath
+                    lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull()
                 )
             )
             relinked++

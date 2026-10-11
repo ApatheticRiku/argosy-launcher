@@ -600,9 +600,9 @@ fun SettingsScreen(
                 .blur(soundPickerBlur)
                 .surfaceBackdrop(BackdropRole.CONTENT)
         ) {
+            SettingsAmbientPresentation(uiState, viewModel)
             if (uiState.currentSection != SettingsSection.SHADER_STACK &&
                 uiState.currentSection != SettingsSection.FRAME_PICKER) {
-                SettingsAmbientPresentation(uiState, viewModel)
                 SettingsHeader(
                     title = settingsSectionTitle(uiState),
                     rightContent = if ((uiState.currentSection == SettingsSection.BUILTIN_VIDEO ||
@@ -1496,15 +1496,21 @@ private fun settingsSectionTitle(uiState: SettingsUiState): String = when (uiSta
 private fun SettingsAmbientPresentation(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val active = DualScreenManagerHolder.instance
         ?.isCompanionActive?.collectAsState()?.value == true
-    if (!active) return
-    var covers by remember { mutableStateOf(emptyList<String>()) }
-    LaunchedEffect(Unit) { covers = viewModel.ambientShowcaseCovers() }
+    if (!active || uiState.currentSection in SECTIONS_WITH_OWN_PRESENTATION) return
+    val scope = settingsPlatformScope(uiState)
+    val name = scope?.platformName?.uppercase() ?: settingsSectionTitle(uiState)
+    val platformId = scope?.platformId
+    var covers by remember(platformId) { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(platformId) {
+        covers = viewModel.ambientShowcaseCovers(platformId)
+    }
+    val shown = covers?.takeIf { it.isNotEmpty() } ?: return
     PresentOnCompanion(
         SlotOwner("settings.ambient"),
         PresentationSlot.PlatformShowcase(
-            name = settingsSectionTitle(uiState),
+            name = name,
             yearSpan = null,
-            coverPaths = covers,
+            coverPaths = shown,
             facts = emptyList()
         )
     )

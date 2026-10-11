@@ -58,7 +58,11 @@ import com.nendo.argosy.domain.model.PresentationStat
 import com.nendo.argosy.domain.model.PresentationStyle
 import com.nendo.argosy.ui.common.playerCountGlyph
 import com.nendo.argosy.ui.common.rememberFileImageModel
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.ui.components.Box3dCover
+import com.nendo.argosy.ui.components.BoxArtRoute
+import com.nendo.argosy.ui.components.boxArtRoutes
+import com.nendo.argosy.ui.components.firstWorking
 import com.nendo.argosy.ui.components.GameTitle
 import com.nendo.argosy.ui.components.PlatformIconAssets
 import com.nendo.argosy.ui.components.friends.FriendsActivityBadge
@@ -103,6 +107,27 @@ fun GameShowcase(
     style: PresentationStyle,
     bottomInset: Dp,
     modifier: Modifier = Modifier
+) {
+    val art = detail.gameId?.let { com.nendo.argosy.ui.common.rememberResolvedArt(it) }
+    val liveDetail = remember(detail, art) { detail.withLiveArt(art) }
+    GameShowcaseContent(liveDetail, style, bottomInset, modifier)
+}
+
+private fun CompanionDetail.withLiveArt(art: com.nendo.argosy.data.model.ResolvedGameArt?): CompanionDetail {
+    if (art == null) return this
+    return copy(
+        artUrl = art.coverPath ?: artUrl,
+        backdropUrl = art.backgroundPath ?: backdropUrl,
+        logoUrl = art.logoPath?.takeIf { it.startsWith("/") } ?: logoUrl
+    )
+}
+
+@Composable
+private fun GameShowcaseContent(
+    detail: CompanionDetail,
+    style: PresentationStyle,
+    bottomInset: Dp,
+    modifier: Modifier
 ) {
     val contentBottom = bottomInset + Dimens.spacingMd
     val theme = LocalArgosyTheme.current
@@ -467,27 +492,50 @@ private fun ShowcaseSubtitle(subtitle: String, platformSlug: String?) {
 
 @Composable
 private fun ShowcaseCover(detail: CompanionDetail, art: PresentationArt, height: Dp) {
-    val artUrl = detail.artUrl ?: return
     if (art == PresentationArt.TITLE) return
-    val localSpine = detail.spineUrl
-        ?.takeIf { art == PresentationArt.BOX_3D && artUrl.startsWith("/") && it.startsWith("/") }
-    if (localSpine != null) {
-        Box3dCover(
-            frontPath = artUrl,
-            spinePath = localSpine,
-            isInteractive = false,
-            modifier = Modifier.height(height)
-        )
-        return
+    val artUrl = detail.artUrl
+    val repairArt = com.nendo.argosy.ui.common.rememberArtRepair()
+    val repair: (ArtSlot) -> Unit = { slot -> detail.gameId?.let { repairArt(it, slot) } }
+    var failedRoutes by remember(detail.spineUrl, detail.box3dUrl, artUrl) {
+        mutableStateOf(emptySet<BoxArtRoute>())
     }
-    AsyncImage(
-        model = rememberFileImageModel(artUrl),
-        contentDescription = null,
-        contentScale = ContentScale.Fit,
-        modifier = Modifier
-            .height(height)
-            .clip(RoundedCornerShape(Dimens.radiusSm))
-    )
+    val routes = boxArtRoutes(art == PresentationArt.BOX_3D, detail.spineUrl, detail.box3dUrl, artUrl)
+    when (routes.firstWorking(failedRoutes)) {
+        BoxArtRoute.SPINE_RENDER -> Box3dCover(
+            frontPath = artUrl.orEmpty(),
+            spinePath = detail.spineUrl.orEmpty(),
+            isInteractive = false,
+            modifier = Modifier.height(height),
+            onUnavailable = {
+                failedRoutes = failedRoutes + BoxArtRoute.SPINE_RENDER
+                repair(ArtSlot.BOX_SPINE)
+                repair(ArtSlot.COVER)
+            }
+        )
+        BoxArtRoute.BOX_3D_IMAGE -> AsyncImage(
+            model = rememberFileImageModel(detail.box3dUrl),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.height(height),
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.BOX_3D_IMAGE
+                repair(ArtSlot.BOX_3D)
+            }
+        )
+        BoxArtRoute.FLAT_COVER -> AsyncImage(
+            model = rememberFileImageModel(artUrl),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .height(height)
+                .clip(RoundedCornerShape(Dimens.radiusSm)),
+            onError = {
+                failedRoutes = failedRoutes + BoxArtRoute.FLAT_COVER
+                repair(ArtSlot.COVER)
+            }
+        )
+        BoxArtRoute.TEXT -> Unit
+    }
 }
 
 @Composable

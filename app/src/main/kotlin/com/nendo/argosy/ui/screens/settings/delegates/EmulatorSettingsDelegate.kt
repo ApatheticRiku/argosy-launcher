@@ -8,6 +8,7 @@ import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorUpdateManager
 import com.nendo.argosy.data.emulator.InstalledEmulator
 import com.nendo.argosy.data.emulator.RetroArchPathResolver
+import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.remote.github.EmulatorUpdateRepository
 import com.nendo.argosy.data.remote.github.FetchReleaseResult
 import com.nendo.argosy.data.local.entity.EmulatorUpdateEntity
@@ -487,6 +488,9 @@ class EmulatorSettingsDelegate @Inject constructor(
     suspend fun getEmulatorSaveConfig(emulatorId: String): EmulatorSaveConfigEntity? {
         return emulatorSaveConfigRepository.getByEmulator(emulatorId)
     }
+
+    suspend fun savesBesideRom(config: SavePathConfig, platformSlug: String): Boolean =
+        emulatorSaveConfigRepository.savesBesideRom(config, platformSlug)
 
     /**
      * What the save-path row should say about a folder beyond the path itself: whether it looks

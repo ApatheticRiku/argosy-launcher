@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -64,6 +63,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.ui.components.boxart.BoxArtGeometry
 import com.nendo.argosy.ui.components.boxart.GlassBorderOverlay
 import com.nendo.argosy.ui.components.boxart.GlassCombinedShape
@@ -113,10 +113,9 @@ fun GameCard(
     useBoxArt: Boolean = false
 ) {
     val boxArtStyle = LocalBoxArtStyle.current
-    val effectiveCoverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(
-        gameId = game.id,
-        source = coverPathOverride ?: game.coverPath
-    ).orEmpty()
+    val resolvedArt = com.nendo.argosy.ui.common.rememberResolvedArt(game.id)
+    val resolvedCoverPath = resolvedArt?.coverPath ?: game.coverPath
+    val effectiveCoverPath = (coverPathOverride ?: resolvedCoverPath).orEmpty()
     val coverGradientColors = game.gradientColors
 
     val saturation by animateFloatAsState(
@@ -130,12 +129,23 @@ fun GameCard(
 
     val borderColor = MaterialTheme.colorScheme.primary
 
-    val spinePathFor3d = game.boxSpinePath
-        ?.takeIf { useBoxArt && effectiveCoverPath.isNotEmpty() }
+    val box3dImagePath = resolvedArt?.box3dPath ?: game.box3dPath
+    val repairArt = com.nendo.argosy.ui.common.rememberArtRepair()
+    var failedRoutes by remember(useBoxArt, box3dImagePath, effectiveCoverPath) {
+        mutableStateOf(emptySet<BoxArtRoute>())
+    }
+    val route = boxArtRoutes(
+        useBoxArt = useBoxArt,
+        spinePath = null,
+        box3dPath = box3dImagePath,
+        coverPath = effectiveCoverPath,
+        allowSpineRender = false
+    ).firstWorking(failedRoutes)
+    val drawsAs3d = route == BoxArtRoute.BOX_3D_IMAGE
 
-    val spineActiveForBackground = spinePathFor3d == null && showPlatformBadge &&
+    val spineActiveForBackground = !drawsAs3d && showPlatformBadge &&
         boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
-    val cardBackgroundBrush: androidx.compose.ui.graphics.Brush = if (spinePathFor3d != null) {
+    val cardBackgroundBrush: androidx.compose.ui.graphics.Brush = if (drawsAs3d) {
         SolidColor(Color.Transparent)
     } else if (spineActiveForBackground) {
         val accent = boxArtStyle.accentColor
@@ -170,7 +180,7 @@ fun GameCard(
                 alphaOverride = alphaOverride,
                 artworkGradient = coverGradientColors,
                 background = cardBackgroundBrush,
-                drawBorder = !spineActiveForBackground
+                drawBorder = !spineActiveForBackground && route != BoxArtRoute.BOX_3D_IMAGE
             )
     ) {
         val spineBlurredBackdrop = spineActiveForBackground &&
@@ -189,9 +199,9 @@ fun GameCard(
         val outerCornerRadiusPx = with(density) { boxArtStyle.cornerRadiusDp.toPx() }
         val frameWidthPx = with(density) { boxArtStyle.borderThicknessDp.toPx() }
         val oneDpPx = with(density) { 1.dp.toPx() }
-        val useGlassBorder = spinePathFor3d == null && !spineActiveForBackground &&
+        val useGlassBorder = !drawsAs3d && !spineActiveForBackground &&
             isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GLASS
-        val useGradientBorder = spinePathFor3d == null && !spineActiveForBackground &&
+        val useGradientBorder = !drawsAs3d && !spineActiveForBackground &&
             isFocused && boxArtStyle.borderStyle == BoxArtBorderStyle.GRADIENT
 
         val gradientColors = game.gradientColors
@@ -235,7 +245,7 @@ fun GameCard(
 
         val indicatorActive = showPlatformBadge &&
             boxArtStyle.platformIndicatorStyle != com.nendo.argosy.data.preferences.PlatformIndicatorStyle.OFF
-        val spineActive = spinePathFor3d == null && indicatorActive &&
+        val spineActive = !drawsAs3d && indicatorActive &&
             boxArtStyle.platformIndicatorStyle == com.nendo.argosy.data.preferences.PlatformIndicatorStyle.SPINE
         // Skip the cover's inner edge effect when the spine container wraps the cover;
         // the stroke at the cover's spine-side edge reads as a hard line between spine and cover.
@@ -272,28 +282,38 @@ fun GameCard(
             label = "shine"
         ) ?: remember { mutableStateOf(0f) }
 
-        val coverBody: @Composable () -> Unit = {
-            if (spinePathFor3d != null) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box3dCover(
-                        frontPath = effectiveCoverPath,
-                        spinePath = spinePathFor3d,
-                        isInteractive = false,
-                        modifier = Modifier.fillMaxHeight()
+        val box3dBody: @Composable (@Composable () -> Unit) -> Unit = { art ->
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                art()
+                if (downloadIndicator.isShown) {
+                    DownloadProgressBadge(
+                        progress = downloadIndicator.progress,
+                        badgeSize = Dimens.iconLg,
+                        paused = downloadIndicator.isPaused
                     )
-                    if (downloadIndicator.isShown) {
-                        DownloadProgressBadge(
-                            progress = downloadIndicator.progress,
-                            badgeSize = Dimens.iconLg,
-                            paused = downloadIndicator.isPaused
-                        )
-                    }
                 }
-            } else if (effectiveCoverPath.isNotEmpty()) {
-                CoverContent(
+            }
+        }
+
+        val coverBody: @Composable () -> Unit = {
+            when (route) {
+                BoxArtRoute.SPINE_RENDER, BoxArtRoute.BOX_3D_IMAGE -> box3dBody {
+                    AsyncImage(
+                        model = rememberFileImageModel(box3dImagePath),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        colorFilter = saturationColorFilter,
+                        modifier = Modifier.fillMaxSize(),
+                        onError = {
+                            failedRoutes = failedRoutes + BoxArtRoute.BOX_3D_IMAGE
+                            repairArt(game.id, ArtSlot.BOX_3D)
+                        }
+                    )
+                }
+                BoxArtRoute.FLAT_COVER -> CoverContent(
                     game = game,
                     effectiveCoverPath = effectiveCoverPath,
                     downloadIndicator = downloadIndicator,
@@ -306,10 +326,14 @@ fun GameCard(
                     geometry = geometry,
                     sweepOffset = sweepOffset,
                     onCoverLoaded = onCoverLoaded,
-                    onCoverLoadFailed = onCoverLoadFailed
+                    onCoverLoadFailed = { gameId, path ->
+                        failedRoutes = failedRoutes + BoxArtRoute.FLAT_COVER
+                        if (path.startsWith("/")) {
+                            onCoverLoadFailed?.invoke(gameId, path) ?: repairArt(gameId, ArtSlot.COVER)
+                        }
+                    }
                 )
-            } else {
-                StubCover(
+                BoxArtRoute.TEXT -> StubCover(
                     gameTitle = game.title,
                     useSolidStub = boxArtStyle.borderStyle == BoxArtBorderStyle.SOLID
                 )
@@ -393,7 +417,7 @@ private fun CoverContent(
     geometry: BoxArtGeometry,
     sweepOffset: Float,
     onCoverLoaded: ((Long, Bitmap) -> Unit)?,
-    onCoverLoadFailed: ((Long, String) -> Unit)?
+    onCoverLoadFailed: (Long, String) -> Unit
 ) {
     val imageData = rememberFileImageModel(effectiveCoverPath)
 
@@ -416,11 +440,7 @@ private fun CoverContent(
                 val bitmap = (state.result.drawable as? BitmapDrawable)?.bitmap
                 if (bitmap != null) onCoverLoaded?.invoke(game.id, bitmap)
             },
-            onError = {
-                if (onCoverLoadFailed != null && effectiveCoverPath.startsWith("/")) {
-                    onCoverLoadFailed(game.id, effectiveCoverPath)
-                }
-            }
+            onError = { onCoverLoadFailed(game.id, effectiveCoverPath) }
         )
     }
 

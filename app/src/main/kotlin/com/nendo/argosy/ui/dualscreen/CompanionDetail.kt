@@ -18,8 +18,10 @@ data class CompanionDetail(
     val facts: List<CompanionFact> = emptyList(),
     val isGameTitle: Boolean = false,
     val spineUrl: String? = null,
+    val box3dUrl: String? = null,
     val logoUrl: String? = null,
-    val stats: CompanionGameStats? = null
+    val stats: CompanionGameStats? = null,
+    val gameId: Long? = null
 )
 
 /**

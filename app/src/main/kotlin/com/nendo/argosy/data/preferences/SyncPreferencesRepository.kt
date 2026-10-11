@@ -80,6 +80,8 @@ class SyncPreferencesRepository @Inject constructor(
         val ROMM_TOKEN = stringPreferencesKey("romm_token")
         val ROMM_DEVICE_ID = stringPreferencesKey("romm_device_id")
         val ROMM_DEVICE_CLIENT_VERSION = stringPreferencesKey("romm_device_client_version")
+        val ROMM_SNAPSHOTS_SERVER = stringPreferencesKey("romm_snapshots_server")
+        val ROMM_SNAPSHOTS_SUPPORTED = booleanPreferencesKey("romm_snapshots_supported")
         val RA_USERNAME = stringPreferencesKey("ra_username")
         val RA_TOKEN = stringPreferencesKey("ra_token")
         val RA_PROXY_ENABLED = booleanPreferencesKey("ra_proxy_enabled")
@@ -180,6 +182,22 @@ class SyncPreferencesRepository @Inject constructor(
         val global = downloadCategoryDefaults.first()
         val override = downloadCategoryPlatformOverrides.first()[platformSlug] ?: emptyMap()
         return DownloadDefaults.resolve(global, override)
+    }
+
+    /**
+     * Whether the server last connected to supported snapshots, or null when [serverKey] is not
+     * that server or no server was ever reached.
+     */
+    suspend fun getRommSnapshotSupport(serverKey: String): Boolean? =
+        dataStore.data.map { prefs ->
+            prefs[Keys.ROMM_SNAPSHOTS_SUPPORTED]?.takeIf { prefs[Keys.ROMM_SNAPSHOTS_SERVER] == serverKey }
+        }.first()
+
+    suspend fun setRommSnapshotSupport(serverKey: String, supported: Boolean) {
+        dataStore.edit {
+            it[Keys.ROMM_SNAPSHOTS_SERVER] = serverKey
+            it[Keys.ROMM_SNAPSHOTS_SUPPORTED] = supported
+        }
     }
 
     suspend fun getLastNegotiateAt(): Instant? =

@@ -33,8 +33,16 @@ class ArtworkDelegateTest {
     @Test
     fun `slot tabs cycle in order and wrap at both ends`() {
         assertEquals(ArtSlot.BACKGROUND, ArtSlot.COVER.stepped(1))
-        assertEquals(ArtSlot.LOGO, ArtSlot.COVER.stepped(-1))
-        assertEquals(ArtSlot.COVER, ArtSlot.LOGO.stepped(1))
+        assertEquals(ArtSlot.BOX_3D, ArtSlot.COVER.stepped(-1))
+        assertEquals(ArtSlot.BOX_3D, ArtSlot.LOGO.stepped(1))
+        assertEquals(ArtSlot.COVER, ArtSlot.BOX_3D.stepped(1))
+    }
+
+    @Test
+    fun `slot tabs never land on the box spine or back scans`() {
+        val visited = generateSequence(ArtSlot.COVER) { it.stepped(1) }.take(ArtSlot.entries.size * 2).toSet()
+
+        assertEquals(setOf(ArtSlot.COVER, ArtSlot.BACKGROUND, ArtSlot.LOGO, ArtSlot.BOX_3D), visited)
     }
 
     @Test

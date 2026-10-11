@@ -50,6 +50,7 @@ class PspBasePathTest {
             retroArchSaveHandler = mockk(relaxed = true),
             defaultSaveHandler = mockk(relaxed = true),
             unitSaveHandler = mockk(relaxed = true),
+            sigilSaveHandler = mockk(relaxed = true),
             dreamcastSaveHandler = mockk(relaxed = true),
         )
         handler = registry.getFolderHandler("psp") ?: error("PSP handler not registered")

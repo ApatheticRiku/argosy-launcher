@@ -12,6 +12,7 @@ import android.provider.Settings
 import com.nendo.argosy.R
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.PlaySessionEntity
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.util.Logger
@@ -84,7 +85,8 @@ data class SaveConflictEvent(
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
     val serverDeviceName: String? = null,
-    val conflictId: Long? = null
+    val conflictId: Long? = null,
+    val isHardcoreDowngrade: Boolean = false
 )
 
 @Singleton
@@ -108,7 +110,9 @@ class PlaySessionTracker @Inject constructor(
     private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
     private val reconcileAchievementsOnSessionEndUseCase: dagger.Lazy<com.nendo.argosy.domain.usecase.achievement.ReconcileAchievementsOnSessionEndUseCase>,
     private val savePathAuthority: com.nendo.argosy.data.emulator.savepath.SavePathAuthority,
-    private val sessionSaveFinalizer: SessionSaveFinalizer
+    private val sessionSaveFinalizer: SessionSaveFinalizer,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     companion object {
         private const val TAG = "PlaySessionTracker"
@@ -288,7 +292,7 @@ class PlaySessionTracker @Inject constructor(
                 title = NotificationText.Res(R.string.sync_session_save_uploaded_orphan),
                 subtitle = game?.title?.let { NotificationText.Raw(it) },
                 type = NotificationType.SUCCESS,
-                imagePath = game?.displayCoverPath,
+                imagePath = coverPathFor(orphaned.gameId),
                 duration = NotificationDuration.MEDIUM,
                 key = "sync-${orphaned.gameId}",
                 immediate = true
@@ -318,8 +322,8 @@ class PlaySessionTracker @Inject constructor(
             } else {
                 Logger.debug(TAG, "[SaveSync] ORPHAN gameId=${orphaned.gameId} | Too short for play session (${sessionDuration.seconds}s)")
             }
-            val saved = recoverOrphanedSave(orphaned)
             recoverOrphanedStates(orphaned)
+            val saved = recoverOrphanedSave(orphaned)
             releaseSession(keepRecord = !saved.isSettled)
         } finally {
             saveRecoveryGate.releaseSessionEnd()
@@ -399,8 +403,8 @@ class PlaySessionTracker @Inject constructor(
             Logger.debug(TAG, "[SaveSync] SESSION RECOVER gameId=${orphaned.gameId} | Too short for play session (${Duration.between(orphaned.startTime, endTime).seconds}s)")
         }
 
-        val saved = recoverOrphanedSave(orphaned)
         recoverOrphanedStates(orphaned)
+        val saved = recoverOrphanedSave(orphaned)
         releaseSession(keepRecord = !saved.isSettled)
         if (stopService) GameSessionService.stop(application)
         return longEnough
@@ -522,7 +526,8 @@ class PlaySessionTracker @Inject constructor(
             sessionServiceMutex.withLock {
                 val game = gameDao.getById(gameId)
                 val activeSave = activeSaveRepository.getActiveRow(gameId)
-                val channelName = if (isHardcore || variantFileId != null) null else activeSave?.channelName
+                val channelName = if (variantFileId != null) null
+                else snapshotRouter.get().sessionChannel(gameId, isHardcore, activeSave?.channelName)
 
                 _activeSession.value = _activeSession.value?.copy(channelName = channelName)
 
@@ -568,7 +573,8 @@ class PlaySessionTracker @Inject constructor(
                 val session = _activeSession.value ?: return@withLock
                 if (session.gameId != gameId || session.isHardcore == isHardcore) return@withLock
                 val activeSave = activeSaveRepository.getActiveRow(gameId)
-                val channelName = if (isHardcore || session.variantFileId != null) null else activeSave?.channelName
+                val channelName = if (session.variantFileId != null) null
+                else snapshotRouter.get().sessionChannel(gameId, isHardcore, activeSave?.channelName)
                 val updated = session.copy(
                     isHardcore = isHardcore,
                     channelName = channelName
@@ -647,7 +653,7 @@ class PlaySessionTracker @Inject constructor(
         } else null
 
         val liveHardcore = _activeSession.value?.takeIf { it.gameId == gameId }?.isHardcore ?: isHardcore
-        val channelName = if (liveHardcore) null else activeSaveRepository.getActiveChannel(gameId)
+        val channelName = snapshotRouter.get().sessionChannel(gameId, liveHardcore, activeSaveRepository.getActiveChannel(gameId))
 
         Logger.debug(TAG, "[GameSession] Starting service for gameId=$gameId | watchPath=$watchPath | savePath=$savePath | hardcore=$liveHardcore")
         GameSessionService.start(
@@ -753,11 +759,14 @@ class PlaySessionTracker @Inject constructor(
                     async {
                         recordPlayTime(session, Duration.ofMillis(activePlayMs))
                         markGameIncompleteIfNeeded(session, sessionDuration)
-                        if (effectiveSkipSaveSync) SessionSaveOutcome.Exempt else finalizeSave(session.toSaveInput())
+                        if (effectiveSkipSaveSync) {
+                            SessionSaveOutcome.Exempt
+                        } else {
+                            syncStateDataLogged(session.gameId, session.emulatorPackage, "SESSION")
+                            finalizeSave(session.toSaveInput())
+                        }
                     }.await()
                 }
-
-                if (!effectiveSkipSaveSync) syncStateDataLogged(session.gameId, session.emulatorPackage, "SESSION")
 
                 if (saveOutcome is SessionSaveOutcome.Synced) {
                     handleSaveSyncResult(session, gameDao.getById(session.gameId), saveOutcome.sync)
@@ -838,7 +847,8 @@ class PlaySessionTracker @Inject constructor(
             localTimestamp = conflict.upload.localTimestamp,
             serverTimestamp = conflict.upload.serverTimestamp,
             serverDeviceName = conflict.upload.serverDeviceName,
-            conflictId = outcome.conflictId
+            conflictId = outcome.conflictId,
+            isHardcoreDowngrade = conflict.upload.isHardcoreDowngrade
         )
     }
 
@@ -855,7 +865,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_uploaded),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.SUCCESS,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -867,7 +877,7 @@ class PlaySessionTracker @Inject constructor(
                     title = NotificationText.Res(R.string.sync_session_save_unchanged),
                     subtitle = game?.title?.let { NotificationText.Raw(it) },
                     type = NotificationType.INFO,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.SHORT,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -895,7 +905,7 @@ class PlaySessionTracker @Inject constructor(
                         )
                     ),
                     type = NotificationType.ERROR,
-                    imagePath = game?.displayCoverPath,
+                    imagePath = coverPathFor(session.gameId),
                     duration = NotificationDuration.MEDIUM,
                     key = "sync-${session.gameId}",
                     immediate = true
@@ -903,6 +913,8 @@ class PlaySessionTracker @Inject constructor(
             }
         }
     }
+
+    private suspend fun coverPathFor(gameId: Long): String? = gameArtDao.resolved(gameId).coverPath
 
     private suspend fun syncStateData(gameId: Long, emulatorPackage: String) {
         val result = syncStatesOnSessionEndUseCase.get()(gameId, emulatorPackage)
@@ -1033,7 +1045,7 @@ class PlaySessionTracker @Inject constructor(
             emulatorPackage = session.emulatorPackage,
             gameId = session.gameId
         ) ?: return null
-        val activeChannel = if (session.isHardcore) null else session.channelName
+        val activeChannel = snapshotRouter.get().sessionChannel(session.gameId, session.isHardcore, session.channelName)
         return try {
             saveCacheManager.get().cacheCurrentSave(
                 gameId = session.gameId,
@@ -1044,7 +1056,8 @@ class PlaySessionTracker @Inject constructor(
                 isHardcore = session.isHardcore,
                 skipDuplicateCheck = false,
                 needsRemoteSync = true,
-                coreName = session.coreName
+                coreName = session.coreName,
+                claimNewSaves = true
             ).also { result ->
                 Logger.debug(TAG, "[SaveSync] QUIT gameId=${session.gameId} | Pre-quit cache result=${result::class.simpleName}")
             }

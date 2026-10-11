@@ -16,7 +16,8 @@ class SwitchProfileParser @Inject constructor(
     companion object {
         private val EDEN_PACKAGES = setOf(
             "dev.eden.eden_emulator",
-            "dev.eden.eden_emulator.debug"
+            "dev.eden.eden_emulator.debug",
+            "dev.lemon.lemon_emulator"
         )
 
         private const val PROFILES_DAT_PATH = "nand/system/save/8000000000000010/su/avators/profiles.dat"

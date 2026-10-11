@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.screens.home
 
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.model.orderedForEveryGame
 import com.nendo.argosy.data.repository.DownloadFileStatusRepository
 import com.nendo.argosy.data.repository.GameRepository
@@ -39,7 +40,7 @@ class PlatformGameLoader(
         showsEveryGame: Boolean,
         installedOnly: Boolean,
         publishLeadingPage: Boolean,
-        toUi: suspend (GameEntity) -> HomeGameUi,
+        toUi: suspend (GameEntity, ResolvedGameArt?) -> HomeGameUi,
         publish: (games: List<HomeGameUi>, complete: Boolean) -> Boolean
     ) {
         if (!showsEveryGame) {
@@ -107,7 +108,7 @@ class PlatformGameLoader(
         row: PresentedRow,
         installedOnly: Boolean,
         ordered: Boolean,
-        toUi: suspend (GameEntity) -> HomeGameUi,
+        toUi: suspend (GameEntity, ResolvedGameArt?) -> HomeGameUi,
         publish: (games: List<HomeGameUi>, complete: Boolean) -> Boolean
     ) {
         val checked = discoverStalePaths(entities).toSet()
@@ -134,10 +135,11 @@ class PlatformGameLoader(
         entities: List<GameEntity>,
         installedOnly: Boolean,
         ordered: Boolean,
-        toUi: suspend (GameEntity) -> HomeGameUi,
+        toUi: suspend (GameEntity, ResolvedGameArt?) -> HomeGameUi,
         reuse: Map<Long, HomeGameUi> = emptyMap()
     ): PresentedRow = withContext(Dispatchers.Default) {
         val byId = LinkedHashMap<Long, HomeGameUi>(entities.size)
+        val art = gameRepository.getArt(entities.map { it.id }.filterNot { it in reuse })
         for (entity in entities) {
             val known = reuse[entity.id]
             if (known != null) {
@@ -145,7 +147,7 @@ class PlatformGameLoader(
                 continue
             }
             if (installedOnly && !downloadFileStatusRepository.isContentAvailable(entity)) continue
-            byId[entity.id] = toUi(entity)
+            byId[entity.id] = toUi(entity, art[entity.id])
         }
         val games = byId.values.toList()
         PresentedRow(

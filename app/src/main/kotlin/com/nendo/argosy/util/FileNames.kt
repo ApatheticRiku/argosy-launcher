@@ -43,6 +43,16 @@ object FileNames {
             .joinToString("/") { sanitize(it) }
 
     /**
+     * Whether [file] resolves to [dir] itself or somewhere beneath it. Compares whole path
+     * segments, so `../Zelda2/x` is outside `Zelda`.
+     */
+    fun isWithin(file: java.io.File, dir: java.io.File): Boolean {
+        val root = dir.canonicalPath
+        val path = file.canonicalPath
+        return path == root || path.startsWith(root + java.io.File.separator)
+    }
+
+    /**
      * The comparable form of a name, for deciding whether a file on disk is the one a server
      * reported. Folds what [sanitize] drops, reads an underscore as the space it stood in for,
      * and ignores case and spacing.

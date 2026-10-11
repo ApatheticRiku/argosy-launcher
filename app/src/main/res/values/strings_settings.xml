@@ -687,6 +687,14 @@
     <!-- Row title. Adjective phrase describing which games are listed: only the ones on this
          device. -->
     <string name="settings_home_screen_installed_only_title">Installed Games Only</string>
+    <!-- Home screen setting title. Noun: the picture drawn for each game on the home screen. -->
+    <string name="settings_home_screen_box_art_title">Box Art</string>
+    <!-- Second line under the home screen box art setting. -->
+    <string name="settings_home_screen_box_art_subtitle">Shows a 3D box for games that have one</string>
+    <!-- Home box art option: the flat front cover. Keep short; shown in a segmented control. -->
+    <string name="settings_home_screen_box_art_option_2d">2D Cover</string>
+    <!-- Home box art option: the game's box drawn at an angle. Keep short; shown in a segmented control. -->
+    <string name="settings_home_screen_box_art_option_3d">3D Box</string>
     <!-- Second line of that row. -->
     <string name="settings_home_screen_installed_only_subtitle">Only show downloaded games on home screen</string>
 
@@ -1068,6 +1076,14 @@
     <string name="settings_permissions_display_overlay_title">Display Over Other Apps</string>
     <!-- Body of that card. -->
     <string name="settings_permissions_display_overlay_description">Shows save detection notifications while playing games in external emulators.</string>
+    <!-- Card title. Noun phrase naming Argosy's animated wallpaper, which Android asks the user to apply once. -->
+    <string name="settings_permissions_live_wallpaper_title">Animated Lock Screen</string>
+    <!-- Body of that card. -->
+    <string name="settings_permissions_live_wallpaper_description">Allow Argosy to apply an animated lock screen.</string>
+    <!-- Name of Argosy's live wallpaper in Android's wallpaper picker. -->
+    <string name="settings_lock_screen_wallpaper_label">Argosy Library</string>
+    <!-- Description of that wallpaper in Android's wallpaper picker, which Argosy opens on startup while Lock Screen Art is on. -->
+    <string name="settings_lock_screen_wallpaper_description">Allow Argosy to apply an animated lock screen.</string>
     <!-- Line under the list. %1$d is how many permissions were given, %2$d how many there are. -->
     <string name="settings_permissions_status_footer">Status: %1$d/%2$d permissions granted</string>
 
@@ -1159,6 +1175,14 @@
     <string name="settings_about_log_path_sd_card">SD Card/%1$s</string>
     <!-- Row title. Noun phrase: how much detail the log keeps. -->
     <string name="settings_about_log_level_title">Log Level</string>
+    <!-- Log level option. Most detailed level, records diagnostic messages. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_debug">Debug</string>
+    <!-- Log level option. Records normal informational messages. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_info">Info</string>
+    <!-- Log level option. Records warnings and errors only. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_warn">Warn</string>
+    <!-- Log level option. Records errors only. Keep short; shown in a segmented control. -->
+    <string name="settings_about_log_level_error">Error</string>
     <!-- Row title. Noun phrase: extra logging around game saves. -->
     <string name="settings_about_save_debug_title">Save Debug Logging</string>
     <!-- Second line of that row while it is on. -->
@@ -2556,6 +2580,18 @@
         <item quantity="one">%d update</item>
         <item quantity="other">%d updates</item>
     </plurals>
+    <!-- Chip on the Platforms row of the main settings list: how many of the emulators your
+         platforms use have a newer version. "Update" is a noun. -->
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d update</item>
+        <item quantity="other">%d updates</item>
+    </plurals>
+    <!-- Chip on the Built-in Emulator row of the main settings list: how many of its downloaded
+         cores have a newer version. "Update" is a noun. -->
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d update</item>
+        <item quantity="other">%d updates</item>
+    </plurals>
     <!-- Row opening the per-engine settings. Noun phrase, plural. -->
     <string name="settings_builtin_core_options_title">Core Options</string>
     <!-- Second line of that row. -->
@@ -2632,6 +2668,10 @@
     <string name="settings_builtin_controls_mapping_title">Input Mapping</string>
     <!-- Second line of that row. -->
     <string name="settings_builtin_controls_mapping_subtitle">Remap buttons for each controller</string>
+    <!-- Row title. %1$d is the player number (1-4). "Controller" means the device the game sees, such as a Wiimote with a Nunchuk. -->
+    <string name="settings_builtin_controls_controller_type_title">Player %1$d Controller</string>
+    <!-- Second line under that row. -->
+    <string name="settings_builtin_controls_controller_type_subtitle">The controller the game sees. Takes effect the next time a game starts.</string>
 
     <!-- Row title. Noun phrase: the left stick sends the same inputs as the direction pad.
          "D-Pad" is the cross-shaped direction control; keep the abbreviation. -->
@@ -3286,6 +3326,14 @@
     <string name="settings_library_layout_grid">Grid</string>
     <!-- Value of that row. Noun: games shown one per row with details beside the cover. -->
     <string name="settings_library_layout_list">List</string>
+    <!-- Library setting title. Noun: the picture drawn for each game in the library grid. -->
+    <string name="settings_library_box_art_title">Box Art</string>
+    <!-- Second line under the library box art setting. -->
+    <string name="settings_library_box_art_subtitle">Shows a 3D box for games that have one</string>
+    <!-- Library box art option: the flat front cover. Keep short; shown in a segmented control. -->
+    <string name="settings_library_box_art_option_2d">2D Cover</string>
+    <!-- Library box art option: the game's box drawn at an angle. Keep short; shown in a segmented control. -->
+    <string name="settings_library_box_art_option_3d">3D Box</string>
 
     <!-- Row title. Noun phrase: how tightly the library packs its game covers. -->
     <string name="settings_library_grid_density_title">Grid Density</string>
@@ -4565,6 +4613,12 @@
     <string name="settings_libretro_def_auto_restore_state_title">Restore State on Launch</string>
     <!-- Second line of that row. Same "casual games" sense as the sibling row above. -->
     <string name="settings_libretro_def_auto_restore_state_subtitle">Applies to casual games only</string>
+    <!-- Row title. "Save" is a noun here: the game's save data (in-game save file) synced from
+         the server, not the verb. -->
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Prefer Newer Server Save</string>
+    <!-- Second line of that row. "Save" is a noun (save data); "state" means an emulator save
+         state (snapshot) that would otherwise be resumed automatically at launch. -->
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Skip the auto-resume state when a newer save was downloaded from the server</string>
     <!-- Row title. "Dolphin" and "Flycast" are emulator core names, kept as written. "Save
          States" here are emulator snapshots, not the save-sync feature. -->
     <string name="settings_libretro_def_hw_core_save_states_title">Dolphin and Flycast Save States</string>

@@ -123,9 +123,9 @@ interface CollectionDao {
     suspend fun clearCollectionGames(collectionId: Long)
 
     @Query("""
-        SELECT COALESCE(g.coverOverridePath, g.coverPath) FROM games g
-        INNER JOIN collection_games cg ON g.id = cg.gameId
-        WHERE cg.collectionId = :collectionId AND COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL
+        SELECT $RESOLVED_ART_SQL FROM collection_games cg
+        INNER JOIN game_art art ON art.gameId = cg.gameId AND art.slot = 'COVER'
+        WHERE cg.collectionId = :collectionId AND $RESOLVED_ART_SQL IS NOT NULL
         ORDER BY cg.addedAt DESC
         LIMIT 4
     """)
@@ -138,18 +138,6 @@ interface CollectionDao {
         WHERE cg.collectionId = :collectionId AND p.syncEnabled = 1
     """)
     fun observeLocalGameCountInCollection(collectionId: Long): Flow<Int>
-
-    @Query("""
-        SELECT COALESCE(g.coverOverridePath, g.coverPath) FROM games g
-        INNER JOIN collection_games cg ON g.id = cg.gameId
-        INNER JOIN platforms p ON g.platformId = p.id
-        WHERE cg.collectionId = :collectionId
-            AND COALESCE(g.coverOverridePath, g.coverPath) IS NOT NULL
-            AND p.syncEnabled = 1
-        ORDER BY cg.addedAt DESC
-        LIMIT 4
-    """)
-    fun observeLocalCollectionCoverPaths(collectionId: Long): Flow<List<String>>
 
     @Query("""
         SELECT cg.collectionId AS collectionId,
@@ -167,22 +155,20 @@ interface CollectionDao {
     fun observeLocalCollectionStats(): Flow<List<CollectionStats>>
 
     @Query("""
-        SELECT c.id AS collectionId, COALESCE(g.coverOverridePath, g.coverPath) AS coverPath
+        SELECT c.id AS collectionId, cg.gameId AS gameId
         FROM collections c
         INNER JOIN collection_games cg ON cg.rowid IN (
             SELECT cg2.rowid FROM collection_games cg2
             INNER JOIN games g2 ON g2.id = cg2.gameId
             INNER JOIN platforms p2 ON p2.id = g2.platformId
             WHERE cg2.collectionId = c.id
-                AND COALESCE(g2.coverOverridePath, g2.coverPath) IS NOT NULL
                 AND p2.syncEnabled = 1
             ORDER BY cg2.addedAt DESC
             LIMIT :perCollection
         )
-        INNER JOIN games g ON g.id = cg.gameId
         ORDER BY c.id ASC, cg.addedAt DESC
     """)
-    fun observeLocalCoverPaths(perCollection: Int): Flow<List<CollectionCoverPath>>
+    fun observeLocalCoverGameIds(perCollection: Int): Flow<List<CollectionCoverGame>>
 
     @Query("SELECT * FROM collections WHERE type = :type ORDER BY name ASC")
     fun observeByType(type: CollectionType): Flow<List<CollectionEntity>>
@@ -257,4 +243,4 @@ data class CollectionStats(
     val playTimeMinutes: Int
 )
 
-data class CollectionCoverPath(val collectionId: Long, val coverPath: String)
+data class CollectionCoverGame(val collectionId: Long, val gameId: Long)

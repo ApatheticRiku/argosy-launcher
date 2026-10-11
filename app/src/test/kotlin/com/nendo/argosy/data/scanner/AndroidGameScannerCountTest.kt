@@ -25,7 +25,8 @@ class AndroidGameScannerCountTest {
         gameDao = gameDao,
         platformDao = platformDao,
         syncPreferencesRepository = syncPreferences,
-        metadataFetcher = mockk(relaxed = true)
+        metadataFetcher = mockk(relaxed = true),
+        gameArtDao = mockk(relaxed = true)
     )
 
     @Test

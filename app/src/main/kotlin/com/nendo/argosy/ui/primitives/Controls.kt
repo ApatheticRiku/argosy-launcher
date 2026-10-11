@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -22,7 +23,9 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -48,11 +51,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
+import com.nendo.argosy.ui.theme.LocalMotionTier
 import com.nendo.argosy.ui.theme.LocalUiScale
 import com.nendo.argosy.ui.theme.Motion
+import com.nendo.argosy.ui.theme.MotionTier
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.ui.theme.trackGradientEnd
 import androidx.compose.ui.graphics.Brush
@@ -287,6 +296,120 @@ fun StepperControl(
             color = lerp(signTint, flashTint, plusFlash.value),
             modifier = Modifier.clickableNoFocus(onClick = onIncrement).padding(horizontal = Dimens.spacingXs),
         )
+    }
+}
+
+const val SEGMENTED_MAX_OPTIONS = 4
+
+@Composable
+fun segmentedInlineWidth(count: Int): Dp {
+    val s = LocalUiScale.current.scale
+    return segmentedTrackWidth(ComponentDefaults.Segmented.minSegmentWidthDp * s, count, s)
+}
+
+@Composable
+fun segmentedInlineWidth(options: List<String>): Dp {
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelMedium
+    val density = LocalDensity.current
+    val s = LocalUiScale.current.scale
+    val longest = remember(options, style, density) {
+        options.maxOfOrNull { measurer.measure(it, style).size.width } ?: 0
+    }
+    val minimum = ComponentDefaults.Segmented.minSegmentWidthDp * s
+    val segment = with(density) { longest.toDp() + Dimens.spacingMd * 2 }.value.coerceAtLeast(minimum)
+    return segmentedTrackWidth(segment, options.size, s)
+}
+
+private fun segmentedTrackWidth(segment: Float, count: Int, scale: Float): Dp {
+    val gap = ComponentDefaults.Segmented.gapDp * scale
+    val padding = ComponentDefaults.Segmented.trackPaddingDp * scale
+    return (segment * count + gap * (count - 1).coerceAtLeast(0) + padding * 2).dp
+}
+
+/**
+ * Pill track of equal segments for an enum of up to four options. [focused] marks the owning row:
+ * the selected segment turns solid accent while it holds focus. Selection moves on Left/Right and
+ * tap; confirm never touches it.
+ */
+@Composable
+fun SegmentedControl(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    focused: Boolean = false,
+    enabled: Boolean = true,
+) {
+    val theme = LocalArgosyTheme.current
+    val s = LocalUiScale.current.scale
+    val reduced = LocalMotionTier.current == MotionTier.Reduced
+    val pill = RoundedCornerShape(Dimens.radiusPill)
+    val gap = (ComponentDefaults.Segmented.gapDp * s).dp
+    val selectedFill = if (focused) theme.focusAccent else theme.surfaceBase
+    val selectedLabel = if (focused) MaterialTheme.colorScheme.onPrimary else theme.focusAccent
+    val count = options.size.coerceAtLeast(1)
+    BoxWithConstraints(
+        modifier = modifier
+            .height((ComponentDefaults.Segmented.heightDp * s).dp)
+            .clip(pill)
+            .background(theme.surfaceElevated)
+            .padding((ComponentDefaults.Segmented.trackPaddingDp * s).dp),
+    ) {
+        val segmentWidth = (maxWidth - gap * (count - 1)) / count
+        val indicatorX by animateDpAsState(
+            targetValue = (segmentWidth + gap) * selectedIndex.coerceIn(0, count - 1),
+            animationSpec = if (reduced) snap() else tween(Motion.durationMicro, easing = Motion.argosyEase),
+            label = "segmented-indicator",
+        )
+        val indicatorColor by animateColorAsState(
+            targetValue = selectedFill,
+            animationSpec = tween(Motion.durationMicro, easing = Motion.argosyEase),
+            label = "segmented-fill",
+        )
+        if (!reduced && selectedIndex in options.indices) {
+            Box(
+                modifier = Modifier
+                    .offset(x = indicatorX)
+                    .width(segmentWidth)
+                    .fillMaxHeight()
+                    .clip(pill)
+                    .background(indicatorColor),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+            options.forEachIndexed { index, label ->
+                val selected = index == selectedIndex
+                val labelColor by animateColorAsState(
+                    targetValue = if (selected) selectedLabel else theme.textDim,
+                    animationSpec = tween(Motion.durationMicro, easing = Motion.argosyEase),
+                    label = "segmented-label",
+                )
+                val segmentFill by animateColorAsState(
+                    targetValue = if (reduced && selected) selectedFill else Color.Transparent,
+                    animationSpec = tween(Motion.durationMicro, easing = Motion.argosyEase),
+                    label = "segmented-segment-fill",
+                )
+                Box(
+                    modifier = Modifier
+                        .width(segmentWidth)
+                        .fillMaxHeight()
+                        .clip(pill)
+                        .background(segmentFill)
+                        .clickableNoFocus(enabled = enabled) { onSelect(index) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = labelColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = Dimens.spacingXs),
+                    )
+                }
+            }
+        }
     }
 }
 

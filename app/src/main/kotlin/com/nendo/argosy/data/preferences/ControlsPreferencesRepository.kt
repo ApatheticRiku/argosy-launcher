@@ -32,6 +32,7 @@ data class ControlsPreferences(
     val ambientAudioVolume: Int = 50,
     val ambientAudioUri: String? = null,
     val ambientAudioShuffle: Boolean = false,
+    val ambientAudioPlayInBackground: Boolean = false,
     val gameDetailThemeEnabled: Boolean = false,
     val selectLCombo: String = "quick_menu",
     val selectRCombo: String = "quick_settings",
@@ -70,6 +71,7 @@ class ControlsPreferencesRepository @Inject constructor(
         val AMBIENT_AUDIO_VOLUME = intPreferencesKey("ambient_audio_volume")
         val AMBIENT_AUDIO_URI = stringPreferencesKey("ambient_audio_uri")
         val AMBIENT_AUDIO_SHUFFLE = booleanPreferencesKey("ambient_audio_shuffle")
+        val AMBIENT_AUDIO_PLAY_IN_BACKGROUND = booleanPreferencesKey("ambient_audio_play_in_background")
         val GAME_DETAIL_THEME = booleanPreferencesKey("game_detail_theme")
         val SELECT_L_COMBO = stringPreferencesKey("select_l_combo")
         val SELECT_R_COMBO = stringPreferencesKey("select_r_combo")
@@ -96,6 +98,7 @@ class ControlsPreferencesRepository @Inject constructor(
             ambientAudioVolume = prefs[Keys.AMBIENT_AUDIO_VOLUME] ?: 50,
             ambientAudioUri = prefs[Keys.AMBIENT_AUDIO_URI],
             ambientAudioShuffle = prefs[Keys.AMBIENT_AUDIO_SHUFFLE] ?: false,
+            ambientAudioPlayInBackground = prefs[Keys.AMBIENT_AUDIO_PLAY_IN_BACKGROUND] ?: false,
             gameDetailThemeEnabled = prefs[Keys.GAME_DETAIL_THEME] ?: false,
             selectLCombo = prefs[Keys.SELECT_L_COMBO] ?: "quick_menu",
             selectRCombo = prefs[Keys.SELECT_R_COMBO] ?: "quick_settings",
@@ -224,6 +227,10 @@ class ControlsPreferencesRepository @Inject constructor(
 
     suspend fun setAmbientAudioShuffle(shuffle: Boolean) {
         dataStore.edit { it[Keys.AMBIENT_AUDIO_SHUFFLE] = shuffle }
+    }
+
+    suspend fun setAmbientAudioPlayInBackground(enabled: Boolean) {
+        dataStore.edit { it[Keys.AMBIENT_AUDIO_PLAY_IN_BACKGROUND] = enabled }
     }
 
     suspend fun setGameDetailThemeEnabled(enabled: Boolean) {

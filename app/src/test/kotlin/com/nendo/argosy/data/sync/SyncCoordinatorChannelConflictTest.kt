@@ -132,7 +132,9 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
         )
 
         coordinator.processQueue()
@@ -192,7 +194,9 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
         )
 
         coordinator.processQueue()
@@ -260,7 +264,9 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
         )
 
         coordinator.processQueue()
@@ -311,7 +317,9 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
         )
 
         coordinator.processQueue()
@@ -387,7 +395,9 @@ class SyncCoordinatorChannelConflictTest {
             rommApiProvider = mockk(relaxed = true),
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
-            negotiateInventory = mockk(relaxed = true)
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
         )
 
         coordinator.processQueue()
@@ -417,6 +427,58 @@ class SyncCoordinatorChannelConflictTest {
 
         olderFile.delete()
         newerFile.delete()
+    }
+
+    @Test
+    fun `offline versions of one slot raise one conflict for the whole chain`() = runTest {
+        val first = makeDirtyChannelCache("slot1")
+        val second = first.copy(id = 11L, cachedAt = Instant.parse("2025-01-14T13:00:00Z"), contentHash = "hash456")
+        coEvery { saveCacheDao.getNeedingRemoteSync() } returns listOf(second, first)
+        every { mockCacheManager.getCacheFile(any()) } returns File.createTempFile("chain", ".zip").apply { deleteOnExit() }
+        coEvery { mockSyncRepo.checkForConflict(1L, "retroarch", "slot1") } returns ConflictInfo(
+            gameId = 1L,
+            gameName = "Test Game",
+            channelName = "slot1",
+            localTimestamp = first.cachedAt,
+            serverTimestamp = Instant.parse("2025-01-15T12:00:00Z"),
+            isHashConflict = true
+        )
+        coordinator = SyncCoordinator(
+            context = io.mockk.mockk(relaxed = true) { io.mockk.every { filesDir } returns java.io.File(System.getProperty("java.io.tmpdir")) },
+            pendingSyncQueueDao = pendingSyncQueueDao,
+            saveCacheDao = saveCacheDao,
+            saveSyncDao = mockk(relaxed = true),
+            emulatorSaveConfigDao = mockk(relaxed = true),
+            gameDao = gameDao,
+            activeSaveRepository = mockk<com.nendo.argosy.data.repository.ActiveSaveRepository>(relaxed = true),
+            romMRepository = romMRepository,
+            saveSyncRepository = saveSyncRepository,
+            saveCacheManager = saveCacheManager,
+            stateCacheManager = stateCacheManager,
+            syncQueueManager = syncQueueManager,
+            syncPreferencesRepository = mockk(relaxed = true) {
+                every { preferences } returns kotlinx.coroutines.flow.MutableStateFlow(SyncPreferences(saveSyncEnabled = true))
+            },
+            payloadCodec = SyncPayloadCodec(com.squareup.moshi.Moshi.Builder().build()),
+            savePathResolver = mockk(relaxed = true),
+            strategySelector = mockk(relaxed = true),
+            pendingConflictDao = pendingConflictDao,
+            reconcileEffectApplier = mockk(relaxed = true),
+            saveRecoveryGate = mockk(relaxed = true),
+            screenshotUploader = mockk(relaxed = true),
+            rommApiProvider = mockk(relaxed = true),
+            accountSwitchMarkerStore = mockk(relaxed = true),
+            syncStatesOnSessionEndUseCase = mockk(relaxed = true),
+            negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
+        )
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) { mockSyncRepo.checkForConflict(1L, "retroarch", "slot1") }
+        org.junit.Assert.assertEquals(1, syncQueueManager.pendingConflicts.value.size)
+        coVerify(exactly = 0) { mockSyncRepo.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     private fun makeDirtyChannelCache(channelName: String) = SaveCacheEntity(

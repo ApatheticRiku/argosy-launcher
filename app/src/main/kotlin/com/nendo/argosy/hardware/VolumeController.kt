@@ -5,6 +5,7 @@ import android.media.AudioManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.roundToInt
 
 data class DisplayVolume(
     val primary: Float,
@@ -29,7 +30,7 @@ class VolumeController @Inject constructor(
     fun setPrimaryVolume(volume: Float): Boolean {
         val clamped = volume.coerceIn(0f, 1f)
         val max = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        val value = (clamped * max).toInt()
+        val value = (clamped * max).roundToInt()
         audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0)
         return true
     }

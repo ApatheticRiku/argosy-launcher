@@ -507,6 +507,55 @@ class SavePathResolverDiscoveryTest {
         assertEquals(File(romDir, "Mario Kart DS.dsv").absolutePath, result)
     }
 
+    private fun seedlessFolder(path: String, userChosen: Boolean) {
+        coEvery { emulatorSaveConfigDao.getByEmulator("seedlessds") } returns
+            com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity(
+                emulatorId = "seedlessds",
+                savePathPattern = path,
+                isAutoDetected = !userChosen,
+                isUserOverride = userChosen
+            )
+    }
+
+    @Test
+    fun `a SeedlessDS custom save folder the user chose is searched instead of beside the ROM`() = runTest {
+        val romDir = File(tempDir, "Games/nds").apply { mkdirs() }
+        val romFile = File(romDir, "Pokemon HeartGold (USA).nds").apply { writeBytes(byteArrayOf(0)) }
+        File(romDir, "Pokemon HeartGold (USA).dsv").writeBytes(byteArrayOf(9))
+        val custom = File(tempDir, "Saves/DS").apply { mkdirs() }
+        val saveFile = File(custom, "Pokemon HeartGold (USA).dsv").apply { writeBytes(byteArrayOf(1)) }
+        seedlessFolder(custom.absolutePath, userChosen = true)
+
+        val found = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Pokemon HeartGold", platformSlug = "nds",
+            romPath = romFile.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 1L,
+        )
+        val target = resolver.constructSavePath(
+            emulatorId = "seedlessds", gameTitle = "Pokemon HeartGold", platformSlug = "nds",
+            romPath = romFile.absolutePath, gameId = 1L,
+        )
+
+        assertEquals(saveFile.absolutePath, found)
+        assertEquals(saveFile.absolutePath, target)
+    }
+
+    @Test
+    fun `an evaluated SeedlessDS folder never pulls saves away from beside the ROM`() = runTest {
+        val romDir = File(tempDir, "Games/nds").apply { mkdirs() }
+        val romFile = File(romDir, "Pokemon HeartGold (USA).nds").apply { writeBytes(byteArrayOf(0)) }
+        val besideRom = File(romDir, "Pokemon HeartGold (USA).dsv").apply { writeBytes(byteArrayOf(1)) }
+        val elsewhere = File(tempDir, "Saves/DS").apply { mkdirs() }
+        File(elsewhere, "Pokemon HeartGold (USA).dsv").writeBytes(byteArrayOf(9))
+        seedlessFolder(elsewhere.absolutePath, userChosen = false)
+
+        val found = resolver.discoverSavePath(
+            emulatorId = "seedlessds", gameTitle = "Pokemon HeartGold", platformSlug = "nds",
+            romPath = romFile.absolutePath, emulatorPackage = "com.seedlessds.app", gameId = 1L,
+        )
+
+        assertEquals(besideRom.absolutePath, found)
+    }
+
     @Test
     fun `two SeedlessDS regional copies in one folder resolve only their own save`() = runTest {
         val romDir = File(tempDir, "roms/nds").apply { mkdirs() }

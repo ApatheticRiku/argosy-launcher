@@ -18,7 +18,7 @@ class RomMApiClient @Inject constructor(
     private val platformDao: PlatformDao
 ) {
     internal val api: RomMApi? get() = connectionManager.getApi()
-    internal val baseUrl: String get() = connectionManager.getBaseUrl()
+    internal val baseUrl: String get() = connectionManager.getBaseUrl().trimEnd('/')
 
     /**
      * Absolute URL for a media path RomM already prefixed. Null for an absent path, which
@@ -27,7 +27,7 @@ class RomMApiClient @Inject constructor(
     fun buildMediaUrl(path: String?): String? {
         val trimmed = path?.trim().orEmpty()
         if (trimmed.isEmpty()) return null
-        return if (trimmed.startsWith("http")) trimmed else "$baseUrl$trimmed"
+        return if (trimmed.startsWith("http")) trimmed else "$baseUrl/${trimmed.trimStart('/')}"
     }
 
     /**
@@ -61,6 +61,28 @@ class RomMApiClient @Inject constructor(
     fun buildLogoUrls(rom: RomMRom): List<String> =
         (listOfNotNull(buildResourceUrl(rom.ssMetadata?.logoPath)) + rom.clearLogoUrls).distinct()
 
+    fun buildBox3dUrls(rom: RomMRom): List<String> = box3dArt(rom).map { it.url }
+
+    fun buildBoxSpineUrls(rom: RomMRom): List<String> = boxSpineArt(rom).map { it.url }
+
+    fun buildBoxBackUrls(rom: RomMRom): List<String> = boxBackArt(rom).map { it.url }
+
+    private fun boxSpineArt(rom: RomMRom): List<ServerArt> = listOfNotNull(
+        buildResourceUrl(rom.ssMetadata?.box2dSidePath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+    )
+
+    private fun boxBackArt(rom: RomMRom): List<ServerArt> = listOfNotNull(
+        buildResourceUrl(rom.ssMetadata?.box2dBackPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
+    )
+
+    private fun box3dArt(rom: RomMRom): List<ServerArt> = (
+        listOfNotNull(
+            buildResourceUrl(rom.ssMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) },
+            buildResourceUrl(rom.launchboxMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.LAUNCHBOX) },
+            buildResourceUrl(rom.gamelistMetadata?.box3dPath)?.let { ServerArt(it, ArtProvider.ROMM) }
+        ) + rom.box3dUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+    ).distinctBy { it.url }
+
     /**
      * The game's background candidates for library sync, in preference order: the ScreenScraper
      * fanart RomM stored, then LaunchBox's "Fanart - Background" images, then screenshots.
@@ -85,6 +107,9 @@ class RomMApiClient @Inject constructor(
             ArtSlot.LOGO -> listOfNotNull(
                 buildResourceUrl(rom.ssMetadata?.logoPath)?.let { ServerArt(it, ArtProvider.SCREENSCRAPER) }
             ) + rom.clearLogoUrls.map { ServerArt(it, ArtProvider.LAUNCHBOX) }
+            ArtSlot.BOX_3D -> box3dArt(rom)
+            ArtSlot.BOX_SPINE -> boxSpineArt(rom)
+            ArtSlot.BOX_BACK -> boxBackArt(rom)
         }
         return tagged.distinctBy { it.url }
     }

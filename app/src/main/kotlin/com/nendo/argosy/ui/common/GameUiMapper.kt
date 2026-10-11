@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.repository.DownloadFileStatusRepository
 import com.nendo.argosy.ui.screens.home.HomeGameUi
 import com.nendo.argosy.ui.screens.library.LibraryGameUi
@@ -30,12 +31,13 @@ private suspend fun GameListItem.resolveDownloaded(
 
 suspend fun GameEntity.toHomeGameUi(
     downloadStatus: DownloadFileStatusRepository,
+    art: ResolvedGameArt?,
+    firstScreenshotUrl: String?,
     platformDisplayName: String? = null,
     gradientColors: Pair<Color, Color>? = null,
     newThreshold: Instant = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
 ): HomeGameUi {
-    val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
-    val effectiveBackground = displayBackgroundPath ?: firstScreenshot ?: displayCoverPath
+    val effectiveBackground = art?.backgroundPath ?: firstScreenshotUrl ?: art?.coverPath
     val downloaded = resolveDownloaded(downloadStatus)
     return HomeGameUi(
         id = id,
@@ -43,13 +45,14 @@ suspend fun GameEntity.toHomeGameUi(
         platformId = platformId,
         platformSlug = platformSlug,
         platformDisplayName = platformDisplayName ?: platformSlug,
-        coverPath = displayCoverPath,
-        coverAspectRatio = coverAspectRatio,
+        coverPath = art?.coverPath,
+        coverAspectRatio = art?.coverAspectRatio,
         gradientColors = gradientColors,
         backgroundPath = effectiveBackground,
-        boxBackPath = boxBackPath?.takeIf { it.startsWith("/") },
-        boxSpinePath = boxSpinePath?.takeIf { it.startsWith("/") },
-        logoPath = displayLogoPath?.takeIf { it.startsWith("/") },
+        boxBackPath = art?.boxBackPath?.takeIf { it.startsWith("/") },
+        boxSpinePath = art?.boxSpinePath?.takeIf { it.startsWith("/") },
+        box3dPath = art?.box3dPath?.takeIf { it.startsWith("/") },
+        logoPath = art?.logoPath?.takeIf { it.startsWith("/") },
         developer = developer,
         releaseYear = releaseYear,
         genre = genre,
@@ -91,6 +94,7 @@ suspend fun GameEntity.toHomeGameUi(
  */
 suspend fun GameEntity.toLibraryGameUi(
     downloadStatus: DownloadFileStatusRepository,
+    art: ResolvedGameArt?,
     platformDisplayName: String? = null,
     gradientColors: Pair<Color, Color>? = null,
     emulatorName: String? = null,
@@ -102,7 +106,9 @@ suspend fun GameEntity.toLibraryGameUi(
     platformId = platformId,
     platformSlug = platformSlug,
     platformDisplayName = platformDisplayName ?: platformSlug,
-    coverPath = displayCoverPath,
+    coverPath = art?.coverPath,
+    boxSpinePath = art?.boxSpinePath?.takeIf { it.startsWith("/") },
+    box3dPath = art?.box3dPath?.takeIf { it.startsWith("/") },
     gradientColors = gradientColors,
     source = source,
     isFavorite = isFavorite,
@@ -117,6 +123,7 @@ suspend fun GameEntity.toLibraryGameUi(
 
 suspend fun GameListItem.toHomeGameUi(
     downloadStatus: DownloadFileStatusRepository,
+    art: ResolvedGameArt?,
     platformDisplayName: String? = null,
     newThreshold: Instant = Instant.now().minus(NEW_GAME_THRESHOLD_HOURS, ChronoUnit.HOURS)
 ): HomeGameUi {
@@ -127,8 +134,8 @@ suspend fun GameListItem.toHomeGameUi(
         platformId = platformId,
         platformSlug = platformSlug,
         platformDisplayName = platformDisplayName ?: platformSlug,
-        coverPath = coverPath,
-        backgroundPath = coverPath,
+        coverPath = art?.coverPath,
+        backgroundPath = art?.coverPath,
         developer = developer,
         releaseYear = releaseYear,
         genre = genre,
@@ -161,6 +168,7 @@ suspend fun GameListItem.toHomeGameUi(
 
 suspend fun GameListItem.toLibraryGameUi(
     downloadStatus: DownloadFileStatusRepository,
+    art: ResolvedGameArt?,
     platformDisplayName: String? = null,
     gradientColors: Pair<Color, Color>? = null,
     emulatorName: String? = null
@@ -171,7 +179,9 @@ suspend fun GameListItem.toLibraryGameUi(
     platformId = platformId,
     platformSlug = platformSlug,
     platformDisplayName = platformDisplayName ?: platformSlug,
-    coverPath = coverPath,
+    coverPath = art?.coverPath,
+    boxSpinePath = art?.boxSpinePath?.takeIf { it.startsWith("/") },
+    box3dPath = art?.box3dPath?.takeIf { it.startsWith("/") },
     gradientColors = gradientColors,
     source = source,
     isFavorite = isFavorite,

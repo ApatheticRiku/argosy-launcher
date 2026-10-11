@@ -2,6 +2,7 @@ package com.nendo.argosy.ui.common.savechannel
 
 import com.nendo.argosy.domain.model.UnifiedSaveEntry
 import com.nendo.argosy.domain.model.UnifiedStateEntry
+import com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewState
 
 enum class SaveTab { SAVES, STATES }
 
@@ -55,10 +56,15 @@ data class SaveChannelState(
     val showSlotPicker: Boolean = false,
     val slotPickerEntry: UnifiedSaveEntry? = null,
     val slotPickerItems: List<SlotPickerItem> = emptyList(),
-    val slotPickerIndex: Int = 0
+    val slotPickerIndex: Int = 0,
+    val snapshot: SnapshotViewState? = null
 ) {
+    val isSnapshotSavesView: Boolean
+        get() = isVisible && snapshot != null && selectedTab == SaveTab.SAVES
+
     val hasSaveSlots: Boolean get() = saveSlots.any { !it.isCreateAction }
     val hasStates: Boolean get() = supportsStates
+    val showsStatesTab: Boolean get() = supportsStates && snapshot == null
 
     val currentTabSize: Int
         get() = when (selectedTab) {

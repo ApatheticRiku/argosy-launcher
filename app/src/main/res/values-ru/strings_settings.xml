@@ -353,6 +353,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Отключить звук видео</string>
 
     <string name="settings_home_screen_installed_only_title">Только установленные игры</string>
+    <string name="settings_home_screen_box_art_title">Обложки</string>
+    <string name="settings_home_screen_box_art_subtitle">Показывает 3D-коробку для игр, у которых она есть</string>
+    <string name="settings_home_screen_box_art_option_2d">2D-обложка</string>
+    <string name="settings_home_screen_box_art_option_3d">3D-коробка</string>
     <string name="settings_home_screen_installed_only_subtitle">Показывать на главном экране только скачанные игры</string>
 
     <!-- ===== Saves section ===== -->
@@ -570,6 +574,10 @@
     <string name="settings_permissions_screen_capture_description">Позволяет LED-подсветке считывать цвета экрана во время игры.</string>
     <string name="settings_permissions_display_overlay_title">Отображение поверх других приложений</string>
     <string name="settings_permissions_display_overlay_description">Показывает уведомления об обнаружении сохранений при игре во внешних эмуляторах.</string>
+    <string name="settings_permissions_live_wallpaper_title">Анимированный экран блокировки</string>
+    <string name="settings_permissions_live_wallpaper_description">Разрешите Argosy установить анимированный экран блокировки.</string>
+    <string name="settings_lock_screen_wallpaper_label">Библиотека Argosy</string>
+    <string name="settings_lock_screen_wallpaper_description">Разрешите Argosy установить анимированный экран блокировки.</string>
     <string name="settings_permissions_status_footer">Статус: предоставлено %1$d/%2$d разрешений</string>
 
     <!-- ===== About section ===== -->
@@ -616,6 +624,10 @@
     <string name="settings_about_log_path_internal">Внутреннее</string>
     <string name="settings_about_log_path_sd_card">SD-карта/%1$s</string>
     <string name="settings_about_log_level_title">Уровень логирования</string>
+    <string name="settings_about_log_level_debug">Отладка</string>
+    <string name="settings_about_log_level_info">Инфо</string>
+    <string name="settings_about_log_level_warn">Предупр.</string>
+    <string name="settings_about_log_level_error">Ошибка</string>
     <string name="settings_about_save_debug_title">Отладочное логирование сохранений</string>
     <string name="settings_about_save_debug_subtitle_on">Подробное логирование операций с сохранениями</string>
     <string name="settings_about_save_debug_subtitle_off">Логировать события синхронизации, кэша и каналов сохранений</string>
@@ -1422,6 +1434,18 @@
         <item quantity="many">%d обновлений</item>
         <item quantity="other">%d обновления</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d обновление</item>
+        <item quantity="few">%d обновления</item>
+        <item quantity="many">%d обновлений</item>
+        <item quantity="other">%d обновления</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d обновление</item>
+        <item quantity="few">%d обновления</item>
+        <item quantity="many">%d обновлений</item>
+        <item quantity="other">%d обновления</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Настройки ядра</string>
     <string name="settings_builtin_core_options_subtitle">Настройки и переопределения для каждого ядра</string>
 
@@ -1467,6 +1491,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Раскладка кнопок</string>
     <string name="settings_builtin_controls_mapping_subtitle">Переназначить кнопки для каждого контроллера</string>
+    <string name="settings_builtin_controls_controller_type_title">Контроллер игрока %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">Контроллер, который видит игра. Применяется при следующем запуске игры.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Левый стик как D-Pad</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Сопоставить левый аналоговый стик с D-pad</string>
@@ -1825,6 +1851,10 @@
     <string name="settings_library_layout_title">Раскладка</string>
     <string name="settings_library_layout_grid">Сетка</string>
     <string name="settings_library_layout_list">Список</string>
+    <string name="settings_library_box_art_title">Обложки</string>
+    <string name="settings_library_box_art_subtitle">Показывает 3D-коробку для игр, у которых она есть</string>
+    <string name="settings_library_box_art_option_2d">2D-обложка</string>
+    <string name="settings_library_box_art_option_3d">3D-коробка</string>
     <string name="settings_library_grid_density_title">Плотность сетки</string>
     <string name="settings_library_grid_density_compact">Компактная</string>
     <string name="settings_library_grid_density_normal">Обычная</string>
@@ -2495,6 +2525,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Применяется только к обычным играм</string>
     <string name="settings_libretro_def_auto_restore_state_title">Восстанавливать состояние при запуске</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Применяется только к обычным играм</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Предпочитать более новое сохранение с сервера</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Пропускать состояние для автовозобновления, если с сервера загружено более новое сохранение</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Быстрые сохранения Dolphin и Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Экспериментально; эти ядра могут показывать чёрный экран или не возобновляться. Вступает в силу при следующем запуске, только для обычных игр</string>
 

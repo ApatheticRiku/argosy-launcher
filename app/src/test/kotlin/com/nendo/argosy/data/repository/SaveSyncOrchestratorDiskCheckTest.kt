@@ -55,7 +55,8 @@ class SaveSyncOrchestratorDiskCheckTest {
         saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
         saveOwnershipTracker = ownership,
         accountSwitchMarkerStore = mockk(relaxed = true),
-        fileAccessLayer = mockk(relaxed = true)
+        fileAccessLayer = mockk(relaxed = true),
+        gameArtDao = mockk(relaxed = true)
     )
 
     private val active = SaveCacheEntity(

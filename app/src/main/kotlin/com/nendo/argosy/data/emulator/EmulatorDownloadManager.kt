@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.nendo.argosy.util.FileNames
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
@@ -137,7 +138,7 @@ class EmulatorDownloadManager @Inject constructor(
     ): File? = withContext(Dispatchers.IO) {
         val cacheDir = File(context.cacheDir, "emulator_apks")
         cacheDir.mkdirs()
-        val apkFile = File(cacheDir, assetName)
+        val apkFile = File(cacheDir, FileNames.sanitize(assetName))
 
         try {
             val request = Request.Builder()

@@ -19,7 +19,7 @@ import com.nendo.argosy.data.preferences.SelectSwapMode
 import com.nendo.argosy.libretro.HotkeyManager
 import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.components.ActionPreference
-import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.input.UiShortcut
@@ -168,9 +168,6 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     fun isFocused(item: NavigationItem): Boolean =
         uiState.focusedIndex == navigationLayout.focusIndexOf(item, controls)
 
-    fun pickerToken(item: NavigationItem): Int =
-        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
-
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -188,9 +185,6 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             is NavigationItem.SectionSpacer -> Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
             NavigationItem.ControllerLayout -> {
-                val layoutDisplay = stringResource(
-                    ControlsSettingsDelegate.layoutDisplayNameRes(controls.controllerLayout)
-                )
                 val detected = controls.detectedLayout
                 val device = controls.detectedDeviceName
                 val subtitle = when {
@@ -200,20 +194,15 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                         stringResource(R.string.settings_navigation_controller_layout_detected, detected)
                     else -> stringResource(R.string.settings_navigation_controller_layout_undetected)
                 }
-                CyclePreference(
+                SegmentedPreference(
                     title = stringResource(R.string.settings_navigation_controller_layout_title),
-                    value = layoutDisplay,
                     subtitle = subtitle,
-                    isFocused = isFocused(item),
-                    onClick = { viewModel.cycleControllerLayout() },
-                    onPrev = { viewModel.cycleControllerLayout(-1) },
-                    options = remember(context) {
-                        ControlsSettingsDelegate.LAYOUT_CYCLE.map {
-                            context.getString(ControlsSettingsDelegate.layoutDisplayNameRes(it))
-                        }
+                    options = ControlsSettingsDelegate.LAYOUT_OPTIONS.map {
+                        stringResource(ControlsSettingsDelegate.layoutDisplayNameRes(it))
                     },
-                    onSelect = { viewModel.setControllerLayout(ControlsSettingsDelegate.LAYOUT_CYCLE[it]) },
-                    pickerRequestToken = pickerToken(item)
+                    selectedIndex = ControlsSettingsDelegate.LAYOUT_OPTIONS.indexOf(controls.controllerLayout),
+                    isFocused = isFocused(item),
+                    onSelect = { viewModel.setControllerLayout(ControlsSettingsDelegate.LAYOUT_OPTIONS[it]) }
                 )
             }
 
@@ -269,68 +258,44 @@ fun NavigationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 }
             )
 
-            NavigationItem.MenuWrap -> CyclePreference(
+            NavigationItem.MenuWrap -> SegmentedPreference(
                 title = stringResource(R.string.settings_navigation_menu_wrap_title),
-                value = stringResource(menuWrapLabelRes(controls.menuWrapMode)),
                 subtitle = stringResource(R.string.settings_navigation_menu_wrap_subtitle),
+                options = MenuWrapMode.entries.map { stringResource(menuWrapLabelRes(it)) },
+                selectedIndex = MenuWrapMode.entries.indexOf(controls.menuWrapMode),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleMenuWrapMode() },
-                onPrev = { viewModel.cycleMenuWrapMode(-1) },
-                options = remember(context) {
-                    MenuWrapMode.entries.map { context.getString(menuWrapLabelRes(it)) }
-                },
-                onSelect = { viewModel.setMenuWrapMode(MenuWrapMode.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setMenuWrapMode(MenuWrapMode.entries[it]) }
             )
 
-            NavigationItem.SelectLCombo -> CyclePreference(
+            NavigationItem.SelectLCombo -> SegmentedPreference(
                 title = stringResource(R.string.settings_navigation_select_l_combo_title),
-                value = stringResource(
-                    ControlsSettingsDelegate.comboDisplayNameRes(controls.selectLCombo)
-                ),
                 subtitle = stringResource(R.string.settings_navigation_select_l_combo_subtitle),
-                isFocused = isFocused(item),
-                onClick = { viewModel.cycleSelectLCombo() },
-                onPrev = { viewModel.cycleSelectLCombo(-1) },
-                options = remember(context) {
-                    ControlsSettingsDelegate.COMBO_CYCLE.map {
-                        context.getString(ControlsSettingsDelegate.comboDisplayNameRes(it))
-                    }
+                options = ControlsSettingsDelegate.COMBO_OPTIONS.map {
+                    stringResource(ControlsSettingsDelegate.comboDisplayNameRes(it))
                 },
-                onSelect = { viewModel.setSelectLCombo(ControlsSettingsDelegate.COMBO_CYCLE[it]) },
-                pickerRequestToken = pickerToken(item)
+                selectedIndex = ControlsSettingsDelegate.COMBO_OPTIONS.indexOf(controls.selectLCombo),
+                isFocused = isFocused(item),
+                onSelect = { viewModel.setSelectLCombo(ControlsSettingsDelegate.COMBO_OPTIONS[it]) }
             )
 
-            NavigationItem.SelectRCombo -> CyclePreference(
+            NavigationItem.SelectRCombo -> SegmentedPreference(
                 title = stringResource(R.string.settings_navigation_select_r_combo_title),
-                value = stringResource(
-                    ControlsSettingsDelegate.comboDisplayNameRes(controls.selectRCombo)
-                ),
                 subtitle = stringResource(R.string.settings_navigation_select_r_combo_subtitle),
-                isFocused = isFocused(item),
-                onClick = { viewModel.cycleSelectRCombo() },
-                onPrev = { viewModel.cycleSelectRCombo(-1) },
-                options = remember(context) {
-                    ControlsSettingsDelegate.COMBO_CYCLE.map {
-                        context.getString(ControlsSettingsDelegate.comboDisplayNameRes(it))
-                    }
+                options = ControlsSettingsDelegate.COMBO_OPTIONS.map {
+                    stringResource(ControlsSettingsDelegate.comboDisplayNameRes(it))
                 },
-                onSelect = { viewModel.setSelectRCombo(ControlsSettingsDelegate.COMBO_CYCLE[it]) },
-                pickerRequestToken = pickerToken(item)
+                selectedIndex = ControlsSettingsDelegate.COMBO_OPTIONS.indexOf(controls.selectRCombo),
+                isFocused = isFocused(item),
+                onSelect = { viewModel.setSelectRCombo(ControlsSettingsDelegate.COMBO_OPTIONS[it]) }
             )
 
-            NavigationItem.SelectSwap -> CyclePreference(
+            NavigationItem.SelectSwap -> SegmentedPreference(
                 title = stringResource(R.string.settings_navigation_select_swap_title),
-                value = stringResource(controls.selectSwapMode.labelRes),
                 subtitle = stringResource(R.string.settings_navigation_select_swap_subtitle),
+                options = SelectSwapMode.entries.map { stringResource(it.labelRes) },
+                selectedIndex = SelectSwapMode.entries.indexOf(controls.selectSwapMode),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleSelectSwapMode() },
-                onPrev = { viewModel.cycleSelectSwapMode(-1) },
-                options = remember(context) {
-                    SelectSwapMode.entries.map { context.getString(it.labelRes) }
-                },
-                onSelect = { viewModel.setSelectSwapMode(SelectSwapMode.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setSelectSwapMode(SelectSwapMode.entries[it]) }
             )
 
             NavigationItem.NavBarPages -> ActionPreference(

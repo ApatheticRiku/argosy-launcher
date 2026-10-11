@@ -45,8 +45,8 @@ class PlayTimeSettingsDelegate @Inject constructor(
                 ComponentDefaults.PlayTimeChart.calendarWeeks * DAYS_IN_WEEK
             )
             val platformNames = platformRepository.getAllPlatforms().associate { it.slug to it.name }
-            val coverPaths = gameRepository.getByIds(snapshot.games.map { it.gameId })
-                .mapNotNull { game -> game.displayCoverPath?.let { game.id to it } }
+            val coverPaths = gameRepository.getArt(snapshot.games.map { it.gameId })
+                .mapNotNull { (gameId, art) -> art.coverPath?.let { gameId to it } }
                 .toMap()
             _state.update { it.apply(snapshot, platformNames, coverPaths) }
         }

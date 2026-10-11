@@ -28,6 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import com.nendo.argosy.R
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
+import com.nendo.argosy.ui.common.labelRes
+import com.nendo.argosy.ui.common.subtitleRes
 import com.nendo.argosy.ui.primitives.ActionButton
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalArgosyTheme
@@ -43,21 +46,29 @@ data class SaveConflictInfo(
     val localTimestamp: Instant,
     val serverTimestamp: Instant,
     val serverDeviceName: String? = null,
-    val conflictId: Long? = null
-)
+    val conflictId: Long? = null,
+    val isHardcoreDowngrade: Boolean = false,
+    val snapshotConflict: Boolean = false
+) {
+    val optionCount: Int
+        get() = if (snapshotConflict) SnapshotConflictChoice.entries.size + 1 else 2
+}
 
 @Composable
 fun SaveConflictModal(
     info: SaveConflictInfo,
     focusedButton: Int,
     onKeepLocal: () -> Unit,
-    onOverwrite: () -> Unit
+    onOverwrite: () -> Unit,
+    onSnapshotChoice: (SnapshotConflictChoice) -> Unit
 ) {
     val localIsNewer = info.localTimestamp.isAfter(info.serverTimestamp)
     val context = LocalContext.current
 
     Modal(
-        title = stringResource(R.string.ui_save_conflict_title),
+        title = stringResource(
+            if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_title else R.string.ui_save_conflict_title
+        ),
         baseWidth = 400.dp,
         onDismiss = onKeepLocal,
         titleContent = {
@@ -84,14 +95,16 @@ fun SaveConflictModal(
         }
     ) {
         Text(
-            text = stringResource(R.string.ui_save_conflict_message),
+            text = stringResource(
+                if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_message else R.string.ui_save_conflict_message
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-        Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+        if (!info.isHardcoreDowngrade) Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
             SaveSourceRow(
                 icon = Icons.Default.PhoneAndroid,
                 label = stringResource(R.string.ui_save_conflict_source_local),
@@ -109,7 +122,21 @@ fun SaveConflictModal(
 
         Spacer(modifier = Modifier.height(Dimens.spacingLg))
 
-        Row(
+        if (info.snapshotConflict) Column(verticalArrangement = Arrangement.spacedBy(Dimens.spacingXs)) {
+            SnapshotConflictChoice.entries.forEachIndexed { index, choice ->
+                ConflictChoiceRow(
+                    label = stringResource(choice.labelRes),
+                    subtitle = stringResource(choice.subtitleRes),
+                    isFocused = focusedButton == index,
+                    onClick = { onSnapshotChoice(choice) }
+                )
+            }
+            ConflictChoiceRow(
+                label = stringResource(R.string.ui_save_conflict_skip),
+                isFocused = focusedButton == SnapshotConflictChoice.entries.size,
+                onClick = onKeepLocal
+            )
+        } else Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
         ) {
@@ -121,7 +148,9 @@ fun SaveConflictModal(
             )
 
             ActionButton(
-                label = stringResource(R.string.ui_save_conflict_overwrite),
+                label = stringResource(
+                    if (info.isHardcoreDowngrade) R.string.ui_save_conflict_hardcore_replace else R.string.ui_save_conflict_overwrite
+                ),
                 onClick = onOverwrite,
                 focused = focusedButton == 1,
                 primary = true,

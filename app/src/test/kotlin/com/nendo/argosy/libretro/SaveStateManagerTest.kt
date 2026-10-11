@@ -3,6 +3,7 @@ package com.nendo.argosy.libretro
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.repository.ActiveSaveRepository
 import com.nendo.argosy.data.repository.SaveCacheManager
+import com.nendo.argosy.data.sync.platform.SigilRestore
 import com.swordfish.libretrodroid.GLRetroView
 import io.mockk.coEvery
 import io.mockk.every
@@ -31,6 +32,7 @@ class SaveStateManagerTest {
     ): SaveStateManager {
         val saves = tempFolder.newFolder("saves")
         val states = tempFolder.newFolder("states")
+        coEvery { cache.restoreThroughSigil(any()) } returns SigilRestore.NotRouted
         return SaveStateManager(
             savesDir = saves,
             statesDir = states,

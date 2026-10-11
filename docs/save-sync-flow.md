@@ -143,7 +143,32 @@ card directory while the archive holds only one game's folders, so every caller 
   beside the ROM) that the launch uses.
 - `GameCubeHeaderParser` reads only ISO and RVZ; other formats yield a garbage game code.
 - No session watcher runs for a game with no `.gci` yet.
-- Sigil has no GameCube layout, so `Sigil.locateSaves` cannot produce the spec's unit.
+- On a server whose heartbeat reports `SAVE_SYNC.SNAPSHOTS` (`RomMCapabilities.supportsSnapshots`), standalone Dolphin goes through
+  `SigilSaveHandler` (Sigil's `dolphin_standalone` layout, raw cards included), as do the other
+  standalone card and profile emulators. On older servers every one of them keeps its legacy
+  handler and format. While disconnected, the route follows the last snapshot capability the
+  stored server reported (`RomMConnectionManager.snapshotsEnabled`); a server never reached keeps
+  the legacy handler and format. The libretro and built-in GameCube cores build the unit in
+  `GciSaveHandler` on every server.
+- Each `save_cache` row records the format of its bytes in `saveFormat` at write time: `neutral`
+  for a unit Sigil built, `native` for the files the emulator wrote. An offline-chain push
+  (`SnapshotSyncEngine.pushCached`) labels the save with the row's format, and a cache restore
+  (`SaveCacheManager.restoreSave`, `restoreThroughSigil`) hands only a non-native row to Sigil, so
+  neither depends on the route at the time it runs. A `neutral` row that no Sigil layout covers at
+  restore time (after a move to an older server, a sign-out, or an emulator change) is refused and
+  nothing is written; a Sigil unit is never placed as raw files. A null `saveFormat` marks a row written before
+  schema 206, or a server download whose format the server did not report: a push treats it as
+  `native`, a restore follows the live route.
+- `SigilSaveHandler` calls collect and restore with `unmanaged = true` although Argosy launches the
+  game. Users also start these emulators outside Argosy, and a session can end before the content
+  unloads, so a managed volume swap could rest on a stale collect and lose other games' saves.
+  Restore passes `overwriteLocal = true`: the snapshot decide table (`SnapshotDecision`) is the one
+  conflict gate before every automatic restore, and a restore the user picks from history is meant
+  to overwrite. Revisit managed mode once sessions end on the emulator's task dying.
+- Shared-volume claims use Argosy's own `newlyUnowned` (names absent at the previous collect).
+  Sigil's `unownedChanged` also counts rewritten saves but measures from the state blob Argosy
+  passes back, which stays at the last claimed collect; moving to it needs Sigil's
+  collect-before-launch protocol and a device check on a Saturn or Sega CD shared volume.
 
 ### Bulk and server-driven paths
 
@@ -205,6 +230,9 @@ in below and listed at the end.
   cached and uploaded (raw bytes for a single file, the zip entry-list hash otherwise, per the
   Sigil wire contract), and an identity hash used for "did progress change" comparisons (ignores
   RTC ticks via the Sigil unit identity, and the hardcore trailer).
+- A native snapshot save compares by content hash on both sides. The server's `identity_hash` for a
+  zip with one non-clock member is that member's own md5, while Argosy's native units carry no
+  clock member, so content equality is the exact test and identity would never match.
 - Zip entry names are canonical, not on-disk names: GameCube entries are named from the GCI
   header, cross-fork size sidecars are excluded.
 - Every archive entering the cache (session end, download, legacy server shapes such as

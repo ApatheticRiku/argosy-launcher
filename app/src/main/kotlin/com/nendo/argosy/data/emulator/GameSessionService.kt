@@ -65,6 +65,7 @@ class GameSessionService : Service() {
     @Inject lateinit var gameDao: GameDao
     @Inject lateinit var activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
     @Inject lateinit var screenshotCaptureMonitor: ScreenshotCaptureMonitor
+    @Inject lateinit var saveScreenshotCapture: com.nendo.argosy.hardware.SaveScreenshotCapture
     @Inject lateinit var playSessionTracker: dagger.Lazy<PlaySessionTracker>
     @Inject lateinit var activityReporter:
         com.nendo.argosy.data.social.uploader.RomMActivityReporter
@@ -350,14 +351,29 @@ class GameSessionService : Service() {
 
         dirsToWatch.forEach { dir ->
             @Suppress("DEPRECATION")
-            val observer = object : FileObserver(dir.absolutePath, CLOSE_WRITE or MOVED_TO or CREATE) {
+            val observer = object : FileObserver(dir.absolutePath, CLOSE_WRITE or MOVED_TO or CREATE or MODIFY) {
                 override fun onEvent(event: Int, path: String?) {
                     if (path == null) return
                     if (path.startsWith(".") || path.endsWith(".tmp") || path.endsWith(".bak")) return
 
                     val elapsed = System.currentTimeMillis() - sessionStartTime
                     if (elapsed < STARTUP_COOLDOWN_MS) {
-                        Logger.debug(TAG, "Ignoring early event (${elapsed}ms): $path in ${dir.name}")
+                        if (event and ALL_EVENTS != MODIFY) {
+                            Logger.debug(TAG, "Ignoring early event (${elapsed}ms): $path in ${dir.name}")
+                        }
+                        return
+                    }
+
+                    if (event and ALL_EVENTS == MODIFY) {
+                        handler.post {
+                            if (!inPlaceWriteSeen) {
+                                inPlaceWriteSeen = true
+                                Logger.debug(TAG, "Save written in place: $path in ${dir.name}")
+                                playSessionTracker.get().reportSaveWritten()
+                            }
+                            onSaveDetected(IN_PLACE_WRITE_QUIET_MS)
+                            scheduleSaveScreenshot()
+                        }
                         return
                     }
 
@@ -372,6 +388,7 @@ class GameSessionService : Service() {
                         }
                         playSessionTracker.get().reportSaveWritten()
                         onSaveDetected()
+                        scheduleSaveScreenshot()
                     }
                 }
             }
@@ -385,16 +402,34 @@ class GameSessionService : Service() {
         fileObservers.forEach { it.stopWatching() }
         fileObservers.clear()
         handler.removeCallbacksAndMessages(null)
+        inPlaceWriteSeen = false
     }
 
     private val cacheRunnable = Runnable { performCacheAndNotify() }
+    private var inPlaceWriteSeen = false
 
-    private fun onSaveDetected() {
+    private fun onSaveDetected(quietMs: Long = CACHE_DEBOUNCE_MS) {
         handler.removeCallbacks(cacheRunnable)
-        handler.postDelayed(cacheRunnable, CACHE_DEBOUNCE_MS)
+        handler.postDelayed(cacheRunnable, quietMs)
+    }
+
+    private val screenshotRunnable = Runnable { captureSaveScreenshot() }
+
+    private fun scheduleSaveScreenshot() {
+        if (currentEmulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) return
+        handler.removeCallbacks(screenshotRunnable)
+        handler.postDelayed(screenshotRunnable, SAVE_SCREENSHOT_DELAY_MS)
+    }
+
+    private fun captureSaveScreenshot() {
+        val gameId = currentGameId.takeIf { it != -1L } ?: return
+        val displayId = com.nendo.argosy.DualScreenManagerHolder.instance?.emulatorDisplayId
+            ?: android.view.Display.DEFAULT_DISPLAY
+        serviceScope.launch { saveScreenshotCapture.capture(gameId, displayId) }
     }
 
     private fun performCacheAndNotify() {
+        inPlaceWriteSeen = false
         val gameId = currentGameId
         val emulatorId = currentEmulatorId
         val savePath = currentSavePath
@@ -424,7 +459,8 @@ class GameSessionService : Service() {
                         isLocked = false,
                         isHardcore = currentIsHardcore,
                         skipDuplicateCheck = false,
-                        needsRemoteSync = true
+                        needsRemoteSync = true,
+                        claimNewSaves = true
                     )
 
                     if (result is SaveCacheManager.CacheResult.Created && previousCacheId > 0) {
@@ -721,6 +757,8 @@ class GameSessionService : Service() {
         private const val PRESENCE_MISSES_TO_END = 3
         private const val STARTUP_COOLDOWN_MS = 20000L
         private const val CACHE_DEBOUNCE_MS = 250L
+        private const val SAVE_SCREENSHOT_DELAY_MS = 250L
+        private const val IN_PLACE_WRITE_QUIET_MS = 1_500L
         private val IGNORED_DIRECTORY_PATTERNS = setOf(
             "cache",
             "shader",

@@ -106,7 +106,8 @@ class SaveSyncOrchestratorTest {
             saveAccessNotices = com.nendo.argosy.data.sync.SaveAccessNotices(),
             saveOwnershipTracker = saveOwnershipTracker,
             accountSwitchMarkerStore = mockk(relaxed = true),
-            fileAccessLayer = fileAccessLayer
+            fileAccessLayer = fileAccessLayer,
+            gameArtDao = mockk(relaxed = true)
         )
     }
 

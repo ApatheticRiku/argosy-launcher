@@ -23,9 +23,11 @@ import com.nendo.argosy.data.local.dao.EmulatorConfigDao
 import com.nendo.argosy.data.local.dao.EmulatorSaveConfigDao
 import com.nendo.argosy.data.local.dao.EmulatorUpdateDao
 import com.nendo.argosy.data.local.dao.FirmwareDao
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.dao.GameFileDao
+import com.nendo.argosy.data.local.dao.GameScreenshotDao
 import com.nendo.argosy.data.local.dao.MediaCreditDao
 import com.nendo.argosy.data.local.dao.MediaDownloadQueueDao
 import com.nendo.argosy.data.local.dao.MediaItemDao
@@ -86,6 +88,20 @@ object DatabaseModule {
 
     @Provides
     fun provideGameDao(database: ALauncherDatabase): GameDao = database.gameDao()
+
+    @Provides
+    fun provideGameArtDao(database: ALauncherDatabase): GameArtDao = database.gameArtDao()
+
+    @Provides
+    fun provideGameScreenshotDao(database: ALauncherDatabase): GameScreenshotDao = database.gameScreenshotDao()
+
+    @Provides
+    fun provideSigilSyncStateDao(database: ALauncherDatabase): com.nendo.argosy.data.local.dao.SigilSyncStateDao =
+        database.sigilSyncStateDao()
+
+    @Provides
+    fun provideSnapshotChannelDao(database: ALauncherDatabase): com.nendo.argosy.data.local.dao.SnapshotChannelDao =
+        database.snapshotChannelDao()
 
     @Provides
     fun provideGameDiscDao(database: ALauncherDatabase): GameDiscDao = database.gameDiscDao()

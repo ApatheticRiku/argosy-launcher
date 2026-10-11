@@ -23,6 +23,9 @@ import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.SaveUnitResolver
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SigilCollect
+import com.nendo.argosy.data.sync.platform.SigilRestore
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.domain.model.SaveSlotClassifier
 import com.nendo.argosy.domain.model.SaveSlotKind
@@ -56,14 +59,17 @@ class SaveCacheManager @Inject constructor(
     private val saveOwnershipTracker: SaveOwnershipTracker,
     private val saveOwnershipDao: SaveOwnershipDao,
     private val saveUnitResolver: SaveUnitResolver,
-    private val gciSaveHandler: GciSaveHandler
+    private val gciSaveHandler: GciSaveHandler,
+    private val sigilSaveHandler: SigilSaveHandler
 ) {
     private val TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")
         .withZone(ZoneId.systemDefault())
 
     companion object {
         private const val TAG = "SaveCacheManager"
+        private const val COPY_DIR_SUFFIX = "_copy"
         const val UNIT_CACHE_SUFFIX = ".unit.zip"
+        private val RZIP_MAGIC = "#RZIPv".toByteArray(Charsets.US_ASCII)
 
         /**
          * Platforms whose save is a set of sibling folders sharing a prefix rather than one
@@ -99,13 +105,26 @@ class SaveCacheManager @Inject constructor(
         skipDuplicateCheck: Boolean = false,
         needsRemoteSync: Boolean = false,
         precomputedContentHash: String? = null,
-        coreName: String? = null
+        coreName: String? = null,
+        claimNewSaves: Boolean = false
     ): CacheResult = withContext(Dispatchers.IO) {
         @Suppress("NAME_SHADOWING")
         val channelName = resolveDefaultChannel(channelName, isHardcore)
         val secureSaves = syncPreferencesRepository.isSecureSaves()
         val ownerUserId = syncPreferencesRepository.getRommUserId()
-        if (!fal.exists(savePath)) {
+        val sigil = when (val collected = sigilSaveHandler.collect(gameId, emulatorId, claimNewSaves)) {
+            SigilCollect.NotRouted -> null
+            is SigilCollect.Found -> collected
+            SigilCollect.Absent -> {
+                Logger.debug(TAG, "No save to cache for game $gameId under $emulatorId")
+                return@withContext CacheResult.Failed
+            }
+            is SigilCollect.Unreadable -> {
+                Logger.warn(TAG, "Save for game $gameId under $emulatorId is unreadable: ${collected.reason}")
+                return@withContext CacheResult.Failed
+            }
+        }
+        if (sigil == null && !fal.exists(savePath)) {
             Logger.warn(TAG,"Save file does not exist: $savePath")
             return@withContext CacheResult.Failed
         }
@@ -113,21 +132,24 @@ class SaveCacheManager @Inject constructor(
         fal.prepareSaveAccess(savePath)
         val saveFile = fal.getTransformedFile(savePath)
         var tempFile: File? = null
-        val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, coreName)
+        val unit = if (sigil != null || fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, coreName)
 
         try {
-            val archived = archiveForCache(gameId, savePath, saveFile, unit, precomputedContentHash)
+            val archived = archiveForCache(gameId, savePath, saveFile, unit, precomputedContentHash, sigil)
                 ?: return@withContext CacheResult.Failed
             tempFile = archived.tempFile
             val contentHash = archived.contentHash
             val tempOrSource = archived.source
 
-            val identityHash = unit?.unit?.identityHash?.takeIf { it.isNotEmpty() } ?: contentHash
+            val identityHash = archived.identityHash
+                ?: unit?.unit?.identityHash?.takeIf { it.isNotEmpty() }
+                ?: contentHash
+            val identityKnown = unit != null || archived.identityHash != null
 
             if (!skipDuplicateCheck) {
                 val existingWithHash = saveCacheDao.getAllByGameChannelAndHash(gameId, ownerUserId, channelName, contentHash).firstOrNull()
-                    ?: unit?.let { saveCacheDao.getLatestByGameChannelAndIdentity(gameId, ownerUserId, channelName, identityHash) }
-                    ?: unit?.let { saveCacheDao.getAllByGameChannelAndHash(gameId, ownerUserId, channelName, identityHash).lastOrNull() }
+                    ?: identityHash.takeIf { identityKnown }?.let { saveCacheDao.getLatestByGameChannelAndIdentity(gameId, ownerUserId, channelName, it) }
+                    ?: identityHash.takeIf { identityKnown }?.let { saveCacheDao.getAllByGameChannelAndHash(gameId, ownerUserId, channelName, it).lastOrNull() }
                 if (existingWithHash != null) {
                     Log.d(TAG, "Duplicate save detected for game $gameId (hash=$contentHash, identity=$identityHash, hardcore=$isHardcore), skipping cache")
                     SaveDebugLogger.logCacheDuplicate(
@@ -151,7 +173,8 @@ class SaveCacheManager @Inject constructor(
             gameDir.mkdirs()
 
             val (cachePath, cachedFile) = if (archived.isArchive) {
-                val zipName = if (unit != null) "${unit.unit.key}$UNIT_CACHE_SUFFIX" else "save.zip"
+                val zipName = archived.fileName
+                    ?: if (unit != null) "${unit.unit.key}$UNIT_CACHE_SUFFIX" else "save.zip"
                 val finalZip = File(gameDir, zipName)
                 tempOrSource.renameTo(finalZip).let { renamed ->
                     if (!renamed) {
@@ -200,7 +223,8 @@ class SaveCacheManager @Inject constructor(
                 slotName = slotName,
                 channelName = channelName,
                 needsRemoteSync = needsRemoteSync,
-                ownerUserId = ownerUserId
+                ownerUserId = ownerUserId,
+                saveFormat = formatOf(sigil)
             )
             val insertedId = saveCacheDao.insert(entity)
 
@@ -359,7 +383,13 @@ class SaveCacheManager @Inject constructor(
         return placed.size == entries.size
     }
 
-    private class Archived(val contentHash: String, val source: File, val tempFile: File?) {
+    private class Archived(
+        val contentHash: String,
+        val source: File,
+        val tempFile: File?,
+        val fileName: String? = null,
+        val identityHash: String? = null
+    ) {
         val isArchive: Boolean get() = tempFile != null
     }
 
@@ -368,8 +398,20 @@ class SaveCacheManager @Inject constructor(
         savePath: String,
         saveFile: File,
         unit: ResolvedSaveUnit?,
-        precomputedContentHash: String?
+        precomputedContentHash: String?,
+        sigil: SigilCollect.Found? = null
     ): Archived? {
+        if (sigil != null) {
+            val file = File(context.cacheDir, "temp_sigil_${System.nanoTime()}")
+            file.writeBytes(sigil.data)
+            return Archived(
+                contentHash = precomputedContentHash ?: sigil.contentHash,
+                source = file,
+                tempFile = file,
+                fileName = sigil.artifact,
+                identityHash = sigil.identityHash.takeIf { it.isNotEmpty() }
+            )
+        }
         val gciMembers = if (unit == null) gciUnitMembers(savePath)?.takeIf { it.size > 1 } else null
         val members = unit?.memberPaths ?: gciMembers
         if (members != null) {
@@ -488,9 +530,14 @@ class SaveCacheManager @Inject constructor(
      * the bytes could not be cached, and the caller must not overwrite them.
      */
     suspend fun protectBeforeOverwrite(gameId: Long, emulatorId: String, savePath: String): Boolean =
-        !fal.exists(savePath) ||
-            !holdsSaveForGame(gameId, savePath) ||
-            cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+        when (sigilSaveHandler.collect(gameId, emulatorId)) {
+            SigilCollect.NotRouted -> !fal.exists(savePath) ||
+                !holdsSaveForGame(gameId, savePath) ||
+                cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+            SigilCollect.Absent -> true
+            is SigilCollect.Unreadable -> false
+            is SigilCollect.Found -> cacheAsRollback(gameId, emulatorId, savePath) !is CacheResult.Failed
+        }
 
     private suspend fun holdsSaveForGame(gameId: Long, savePath: String): Boolean {
         if (!fal.isDirectory(savePath)) return true
@@ -507,7 +554,12 @@ class SaveCacheManager @Inject constructor(
         emulatorId: String,
         savePath: String
     ): CacheResult = withContext(Dispatchers.IO) {
-        if (!fal.exists(savePath)) {
+        val sigil = when (val collected = sigilSaveHandler.collect(gameId, emulatorId)) {
+            SigilCollect.NotRouted -> null
+            is SigilCollect.Found -> collected
+            SigilCollect.Absent, is SigilCollect.Unreadable -> return@withContext CacheResult.Failed
+        }
+        if (sigil == null && !fal.exists(savePath)) {
             Logger.warn(TAG,"Save file does not exist for rollback: $savePath")
             return@withContext CacheResult.Failed
         }
@@ -516,10 +568,10 @@ class SaveCacheManager @Inject constructor(
         val saveFile = fal.getTransformedFile(savePath)
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         var tempFile: File? = null
-        val unit = if (fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, null)
+        val unit = if (sigil != null || fal.isDirectory(savePath)) null else multiMemberUnit(gameId, emulatorId, savePath, null)
 
         try {
-            val archived = archiveForCache(gameId, savePath, saveFile, unit, precomputedContentHash = null)
+            val archived = archiveForCache(gameId, savePath, saveFile, unit, precomputedContentHash = null, sigil = sigil)
                 ?: return@withContext CacheResult.Failed
             tempFile = archived.tempFile
             val contentHash = archived.contentHash
@@ -539,7 +591,8 @@ class SaveCacheManager @Inject constructor(
             gameDir.mkdirs()
 
             val (cachePath, cachedFile) = if (archived.isArchive) {
-                val zipName = if (unit != null) "${unit.unit.key}$UNIT_CACHE_SUFFIX" else "save.zip"
+                val zipName = archived.fileName
+                    ?: if (unit != null) "${unit.unit.key}$UNIT_CACHE_SUFFIX" else "save.zip"
                 val finalZip = File(gameDir, zipName)
                 tempOrSource.renameTo(finalZip).let { renamed ->
                     if (!renamed) {
@@ -567,7 +620,8 @@ class SaveCacheManager @Inject constructor(
                 isLocked = false,
                 contentHash = contentHash,
                 isRollback = true,
-                ownerUserId = ownerUserId
+                ownerUserId = ownerUserId,
+                saveFormat = formatOf(sigil)
             )
             val rollbackId = saveCacheDao.insert(entity)
             Log.d(TAG, "Created rollback save for game $gameId at $cachePath")
@@ -577,6 +631,25 @@ class SaveCacheManager @Inject constructor(
             Logger.error(TAG,"Failed to cache rollback save", e)
             tempFile?.delete()
             CacheResult.Failed
+        }
+    }
+
+    suspend fun restoreThroughSigil(entity: SaveCacheEntity): SigilRestore = withContext(Dispatchers.IO) {
+        val cacheFile = File(cacheBaseDir, entity.cachePath)
+        if (!cacheFile.exists()) return@withContext SigilRestore.NotRouted
+        restoreUnlessNative(entity, cacheFile, entity.emulatorId)
+    }
+
+    private fun formatOf(sigil: SigilCollect.Found?): String =
+        if (sigil != null) SaveCacheEntity.FORMAT_NEUTRAL else SaveCacheEntity.FORMAT_NATIVE
+
+    private suspend fun restoreUnlessNative(entity: SaveCacheEntity, cacheFile: File, emulatorId: String?): SigilRestore {
+        if (entity.saveFormat == SaveCacheEntity.FORMAT_NATIVE) return SigilRestore.NotRouted
+        val restored = sigilSaveHandler.restore(entity.gameId, cacheFile, emulatorId)
+        return if (restored == SigilRestore.NotRouted && entity.saveFormat == SaveCacheEntity.FORMAT_NEUTRAL) {
+            SigilRestore.Refused("cache ${entity.id} holds a Sigil unit and no Sigil layout covers this emulator now")
+        } else {
+            restored
         }
     }
 
@@ -600,6 +673,27 @@ class SaveCacheManager @Inject constructor(
         fal.prepareSaveAccess(targetPath)
         var placedGciMembers: List<String>? = null
         try {
+            when (val sigilRestore = restoreUnlessNative(entity, cacheFile, emulatorId = null)) {
+                SigilRestore.NotRouted -> Unit
+                is SigilRestore.Refused -> {
+                    Logger.warn(TAG, "Restore of cache $cacheId refused: ${sigilRestore.reason}")
+                    return@withContext false
+                }
+                is SigilRestore.Restored -> {
+                    Log.d(TAG, "Restored save from cache $cacheId through Sigil (legacy hardcore marker=${sigilRestore.hardcoreMarker})")
+                    if (!secureSaves && !entity.isHardcore) {
+                        recordLocalWriteAnchor(
+                            entity.gameId,
+                            entity.emulatorId,
+                            entity.channelName,
+                            targetPath,
+                            entity.ownerUserId ?: syncPreferencesRepository.getRommUserId()
+                        )
+                    }
+                    saveOwnershipTracker.record(targetPath, entity.emulatorId, entity.contentHash, entity.gameId, entity.channelName)
+                    return@withContext true
+                }
+            }
             val writeOk = if (isUnitCache(entity)) {
                 restoreUnit(entity, cacheFile, targetPath)
             } else if (isGciUnitArchive(entity, targetPath)) {
@@ -804,7 +898,9 @@ class SaveCacheManager @Inject constructor(
 
         val now = Instant.now()
         val timestamp = TIMESTAMP_FORMAT.format(now)
-        val relativeDir = cacheRelativeDir(source.ownerUserId, source.gameId, timestamp)
+        val baseDir = cacheRelativeDir(source.ownerUserId, source.gameId, timestamp)
+        val landsOnSource = File(cacheBaseDir, "$baseDir/${sourceFile.name}").canonicalPath == sourceFile.canonicalPath
+        val relativeDir = if (landsOnSource) "${baseDir}$COPY_DIR_SUFFIX" else baseDir
         val gameDir = File(cacheBaseDir, relativeDir)
 
         try {
@@ -828,7 +924,8 @@ class SaveCacheManager @Inject constructor(
                 contentHash = source.contentHash,
                 channelName = channelName,
                 needsRemoteSync = true,
-                ownerUserId = source.ownerUserId
+                ownerUserId = source.ownerUserId,
+                saveFormat = source.saveFormat
             )
 
             val newId = saveCacheDao.insert(entity)
@@ -1201,6 +1298,15 @@ class SaveCacheManager @Inject constructor(
         gameId: Long? = null,
         emulatorId: String? = null
     ): String? = withContext(Dispatchers.IO) {
+        val owner = if (gameId == null || emulatorId == null) saveOwnershipDao.getLatestByPath(savePath) else null
+        val ownerGameId = gameId ?: owner?.gameId
+        if (ownerGameId != null) {
+            when (val collected = sigilSaveHandler.collect(ownerGameId, emulatorId ?: owner?.emulatorId)) {
+                SigilCollect.NotRouted -> Unit
+                is SigilCollect.Found -> return@withContext collected.contentHash
+                SigilCollect.Absent, is SigilCollect.Unreadable -> return@withContext null
+            }
+        }
         if (!fal.exists(savePath)) return@withContext null
         fal.prepareSaveAccess(savePath)
         try {
@@ -1228,14 +1334,29 @@ class SaveCacheManager @Inject constructor(
         val resolvedEmulatorId = emulatorId ?: owner?.emulatorId ?: return null
         if (resolvedEmulatorId !in PlatformSaveHandlerRegistry.UNIT_EMULATOR_IDS) return null
         val game = gameDao.getById(resolvedGameId) ?: return null
-        val unit = saveUnitResolver.resolveForSavePath(savePath, game, resolvedEmulatorId, null, hash = true)
+        val resolved = saveUnitResolver.resolveForSavePath(savePath, game, resolvedEmulatorId, null, hash = true)
             ?.takeIf { it.isMulti && it.unit.contentHash.isNotEmpty() }
-            ?.unit ?: return null
-        if (unit.identityHash.isEmpty() || unit.identityHash == unit.contentHash) return unit.contentHash
+            ?: return null
+        val unit = resolved.unit
+        val contentHash = if (resolved.memberPaths.any { isRetroArchCompressed(it) }) {
+            saveArchiver.calculateFilesAsZipHash(resolved.memberPaths)
+        } else {
+            unit.contentHash
+        }
+        if (unit.identityHash.isEmpty() || unit.identityHash == unit.contentHash) return contentHash
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         return saveCacheDao.getLatestByGameAndIdentity(resolvedGameId, ownerUserId, unit.identityHash)?.contentHash
             ?: saveCacheDao.getByGameAndHash(resolvedGameId, ownerUserId, unit.identityHash)?.contentHash
-            ?: unit.contentHash
+            ?: contentHash
+    }
+
+    private fun isRetroArchCompressed(path: String): Boolean = try {
+        fal.getTransformedFile(path).inputStream().use { input ->
+            val head = ByteArray(RZIP_MAGIC.size)
+            input.read(head) == head.size && head.contentEquals(RZIP_MAGIC)
+        }
+    } catch (e: java.io.IOException) {
+        false
     }
 
     private suspend fun recordLocalWriteAnchor(

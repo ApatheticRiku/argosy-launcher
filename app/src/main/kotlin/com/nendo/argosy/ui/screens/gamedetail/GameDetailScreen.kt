@@ -118,6 +118,7 @@ fun GameDetailScreen(
     onBack: () -> Unit,
     onNavigateToPlatformSettings: (platformId: Long) -> Unit = {},
     onNavigateToGame: (gameId: Long) -> Unit = {},
+    onOpenSaveTimeline: (gameId: Long) -> Unit = {},
     viewModel: GameDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -158,6 +159,7 @@ fun GameDetailScreen(
                     }
                 }
                 is LaunchEvent.NavigateBack -> onBack()
+                is LaunchEvent.OpenSaveTimeline -> onOpenSaveTimeline(event.gameId)
             }
         }
     }
@@ -250,7 +252,6 @@ fun GameDetailScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 inputDispatcher.subscribeView(inputHandler, forRoute = Screen.ROUTE_GAME_DETAIL)
-                viewModel.onResume()
                 viewModel.republishCompanionDetail()
             } else if (event == Lifecycle.Event.ON_STOP) {
                 viewModel.clearCompanionDetail()
@@ -517,7 +518,8 @@ private fun GameDetailContent(
     Box(modifier = Modifier.fillMaxSize()) {
         // Background layer - extends behind footer
         Box(modifier = Modifier.fillMaxSize().blur(combinedBlur)) {
-            val effectiveBackgroundPath = uiState.repairedBackgroundPath ?: game.backgroundPath
+            val liveBackgroundPath = com.nendo.argosy.ui.common.rememberResolvedBackgroundPath(game.id, game.backgroundPath)
+            val effectiveBackgroundPath = uiState.repairedBackgroundPath ?: liveBackgroundPath
             if (effectiveBackgroundPath != null) {
                 AsyncImage(
                     model = rememberFileImageModel(effectiveBackgroundPath),
@@ -527,8 +529,8 @@ private fun GameDetailContent(
                         .fillMaxSize()
                         .blur(24.dp),
                     onError = {
-                        if (uiState.repairedBackgroundPath == null && game.backgroundPath?.startsWith("/") == true) {
-                            viewModel.repairBackgroundImage(game.id, game.backgroundPath)
+                        if (uiState.repairedBackgroundPath == null && liveBackgroundPath?.startsWith("/") == true) {
+                            viewModel.repairBackgroundImage(game.id, liveBackgroundPath)
                         }
                     }
                 )
@@ -1270,7 +1272,9 @@ private fun GameDetailModals(
                 else -> Unit
             }
         },
-        onDismiss = viewModel::dismissSaveCacheDialog
+        onDismiss = viewModel::dismissSaveCacheDialog,
+        coverPath = com.nendo.argosy.ui.common.rememberResolvedCoverPath(game.id, game.coverPath),
+        snapshotActions = viewModel.snapshotViewActions
     )
 
     PermissionRequiredModal(
@@ -1280,17 +1284,9 @@ private fun GameDetailModals(
         onDismiss = viewModel::dismissPermissionModal
     )
 
-    val delegateOverlay = uiState.syncOverlayState
-    val effectiveSyncProgress = delegateOverlay?.syncProgress
-        ?: if (uiState.isSyncing) uiState.syncProgress else null
-
     SyncOverlay(
-        syncProgress = effectiveSyncProgress,
-        gameTitle = delegateOverlay?.gameTitle ?: game.title,
-        onGrantPermission = delegateOverlay?.onGrantPermission,
-        onDisableSync = delegateOverlay?.onDisableSync,
-        onOpenSettings = delegateOverlay?.onOpenSettings,
-        onSkip = delegateOverlay?.onSkip
+        syncProgress = if (uiState.isSyncing && uiState.syncOverlayState == null) uiState.syncProgress else null,
+        gameTitle = game.title
     )
 
     AnimatedVisibility(

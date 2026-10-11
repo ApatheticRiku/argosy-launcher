@@ -25,7 +25,7 @@ import com.nendo.argosy.domain.model.PresentationLayout
 import com.nendo.argosy.domain.model.PresentationScrim
 import com.nendo.argosy.domain.model.PresentationStat
 import com.nendo.argosy.domain.model.PresentationStyle
-import com.nendo.argosy.ui.components.CyclePreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.dualscreen.CompanionDetail
@@ -119,29 +119,25 @@ internal fun presentationSections(style: PresentationStyle) = presentationLayout
 internal fun presentationVisibleItems(style: PresentationStyle): List<PresentationItem> =
     presentationLayout.visibleItems(style)
 
-/**
- * Left/right on [item]: enums wrap, the strength steps and clamps, and a stat follows the house rule
- * that left is off and right is on. Null when [item] takes no adjustment.
- */
 internal fun adjustPresentationItem(
     style: PresentationStyle,
     item: PresentationItem,
     direction: Int
 ): PresentationStyle? = when (item) {
-    PresentationItem.Layout -> style.copy(layout = cycleEnum(style.layout, direction))
-    PresentationItem.Scrim -> style.copy(scrim = cycleEnum(style.scrim, direction))
+    PresentationItem.Layout -> style.copy(layout = stepEnum(style.layout, direction))
+    PresentationItem.Scrim -> style.copy(scrim = stepEnum(style.scrim, direction))
     PresentationItem.ScrimStrength -> style.copy(
         scrimStrength = (style.scrimStrength + direction * PRESENTATION_SCRIM_STEP)
             .coerceIn(PRESENTATION_SCRIM_MIN, PRESENTATION_SCRIM_MAX)
     )
-    PresentationItem.Art -> style.copy(art = cycleEnum(style.art, direction))
+    PresentationItem.Art -> style.copy(art = stepEnum(style.art, direction))
     is PresentationItem.Stat -> style.withStat(item.stat, shown = direction > 0)
     is PresentationItem.Header -> null
 }
 
-private inline fun <reified T : Enum<T>> cycleEnum(current: T, direction: Int): T {
+private inline fun <reified T : Enum<T>> stepEnum(current: T, direction: Int): T {
     val values = enumValues<T>()
-    return values[(current.ordinal + direction).mod(values.size)]
+    return values[(current.ordinal + direction).coerceIn(0, values.size - 1)]
 }
 
 internal fun presentationLayoutLabelRes(layout: PresentationLayout): Int = when (layout) {
@@ -203,9 +199,6 @@ fun PresentationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
     fun focus(item: PresentationItem) =
         viewModel.setFocusIndex(presentationLayout.focusIndexOf(item, style))
 
-    fun pickerToken(item: PresentationItem): Int =
-        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
-
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -226,46 +219,26 @@ fun PresentationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
                 modifier = Modifier.padding(vertical = Dimens.spacingXs)
             )
 
-            PresentationItem.Layout -> CyclePreference(
+            PresentationItem.Layout -> SegmentedPreference(
                 title = stringResource(R.string.settings_presentation_layout_title),
-                value = stringResource(presentationLayoutLabelRes(style.layout)),
+                options = PresentationLayout.entries.map { stringResource(presentationLayoutLabelRes(it)) },
+                selectedIndex = PresentationLayout.entries.indexOf(style.layout),
                 isFocused = isFocused(item),
-                onClick = {
-                    focus(item)
-                    adjustPresentationItem(style, item, 1)?.let(viewModel::setPresentationStyle)
-                },
-                onPrev = {
-                    focus(item)
-                    adjustPresentationItem(style, item, -1)?.let(viewModel::setPresentationStyle)
-                },
-                options = remember(context) {
-                    PresentationLayout.entries.map { context.getString(presentationLayoutLabelRes(it)) }
-                },
                 onSelect = { index ->
+                    focus(item)
                     viewModel.setPresentationStyle(style.copy(layout = PresentationLayout.entries[index]))
-                },
-                pickerRequestToken = pickerToken(item)
+                }
             )
 
-            PresentationItem.Scrim -> CyclePreference(
+            PresentationItem.Scrim -> SegmentedPreference(
                 title = stringResource(R.string.settings_presentation_scrim_title),
-                value = stringResource(presentationScrimLabelRes(style.scrim)),
+                options = PresentationScrim.entries.map { stringResource(presentationScrimLabelRes(it)) },
+                selectedIndex = PresentationScrim.entries.indexOf(style.scrim),
                 isFocused = isFocused(item),
-                onClick = {
-                    focus(item)
-                    adjustPresentationItem(style, item, 1)?.let(viewModel::setPresentationStyle)
-                },
-                onPrev = {
-                    focus(item)
-                    adjustPresentationItem(style, item, -1)?.let(viewModel::setPresentationStyle)
-                },
-                options = remember(context) {
-                    PresentationScrim.entries.map { context.getString(presentationScrimLabelRes(it)) }
-                },
                 onSelect = { index ->
+                    focus(item)
                     viewModel.setPresentationStyle(style.copy(scrim = PresentationScrim.entries[index]))
-                },
-                pickerRequestToken = pickerToken(item)
+                }
             )
 
             PresentationItem.ScrimStrength -> SliderPreference(
@@ -283,25 +256,15 @@ fun PresentationSection(uiState: SettingsUiState, viewModel: SettingsViewModel) 
                 }
             )
 
-            PresentationItem.Art -> CyclePreference(
+            PresentationItem.Art -> SegmentedPreference(
                 title = stringResource(R.string.settings_presentation_art_title),
-                value = stringResource(presentationArtLabelRes(style.art)),
+                options = PresentationArt.entries.map { stringResource(presentationArtLabelRes(it)) },
+                selectedIndex = PresentationArt.entries.indexOf(style.art),
                 isFocused = isFocused(item),
-                onClick = {
-                    focus(item)
-                    adjustPresentationItem(style, item, 1)?.let(viewModel::setPresentationStyle)
-                },
-                onPrev = {
-                    focus(item)
-                    adjustPresentationItem(style, item, -1)?.let(viewModel::setPresentationStyle)
-                },
-                options = remember(context) {
-                    PresentationArt.entries.map { context.getString(presentationArtLabelRes(it)) }
-                },
                 onSelect = { index ->
+                    focus(item)
                     viewModel.setPresentationStyle(style.copy(art = PresentationArt.entries[index]))
-                },
-                pickerRequestToken = pickerToken(item)
+                }
             )
 
             is PresentationItem.Stat -> SwitchPreference(

@@ -45,10 +45,10 @@ import androidx.compose.ui.platform.LocalContext
 import com.nendo.argosy.libretro.LibretroActivity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.nendo.argosy.ui.components.BackgroundSyncConflictDialog
+import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.ui.components.FloatingNavBar
 import com.nendo.argosy.ui.components.FooterHints
 import com.nendo.argosy.ui.components.revealOnBottomEdgeTouch
@@ -59,11 +59,7 @@ import com.nendo.argosy.data.sync.ConflictResolution
 import com.nendo.argosy.ui.components.MainDrawer
 import com.nendo.argosy.ui.components.QuickSettingsInputRouter
 import com.nendo.argosy.ui.components.QuickSettingsPage
-import com.nendo.argosy.ui.components.friends.QuickFriendsRow
-import com.nendo.argosy.ui.components.friends.quickFriendsRows
 import com.nendo.argosy.ui.components.QuickSettingsPanel
-import com.nendo.argosy.ui.components.QuickSettingsState
-import com.nendo.argosy.ui.components.quickSettingsEffectivePage
 import com.nendo.argosy.ui.components.friends.QuickFriendsInputHandler
 import com.nendo.argosy.ui.components.friends.QuickFriendsModals
 import com.nendo.argosy.ui.components.friends.QuickSettingsFriendsPage
@@ -95,6 +91,8 @@ import com.nendo.argosy.ui.input.UiShortcutGate
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.navigation.NavGraph
 import com.nendo.argosy.ui.navigation.NavRing
+import com.nendo.argosy.ui.navigation.RouteRestore
+import com.nendo.argosy.ui.navigation.concreteRoute
 import com.nendo.argosy.ui.navigation.Screen
 import com.nendo.argosy.ui.screens.player.PlayerActivity
 import com.nendo.argosy.ui.screens.player.PlayerArgs
@@ -110,6 +108,7 @@ import com.nendo.argosy.ui.theme.Motion
 import com.nendo.argosy.ui.theme.gripReserveBottomInset
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
@@ -125,9 +124,9 @@ private const val NAV_READY_TIMEOUT_MS = 45_000L
 
 @Composable
 fun ArgosyApp(
-    viewModel: ArgosyViewModel = hiltViewModel(),
-    quickMenuViewModel: QuickMenuViewModel = hiltViewModel(),
-    musicPlayerViewModel: MusicPlayerViewModel = hiltViewModel(),
+    viewModel: ArgosyViewModel = launcherViewModel(),
+    quickMenuViewModel: QuickMenuViewModel = launcherViewModel(),
+    musicPlayerViewModel: MusicPlayerViewModel = launcherViewModel(),
     onStartupComplete: () -> Unit = {}
 ) {
     val navController = rememberNavController()
@@ -137,19 +136,20 @@ fun ArgosyApp(
     val uiState by viewModel.uiState.collectAsState()
     val drawerUiState by viewModel.drawerUiState.collectAsState()
     val isDrawerOpen by viewModel.isDrawerOpen.collectAsState()
-    val isQuickSettingsOpen by viewModel.isQuickSettingsOpen.collectAsState()
-    val quickSettingsFocusIndex by viewModel.quickSettingsFocusIndex.collectAsState()
-    val quickSettingsPage by viewModel.quickSettingsPage.collectAsState()
-    val quickSettingsUiState by viewModel.quickSettingsState.collectAsState()
+    val isQuickSettingsOpen by viewModel.quickSettings.isOpen.collectAsState()
+    val quickSettingsFocusIndex by viewModel.quickSettings.focusIndex.collectAsState()
+    val quickSettingsPage by viewModel.quickSettings.page.collectAsState()
+    val quickSettingsState by viewModel.quickSettings.state.collectAsState()
     val quickFriendsState by viewModel.quickFriends.state.collectAsState()
     val musicPlayerUiState by musicPlayerViewModel.uiState.collectAsState()
     val screenDimmerPrefs by viewModel.screenDimmerPreferences.collectAsState()
     val isEmulatorRunning by viewModel.isEmulatorRunning.collectAsState()
     val quickMenuState by quickMenuViewModel.uiState.collectAsState()
-    val saveConflictInfo by viewModel.saveConflictInfo.collectAsState()
-    val saveConflictButtonIndex by viewModel.saveConflictButtonIndex.collectAsState()
-    val backgroundConflictInfo by viewModel.backgroundConflictInfo.collectAsState()
-    val backgroundConflictButtonIndex by viewModel.backgroundConflictButtonIndex.collectAsState()
+    val saveConflictInfo by viewModel.saveConflicts.saveConflictInfo.collectAsState()
+    val saveConflictButtonIndex by viewModel.saveConflicts.saveConflictButtonIndex.collectAsState()
+    val backgroundConflictInfo by viewModel.saveConflicts.backgroundConflictInfo.collectAsState()
+    val backgroundConflictButtonIndex by viewModel.saveConflicts.backgroundConflictButtonIndex.collectAsState()
+    val backgroundConflictSnapshot by viewModel.saveConflicts.backgroundConflictSnapshot.collectAsState()
     val coreCrashPrompt by viewModel.coreCrashController.prompt.collectAsState()
     val coreCrashFocusIndex by viewModel.coreCrashController.focusIndex.collectAsState()
     val coreCrashDownloading by viewModel.coreCrashController.downloading.collectAsState()
@@ -171,8 +171,8 @@ fun ArgosyApp(
     val isOnHomeScreen = currentRoute == Screen.Home.route
 
     val isDualActive = isDualScreenDevice && companionActive
-    LaunchedEffect(isDualActive) {
-        viewModel.setDualScreenMode(isDualActive)
+    LaunchedEffect(isDualActive, isRolesSwapped) {
+        viewModel.quickSettings.setDualScreen(active = isDualActive, rolesSwapped = isRolesSwapped)
     }
 
     LaunchedEffect(uiState.isLoading) {
@@ -194,32 +194,23 @@ fun ArgosyApp(
         dsm?.setPrimaryOnHome(isOnHomeScreen)
     }
 
-    LaunchedEffect(dsm) {
-        dsm ?: return@LaunchedEffect
-        dsm.onSaveConflictDismiss = { viewModel.dismissSaveConflict() }
-        dsm.onSaveConflictOverwrite = { viewModel.forceUploadConflictSave() }
-        viewModel.saveConflictInfo.collect { info ->
-            dsm.setSaveConflict(info)
-            if (info != null) {
-                dsm.setDualSyncConflictFromSaveConflict(
-                    com.nendo.argosy.ui.screens.common.SyncOverlayState(
-                        gameTitle = info.gameName,
-                        syncProgress = com.nendo.argosy.domain.model.SyncProgress.PostSessionConflict(
-                            gameTitle = info.gameName,
-                            channelName = info.channelName,
-                            localTimestamp = info.localTimestamp,
-                            serverTimestamp = info.serverTimestamp,
-                            serverDeviceName = info.serverDeviceName,
-                            onSkipSync = { viewModel.dismissSaveConflict() },
-                            onOverwrite = { viewModel.forceUploadConflictSave() }
-                        )
-                    )
-                )
-            } else if (info == null) {
-                dsm.clearDualSyncConflictIfPostSession()
-            }
+    val carriedRoute = remember { dsm?.primaryRoute?.value }
+    LaunchedEffect(Unit) {
+        val stack = carriedRoute?.let(RouteRestore::restoreStack).orEmpty()
+        if (stack.isEmpty()) return@LaunchedEffect
+        val entry = withTimeoutOrNull(NAV_READY_TIMEOUT_MS) {
+            navController.currentBackStackEntryFlow.first()
+        } ?: return@LaunchedEffect
+        if (entry.destination.route != Screen.Home.route || navController.previousBackStackEntry != null) {
+            return@LaunchedEffect
         }
+        stack.forEach { navController.navigate(it) }
     }
+
+    LaunchedEffect(navBackStackEntry) {
+        navBackStackEntry?.let { dsm?.setPrimaryRoute(it.concreteRoute()) }
+    }
+
     val handleDeepLink: suspend (android.net.Uri) -> Unit = { uri ->
         android.util.Log.d("ArgosyApp", "Handling deep link: $uri")
         val showDeepLinkNotice: (Int) -> Unit = { messageRes ->
@@ -380,7 +371,7 @@ fun ArgosyApp(
                 dsm.controlCompanion?.onOverlayClosed()
             }
             viewModel.setDrawerOpen(false)
-            viewModel.setQuickSettingsOpen(false)
+            viewModel.quickSettings.setOpen(false)
             quickMenuViewModel.hide()
         }
     }
@@ -447,9 +438,19 @@ fun ArgosyApp(
         {
             musicPlayerViewModel.closeBrowse()
             inputDispatcher.unsubscribeDrawer()
-            viewModel.setQuickSettingsOpen(false)
+            viewModel.quickSettings.setOpen(false)
             navController.navigate(
                 Screen.Settings.createRoute(section = SettingsSection.ROMM.name)
+            ) { launchSingleTop = true }
+        }
+    }
+
+    val openDeviceAccess: () -> Unit = remember(viewModel, inputDispatcher, navController) {
+        {
+            inputDispatcher.unsubscribeDrawer()
+            viewModel.quickSettings.setOpen(false)
+            navController.navigate(
+                Screen.Settings.createRoute(section = SettingsSection.PERMISSIONS.name)
             ) { launchSingleTop = true }
         }
     }
@@ -457,32 +458,39 @@ fun ArgosyApp(
     val quickFriendsInputHandler = remember(viewModel, inputDispatcher) {
         QuickFriendsInputHandler(
             controller = viewModel.quickFriends,
-            showQuayPass = { viewModel.quickSettingsState.value.isSocialLinked },
+            showQuayPass = { viewModel.quickSettings.state.value.isSocialLinked },
+            quayPassEnabled = { viewModel.quickSettings.state.value.quayPassEnabled },
             wrapMode = { viewModel.uiState.value.menuWrapMode },
-            onToggleQuayPass = { viewModel.toggleQuayPassFromQuickSettings() },
-            onOpenProfile = { friend ->
+            onToggleQuayPass = { viewModel.quickSettings.toggleQuayPass() },
+            onOpenProfile = { userId ->
                 inputDispatcher.unsubscribeDrawer()
-                viewModel.setQuickSettingsOpen(false)
-                navigateFromDrawer(Screen.UserProfile.createRoute(friend.id))
+                viewModel.quickSettings.setOpen(false)
+                navigateFromDrawer(Screen.UserProfile.createRoute(userId))
+            },
+            onEditAvatar = {
+                inputDispatcher.unsubscribeDrawer()
+                viewModel.quickSettings.setOpen(false)
+                navigateFromDrawer(Screen.AvatarDoodle.route)
             }
         )
     }
 
     val quickSettingsInputHandler = remember(
-        viewModel, musicPlayerViewModel, inputDispatcher, openRommSignIn, quickFriendsInputHandler
+        viewModel, musicPlayerViewModel, inputDispatcher, openRommSignIn, openDeviceAccess, quickFriendsInputHandler
     ) {
         QuickSettingsInputRouter(
-            panelHandler = viewModel.createQuickSettingsInputHandler(
+            panelHandler = viewModel.quickSettings.createInputHandler(
                 onDismiss = {
                     inputDispatcher.unsubscribeDrawer()
-                    viewModel.setQuickSettingsOpen(false)
-                }
+                    viewModel.quickSettings.setOpen(false)
+                },
+                onOpenDeviceAccess = openDeviceAccess
             ),
             pageHandlers = mapOf(
                 QuickSettingsPage.FRIENDS to quickFriendsInputHandler,
                 QuickSettingsPage.MUSIC to MusicPlayerInputHandler(musicPlayerViewModel, openRommSignIn)
             ),
-            activePage = { viewModel.activeQuickSettingsPage() }
+            activePage = { viewModel.quickSettings.activePage() }
         )
     }
 
@@ -496,7 +504,7 @@ fun ArgosyApp(
             if (uiState.isFirstRun) return@wizardGuard
             viewModel.hideNavBar()
             inputDispatcher.subscribeDrawer(quickSettingsInputHandler)
-            viewModel.setQuickSettingsOpen(true)
+            viewModel.quickSettings.setOpen(true)
             viewModel.soundManager.play(SoundType.OPEN_MODAL)
         }
     }
@@ -504,7 +512,7 @@ fun ArgosyApp(
     val closeQuickSettings = remember {
         {
             inputDispatcher.unsubscribeDrawer()
-            viewModel.setQuickSettingsOpen(false)
+            viewModel.quickSettings.setOpen(false)
         }
     }
 
@@ -566,32 +574,27 @@ fun ArgosyApp(
     val saveConflictInputHandler = remember(viewModel) {
         object : InputHandler {
             override fun onLeft(): InputResult {
-                viewModel.moveSaveConflictFocus(-1)
+                viewModel.saveConflicts.moveSaveConflictFocus(-1)
                 return InputResult.HANDLED
             }
             override fun onRight(): InputResult {
-                viewModel.moveSaveConflictFocus(1)
+                viewModel.saveConflicts.moveSaveConflictFocus(1)
                 return InputResult.HANDLED
             }
             override fun onUp(): InputResult {
-                viewModel.moveSaveConflictFocus(-1)
+                viewModel.saveConflicts.moveSaveConflictFocus(-1)
                 return InputResult.HANDLED
             }
             override fun onDown(): InputResult {
-                viewModel.moveSaveConflictFocus(1)
+                viewModel.saveConflicts.moveSaveConflictFocus(1)
                 return InputResult.HANDLED
             }
             override fun onConfirm(): InputResult {
-                val buttonIndex = viewModel.saveConflictButtonIndex.value
-                if (buttonIndex == 0) {
-                    viewModel.dismissSaveConflict()
-                } else {
-                    viewModel.forceUploadConflictSave()
-                }
+                viewModel.saveConflicts.confirmSaveConflict()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onBack(): InputResult {
-                viewModel.dismissSaveConflict()
+                viewModel.saveConflicts.dismissSaveConflict()
                 return InputResult.handled(SoundType.CLOSE_MODAL)
             }
             override fun onMenu() = InputResult.HANDLED
@@ -609,9 +612,9 @@ fun ArgosyApp(
 
     val backgroundConflictInputHandler = remember(viewModel) {
         BackgroundConflictInputHandler(
-            moveFocus = viewModel::moveBackgroundConflictFocus,
-            focusedButton = { viewModel.backgroundConflictButtonIndex.value },
-            resolve = viewModel::resolveBackgroundConflict
+            moveFocus = viewModel.saveConflicts::moveBackgroundConflictFocus,
+            confirm = viewModel.saveConflicts::confirmBackgroundConflict,
+            skip = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.SKIP) }
         )
     }
 
@@ -747,7 +750,7 @@ fun ArgosyApp(
                 ).any { inputDispatcher.releaseDrawer(it) }
                 if (released) {
                     when {
-                        viewModel.isQuickSettingsOpen.value -> inputDispatcher.subscribeDrawer(quickSettingsInputHandler)
+                        viewModel.quickSettings.isOpen.value -> inputDispatcher.subscribeDrawer(quickSettingsInputHandler)
                         viewModel.isDrawerOpen.value -> inputDispatcher.subscribeDrawer(drawerInputHandler)
                         quickMenuViewModel.uiState.value.isVisible -> inputDispatcher.subscribeDrawer(quickMenuInputHandler)
                     }
@@ -854,7 +857,7 @@ fun ArgosyApp(
     LaunchedEffect(isDualScreenDevice) {
         if (!isDualScreenDevice) return@LaunchedEffect
         var wasOpen = false
-        viewModel.isQuickSettingsOpen.collect { open ->
+        viewModel.quickSettings.isOpen.collect { open ->
             if (wasOpen && !open) {
                 val onHome = navController.currentDestination?.route == Screen.Home.route
                 if (onHome) {
@@ -897,12 +900,13 @@ fun ArgosyApp(
     }
 
     // Collect gamepad events (Menu toggles drawer, L3 toggles quick menu, R3 toggles quick settings)
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.eventFlow().collect { input ->            val result = inputDispatcher.dispatch(input)
+    val inputLifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.eventFlow().flowWithLifecycle(inputLifecycle).collect { input ->            val result = inputDispatcher.dispatch(input)
             val event = input.event
             val isBumper = event == GamepadEvent.PrevSection || event == GamepadEvent.NextSection
             if (!isBumper || inputDispatcher.hasActiveModal()) viewModel.hideNavBar()
-            if (!result.handled && !inputDispatcher.hasActiveModal()) {
+            if (!result.handled && !inputDispatcher.hasCapturingOverlay()) {
                 when (event) {
                     GamepadEvent.PrevSection, GamepadEvent.NextSection -> {
                         val delta = if (event == GamepadEvent.PrevSection) -1 else 1
@@ -1006,8 +1010,8 @@ fun ArgosyApp(
         onDispose { handler.detachShortcutGate(shortcutGate) }
     }
 
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.shortcutEventFlow().collect { shortcut ->
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.shortcutEventFlow().flowWithLifecycle(inputLifecycle).collect { shortcut ->
             when (shortcut) {
                 UiShortcut.OPEN_NAVIGATION -> {
                     if (isDrawerOpen) {
@@ -1031,9 +1035,8 @@ fun ArgosyApp(
         }
     }
 
-    // Collect Home button events (from system Home button press)
-    LaunchedEffect(Unit) {
-        viewModel.gamepadInputHandler.homeEventFlow().collect {
+    LaunchedEffect(inputLifecycle) {
+        viewModel.gamepadInputHandler.homeEventFlow().flowWithLifecycle(inputLifecycle).collect {
             if (isEmulatorRunning) {
                 // No-op: onUserLeaveHint in LibretroActivity handles HOME quit
             } else {
@@ -1251,7 +1254,8 @@ fun ArgosyApp(
                         onInteract = { viewModel.showNavBar() },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = Dimens.spacingSm)
+                            .padding(bottom = Dimens.spacingSm),
+                        badgeFor = drawerUiState::badgeCountFor
                     )
                 }
             }
@@ -1299,66 +1303,26 @@ fun ArgosyApp(
                 musicPlayerUiState.browse?.notice ==
                 com.nendo.argosy.ui.components.musicplayer.MusicBrowseNotice.SIGN_IN_FOR_PLAYLISTS
             val signInHint = stringResource(R.string.ui_quick_settings_music_hint_sign_in)
-            val focusedFriend = if (
-                isQuickSettingsOpen && quickSettingsPage == QuickSettingsPage.FRIENDS && quickFriendsState.socialConnected
-            ) {
-                (quickFriendsRows(quickSettingsUiState.isSocialLinked, quickFriendsState)
-                    .getOrNull(quickFriendsState.focusIndex) as? QuickFriendsRow.Entry)?.friend
-            } else {
-                null
-            }
-            val favoriteHint = stringResource(
-                if (focusedFriend?.isFavorite == true) R.string.ui_quick_settings_friends_hint_unfavorite
-                else R.string.ui_quick_settings_friends_hint_favorite
-            )
-            val panelState = QuickSettingsState(
-                themeMode = quickSettingsUiState.themeMode,
-                soundEnabled = quickSettingsUiState.soundEnabled,
-                hapticEnabled = quickSettingsUiState.hapticEnabled,
-                vibrationStrength = quickSettingsUiState.vibrationStrength,
-                fanMode = quickSettingsUiState.fanMode,
-                fanSpeed = quickSettingsUiState.fanSpeed,
-                performanceMode = quickSettingsUiState.performanceMode,
-                deviceSettingsSupported = quickSettingsUiState.deviceSettingsSupported,
-                deviceSettingsEnabled = quickSettingsUiState.deviceSettingsEnabled,
-                systemVolume = quickSettingsUiState.systemVolume,
-                screenBrightness = quickSettingsUiState.screenBrightness,
-                isDualScreenActive = isDualScreenDevice && companionActive,
-                isSocialLinked = quickSettingsUiState.isSocialLinked,
-                isSocialConnected = quickSettingsUiState.isSocialConnected,
-                quayPassEnabled = quickSettingsUiState.quayPassEnabled,
-                isRolesSwapped = isRolesSwapped
-            )
             QuickSettingsPanel(
                 onHintClick = { button ->
-                    if (button == com.nendo.argosy.ui.components.InputButton.Y) {
-                        when {
-                            musicNeedsSignIn -> openRommSignIn()
-                            focusedFriend != null -> viewModel.quickFriends.toggleFavorite(focusedFriend.id)
-                        }
+                    if (button == com.nendo.argosy.ui.components.InputButton.Y && musicNeedsSignIn) {
+                        openRommSignIn()
                     }
                 },
                 isVisible = isQuickSettingsOpen,
-                state = panelState,
+                state = quickSettingsState,
                 page = quickSettingsPage,
                 focusedIndex = quickSettingsFocusIndex,
-                onPageSelect = { viewModel.selectQuickSettingsPage(it) },
-                onThemeCycle = { viewModel.cycleTheme() },
-                onSoundToggle = { viewModel.toggleSound() },
-                onHapticToggle = { viewModel.toggleHaptic() },
-                onVibrationStrengthChange = { viewModel.setVibrationStrength(it) },
-                onFanModeCycle = { viewModel.cycleFanMode() },
-                onFanSpeedChange = { viewModel.setFanSpeed(it) },
-                onPerformanceModeCycle = { viewModel.cyclePerformanceMode() },
-                onVolumeChange = { viewModel.setSystemVolume(it) },
-                onBrightnessChange = { viewModel.setScreenBrightness(it) },
-                onSwapDisplays = { dsm?.swapRoles() },
+                controller = viewModel.quickSettings,
+                onOpenDeviceAccess = openDeviceAccess,
                 friendsPage = {
                     QuickSettingsFriendsPage(
                         state = quickFriendsState,
-                        showQuayPass = quickSettingsUiState.isSocialLinked,
-                        quayPassEnabled = quickSettingsUiState.quayPassEnabled,
-                        onRowClick = { quickFriendsInputHandler.tapRow(it) }
+                        showQuayPass = quickSettingsState.isSocialLinked,
+                        quayPassEnabled = quickSettingsState.quayPassEnabled,
+                        onRowClick = { quickFriendsInputHandler.tapRow(it) },
+                        onRowLongClick = { quickFriendsInputHandler.longPressRow(it) },
+                        onActionClick = { index, action -> quickFriendsInputHandler.tapAction(index, action) }
                     )
                 },
                 musicPage = {
@@ -1366,22 +1330,24 @@ fun ArgosyApp(
                 },
                 onDismiss = closeQuickSettings,
                 footerHints = listOfNotNull(
-                    (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn },
-                    (com.nendo.argosy.ui.components.InputButton.Y to favoriteHint).takeIf { focusedFriend != null }
+                    (com.nendo.argosy.ui.components.InputButton.Y to signInHint).takeIf { musicNeedsSignIn }
                 )
             )
 
             QuickFriendsModals(
                 state = quickFriendsState,
-                controller = viewModel.quickFriends
+                controller = viewModel.quickFriends,
+                onOpenProfile = quickFriendsInputHandler::openProfile,
+                onEditAvatar = quickFriendsInputHandler::editAvatar
             )
 
             saveConflictInfo?.let { info ->
                 SaveConflictModal(
                     info = info,
                     focusedButton = saveConflictButtonIndex,
-                    onKeepLocal = { viewModel.dismissSaveConflict() },
-                    onOverwrite = { viewModel.forceUploadConflictSave() }
+                    onKeepLocal = { viewModel.saveConflicts.dismissSaveConflict() },
+                    onOverwrite = { viewModel.saveConflicts.forceUploadConflictSave() },
+                    onSnapshotChoice = viewModel.saveConflicts::answerSnapshotConflict
                 )
             }
 
@@ -1390,11 +1356,23 @@ fun ArgosyApp(
                 BackgroundSyncConflictDialog(
                     conflictInfo = info,
                     focusIndex = backgroundConflictButtonIndex,
-                    onKeepLocal = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
-                    onKeepServer = { viewModel.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
-                    onSkip = { viewModel.resolveBackgroundConflict(ConflictResolution.SKIP) }
+                    onKeepLocal = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.KEEP_LOCAL) },
+                    onKeepServer = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.KEEP_SERVER) },
+                    onSkip = { viewModel.saveConflicts.resolveBackgroundConflict(ConflictResolution.SKIP) },
+                    snapshotConflict = backgroundConflictSnapshot,
+                    onSnapshotChoice = viewModel.saveConflicts::resolveBackgroundSnapshotConflict
                 )
             }
+
+            val sessionEndOverlay by viewModel.sessionEndOverlay.collectAsState()
+            SyncOverlay(
+                syncProgress = sessionEndOverlay?.syncProgress,
+                gameTitle = sessionEndOverlay?.gameTitle,
+                onGrantPermission = sessionEndOverlay?.onGrantPermission,
+                onDisableSync = sessionEndOverlay?.onDisableSync,
+                onOpenSettings = sessionEndOverlay?.onOpenSettings,
+                onSkip = sessionEndOverlay?.onSkip
+            )
 
             coreCrashPrompt?.let { prompt ->
                 CoreCrashModal(

@@ -54,6 +54,7 @@ import com.nendo.argosy.data.emulator.LaunchProgressTracker
 import com.nendo.argosy.domain.model.LaunchProgress
 import com.nendo.argosy.domain.model.LaunchPromptOption
 import com.nendo.argosy.domain.model.LaunchStep
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.ui.common.statusMessage
 import com.nendo.argosy.ui.input.ModalInputEffect
@@ -277,7 +278,23 @@ private fun PromptContent(
             onKeepLocal = { onAnswer(LaunchPromptOption.SKIP_HARDCORE_SAVE) },
             onCancelLaunch = onCancel
         )
-        is SyncProgress.LocalModified -> if (conflict.restoreFailed) {
+        is SyncProgress.LocalModified -> if (conflict.snapshotConflict) {
+            SnapshotConflictContent(
+                gameTitle = gameTitle ?: stringResource(R.string.ui_sync_overlay_unknown_game),
+                focusIndex = focusIndex,
+                onChoice = { choice ->
+                    onAnswer(
+                        when (choice) {
+                            SnapshotConflictChoice.MINE -> LaunchPromptOption.KEEP_MINE
+                            SnapshotConflictChoice.THEIRS -> LaunchPromptOption.TAKE_THEIRS
+                            SnapshotConflictChoice.BRANCH -> LaunchPromptOption.BRANCH_LOCAL
+                            SnapshotConflictChoice.REVERT -> LaunchPromptOption.REVERT_LOCAL
+                        }
+                    )
+                },
+                onCancelLaunch = onCancel
+            )
+        } else if (conflict.restoreFailed) {
             RestoreFailedContent(
                 gameTitle = gameTitle ?: stringResource(R.string.ui_sync_overlay_unknown_game),
                 focusIndex = focusIndex,

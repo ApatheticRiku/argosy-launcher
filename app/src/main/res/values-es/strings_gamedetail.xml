@@ -235,9 +235,11 @@
     <string name="gamedetail_artwork_row_cover">Portada</string>
     <string name="gamedetail_artwork_row_background">Fondo</string>
     <string name="gamedetail_artwork_row_logo">Logotipo</string>
+    <string name="gamedetail_artwork_row_box_3d">Caja 3D</string>
     <string name="gamedetail_artwork_row_revert_cover">Restaurar portada</string>
     <string name="gamedetail_artwork_row_revert_background">Restaurar fondo</string>
     <string name="gamedetail_artwork_row_revert_logo">Restaurar logotipo</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">Restaurar caja 3D</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -390,6 +392,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">Elegir portada</string>
     <string name="gamedetail_art_picker_file_browser_title_background">Elegir un fondo</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">Elegir un logotipo</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">Elegir una caja 3D</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 

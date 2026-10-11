@@ -396,6 +396,20 @@ object BiosPathRegistry {
             ),
             supportedPlatforms = setOf("ps2")
         ),
+        "armsx1" to BiosPathConfig(
+            emulatorId = "armsx1",
+            defaultPaths = listOf(
+                "$primaryRoot/Android/data/com.nanodata.armsx/files/bios"
+            ),
+            supportedPlatforms = setOf("psx")
+        ),
+        "armsx2_refresh" to BiosPathConfig(
+            emulatorId = "armsx2_refresh",
+            defaultPaths = listOf(
+                "$primaryRoot/Android/data/com.armsx2/files/bios"
+            ),
+            supportedPlatforms = setOf("ps2")
+        ),
         "eden" to BiosPathConfig(
             emulatorId = "eden",
             defaultPaths = listOf(

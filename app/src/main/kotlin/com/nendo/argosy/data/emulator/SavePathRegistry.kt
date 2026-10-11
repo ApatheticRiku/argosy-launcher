@@ -284,7 +284,7 @@ object SavePathRegistry {
         "ryujinx" to SavePathConfig(
             emulatorId = "ryujinx",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/bis/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -302,7 +302,7 @@ object SavePathRegistry {
         "strato" to SavePathConfig(
             emulatorId = "strato",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/switch/nand/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -317,10 +317,19 @@ object SavePathRegistry {
             usesFolderBasedSaves = true,
             usesPackageTemplate = true
         ),
+        "lemon" to SavePathConfig(
+            emulatorId = "lemon",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/{package}/files/nand/user/save"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true,
+            usesPackageTemplate = true
+        ),
         "skyline" to SavePathConfig(
             emulatorId = "skyline",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/switch/nand/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -338,7 +347,7 @@ object SavePathRegistry {
         "kenjinx" to SavePathConfig(
             emulatorId = "kenjinx",
             defaultPaths = listOf(
-                "{extStorage}/Android/data/{package}/files/nand/user/save"
+                "{extStorage}/Android/data/{package}/files/bis/user/save"
             ),
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true,
@@ -523,6 +532,22 @@ object SavePathRegistry {
             saveExtensions = listOf("*"),
             usesFolderBasedSaves = true
         ),
+        "armsx3" to SavePathConfig(
+            emulatorId = "armsx3",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/com.armsx3/files/config/dev_hdd0/home/00000001/savedata"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true
+        ),
+        "armsx3_play" to SavePathConfig(
+            emulatorId = "armsx3_play",
+            defaultPaths = listOf(
+                "{extStorage}/Android/data/com.armsx3.play/files/config/dev_hdd0/home/00000001/savedata"
+            ),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true
+        ),
 
         /**
          * Xbox 360 - content is keyed by profile before title, so the base stops at `content` and
@@ -686,6 +711,15 @@ object SavePathRegistry {
             supported = true
         ),
 
+        "${BUILTIN_EMULATOR_ID}_wii" to SavePathConfig(
+            emulatorId = BUILTIN_EMULATOR_ID,
+            defaultPaths = listOf("$BUILTIN_SAVES_TOKEN/User/Wii/title/00010000"),
+            saveExtensions = listOf("*"),
+            usesFolderBasedSaves = true,
+            usesInternalStorage = true,
+            supported = true
+        ),
+
         /**
          * The two built-in DS cores disagree on the extension: melonds writes a .sav cartridge
          * battery save, melondsds writes .srm and its own migration guide tells users to rename
@@ -748,6 +782,8 @@ object SavePathRegistry {
         "org.vita3k.emulator.ikhoeyZX" to "vita3k-zx",
         "com.github.stenzek.duckstation" to "duckstation",
         "aenu.aps3e" to "aps3e",
+        "com.armsx3" to "armsx3",
+        "com.armsx3.play" to "armsx3_play",
         "xendroid.compose" to "xendroid",
         "com.rfandango.haku_x" to "hakux"
     )
@@ -758,6 +794,7 @@ object SavePathRegistry {
         "dev.eden" to "eden",
         "dev.legacy.eden" to "eden",
         "org.eden" to "eden",
+        "dev.lemon" to "lemon",
         "xyz.aethersx2" to "nethersx2",
         "com.armsx2" to "armsx2_refresh",
         "come.nanodata.armsx2" to "armsx2"

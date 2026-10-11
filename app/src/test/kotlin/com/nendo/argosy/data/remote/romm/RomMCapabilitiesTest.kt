@@ -39,6 +39,24 @@ class RomMCapabilitiesTest {
     }
 
     @Test
+    fun `the heartbeat reads the snapshot flag from SAVE_SYNC`() {
+        val adapter = com.squareup.moshi.Moshi.Builder().build().adapter(RomMHeartbeatResponse::class.java)
+        val on = adapter.fromJson("""{"SYSTEM":{"VERSION":"5.5.0"},"SAVE_SYNC":{"SNAPSHOTS":true,"SNAPSHOT_RETENTION":10}}""")
+        val absent = adapter.fromJson("""{"SYSTEM":{"VERSION":"5.4.0"}}""")
+        assertTrue(on!!.snapshotsEnabled)
+        assertFalse(absent!!.snapshotsEnabled)
+    }
+
+    @Test
+    fun `snapshots follow the heartbeat flag, not the version`() {
+        assertTrue(RomMCapabilities.from("5.4.0", snapshotsEnabled = true).supportsSnapshots)
+        assertTrue(RomMCapabilities.from("development", snapshotsEnabled = true).supportsSnapshots)
+        assertFalse(RomMCapabilities.from("6.0.0", snapshotsEnabled = false).supportsSnapshots)
+        assertFalse(RomMCapabilities.from("6.0.0").supportsSnapshots)
+        assertFalse("disconnected", RomMCapabilities.NONE.supportsSnapshots)
+    }
+
+    @Test
     fun `the three supported minors are all supported`() {
         for (version in listOf("4.9.2", "5.0.0", "5.1.0")) {
             assertTrue(version, RomMCapabilities.from(version).isSupportedVersion)

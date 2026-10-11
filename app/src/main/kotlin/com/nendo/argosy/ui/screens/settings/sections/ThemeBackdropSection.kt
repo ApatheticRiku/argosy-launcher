@@ -39,6 +39,7 @@ import com.nendo.argosy.data.preferences.BackdropVertexIcon
 import com.nendo.argosy.ui.components.ActionPreference
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.DirectionRingModal
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -272,30 +273,20 @@ fun ThemeBackdropSection(uiState: SettingsUiState, viewModel: SettingsViewModel)
                 pickerRequestToken = pickerToken(item)
             )
 
-            ThemeBackdropItem.CornerIcons -> CyclePreference(
+            ThemeBackdropItem.CornerIcons -> SegmentedPreference(
                 title = stringResource(R.string.settings_backdrop_corner_title),
-                value = stringResource(backdropVertexIconLabelRes(config.vertexIcons)),
+                options = BackdropVertexIcon.entries.map { stringResource(backdropVertexIconLabelRes(it)) },
+                selectedIndex = BackdropVertexIcon.entries.indexOf(config.vertexIcons),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleBackdropVertexIcons(1) },
-                onPrev = { viewModel.cycleBackdropVertexIcons(-1) },
-                options = remember(context) {
-                    BackdropVertexIcon.entries.map { context.getString(backdropVertexIconLabelRes(it)) }
-                },
-                onSelect = { viewModel.setBackdropVertexIcons(BackdropVertexIcon.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setBackdropVertexIcons(BackdropVertexIcon.entries[it]) }
             )
 
-            ThemeBackdropItem.Motion -> CyclePreference(
+            ThemeBackdropItem.Motion -> SegmentedPreference(
                 title = stringResource(R.string.settings_backdrop_motion_title),
-                value = stringResource(backdropMotionLabelRes(config.motion)),
+                options = BackdropMotion.entries.map { stringResource(backdropMotionLabelRes(it)) },
+                selectedIndex = BackdropMotion.entries.indexOf(config.motion),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleBackdropMotion(1) },
-                onPrev = { viewModel.cycleBackdropMotion(-1) },
-                options = remember(context) {
-                    BackdropMotion.entries.map { context.getString(backdropMotionLabelRes(it)) }
-                },
-                onSelect = { viewModel.setBackdropMotion(BackdropMotion.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setBackdropMotion(BackdropMotion.entries[it]) }
             )
 
             ThemeBackdropItem.Speed -> SliderPreference(

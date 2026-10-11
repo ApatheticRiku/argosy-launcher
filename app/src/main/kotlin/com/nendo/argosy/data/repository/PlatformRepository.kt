@@ -60,12 +60,6 @@ class PlatformRepository @Inject constructor(
     suspend fun getSyncEnabledPlatforms(): List<PlatformEntity> =
         platformDao.getSyncEnabledPlatforms()
 
-    suspend fun getEnabledPlatformCount(): Int =
-        platformDao.getEnabledPlatformCount()
-
-    suspend fun getTotalPlatformCount(): Int =
-        platformDao.getTotalPlatformCount()
-
     suspend fun insert(platform: PlatformEntity) =
         platformDao.insert(platform)
 

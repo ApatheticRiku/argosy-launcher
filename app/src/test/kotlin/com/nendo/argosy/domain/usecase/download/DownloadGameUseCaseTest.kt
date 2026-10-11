@@ -7,6 +7,7 @@ import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.GameDiscDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.remote.romm.RomMRom
@@ -114,9 +115,10 @@ class DownloadGameUseCaseTest {
 
     @Test
     fun `invoke enqueues download successfully`() = runTest {
-        val game = createGameEntity(rommId = 456L, title = "Test Game", coverPath = "/cover.jpg")
+        val game = createGameEntity(rommId = 456L, title = "Test Game")
         val rom = createRom(fileName = "game.nes", platformSlug = "nes", fileSize = 1024L)
         coEvery { gameDao.getById(123L) } returns game
+        coEvery { gameRepository.getArt(123L) } returns ResolvedGameArt(coverPath = "/cover.jpg")
         coEvery { romMRepository.getRom(456L) } returns RomMResult.Success(rom)
 
         val result = useCase(123L)
@@ -245,7 +247,6 @@ class DownloadGameUseCaseTest {
         id: Long = 123L,
         rommId: Long? = 456L,
         title: String = "Test Game",
-        coverPath: String? = null,
         platformSlug: String = "nes"
     ) = GameEntity(
         id = id,
@@ -256,8 +257,7 @@ class DownloadGameUseCaseTest {
         localPath = null,
         rommId = rommId,
         igdbId = null,
-        source = GameSource.ROMM_SYNCED,
-        coverPath = coverPath
+        source = GameSource.ROMM_SYNCED
     )
 
     private fun createRom(

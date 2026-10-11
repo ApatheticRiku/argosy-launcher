@@ -440,6 +440,41 @@ class ZipExtractorTest {
     }
 
     @Test
+    fun `an msu-1 pack launches its rom beside the msu and pcm tracks`() {
+        val zipFile = File(tempDir, "zelda-msu.zip")
+        createTestZip(zipFile, mapOf(
+            "zelda.sfc" to "snes rom",
+            "zelda.msu" to "msu data",
+            "zelda-1.pcm" to "pcm audio track one, much larger than the rom",
+            "zelda-2.pcm" to "pcm audio track two, much larger than the rom"
+        ))
+
+        val result = ZipExtractor.extractFolderRom(zipFile, "Zelda MSU", tempDir, "snes")
+
+        assertTrue(result.launchPath.endsWith("zelda.sfc"))
+        assertTrue(File(File(result.launchPath).parentFile, "zelda-1.pcm").exists())
+        assertTrue(File(File(result.launchPath).parentFile, "zelda.msu").exists())
+    }
+
+    @Test
+    fun `a nested rom is launched instead of the largest top-level audio track`() {
+        val zipFile = File(tempDir, "zelda-msu-nested.zip")
+        createTestZip(zipFile, mapOf(
+            "rom/zelda.sfc" to "snes rom",
+            "zelda.msu" to "msu data",
+            "zelda-1.pcm" to "pcm audio track one, much larger than the rom",
+            "zelda-2.pcm" to "pcm audio track two"
+        ))
+
+        val result = ZipExtractor.extractFolderRom(zipFile, "Zelda Nested", tempDir, "snes")
+
+        assertTrue(
+            "launchPath should end with .sfc but was ${result.launchPath}",
+            result.launchPath.endsWith("zelda.sfc")
+        )
+    }
+
+    @Test
     fun `launchPath points at single flat-extracted gba file`() {
         val zipFile = File(tempDir, "advance.zip")
         createTestZip(zipFile, mapOf("metroid.gba" to "gba rom bytes"))

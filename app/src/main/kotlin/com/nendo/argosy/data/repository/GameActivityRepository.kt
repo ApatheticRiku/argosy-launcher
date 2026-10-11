@@ -2,7 +2,9 @@ package com.nendo.argosy.data.repository
 
 import android.content.Context
 import android.provider.Settings
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.dao.PlaySessionDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
 import com.nendo.argosy.data.model.GameActivitySnapshot
@@ -24,7 +26,8 @@ class GameActivityRepository @Inject constructor(
     private val platformDao: com.nendo.argosy.data.local.dao.PlatformDao,
     private val playSessionDao: PlaySessionDao,
     private val saveCacheDao: SaveCacheDao,
-    private val syncPreferencesRepository: SyncPreferencesRepository
+    private val syncPreferencesRepository: SyncPreferencesRepository,
+    private val gameArtDao: GameArtDao
 ) {
     suspend fun load(gameId: Long, calendarDays: Int): GameActivitySnapshot? = withContext(Dispatchers.IO) {
         val game = gameDao.getById(gameId) ?: return@withContext null
@@ -65,12 +68,13 @@ class GameActivityRepository @Inject constructor(
             }
             .sortedByDescending { it.activeMs }
 
+        val art = gameArtDao.resolved(gameId)
         GameActivitySnapshot(
             gameId = gameId,
             title = game.title,
             platformName = platformDao.getById(game.platformId)?.name.orEmpty(),
-            coverPath = game.displayCoverPath,
-            backgroundPath = game.displayBackgroundPath,
+            coverPath = art.coverPath,
+            backgroundPath = art.backgroundPath,
             days = days,
             saveDates = saveDates,
             weekHourMs = PlayWeekHourMatrix.build(sessions, zone),

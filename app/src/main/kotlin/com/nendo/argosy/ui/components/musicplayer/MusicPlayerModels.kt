@@ -2,9 +2,12 @@ package com.nendo.argosy.ui.components.musicplayer
 
 import com.nendo.argosy.domain.model.MusicSelection
 import com.nendo.argosy.ui.audio.AmbientPlaybackState
+import com.nendo.argosy.ui.screens.settings.delegates.VolumeLevels
+import com.nendo.argosy.ui.screens.settings.delegates.levelIndexIn
 
 enum class MusicPlayerRow {
     TRANSPORT,
+    VOLUME,
     SOURCES,
     TRACKS
 }
@@ -13,7 +16,8 @@ enum class MusicTransportButton {
     PREVIOUS,
     PLAY_PAUSE,
     NEXT,
-    SHUFFLE
+    SHUFFLE,
+    BACKGROUND
 }
 
 enum class MusicBrowseKind {
@@ -78,6 +82,8 @@ data class MusicPlayerUiState(
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,
     val launcherEnabled: Boolean = false,
+    val volumeLevel: Int = 0,
+    val playInBackground: Boolean = false,
     val focusedRow: MusicPlayerRow = MusicPlayerRow.TRANSPORT,
     val transportButton: MusicTransportButton = MusicTransportButton.PLAY_PAUSE,
     val sourceButton: MusicBrowseKind = MusicBrowseKind.PLAYLISTS,
@@ -86,4 +92,9 @@ data class MusicPlayerUiState(
 ) {
     val isAudible: Boolean get() = playback.isPlaying && !playback.userPaused
     val hasQueue: Boolean get() = playback.count > 0 || playback.overrideTitle != null
+    val showsFullPlayer: Boolean
+        get() = focusedRow == MusicPlayerRow.TRANSPORT || focusedRow == MusicPlayerRow.VOLUME
+    val volumeFraction: Float
+        get() = (levelIndexIn(volumeLevel, VolumeLevels.AMBIENT_AUDIO) + 1).toFloat() /
+            VolumeLevels.AMBIENT_AUDIO.size
 }

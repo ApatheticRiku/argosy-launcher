@@ -359,6 +359,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Silenciar el audio del video</string>
 
     <string name="settings_home_screen_installed_only_title">Solo juegos instalados</string>
+    <string name="settings_home_screen_box_art_title">Carátula</string>
+    <string name="settings_home_screen_box_art_subtitle">Muestra una caja 3D en los juegos que la tienen</string>
+    <string name="settings_home_screen_box_art_option_2d">Portada 2D</string>
+    <string name="settings_home_screen_box_art_option_3d">Caja 3D</string>
     <string name="settings_home_screen_installed_only_subtitle">Mostrar solo los juegos descargados en la pantalla de inicio</string>
 
     <!-- ===== Saves section ===== -->
@@ -569,6 +573,10 @@
     <string name="settings_permissions_screen_capture_description">Permite la iluminación LED ambiental para tomar muestras de los colores de la pantalla mientras juegas.</string>
     <string name="settings_permissions_display_overlay_title">Mostrar sobre otras aplicaciones</string>
     <string name="settings_permissions_display_overlay_description">Muestra notificaciones de detección de guardado al jugar con emuladores externos.</string>
+    <string name="settings_permissions_live_wallpaper_title">Pantalla de bloqueo animada</string>
+    <string name="settings_permissions_live_wallpaper_description">Permite que Argosy aplique una pantalla de bloqueo animada.</string>
+    <string name="settings_lock_screen_wallpaper_label">Biblioteca de Argosy</string>
+    <string name="settings_lock_screen_wallpaper_description">Permite que Argosy aplique una pantalla de bloqueo animada.</string>
     <string name="settings_permissions_status_footer">Estado: %1$d/%2$d permisos concedidos</string>
 
     <!-- ===== About section ===== -->
@@ -615,6 +623,10 @@
     <string name="settings_about_log_path_internal">Interno</string>
     <string name="settings_about_log_path_sd_card">Tarjeta SD/%1$s</string>
     <string name="settings_about_log_level_title">Nivel de registro</string>
+    <string name="settings_about_log_level_debug">Depuración</string>
+    <string name="settings_about_log_level_info">Info</string>
+    <string name="settings_about_log_level_warn">Aviso</string>
+    <string name="settings_about_log_level_error">Error</string>
 
     <string name="settings_about_save_debug_title">Registro de depuración de guardados</string>
     <string name="settings_about_save_debug_subtitle_on">Se registran las operaciones de guardado detalladas</string>
@@ -1395,6 +1407,16 @@
         <item quantity="many">%d actualizaciones</item>
         <item quantity="other">%d actualizaciones</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d actualización</item>
+        <item quantity="many">%d actualizaciones</item>
+        <item quantity="other">%d actualizaciones</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d actualización</item>
+        <item quantity="many">%d actualizaciones</item>
+        <item quantity="other">%d actualizaciones</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Opciones del core</string>
     <string name="settings_builtin_core_options_subtitle">Ajustes y anulaciones por core</string>
 
@@ -1439,6 +1461,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Mapeo de entradas</string>
     <string name="settings_builtin_controls_mapping_subtitle">Reasignar los botones de cada mando</string>
+    <string name="settings_builtin_controls_controller_type_title">Mando del jugador %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">El mando que ve el juego. Se aplica la próxima vez que se inicie un juego.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Stick izquierdo como cruceta</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Asignar el stick analógico izquierdo a las entradas de la cruceta</string>
@@ -1790,6 +1814,10 @@
     <string name="settings_library_layout_title">Diseño</string>
     <string name="settings_library_layout_grid">Cuadrícula</string>
     <string name="settings_library_layout_list">Lista</string>
+    <string name="settings_library_box_art_title">Carátula</string>
+    <string name="settings_library_box_art_subtitle">Muestra una caja 3D en los juegos que la tienen</string>
+    <string name="settings_library_box_art_option_2d">Portada 2D</string>
+    <string name="settings_library_box_art_option_3d">Caja 3D</string>
     <string name="settings_library_grid_density_title">Densidad de cuadrícula</string>
     <string name="settings_library_grid_density_compact">Compacta</string>
     <string name="settings_library_grid_density_normal">Normal</string>
@@ -2453,6 +2481,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">Se aplica solo a los juegos en modo casual</string>
     <string name="settings_libretro_def_auto_restore_state_title">Restaurar estado al iniciar</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">Se aplica solo a los juegos en modo casual</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Preferir la partida guardada más reciente del servidor</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Omite el estado de reanudación automática cuando se descargó del servidor una partida guardada más reciente</string>
     <string name="settings_libretro_def_hw_core_save_states_title">Estados guardados de Dolphin y Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Experimental; estos cores pueden mostrar pantalla negra o no reanudarse. Se aplica en el próximo inicio, solo en juegos en modo casual</string>
 

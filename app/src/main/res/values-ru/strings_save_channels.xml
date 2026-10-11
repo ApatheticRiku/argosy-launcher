@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="save_channels_section_mine_title">Мои</string>
+    <string name="save_channels_section_backups_title">Резервные копии</string>
+    <string name="save_channels_section_community_title">Сообщество</string>
+    <string name="save_channels_section_mine_new">Новый канал</string>
+    <string name="save_channels_section_mine_empty">Пока нет каналов</string>
+    <string name="save_channels_load_failed">Не удалось загрузить каналы</string>
+
+    <string name="save_channels_tile_chip_hardcore">Хардкор</string>
+    <string name="save_channels_tile_chip_shared">Общий</string>
+    <string name="save_channels_tile_chip_by_owner">автор: %1$s</string>
+    <string name="save_channels_tile_chip_no_snapshots">Только устаревшие</string>
+    <string name="save_channels_tile_chip_this_device">Это устройство</string>
+    <string name="save_channels_tile_subtitle_empty">Пусто</string>
+    <string name="save_channels_footer_channel_actions">Действия</string>
+    <string name="save_channels_footer_timeline">Хронология</string>
+    <string name="save_channels_section_timeline_button">Хронология</string>
+
+    <string name="save_channels_device_unknown">Неизвестно</string>
+    <string name="save_channels_device_other_user">Другой пользователь</string>
+
+    <string name="save_channels_card_badge_current">Текущий</string>
+    <string name="save_channels_card_badge_branch">Ветка</string>
+    <string name="save_channels_card_badge_pinned">Закреплён</string>
+    <string name="save_channels_card_badge_hardcore">Хардкор</string>
+    <string name="save_channels_card_badge_older_client">Устаревшее</string>
+    <string name="save_channels_card_caption_id">#%1$d</string>
+    <string name="save_channels_cards_empty">Пусто</string>
+    <string name="save_channels_card_load_more">Ещё</string>
+
+    <string name="save_channels_backup_action_copy_to">Копировать в…</string>
+
+    <string name="save_channels_detail_title">%1$s · #%2$d</string>
+    <string name="save_channels_detail_row_channel">Канал</string>
+    <string name="save_channels_detail_row_device">Устройство</string>
+    <string name="save_channels_detail_row_parent">Родитель</string>
+    <string name="save_channels_detail_row_saved">Сохранено</string>
+    <string name="save_channels_detail_row_file">Файл</string>
+    <string name="save_channels_detail_parent_id">#%1$d</string>
+    <string name="save_channels_detail_parent_none">-</string>
+    <string name="save_channels_detail_states_title">Состояния</string>
+    <string name="save_channels_detail_states_hardcore">Нет в режиме хардкор</string>
+    <string name="save_channels_detail_states_none">Нет</string>
+    <string name="save_channels_detail_state_slot_auto">Авто</string>
+    <string name="save_channels_detail_state_slot_numbered">Слот %1$s</string>
+    <string name="save_channels_detail_action_activate">Активировать</string>
+    <string name="save_channels_detail_action_fork">Ответвить</string>
+    <string name="save_channels_detail_action_copy_over">Копировать в…</string>
+    <string name="save_channels_detail_action_pin">Закрепить</string>
+    <string name="save_channels_detail_action_unpin">Открепить</string>
+    <string name="save_channels_detail_action_share">Поделиться</string>
+    <string name="save_channels_detail_action_unshare">Закрыть доступ</string>
+    <string name="save_channels_detail_action_make_snapshot">Создать снимок</string>
+    <string name="save_channels_copy_picker_title">Копировать в</string>
+    <string name="save_channels_copy_picker_new_channel">Новый канал</string>
+
+    <string name="save_channels_menu_action_use_on_device">Активировать</string>
+    <string name="save_channels_menu_action_rename">Переименовать</string>
+    <string name="save_channels_menu_action_share">Открыть доступ</string>
+    <string name="save_channels_menu_action_stop_sharing">Закрыть доступ</string>
+    <string name="save_channels_menu_action_delete">Удалить</string>
+
+    <string name="save_channels_label_title_new">Новый канал</string>
+    <string name="save_channels_label_title_rename">Переименовать</string>
+    <string name="save_channels_label_title_fork">Ответвить</string>
+    <string name="save_channels_label_field_placeholder">Название</string>
+    <string name="save_channels_label_cancel">Отмена</string>
+    <string name="save_channels_label_confirm_new">Создать</string>
+    <string name="save_channels_label_confirm_rename">Переименовать</string>
+    <string name="save_channels_label_confirm_fork">Ответвить</string>
+    <string name="save_channels_label_error_reserved">Название занято</string>
+
+    <string name="save_channels_share_confirm_title">Открыть доступ к каналу?</string>
+    <string name="save_channels_share_confirm_body">Все пользователи этого сервера смогут видеть канал и сохраняться в него.</string>
+    <string name="save_channels_share_confirm_action">Открыть доступ</string>
+    <string name="save_channels_hardcore_confirm_title">Заменить хардкорное сохранение?</string>
+    <string name="save_channels_hardcore_confirm_body">Хардкорное сохранение останется в истории.</string>
+    <string name="save_channels_hardcore_confirm_action">Заменить</string>
+    <string name="save_channels_delete_confirm_title">Удалить %1$s?</string>
+    <string name="save_channels_delete_confirm_body">Текущее, закреплённые (%1$d) и устаревшие (%2$d) сохранения станут резервными копиями. Остальные будут удалены.</string>
+    <string name="save_channels_delete_confirm_hold">Удалить</string>
+
+    <string name="save_channels_timeline_header_device">Это устройство: %1$s</string>
+    <string name="save_channels_timeline_lane_empty">Пусто</string>
+    <string name="save_channels_timeline_lane_failed">Не удалось загрузить</string>
+    <string name="save_channels_timeline_load_failed">Не удалось загрузить каналы</string>
+    <string name="save_channels_timeline_no_channels">Пока нет каналов</string>
+    <string name="save_channels_timeline_floater_id">#%1$d</string>
+    <string name="save_channels_timeline_footer_jump">Перейти</string>
+    <string name="save_channels_timeline_footer_channel">Канал</string>
+    <string name="save_channels_timeline_notice_history_failed">Не удалось загрузить старые сохранения</string>
+
+    <string name="save_channels_notice_forked">Ответвлено</string>
+    <string name="save_channels_notice_copied">Скопировано</string>
+    <string name="save_channels_notice_made_snapshot">Снимок создан</string>
+    <string name="save_channels_notice_created">Канал создан</string>
+    <string name="save_channels_notice_renamed">Переименовано</string>
+    <string name="save_channels_notice_shared">Доступ открыт</string>
+    <string name="save_channels_notice_unshared">Доступ закрыт</string>
+    <string name="save_channels_notice_deleted">Удалено</string>
+    <string name="save_channels_notice_used_on_device">Активирован канал %1$s</string>
+    <string name="save_channels_notice_stale">Изменено на другом устройстве, обновлено</string>
+    <string name="save_channels_notice_failed_offline">Сервер недоступен</string>
+    <string name="save_channels_notice_failed_refused">Сервер отклонил изменение</string>
+    <string name="save_channels_notice_failed_not_found">Больше нет на сервере</string>
+    <string name="save_channels_notice_failed_conflict">Изменено на другом устройстве, повторите</string>
+    <string name="save_channels_notice_failed_unknown">Не удалось выполнить</string>
+    <string name="save_channels_notice_hardcore_kept">Хардкорное сохранение оставлено</string>
+    <string name="save_channels_notice_offline">Сервер недоступен</string>
+    <string name="save_channels_notice_history_failed">Не удалось загрузить историю</string>
+</resources>

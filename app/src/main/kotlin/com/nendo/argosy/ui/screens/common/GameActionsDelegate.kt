@@ -1,6 +1,8 @@
 package com.nendo.argosy.ui.screens.common
 
+import com.nendo.argosy.data.cache.ArtSourceRecorder
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.remote.playstore.PlayStoreService
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.remote.romm.RomMRepository
@@ -26,7 +28,8 @@ class GameActionsDelegate @Inject constructor(
     private val soundManager: SoundFeedbackManager,
     private val romMRepository: RomMRepository,
     private val playStoreService: PlayStoreService,
-    private val imageCacheManager: ImageCacheManager
+    private val imageCacheManager: ImageCacheManager,
+    private val artSourceRecorder: ArtSourceRecorder
 ) {
     suspend fun toggleFavorite(gameId: Long): Boolean? {
         val game = gameRepository.getById(gameId) ?: return null
@@ -90,21 +93,19 @@ class GameActionsDelegate @Inject constructor(
                     description = details.description ?: game.description,
                     developer = details.developer ?: game.developer,
                     genre = details.genre ?: game.genre,
-                    rating = details.ratingPercent ?: game.rating,
-                    screenshotPaths = details.screenshotUrls.takeIf { it.isNotEmpty() }
-                        ?.joinToString(",") ?: game.screenshotPaths,
-                    backgroundPath = details.screenshotUrls.firstOrNull() ?: game.backgroundPath
+                    rating = details.ratingPercent ?: game.rating
                 )
                 gameRepository.update(updated)
 
                 details.coverUrl?.let { url ->
-                    imageCacheManager.queueCoverCacheByGameId(url, gameId)
+                    artSourceRecorder.record(gameId, ArtSlot.COVER, listOf(url), game.title)
                 }
                 details.screenshotUrls.firstOrNull()?.let { url ->
-                    imageCacheManager.queueBackgroundCacheByGameId(url, gameId, game.title)
+                    artSourceRecorder.record(gameId, ArtSlot.BACKGROUND, listOf(url), game.title)
                 }
                 if (details.screenshotUrls.isNotEmpty()) {
-                    imageCacheManager.queueScreenshotCacheByGameId(gameId, details.screenshotUrls)
+                    gameRepository.replaceScreenshotSources(gameId, details.screenshotUrls)
+                    imageCacheManager.queueScreenshotCacheByGameId(gameId)
                 }
 
                 RefreshAndroidResult.Success

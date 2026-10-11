@@ -1,8 +1,11 @@
 package com.nendo.argosy.domain.usecase.cache
 
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.cache.recordArtSource
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.clearArtOverride
+import com.nendo.argosy.data.local.dao.clearOverride
+import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.remote.romm.RomMRepository
 import com.nendo.argosy.data.remote.romm.RomMResult
@@ -14,88 +17,61 @@ import javax.inject.Inject
 
 class RepairImageCacheUseCase @Inject constructor(
     private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao,
     private val romMRepository: RomMRepository,
     private val imageCacheManager: ImageCacheManager,
     private val volumeHealth: StorageVolumeHealth
 ) {
-    suspend fun repairCover(gameId: Long, localPath: String?): String? {
-        if (localPath == null) return null
-        if (!localPath.startsWith("/")) return localPath
-        if (File(localPath).exists()) return localPath
-
-        val game = gameDao.getById(gameId) ?: return null
-        if (game.coverOverridePath == localPath) {
-            if (isGenuinelyAbsent(localPath)) gameDao.clearArtOverride(gameId, ArtSlot.COVER)
-            return game.coverPath
+    suspend fun repairCover(gameId: Long, localPath: String?): String? =
+        repairArt(gameId, ArtSlot.COVER, localPath) { game, rommId ->
+            when (val result = romMRepository.getRom(rommId)) {
+                is RomMResult.Success -> romMRepository.buildCoverUrls(result.data)
+                is RomMResult.Error -> null
+            }.also { urls -> if (urls != null) record(game, ArtSlot.COVER, urls) }
         }
-        if (!romMRepository.isConnected()) return null
-        val rommId = game.rommId ?: return null
 
-        return when (val result = romMRepository.getRom(rommId)) {
-            is RomMResult.Success -> {
-                val coverUrls = romMRepository.buildCoverUrls(result.data)
-                if (coverUrls.isNotEmpty()) {
-                    imageCacheManager.queueCoverCache(coverUrls, rommId, game.title)
-                }
-                coverUrls.firstOrNull()
-            }
-            is RomMResult.Error -> null
-        }
-    }
-
-    suspend fun repairBackground(gameId: Long, localPath: String?): String? {
-        if (localPath == null) return null
-        if (!localPath.startsWith("/")) return localPath
-        if (File(localPath).exists()) return localPath
-
-        val game = gameDao.getById(gameId) ?: return null
-        if (game.backgroundOverridePath == localPath) {
-            if (isGenuinelyAbsent(localPath)) gameDao.clearArtOverride(gameId, ArtSlot.BACKGROUND)
-            return game.backgroundPath
-        }
-        if (!romMRepository.isConnected()) return null
-        val rommId = game.rommId ?: return null
-
-        return when (val result = romMRepository.getRom(rommId)) {
-            is RomMResult.Success -> {
-                val backgroundUrls = (
+    suspend fun repairBackground(gameId: Long, localPath: String?): String? =
+        repairArt(gameId, ArtSlot.BACKGROUND, localPath) { game, rommId ->
+            when (val result = romMRepository.getRom(rommId)) {
+                is RomMResult.Success -> (
                     result.data.backgroundUrls +
                         result.data.screenshotPaths?.mapNotNull { romMRepository.buildMediaUrlPublic(it) }.orEmpty()
-                ).distinct()
-                if (backgroundUrls.isNotEmpty()) {
-                    imageCacheManager.queueBackgroundCache(backgroundUrls, rommId, game.title)
-                }
-                backgroundUrls.firstOrNull()
-            }
-            is RomMResult.Error -> null
+                    ).distinct()
+                is RomMResult.Error -> null
+            }.also { urls -> if (urls != null) record(game, ArtSlot.BACKGROUND, urls) }
         }
-    }
 
-    suspend fun repairScreenshots(gameId: Long, cachedPaths: List<String>?): List<String>? {
-        if (cachedPaths.isNullOrEmpty()) return null
-
-        val anyMissing = cachedPaths.any { path ->
-            path.startsWith("/") && !File(path).exists()
-        }
-        if (!anyMissing) return cachedPaths
-        if (!romMRepository.isConnected()) return null
+    private suspend fun repairArt(
+        gameId: Long,
+        slot: ArtSlot,
+        localPath: String?,
+        refetch: suspend (GameEntity, Long) -> List<String>?
+    ): String? {
+        if (localPath == null) return null
+        if (!localPath.startsWith("/")) return localPath
+        if (File(localPath).exists()) return localPath
 
         val game = gameDao.getById(gameId) ?: return null
-        val rommId = game.rommId ?: return null
-
-        return when (val result = romMRepository.getRom(rommId)) {
-            is RomMResult.Success -> {
-                val screenshotUrls = result.data.screenshotPaths?.mapNotNull { path ->
-                    romMRepository.buildMediaUrlPublic(path)
-                } ?: return null
-
-                if (screenshotUrls.isNotEmpty()) {
-                    imageCacheManager.queueScreenshotCache(gameId, rommId, screenshotUrls, game.title)
-                }
-                screenshotUrls
-            }
-            is RomMResult.Error -> null
+        val row = gameArtDao.get(gameId, slot.name)
+        if (row != null && row.overridePath == localPath) {
+            if (isGenuinelyAbsent(localPath)) gameArtDao.clearOverride(gameId, slot)
+            return row.cachedPath ?: row.sourceUrl
         }
+        if (row != null && row.cachedPath == localPath && isGenuinelyAbsent(localPath)) {
+            imageCacheManager.forgetCachedArt(gameId, slot)
+        }
+        val rommId = game.rommId
+        if (rommId == null || !romMRepository.isConnected()) {
+            val source = row?.sourceUrl ?: return null
+            imageCacheManager.queueArtIfStale(gameId, slot, listOf(source), null, game.steamAppId, game.title)
+            return source
+        }
+        return refetch(game, rommId)?.firstOrNull()
+    }
+
+    private suspend fun record(game: GameEntity, slot: ArtSlot, urls: List<String>) {
+        if (urls.isEmpty()) return
+        recordArtSource(gameArtDao, imageCacheManager, game.id, slot, urls, game.title, rommId = game.rommId)
     }
 
     private suspend fun isGenuinelyAbsent(path: String): Boolean =

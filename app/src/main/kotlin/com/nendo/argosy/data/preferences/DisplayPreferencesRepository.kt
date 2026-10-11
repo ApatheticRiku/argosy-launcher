@@ -50,6 +50,7 @@ data class DisplayPreferences(
     val bodyFontScale: Int = 100,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val libraryBoxArt3d: Boolean = false,
     val libraryDefaultSort: String = "TITLE",
     val libraryDefaultSortDescending: Boolean? = null,
     val sortInstalledFirst: Boolean = false,
@@ -151,6 +152,7 @@ class DisplayPreferencesRepository @Inject constructor(
         val FONT_BODY_SCALE = intPreferencesKey("font_body_scale")
         val UI_DENSITY = stringPreferencesKey("ui_density")
         val LIBRARY_LAYOUT = stringPreferencesKey("library_layout")
+        val LIBRARY_BOX_ART_3D = booleanPreferencesKey("library_box_art_3d")
         val LIBRARY_DEFAULT_SORT = stringPreferencesKey("library_default_sort")
         val LIBRARY_DEFAULT_SORT_DESC = booleanPreferencesKey("library_default_sort_desc")
         val SORT_INSTALLED_FIRST = booleanPreferencesKey("sort_installed_first")
@@ -175,6 +177,7 @@ class DisplayPreferencesRepository @Inject constructor(
         val COMPACT_FOOTER = booleanPreferencesKey("compact_footer")
         val LOCK_SCREEN_ART = booleanPreferencesKey("lock_screen_art")
         val LOCK_SCREEN_ART_APPLIED = booleanPreferencesKey("lock_screen_art_applied")
+        val LIVE_WALLPAPER_OFFERED = booleanPreferencesKey("live_wallpaper_offered")
         val GRIP_AUTO_CONTROLLERS = stringPreferencesKey("grip_auto_controllers")
         val GRIP_RESERVE_MODE = stringPreferencesKey("grip_reserve_mode")
         val BOX_ART_SHAPE = stringPreferencesKey("box_art_shape")
@@ -249,6 +252,7 @@ class DisplayPreferencesRepository @Inject constructor(
             bodyFontScale = prefs[Keys.FONT_BODY_SCALE] ?: 100,
             gridDensity = GridDensity.fromString(prefs[Keys.UI_DENSITY]),
             libraryLayout = LibraryLayout.fromString(prefs[Keys.LIBRARY_LAYOUT]),
+            libraryBoxArt3d = prefs[Keys.LIBRARY_BOX_ART_3D] ?: false,
             libraryDefaultSort = prefs[Keys.LIBRARY_DEFAULT_SORT] ?: "TITLE",
             libraryDefaultSortDescending = prefs[Keys.LIBRARY_DEFAULT_SORT_DESC],
             sortInstalledFirst = prefs[Keys.SORT_INSTALLED_FIRST] ?: false,
@@ -446,6 +450,10 @@ class DisplayPreferencesRepository @Inject constructor(
         dataStore.edit { it[Keys.LIBRARY_LAYOUT] = layout.name }
     }
 
+    suspend fun setLibraryBoxArt3d(enabled: Boolean) {
+        dataStore.edit { it[Keys.LIBRARY_BOX_ART_3D] = enabled }
+    }
+
     suspend fun setLibraryDefaultSort(option: String, descending: Boolean) {
         dataStore.edit {
             it[Keys.LIBRARY_DEFAULT_SORT] = option
@@ -574,6 +582,13 @@ class DisplayPreferencesRepository @Inject constructor(
 
     suspend fun setLockScreenArtApplied(applied: Boolean) {
         dataStore.edit { it[Keys.LOCK_SCREEN_ART_APPLIED] = applied }
+    }
+
+    suspend fun isLiveWallpaperOffered(): Boolean =
+        dataStore.data.first()[Keys.LIVE_WALLPAPER_OFFERED] ?: false
+
+    suspend fun setLiveWallpaperOffered() {
+        dataStore.edit { it[Keys.LIVE_WALLPAPER_OFFERED] = true }
     }
 
     suspend fun setGripAutoControllers(

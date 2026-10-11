@@ -9,6 +9,7 @@ import com.nendo.argosy.data.local.entity.CollectionGameEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -39,7 +40,6 @@ class GameDaoSiblingVisibilitySqlTest {
         regions: String? = null,
         genre: String? = null,
         localPath: String? = null,
-        coverPath: String? = null,
         favorite: Boolean = false,
         lastPlayed: Instant? = null,
         playCount: Int = 0,
@@ -55,7 +55,6 @@ class GameDaoSiblingVisibilitySqlTest {
         rommId = 100L + id,
         igdbId = null,
         source = if (localPath != null) GameSource.ROMM_SYNCED else GameSource.ROMM_REMOTE,
-        coverPath = coverPath,
         regions = regions,
         genre = genre,
         franchises = franchises,
@@ -81,18 +80,20 @@ class GameDaoSiblingVisibilitySqlTest {
             game(
                 id = shown, title = "Zelda", group = "igdb-1-5", visible = true,
                 regions = "USA", genre = "Adventure", localPath = "/roms/1.sfc",
-                coverPath = "/covers/1.jpg", playTimeMinutes = 10, franchises = "Zelda"
+                playTimeMinutes = 10, franchises = "Zelda"
             )
         )
         gameDao.insert(
             game(
                 id = hidden, title = "Zelda", group = "igdb-1-5", visible = false,
                 regions = "Japan", genre = "Action RPG", localPath = "/roms/2.sfc",
-                coverPath = "/covers/2.jpg", favorite = true, lastPlayed = Instant.now(),
+                favorite = true, lastPlayed = Instant.now(),
                 playCount = 1, playTimeMinutes = 30, franchises = "Zelda"
             )
         )
         gameDao.insert(game(id = solo, title = "Metroid", group = null, visible = true))
+        db.gameArtDao().setCached(shown, ArtSlot.COVER, "/covers/1.jpg", null)
+        db.gameArtDao().setCached(hidden, ArtSlot.COVER, "/covers/2.jpg", null)
         Unit
     }
 

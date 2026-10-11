@@ -11,6 +11,8 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSocialSyncDao
 import com.nendo.argosy.data.local.dao.PlaySessionDao
+import com.nendo.argosy.data.local.dao.resolved
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.local.entity.AchievementEntity
 import com.nendo.argosy.data.local.entity.PendingSocialSyncEntity
 import com.nendo.argosy.data.local.entity.SocialSyncType
@@ -79,7 +81,8 @@ class SocialRepository @Inject constructor(
     private val imageCacheManager: ImageCacheManager,
     private val playSessionBackfill: PlaySessionBackfill,
     private val attributionRepository: StorageAttributionRepository,
-    private val quayPassService: Lazy<com.nendo.argosy.data.quaypass.QuayPassService>
+    private val quayPassService: Lazy<com.nendo.argosy.data.quaypass.QuayPassService>,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var hasCompletedInitialSync = false
@@ -603,7 +606,8 @@ class SocialRepository @Inject constructor(
             return
         }
 
-        Log.d(TAG, "IGDB resolve: ${game.title} (steamAppId=${message.steamAppId}) -> igdbId=${message.igdbId}, coverImageId=${message.coverImageId}, currentIgdb=${game.igdbId}, currentCover=${game.coverPath?.take(60)}")
+        val coverSource = gameArtDao.get(game.id, ArtSlot.COVER.name)?.sourceUrl
+        Log.d(TAG, "IGDB resolve: ${game.title} (steamAppId=${message.steamAppId}) -> igdbId=${message.igdbId}, coverImageId=${message.coverImageId}, currentIgdb=${game.igdbId}, currentCover=${coverSource?.take(60)}")
 
         if (game.igdbId == null) {
             gameDao.updateIgdbId(game.id, message.igdbId)
@@ -612,13 +616,14 @@ class SocialRepository @Inject constructor(
 
         if (message.coverImageId != null) {
             val needsCover = game.igdbId == null
-                || game.coverPath == null
-                || game.coverPath.startsWith("https://steamcdn-a.akamaihd.net/")
+                || coverSource == null
+                || coverSource.startsWith("https://steamcdn-a.akamaihd.net/")
             Log.d(TAG, "IGDB resolve: needsCover=$needsCover for ${game.title}")
             if (needsCover) {
                 val igdbUrl = "https://images.igdb.com/igdb/image/upload/t_cover_big/${message.coverImageId}.jpg"
-                gameDao.updateCoverPath(game.id, igdbUrl)
-                imageCacheManager.queueCoverCacheByGameId(igdbUrl, game.id)
+                com.nendo.argosy.data.cache.recordArtSource(
+                    gameArtDao, imageCacheManager, game.id, ArtSlot.COVER, listOf(igdbUrl), game.title
+                )
             }
         } else {
             Log.d(TAG, "IGDB resolve: no coverImageId from server for ${game.title}")
@@ -1425,10 +1430,12 @@ class SocialRepository @Inject constructor(
             return
         }
 
-        Log.d(TAG, "Found game: ${game.title}, coverPath=${game.coverPath}, generating response for fields=$fields")
+        val art = gameArtDao.resolved(game.id)
+        val coverPath = art.coverPath
+        Log.d(TAG, "Found game: ${game.title}, coverPath=$coverPath, generating response for fields=$fields")
 
-        val coverThumbBase64 = if ("cover_thumb" in fields && game.coverPath != null) {
-            generateCoverThumbnail(game.coverPath)
+        val coverThumbBase64 = if ("cover_thumb" in fields && coverPath != null) {
+            generateCoverThumbnail(coverPath)
         } else null
 
         socialService.sendGameData(
@@ -1439,7 +1446,7 @@ class SocialRepository @Inject constructor(
             genre = if ("genre" in fields) game.genre else null,
             description = if ("description" in fields) game.description else null,
             coverThumbBase64 = coverThumbBase64,
-            gradientColors = if ("gradient_colors" in fields) game.gradientColors else null
+            gradientColors = if ("gradient_colors" in fields) art.gradientColors else null
         )
     }
 

@@ -104,7 +104,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("box_art_inner_effect_thickness", SettingsBackupType.STRING),
         SettingsBackupKey("box_art_outer_effect", SettingsBackupType.STRING),
         SettingsBackupKey("box_art_outer_effect_thickness", SettingsBackupType.STRING),
-        SettingsBackupKey("box_art_cache_enabled", SettingsBackupType.BOOLEAN)
+        SettingsBackupKey("box_art_cache_enabled", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("library_box_art_3d", SettingsBackupType.BOOLEAN)
     )
 
     private val BACKGROUND = listOf(
@@ -156,7 +157,8 @@ object SettingsBackupKeys {
         SettingsBackupKey("haptic_strength", SettingsBackupType.FLOAT),
         SettingsBackupKey("ambient_audio_enabled", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("ambient_audio_volume", SettingsBackupType.INT),
-        SettingsBackupKey("ambient_audio_shuffle", SettingsBackupType.BOOLEAN)
+        SettingsBackupKey("ambient_audio_shuffle", SettingsBackupType.BOOLEAN),
+        SettingsBackupKey("ambient_audio_play_in_background", SettingsBackupType.BOOLEAN)
     )
 
     private val NAVIGATION = listOf(
@@ -188,6 +190,7 @@ object SettingsBackupKeys {
         SettingsBackupKey("builtin_auto_save_state", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_auto_restore_state", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_auto_restore_state_mode", SettingsBackupType.STRING),
+        SettingsBackupKey("builtin_prefer_newer_server_save", SettingsBackupType.BOOLEAN),
         SettingsBackupKey("builtin_hw_core_save_states", SettingsBackupType.BOOLEAN)
     )
 

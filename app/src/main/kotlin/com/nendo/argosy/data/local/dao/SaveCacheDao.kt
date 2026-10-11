@@ -292,6 +292,14 @@ interface SaveCacheDao {
         WHERE gameId = :gameId AND channelName IS NULL
           AND (ownerUserId IS NULL OR ownerUserId = :ownerUserId)
     """)
+    suspend fun clearDirtyFlagForNoChannel(gameId: Long, ownerUserId: Long?)
+
+    @Query("""
+        UPDATE save_cache
+        SET needsRemoteSync = 0
+        WHERE gameId = :gameId AND channelName IS NULL
+          AND (ownerUserId IS NULL OR ownerUserId = :ownerUserId)
+    """)
     suspend fun clearDirtyFlagForLatest(gameId: Long, ownerUserId: Long?)
 
     @Query("""
@@ -437,18 +445,6 @@ interface SaveCacheDao {
         """
     )
     suspend fun getNewestIdInChannelForOwner(gameId: Long, ownerUserId: Long?, channelName: String?): Long?
-
-    @Query(
-        """
-        SELECT id FROM save_cache
-        WHERE gameId = :gameId
-          AND (ownerUserId IS NULL OR ownerUserId IS :ownerUserId)
-          AND cachedAt = :timestamp
-        ORDER BY cachedAt DESC
-        LIMIT 1
-        """
-    )
-    suspend fun getIdAtTimestampForOwner(gameId: Long, ownerUserId: Long?, timestamp: Long): Long?
 
     @Query(
         """

@@ -77,7 +77,8 @@ fun CustomGridSurface(
     downloadIndicatorFor: (Long) -> GameDownloadIndicator = { GameDownloadIndicator.NONE },
     onCoverLoadFailed: ((Long, String) -> Unit)? = null,
     onCoverLoaded: ((Long, android.graphics.Bitmap) -> Unit)? = null,
-    onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)? = null
+    onPosterLoaded: ((String, android.graphics.Bitmap) -> Unit)? = null,
+    useBoxArt: Boolean = false
 ) {
     if (state.isScrolling) {
         Column(modifier = modifier) {
@@ -104,6 +105,7 @@ fun CustomGridSurface(
                 onCoverLoadFailed = onCoverLoadFailed,
                 onCoverLoaded = onCoverLoaded,
                 onPosterLoaded = onPosterLoaded,
+                useBoxArt = useBoxArt,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -188,6 +190,7 @@ fun CustomGridSurface(
                     onCoverLoadFailed = onCoverLoadFailed,
                     onCoverLoaded = onCoverLoaded,
                     onPosterLoaded = onPosterLoaded,
+                    useBoxArt = useBoxArt,
                     modifier = Modifier.fillMaxSize()
                 )
             }

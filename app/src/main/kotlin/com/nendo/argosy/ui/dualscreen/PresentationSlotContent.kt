@@ -70,6 +70,21 @@ fun PresentationSlotContent(
     showControlHints: Boolean = true,
     showsNotifications: Boolean = false
 ) {
+    val artSource = com.nendo.argosy.ui.common.LocalImageCacheManager.current
+        ?: com.nendo.argosy.DualScreenManagerHolder.instance?.imageCacheManager
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.nendo.argosy.ui.common.LocalImageCacheManager provides artSource
+    ) {
+        PresentationSlotBody(slot, showControlHints, showsNotifications)
+    }
+}
+
+@Composable
+private fun PresentationSlotBody(
+    slot: PresentationSlot,
+    showControlHints: Boolean,
+    showsNotifications: Boolean
+) {
     val density = LocalDensity.current
     val hints = com.nendo.argosy.DualScreenManagerHolder.instance
         ?.controlHints?.collectAsState()?.value.orEmpty()
@@ -278,7 +293,7 @@ private fun InGameAppBar(state: InGameAppBarState, modifier: Modifier = Modifier
 @Composable
 private fun GameHeroSlot(slot: PresentationSlot.GameHero) {
     Box(modifier = Modifier.fillMaxSize()) {
-        slot.game.backgroundPath?.let { backdrop ->
+        com.nendo.argosy.ui.common.rememberResolvedBackgroundPath(slot.game.id, slot.game.backgroundPath)?.let { backdrop ->
             AsyncImage(
                 model = rememberFileImageModel(backdrop),
                 contentDescription = null,

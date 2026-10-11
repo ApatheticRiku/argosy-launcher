@@ -304,7 +304,7 @@ fun MusicBrowserScreen(
                             start = Dimens.spacingLg,
                             end = Dimens.spacingLg,
                             top = Dimens.spacingSm,
-                            bottom = Dimens.footerHeight
+                            bottom = Dimens.footerClearance
                         ),
                         verticalArrangement = Arrangement.spacedBy(Dimens.spacingMd)
                     ) {

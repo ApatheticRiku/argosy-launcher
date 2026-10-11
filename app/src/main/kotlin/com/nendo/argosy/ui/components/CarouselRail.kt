@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.nendo.argosy.ui.common.coverSizeWithin
-import com.nendo.argosy.ui.common.rememberCoverAspectRatio
+import com.nendo.argosy.ui.common.rememberGameArtAspectRatio
 import com.nendo.argosy.ui.screens.home.GameDownloadIndicator
 import com.nendo.argosy.ui.screens.home.HomeGameUi
 import com.nendo.argosy.ui.screens.home.HomeMediaUi
@@ -521,9 +521,11 @@ private fun CarouselGameCard(
     val maxWidth = if (isFocused) metrics.focusedCardWidth else metrics.cardWidth
     val maxHeight = if (isFocused) metrics.focusedCardHeight else metrics.cardHeight
     val cardSize = if (nativeAspectRatio) {
-        val ratio = item.game.coverAspectRatio ?: rememberCoverAspectRatio(
-            item.coverPathOverride ?: item.game.coverPath,
-            fallbackAspectRatio
+        val ratio = rememberGameArtAspectRatio(
+            game = item.game,
+            useBoxArt = useBoxArt,
+            coverPath = item.coverPathOverride ?: item.game.coverPath,
+            fallback = fallbackAspectRatio
         )
         coverSizeWithin(maxWidth, maxHeight, ratio)
     } else {

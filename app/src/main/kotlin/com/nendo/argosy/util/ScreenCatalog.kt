@@ -41,7 +41,27 @@ class ScreenCatalog @Inject constructor(
     fun screenFor(displayId: Int): AttachedScreen? =
         attachedScreens().find { it.displayId == displayId }
 
+    /**
+     * The lit screen a console's second screen belongs on while the game runs on [gameDisplayId],
+     * or null when the game has the only one.
+     */
+    fun secondScreenFor(gameDisplayId: Int): Display? {
+        val lit = attachedScreens().filter {
+            displayManager.getDisplay(it.displayId)?.state?.let { state -> state != Display.STATE_OFF } == true
+        }
+        return chooseSecondScreen(lit, gameDisplayId)?.let { displayManager.getDisplay(it.displayId) }
+    }
+
     companion object {
+        internal fun chooseSecondScreen(screens: List<AttachedScreen>, gameDisplayId: Int): AttachedScreen? =
+            screens
+                .filter { it.displayId != gameDisplayId }
+                .minWithOrNull(
+                    compareBy<AttachedScreen> { !it.builtIn }
+                        .thenBy { it.widthPx.toLong() * it.heightPx }
+                        .thenBy { it.displayId }
+                )
+
         private const val DISPLAY_TYPE_BUILT_IN = 1
         private const val DISPLAY_TYPE_EXTERNAL = 2
 

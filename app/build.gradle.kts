@@ -34,8 +34,8 @@ android {
         applicationId = "com.nendo.argosy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 346
-        versionName = "2.19.2"
+        versionCode = 352
+        versionName = "2.20.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -169,6 +169,7 @@ composeCompiler {
             layout.projectDirectory.file("compose_stability_config.conf")
         )
     }
+    featureFlags.add(org.jetbrains.kotlin.compose.compiler.gradle.ComposeFeatureFlag.IntrinsicRemember.disabled())
     if (project.hasProperty("composeMetrics")) {
         val dir = layout.buildDirectory.dir("compose_metrics")
         metricsDestination.set(dir)

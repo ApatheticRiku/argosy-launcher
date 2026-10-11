@@ -27,6 +27,7 @@ import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.ui.input.InputResult
 import com.nendo.argosy.ui.screens.doodle.GamePickerItem
+import com.nendo.argosy.ui.screens.doodle.toGamePickerItems
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -436,10 +437,8 @@ class SocialViewModel @Inject constructor(
             communitySearchFieldFocused = true
         )
         viewModelScope.launch {
-            val recent = gameRepository.getRecentlyPlayed(10)
-            _uiState.value = _uiState.value.copy(
-                communitySearchResults = recent.map { it.toPickerItem() }
-            )
+            val items = gameRepository.getRecentlyPlayed(10).toGamePickerItems(gameRepository)
+            _uiState.update { it.copy(communitySearchResults = items) }
         }
     }
 
@@ -456,19 +455,15 @@ class SocialViewModel @Inject constructor(
         communitySearchJob?.cancel()
         if (query.isBlank()) {
             viewModelScope.launch {
-                val recent = gameRepository.getRecentlyPlayed(10)
-                _uiState.value = _uiState.value.copy(
-                    communitySearchResults = recent.map { it.toPickerItem() }
-                )
+                val items = gameRepository.getRecentlyPlayed(10).toGamePickerItems(gameRepository)
+                _uiState.update { it.copy(communitySearchResults = items) }
             }
             return
         }
         communitySearchJob = viewModelScope.launch {
             delay(300)
-            val results = gameRepository.searchForQuickMenu(query, 15).first()
-            _uiState.value = _uiState.value.copy(
-                communitySearchResults = results.map { it.toPickerItem() }
-            )
+            val items = gameRepository.searchForQuickMenu(query, 15).first().toGamePickerItems(gameRepository)
+            _uiState.update { it.copy(communitySearchResults = items) }
         }
     }
 
@@ -499,14 +494,6 @@ class SocialViewModel @Inject constructor(
             socialRepository.followCommunity(igdbId)
         }
     }
-
-    private fun com.nendo.argosy.data.local.entity.GameEntity.toPickerItem() = GamePickerItem(
-        id = id,
-        igdbId = igdbId?.toInt(),
-        title = title,
-        platform = platformSlug,
-        coverPath = coverPath
-    )
 
     fun refresh() {
         Log.d(TAG, "refresh: resetting focusIndex and reloading")

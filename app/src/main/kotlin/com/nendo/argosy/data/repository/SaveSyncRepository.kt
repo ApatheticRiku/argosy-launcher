@@ -42,7 +42,8 @@ sealed class SaveSyncResult {
         val serverDeviceName: String? = null,
         val serverSaveId: Long? = null,
         val localContentHash: String? = null,
-        val serverContentHash: String? = null
+        val serverContentHash: String? = null,
+        val isHardcoreDowngrade: Boolean = false
     ) : SaveSyncResult()
     data class NeedsHardcoreResolution(
         val tempFilePath: String,
@@ -73,7 +74,8 @@ sealed class PreLaunchSyncResult {
         val serverTimestamp: Instant,
         val channelName: String?,
         val serverSaveId: Long? = null,
-        val restoreFailed: Boolean = false
+        val restoreFailed: Boolean = false,
+        val snapshotConflict: Boolean = false
     ) : PreLaunchSyncResult()
 }
 
@@ -121,7 +123,8 @@ class SaveSyncRepository @Inject constructor(
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
     private val strategySelector: SaveSyncStrategySelector,
     private val negotiateInventory: NegotiateInventory,
-    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate
+    private val saveRecoveryGate: com.nendo.argosy.data.sync.SaveRecoveryGate,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     private val PRE_LAUNCH_TAG = "SaveSyncRepository"
     private val PRE_LAUNCH_ACTION_PRIORITY = listOf(
@@ -264,6 +267,10 @@ class SaveSyncRepository @Inject constructor(
         apiClient.uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
     }
 
+    suspend fun approveHardcoreDowngrade(gameId: Long, emulatorId: String, channelName: String?): SaveSyncResult =
+        snapshotRouter.get().approveHardcoreDowngrade(gameId, emulatorId, channelName)
+            ?: SaveSyncResult.NotConfigured
+
     suspend fun uploadCacheEntry(
         gameId: Long,
         rommId: Long,
@@ -273,9 +280,13 @@ class SaveSyncRepository @Inject constructor(
         contentHash: String?,
         overwrite: Boolean = false,
         uploadedCacheId: Long? = null,
-        ownerApi: AccountApi? = null
+        ownerApi: AccountApi? = null,
+        approveHardcoreDowngrade: Boolean = false
     ): SaveSyncResult =
-        apiClient.uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
+        apiClient.uploadCacheEntry(
+            gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi,
+            approveHardcoreDowngrade
+        )
 
     suspend fun downloadSave(
         gameId: Long,
@@ -355,15 +366,16 @@ class SaveSyncRepository @Inject constructor(
         channelName: String?,
         secureSaves: Boolean
     ): PreLaunchSyncResult = withContext(Dispatchers.IO) {
+        val syncChannel = snapshotRouter.get().launchChannel(gameId, channelName)
         val myDeviceId = apiClient.getDeviceId() ?: run {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | No deviceId (pre-4.7 server or sync disabled) | decision=NoConnection")
             return@withContext PreLaunchSyncResult.NoConnection
         }
-        val effectiveChannel = SaveSyncApiClient.syncKeyOf(channelName)
+        val effectiveChannel = SaveSyncApiClient.syncKeyOf(syncChannel)
 
         val ownerUserId = syncPreferencesRepository.getRommUserId()
         saveRecoveryGate.awaitSettled()
-        val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, channelName, secureSaves, ownerUserId)
+        val disk = orchestrator.checkDiskAgainstActive(gameId, emulatorId, syncChannel, secureSaves, ownerUserId)
         Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | disk=${disk::class.simpleName}")
         if (disk is SaveSyncOrchestrator.DiskCheck.Unreadable) {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | save folder unreadable; skipping sync decision | decision=LocalIsNewer")
@@ -394,6 +406,11 @@ class SaveSyncRepository @Inject constructor(
         if (existing?.userSelectedRestorePoint == true) {
             Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId channel=$effectiveChannel | userSelectedRestorePoint=true | decision=LocalIsNewer")
             return@withContext PreLaunchSyncResult.LocalIsNewer
+        }
+
+        snapshotRouter.get().preLaunch(gameId, emulatorId, syncChannel)?.let { decision ->
+            Logger.debug(PRE_LAUNCH_TAG, "[SaveSync] PRE_LAUNCH gameId=$gameId | snapshot sync | decision=${decision::class.simpleName}")
+            return@withContext decision
         }
 
         apiClient.flushPendingDeviceSync(gameId)

@@ -11,6 +11,8 @@ import com.nendo.argosy.domain.usecase.music.GetMusicPlaylistsUseCase
 import com.nendo.argosy.domain.usecase.music.ResolveMusicQueueUseCase
 import com.nendo.argosy.domain.usecase.music.SearchSoundtrackGamesUseCase
 import com.nendo.argosy.ui.audio.AmbientAudioManager
+import com.nendo.argosy.ui.screens.settings.delegates.VolumeLevels
+import com.nendo.argosy.ui.screens.settings.delegates.adjustInList
 import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.ceil
 
 private const val TAG = "MusicPlayerVM"
 private const val SOUNDTRACK_PAGE_SIZE = 50
@@ -61,7 +64,7 @@ class MusicPlayerViewModel @Inject constructor(
                         trackFocus = if (sourceChanged) playback.index else state.trackFocus.coerceIn(0, lastTrack)
                     )
                     val rowGone = when (state.focusedRow) {
-                        MusicPlayerRow.TRANSPORT -> !next.hasQueue
+                        MusicPlayerRow.TRANSPORT, MusicPlayerRow.VOLUME -> !next.hasQueue
                         MusicPlayerRow.TRACKS -> playback.tracks.isEmpty()
                         MusicPlayerRow.SOURCES -> false
                     }
@@ -71,7 +74,13 @@ class MusicPlayerViewModel @Inject constructor(
         }
         viewModelScope.launch {
             controlsPreferences.preferences.collect { prefs ->
-                _uiState.update { it.copy(launcherEnabled = prefs.ambientAudioEnabled) }
+                _uiState.update {
+                    it.copy(
+                        launcherEnabled = prefs.ambientAudioEnabled,
+                        volumeLevel = prefs.ambientAudioVolume,
+                        playInBackground = prefs.ambientAudioPlayInBackground
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -101,9 +110,12 @@ class MusicPlayerViewModel @Inject constructor(
         val state = _uiState.value
         val trackCount = state.playback.tracks.size
         val next: MusicPlayerUiState = when (state.focusedRow) {
-            MusicPlayerRow.TRANSPORT -> if (delta > 0) state.copy(focusedRow = MusicPlayerRow.SOURCES) else state
+            MusicPlayerRow.TRANSPORT -> if (delta > 0) state.copy(focusedRow = MusicPlayerRow.VOLUME) else state
+            MusicPlayerRow.VOLUME -> state.copy(
+                focusedRow = if (delta > 0) MusicPlayerRow.SOURCES else MusicPlayerRow.TRANSPORT
+            )
             MusicPlayerRow.SOURCES -> when {
-                delta < 0 -> if (state.hasQueue) state.copy(focusedRow = MusicPlayerRow.TRANSPORT) else state
+                delta < 0 -> if (state.hasQueue) state.copy(focusedRow = MusicPlayerRow.VOLUME) else state
                 trackCount > 0 -> state.copy(
                     focusedRow = MusicPlayerRow.TRACKS,
                     trackFocus = state.playback.index.coerceIn(0, trackCount - 1)
@@ -120,7 +132,7 @@ class MusicPlayerViewModel @Inject constructor(
             }
         }
         if (next == state) return false
-        _uiState.value = next
+        _uiState.update { current -> current.copy(focusedRow = next.focusedRow, trackFocus = next.trackFocus) }
         return true
     }
 
@@ -150,12 +162,55 @@ class MusicPlayerViewModel @Inject constructor(
                 }
                 true
             }
+            MusicPlayerRow.VOLUME -> stepVolume(delta)
             MusicPlayerRow.TRACKS -> leaveTrackList()
         }
     }
 
     fun focusTransport(button: MusicTransportButton) {
         _uiState.update { it.copy(focusedRow = MusicPlayerRow.TRANSPORT, transportButton = button) }
+    }
+
+    fun focusVolume() {
+        _uiState.update { it.copy(focusedRow = MusicPlayerRow.VOLUME) }
+    }
+
+    fun toggleMusicEnabled(): Boolean {
+        val enabled = !_uiState.value.launcherEnabled
+        setMusicEnabled(enabled)
+        return enabled
+    }
+
+    fun setMusicEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(launcherEnabled = enabled) }
+        viewModelScope.launch {
+            controlsPreferences.setAmbientAudioEnabled(enabled)
+            ambientAudioManager.setEnabled(enabled)
+            if (enabled) ambientAudioManager.fadeIn() else ambientAudioManager.fadeOut()
+        }
+    }
+
+    fun stepVolume(delta: Int): Boolean {
+        val state = _uiState.value
+        if (!state.launcherEnabled) return false
+        val next = adjustInList(state.volumeLevel, VolumeLevels.AMBIENT_AUDIO, delta) ?: return false
+        applyVolumeLevel(next)
+        return true
+    }
+
+    fun setVolumeFraction(fraction: Float) {
+        if (!_uiState.value.launcherEnabled) return
+        val levels = VolumeLevels.AMBIENT_AUDIO
+        val index = (ceil(fraction.coerceIn(0f, 1f) * levels.size).toInt() - 1).coerceIn(0, levels.lastIndex)
+        applyVolumeLevel(levels[index])
+    }
+
+    private fun applyVolumeLevel(level: Int) {
+        _uiState.update { it.copy(volumeLevel = level) }
+        viewModelScope.launch {
+            controlsPreferences.setAmbientAudioVolume(level)
+            ambientAudioManager.setVolume(level)
+        }
     }
 
     fun focusSource(kind: MusicBrowseKind) {
@@ -166,6 +221,7 @@ class MusicPlayerViewModel @Inject constructor(
         val state = _uiState.value
         when (state.focusedRow) {
             MusicPlayerRow.TRANSPORT -> activateTransport(state.transportButton)
+            MusicPlayerRow.VOLUME -> toggleMusicEnabled()
             MusicPlayerRow.SOURCES -> openBrowse(state.sourceButton)
             MusicPlayerRow.TRACKS -> playTrack(state.trackFocus)
         }
@@ -185,7 +241,15 @@ class MusicPlayerViewModel @Inject constructor(
             MusicTransportButton.PLAY_PAUSE -> togglePlayPause()
             MusicTransportButton.NEXT -> skipNext()
             MusicTransportButton.SHUFFLE -> toggleShuffle()
+            MusicTransportButton.BACKGROUND -> togglePlayInBackground()
         }
+    }
+
+    fun togglePlayInBackground() {
+        val next = !_uiState.value.playInBackground
+        _uiState.update { it.copy(playInBackground = next) }
+        ambientAudioManager.setPlayInBackground(next)
+        viewModelScope.launch { controlsPreferences.setAmbientAudioPlayInBackground(next) }
     }
 
     fun togglePlayPause() {

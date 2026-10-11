@@ -168,6 +168,7 @@ data class PlatformEmulatorConfig(
     val effectiveEmulatorPackage: String? = null,
     val effectiveEmulatorName: String? = null,
     val effectiveSavePath: String? = null,
+    val savesBesideRom: Boolean = false,
     val isUserSavePathOverride: Boolean = false,
     val isEvaluatedSavePath: Boolean = false,
     val isFallbackSavePath: Boolean = false,
@@ -258,7 +259,8 @@ data class DisplayState(
         com.nendo.argosy.domain.model.HomeLayoutSettings(),
     val presentationStyle: com.nendo.argosy.domain.model.PresentationStyle =
         com.nendo.argosy.domain.model.PresentationStyle(),
-    val boxArtCapableGames: Int = 0,
+    val box3dCapableGames: Int = 0,
+    val libraryBoxArt3d: Boolean = false,
     val useAccentColorFooter: Boolean = false,
     val compactFooter: Boolean = false,
     val lockScreenArt: Boolean = true,
@@ -524,6 +526,14 @@ data class EmulatorState(
             config.effectiveEmulatorId != null && config.effectiveEmulatorId in emulatorUpdateVersions
         }
 
+    val outdatedEmulatorCount: Int
+        get() = platforms
+            .filter { it.platform.syncEnabled }
+            .mapNotNull { it.effectiveEmulatorId }
+            .filter { it in emulatorUpdateVersions }
+            .distinct()
+            .size
+
     val activePlatforms: List<PlatformEmulatorConfig>
         get() = platforms.filter { it.platform.syncEnabled }
 
@@ -654,6 +664,7 @@ data class BuiltinVideoState(
     val rewindBufferDuration: String = "15s",
     val autoSaveState: Boolean = true,
     val autoRestoreState: Boolean = true,
+    val preferNewerServerSave: Boolean = true,
     val hwCoreSaveStatesEnabled: Boolean = false,
     val savePath: String = "",
     val statePath: String = "",
@@ -704,7 +715,15 @@ data class ShaderStackEntry(
     val params: Map<String, String> = emptyMap()
 )
 
+data class ControllerPortChoiceUi(
+    val port: Int,
+    val deviceIds: List<Int>,
+    val deviceNames: List<String>,
+    val selectedIndex: Int
+)
+
 data class BuiltinControlsState(
+    val controllerPorts: List<ControllerPortChoiceUi> = emptyList(),
     val rumbleEnabled: Boolean = true,
     val limitHotkeysToPlayer1: Boolean = true,
     val speedrunStartOnReset: Boolean = true,
@@ -1506,26 +1525,23 @@ data class PermissionsState(
     val isWriteSettingsRelevant: Boolean = false,
     val hasScreenCapture: Boolean = false,
     val isScreenCaptureRelevant: Boolean = false,
-    val hasDisplayOverlay: Boolean = false
+    val hasDisplayOverlay: Boolean = false,
+    val hasLiveWallpaper: Boolean = false,
+    val isLiveWallpaperRelevant: Boolean = false
 ) {
-    val allGranted: Boolean get() = hasStorageAccess && hasUsageStats && hasNotificationPermission &&
-        (!isWriteSettingsRelevant || hasWriteSettings) &&
-        (!isScreenCaptureRelevant || hasScreenCapture) &&
-        hasDisplayOverlay
-    val grantedCount: Int get() = listOf(
-        hasStorageAccess,
-        hasUsageStats,
-        hasNotificationPermission,
-        if (isWriteSettingsRelevant) hasWriteSettings else null,
-        if (isScreenCaptureRelevant) hasScreenCapture else null,
-        hasDisplayOverlay
-    ).count { it == true }
-    val totalCount: Int get() {
-        var count = 4
-        if (isWriteSettingsRelevant) count++
-        if (isScreenCaptureRelevant) count++
-        return count
-    }
+    private val relevantGrants: List<Boolean>
+        get() = listOfNotNull(
+            hasStorageAccess,
+            hasUsageStats,
+            hasNotificationPermission,
+            hasWriteSettings.takeIf { isWriteSettingsRelevant },
+            hasScreenCapture.takeIf { isScreenCaptureRelevant },
+            hasDisplayOverlay,
+            hasLiveWallpaper.takeIf { isLiveWallpaperRelevant }
+        )
+    val allGranted: Boolean get() = relevantGrants.all { it }
+    val grantedCount: Int get() = relevantGrants.count { it }
+    val totalCount: Int get() = relevantGrants.size
 }
 
 const val RA_PROXY_TOGGLE_INDEX = 1
@@ -1810,12 +1826,34 @@ data class SettingsUiState(
     val fileLoggingPath: String? = null,
     val fileLogLevel: LogLevel = LogLevel.INFO,
     val saveDebugLoggingEnabled: Boolean = false,
-    val previewGame: GameListItem? = null,
-    val previewGames: List<GameListItem> = emptyList(),
+    val previewGame: SettingsPreviewGame? = null,
+    val previewGames: List<SettingsPreviewGame> = emptyList(),
     val previewGameIndex: Int = 0,
     val gradientConfig: GradientExtractionConfig = GradientExtractionConfig(),
     val gradientExtractionResult: GradientExtractionResult? = null,
     val frameDownloadingId: String? = null,
     val frameInstalledRefresh: Int = 0,
     val pendingCustomFrameRemovalId: String? = null
+)
+
+data class SettingsPreviewGame(
+    val id: Long,
+    val title: String,
+    val platformId: Long,
+    val platformSlug: String,
+    val genre: String?,
+    val isFavorite: Boolean,
+    val isDownloaded: Boolean,
+    val coverPath: String?
+)
+
+fun GameListItem.toSettingsPreviewGame(coverPath: String?) = SettingsPreviewGame(
+    id = id,
+    title = title,
+    platformId = platformId,
+    platformSlug = platformSlug,
+    genre = genre,
+    isFavorite = isFavorite,
+    isDownloaded = localPath != null,
+    coverPath = coverPath
 )

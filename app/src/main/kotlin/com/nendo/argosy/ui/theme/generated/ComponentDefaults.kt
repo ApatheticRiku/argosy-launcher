@@ -228,6 +228,7 @@ object ComponentDefaults {
         const val dotSizeActive = 10
         const val dotGap = 6
         const val dotInactiveAlpha = 0.3f
+        const val infoSplitMinSideDp = 160
     }
 
     object SurfaceBackdrop {
@@ -357,6 +358,28 @@ object ComponentDefaults {
         const val rowCoverDp = 40
         const val positionPollMs = 500
         const val searchDebounceMs = 350
+        const val artBloomAlphaDark = 0.35f
+        const val artBloomAlphaLight = 0.18f
+    }
+
+    object Segmented {
+        const val heightDp = 32
+        const val gapDp = 2
+        const val trackPaddingDp = 2
+        const val minSegmentWidthDp = 56
+    }
+
+    object SwitchedSlider {
+        const val chipSizeDp = 32
+        const val chipRadiusDp = 6
+        const val offTrackAlpha = 0.4f
+    }
+
+    object QuickPanel {
+        const val selectedFillAlpha = 0.108f
+        const val offlineAvatarAlpha = 0.6f
+        const val disabledContentAlpha = 0.38f
+        const val sectionLabelTrackingSp = 1.5f
     }
 
     object QuickMenuRandom {

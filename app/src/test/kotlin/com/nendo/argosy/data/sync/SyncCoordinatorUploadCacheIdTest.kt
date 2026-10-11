@@ -47,6 +47,7 @@ class SyncCoordinatorUploadCacheIdTest {
     private val strategySelector = mockk<SaveSyncStrategySelector>(relaxed = true)
     private val conflictAutoResolver = mockk<ConflictAutoResolver>(relaxed = true)
     private val pendingConflictDao = mockk<PendingConflictDao>(relaxed = true)
+    private val snapshotRouter = com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter()
 
     private val payloadCodec = SyncPayloadCodec(Moshi.Builder().build())
     private val syncQueueManager = SyncQueueManager()
@@ -115,6 +116,8 @@ class SyncCoordinatorUploadCacheIdTest {
             accountSwitchMarkerStore = mockk(relaxed = true),
             syncStatesOnSessionEndUseCase = mockk(relaxed = true),
             negotiateInventory = mockk(relaxed = true),
+            gameArtDao = mockk(relaxed = true),
+            snapshotRouter = snapshotRouter,
         )
     }
 
@@ -145,5 +148,34 @@ class SyncCoordinatorUploadCacheIdTest {
                 uploadedCacheId = 7777L,
             )
         }
+    }
+
+    @Test
+    fun `on a snapshot server a cache with no channel uploads its own bytes to the default channel, never the live disk`() = runTest {
+        val cacheFile = java.io.File.createTempFile("save", ".srm").apply { writeBytes(byteArrayOf(4)); deleteOnExit() }
+        val nonChannelCache = SaveCacheEntity(
+            id = 7778L,
+            gameId = 1L,
+            emulatorId = "snes9x",
+            cachedAt = Instant.parse("2026-05-20T12:00:00Z"),
+            saveSize = 1L,
+            cachePath = "1/2026/save.srm",
+            channelName = null,
+            needsRemoteSync = true,
+            contentHash = "hash-hardcore",
+        )
+        coEvery { snapshotRouter.get().handles(1L) } returns true
+        coEvery { saveCacheDao.getNeedingRemoteSync() } returns listOf(nonChannelCache)
+        every { saveCacheManager.getCacheFile(nonChannelCache) } returns cacheFile
+        coEvery {
+            saveSyncRepository.uploadCacheEntry(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns SaveSyncResult.Success()
+
+        coordinator.processQueue()
+
+        coVerify(exactly = 1) {
+            saveSyncRepository.uploadCacheEntry(1L, 100L, "snes9x", "autosave", cacheFile, "hash-hardcore", any(), 7778L, null)
+        }
+        coVerify(exactly = 0) { saveSyncRepository.uploadSave(any(), any(), any(), any(), any(), any()) }
     }
 }

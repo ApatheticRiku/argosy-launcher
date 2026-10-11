@@ -40,7 +40,6 @@ class GameListDetailsTest {
         sortTitle = "chrono trigger",
         localPath = "/roms/ct.sfc",
         source = GameSource.ROMM_SYNCED,
-        coverPath = null,
         isFavorite = false,
         isHidden = false,
         isMultiDisc = false,
@@ -115,7 +114,7 @@ class GameListDetailsTest {
 
     @Test
     fun `the library ui model carries the projected details`() = runTest {
-        assertEquals(expected, listItem.toLibraryGameUi(downloadStatus).listDetails)
+        assertEquals(expected, listItem.toLibraryGameUi(downloadStatus, art = null).listDetails)
     }
 
     @Test

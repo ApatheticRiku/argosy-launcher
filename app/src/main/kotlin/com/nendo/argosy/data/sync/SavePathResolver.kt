@@ -14,6 +14,7 @@ import com.nendo.argosy.data.platform.PlatformDefinitions
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SigilCollect
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.data.titledb.TitleDbRepository
 import com.nendo.argosy.util.Logger
@@ -84,7 +85,7 @@ class SavePathResolver @Inject constructor(
                 selectedMemcardForLog = selectedCard
                 savePathOverrideForLog = override
             }
-        )
+        ) ?: libretroSigilRoot(gameId, emulatorId)?.also { decision = "sigil-volume" }
         if (gameId != null) {
             SaveDebugLogger.logDiscoverPath(
                 gameId = gameId,
@@ -100,6 +101,12 @@ class SavePathResolver @Inject constructor(
             )
         }
         return result
+    }
+
+    private suspend fun libretroSigilRoot(gameId: Long?, emulatorId: String): String? {
+        if (gameId == null) return null
+        val route = saveHandlerRegistry.sigil.route(gameId, emulatorId)?.takeIf { it.libretro } ?: return null
+        return route.root.takeIf { fal.isDirectory(it) }
     }
 
     /**
@@ -139,7 +146,7 @@ class SavePathResolver @Inject constructor(
             com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(effectiveEmulatorId)
         val candidates = buildList {
             perGameSaveDir(gameId, config, platformSlug)?.let { add(it) }
-            besideRomDir(config, userConfig, romPath)?.let { add(it) }
+            besideRomDir(config, romPath, platformSlug)?.let { add(it) }
             userBaseOverride(effectiveEmulatorId, platformSlug)?.let { add(it) }
             gameId?.let { emulatorConfigDao.getSelectedMemcardForGame(it) }?.let { add(it) }
             userConfig?.selectedMemcardPath?.let { add(it) }
@@ -166,15 +173,8 @@ class SavePathResolver @Inject constructor(
         unreadable
     }
 
-    private fun besideRomDir(
-        config: SavePathConfig,
-        userConfig: com.nendo.argosy.data.local.entity.EmulatorSaveConfigEntity?,
-        romPath: String?
-    ): String? {
-        if (romPath == null) return null
-        if (!config.savesBesideRom && userConfig?.savesBesideRom != true) return null
-        return File(romPath).parent
-    }
+    private suspend fun besideRomDir(config: SavePathConfig, romPath: String?, platformSlug: String?): String? =
+        emulatorSaveConfigRepository.besideRomDir(config, platformSlug, romPath)
 
     private fun isUnreadableDir(path: String): Boolean =
         fal.exists(path) && fal.isDirectory(path) && fal.listFiles(path) == null
@@ -220,6 +220,14 @@ class SavePathResolver @Inject constructor(
             return@withContext null
         }
 
+        if (gameId != null && saveHandlerRegistry.isSigilRouted(config, platformSlug, emulatorId)) {
+            val sigil = saveHandlerRegistry.sigil
+            val root = sigil.route(gameId, config.emulatorId)?.root
+            val found = root != null && sigil.collect(gameId, config.emulatorId) is SigilCollect.Found
+            onDecision(if (found) "sigil" else "sigil+none", null, root)
+            return@withContext root.takeIf { found }
+        }
+
         val saveIdNames = saveIdFileNames(config, platformSlug, romPath, cachedSaveId, emulatorPackage, gameId)
         val unitLayout = coreName?.takeIf {
             config.emulatorId in PlatformSaveHandlerRegistry.UNIT_EMULATOR_IDS &&
@@ -251,7 +259,7 @@ class SavePathResolver @Inject constructor(
         val userConfig = emulatorSaveConfigDao.getByEmulator(effectiveEmulatorId)
         val isRetroArch =
             com.nendo.argosy.data.emulator.RetroArchPathResolver.isRetroArch(effectiveEmulatorId)
-        val besideRomBaseDir = besideRomDir(config, userConfig, romPath)
+        val besideRomBaseDir = besideRomDir(config, romPath, platformSlug)
         val overrideBaseDir = besideRomBaseDir ?: userBaseOverride(effectiveEmulatorId, platformSlug)
         val savePathOverrideForLog = overrideBaseDir
         val effectiveMemcard =
@@ -852,6 +860,10 @@ class SavePathResolver @Inject constructor(
                 return null
             }
 
+        if (gameId != null && saveHandlerRegistry.isSigilRouted(config, platformSlug, emulatorId)) {
+            return saveHandlerRegistry.sigil.route(gameId, config.emulatorId)?.root
+        }
+
         val saveIdNames = saveIdFileNames(config, platformSlug, romPath, cachedSaveId, null, gameId)
 
         if (config.usesGciFormat && romPath != null) {
@@ -870,8 +882,7 @@ class SavePathResolver @Inject constructor(
             return constructRetroArchSavePath(emulatorId, gameTitle, platformSlug, romPath, coreName)
         }
 
-        val userConfig = emulatorSaveConfigDao.getByEmulator(config.emulatorId)
-        val besideRomDir = besideRomDir(config, userConfig, romPath)
+        val besideRomDir = besideRomDir(config, romPath, platformSlug)
         val overridePath = besideRomDir ?: userBaseOverride(config.emulatorId, platformSlug)
         val baseDir = if (overridePath != null) {
             if (directoryExists(overridePath) || saveArchiver.getFileForPath(overridePath).mkdirs()) {

@@ -63,6 +63,7 @@ class SaveSyncRepositoryPreLaunchTest {
             apiClient, conflictResolver, orchestrator, entityManager,
             stateCacheManager, syncQueueManager, saveSyncDao, saveCacheDao,
             mockk(relaxed = true), strategySelector, mockk(relaxed = true), recoveryGate,
+            com.nendo.argosy.data.sync.fixtures.legacySnapshotRouter(),
         )
         every { strategySelector.current() } returns mockk<LegacySaveSyncStrategy>(relaxed = true)
         every { apiClient.getDeviceId() } returns "device-1"

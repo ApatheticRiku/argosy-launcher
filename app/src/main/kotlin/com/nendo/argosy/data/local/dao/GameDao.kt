@@ -12,7 +12,6 @@ import com.nendo.argosy.data.local.entity.GameGroupMemberRow
 import com.nendo.argosy.data.local.entity.GameListItem
 import com.nendo.argosy.data.local.entity.GameRegionInfo
 import com.nendo.argosy.data.local.entity.GameSiblingRow
-import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.FileOrigin
 import com.nendo.argosy.data.model.GameSource
 import kotlinx.coroutines.flow.Flow
@@ -25,10 +24,6 @@ internal const val INSTALLED_SQL =
 
 internal const val ENABLED_PLATFORM_SQL =
     "EXISTS (SELECT 1 FROM platforms WHERE platforms.id = games.platformId AND $PLATFORM_ENABLED_SQL)"
-
-private const val SOURCE_COVER_DERIVED_RESET =
-    "gradientColors = CASE WHEN coverOverridePath IS NULL THEN NULL ELSE gradientColors END, " +
-        "coverAspectRatio = CASE WHEN coverOverridePath IS NULL THEN NULL ELSE coverAspectRatio END"
 
 data class PlatformGameCount(
     val platformId: Long,
@@ -182,7 +177,7 @@ interface GameDao {
     fun observeFavorites(ownerUserId: Long?): Flow<List<GameEntity>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -195,7 +190,7 @@ interface GameDao {
     fun observeAllList(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -209,7 +204,7 @@ interface GameDao {
     fun observeByPlatformList(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -222,7 +217,7 @@ interface GameDao {
     fun observeBySourceList(source: GameSource, ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -237,7 +232,7 @@ interface GameDao {
     fun observePlayableList(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -250,7 +245,7 @@ interface GameDao {
     fun observeFavoritesList(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -261,7 +256,7 @@ interface GameDao {
     fun observeAllListIncludingHidden(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT g.id, g.platformId, g.platformSlug, g.title, g.sortTitle, g.localPath, g.source, COALESCE(g.coverOverridePath, g.coverPath) AS coverPath, g.isFavorite,
+        SELECT g.id, g.platformId, g.platformSlug, g.title, g.sortTitle, g.localPath, g.source, g.isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = g.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                g.isMultiDisc, g.rommId, g.steamAppId, g.packageName, g.steamLauncher, g.playCount, g.playTimeMinutes,
                g.lastPlayed, g.genre, g.players, g.rating, g.userRating, g.userDifficulty, g.releaseYear, g.addedAt,
@@ -315,7 +310,7 @@ interface GameDao {
     suspend fun getAllStorageInfo(ownerUserId: Long?): List<GameStorageInfo>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -327,7 +322,7 @@ interface GameDao {
     fun observeByPlatformListIncludingHidden(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -339,7 +334,7 @@ interface GameDao {
     fun observeFavoritesListIncludingHidden(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -351,7 +346,7 @@ interface GameDao {
     fun observeHiddenList(ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -364,7 +359,7 @@ interface GameDao {
     fun observeHiddenByPlatformList(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -377,7 +372,7 @@ interface GameDao {
     fun observeFavoritesByPlatformList(platformId: Long, ownerUserId: Long?): Flow<List<GameListItem>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -455,7 +450,6 @@ interface GameDao {
 
     @Query("SELECT * FROM games WHERE id = :id")
     suspend fun getById(id: Long): GameEntity?
-
     @Query("SELECT * FROM games WHERE id = :id")
     fun observeById(id: Long): Flow<GameEntity?>
 
@@ -490,9 +484,10 @@ interface GameDao {
 
     @Query(
         """
-        SELECT * FROM games
-        WHERE platformId = :steamPlatformId AND steamAppId IS NOT NULL
-          AND (coverPath IS NULL OR coverPath LIKE 'http%')
+        SELECT games.* FROM games
+        $COVER_ART_JOIN
+        WHERE games.platformId = :steamPlatformId AND games.steamAppId IS NOT NULL
+          AND art.cachedPath IS NULL AND art.overridePath IS NULL
         """
     )
     suspend fun getSteamGamesWithUncachedCovers(steamPlatformId: Long): List<GameEntity>
@@ -642,9 +637,10 @@ interface GameDao {
     suspend fun statsForGames(gameIds: List<Long>, ownerUserId: Long?): PlatformShowcaseStats?
 
     @Query("""
-        SELECT COALESCE(coverOverridePath, coverPath) AS coverPath, (localPath IS NOT NULL) AS installed, isFavorite, rating, sortTitle FROM games
-        WHERE id IN (:gameIds)
-          AND COALESCE(coverOverridePath, coverPath) IS NOT NULL AND COALESCE(coverOverridePath, coverPath) != ''
+        SELECT $RESOLVED_ART_SQL AS coverPath, (localPath IS NOT NULL) AS installed, isFavorite, rating, sortTitle FROM games
+        $COVER_ART_JOIN
+        WHERE games.id IN (:gameIds)
+          AND $RESOLVED_ART_SQL IS NOT NULL AND $RESOLVED_ART_SQL != ''
           AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY (localPath IS NOT NULL) DESC, isFavorite DESC, rating DESC, sortTitle ASC
         LIMIT :limit
@@ -656,10 +652,11 @@ interface GameDao {
     ): List<ShowcaseCoverCandidate>
 
     @Query("""
-        SELECT COALESCE(coverOverridePath, coverPath) FROM games
+        SELECT $RESOLVED_ART_SQL FROM games
+        $COVER_ART_JOIN
         WHERE (:platformId IS NULL OR platformId = :platformId)
           AND (:oneEntryPerGroup = 0 OR isGroupVisible = 1)
-          AND COALESCE(coverOverridePath, coverPath) IS NOT NULL AND COALESCE(coverOverridePath, coverPath) != ''
+          AND $RESOLVED_ART_SQL IS NOT NULL AND $RESOLVED_ART_SQL != ''
           AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY (localPath IS NOT NULL) DESC, isFavorite DESC, rating DESC, sortTitle ASC
         LIMIT :limit
@@ -672,9 +669,10 @@ interface GameDao {
     ): List<String>
 
     @Query("""
-        SELECT COALESCE(coverOverridePath, coverPath) AS coverPath, (localPath IS NOT NULL) AS installed, isFavorite, rating, sortTitle FROM games
+        SELECT $RESOLVED_ART_SQL AS coverPath, (localPath IS NOT NULL) AS installed, isFavorite, rating, sortTitle FROM games
+        $COVER_ART_JOIN
         WHERE isGroupVisible = 1
-          AND COALESCE(coverOverridePath, coverPath) IS NOT NULL AND COALESCE(coverOverridePath, coverPath) != ''
+          AND $RESOLVED_ART_SQL IS NOT NULL AND $RESOLVED_ART_SQL != ''
           AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY (localPath IS NOT NULL) DESC, isFavorite DESC, rating DESC, sortTitle ASC
         LIMIT :limit
@@ -738,12 +736,6 @@ interface GameDao {
 
     @Query("SELECT id FROM games")
     suspend fun getAllGameIds(): List<Long>
-
-    @Query(
-        "SELECT id, coverPath, backgroundPath, cachedScreenshotPaths, logoPath, " +
-            "coverOverridePath, backgroundOverridePath, logoOverridePath FROM games"
-    )
-    suspend fun getAllImageCacheInfo(): List<GameImageCacheInfo>
 
     @Query("SELECT * FROM games WHERE rommId IS NOT NULL AND localPath IS NULL")
     suspend fun getGamesWithRommIdButNoPath(): List<GameEntity>
@@ -829,105 +821,17 @@ interface GameDao {
     """)
     suspend fun clearLocalPath(gameId: Long)
 
-    @Query("UPDATE games SET backgroundPath = :path WHERE id = :gameId")
-    suspend fun updateBackgroundPath(gameId: Long, path: String)
-
-    @Query("UPDATE games SET backgroundPath = NULL WHERE id = :gameId")
-    suspend fun clearBackgroundPath(gameId: Long)
-
-    @Query("SELECT * FROM games WHERE backgroundPath LIKE 'http%' AND (rommId IS NOT NULL OR steamAppId IS NOT NULL)")
-    suspend fun getGamesWithUncachedBackgrounds(): List<GameEntity>
-
-    @Query("SELECT COUNT(*) FROM games WHERE backgroundPath IS NOT NULL AND (rommId IS NOT NULL OR steamAppId IS NOT NULL)")
-    suspend fun countGamesWithBackgrounds(): Int
-
-    @Query("SELECT COUNT(*) FROM games WHERE backgroundPath LIKE '/%' AND (rommId IS NOT NULL OR steamAppId IS NOT NULL)")
-    suspend fun countGamesWithCachedBackgrounds(): Int
-
-    @Query(
-        "UPDATE games SET coverPath = :path, $SOURCE_COVER_DERIVED_RESET WHERE id = :gameId"
-    )
-    suspend fun updateCoverPath(gameId: Long, path: String)
-
-    @Query(
-        "UPDATE games SET coverPath = NULL, $SOURCE_COVER_DERIVED_RESET WHERE id = :gameId"
-    )
-    suspend fun clearCoverPath(gameId: Long)
-
-    @Query(
-        "UPDATE games SET coverOverridePath = :path, gradientColors = NULL, coverAspectRatio = NULL " +
-            "WHERE id = :gameId"
-    )
-    suspend fun setCoverOverride(gameId: Long, path: String)
-
-    @Query(
-        "UPDATE games SET coverOverridePath = NULL, gradientColors = NULL, coverAspectRatio = NULL " +
-            "WHERE id = :gameId"
-    )
-    suspend fun clearCoverOverride(gameId: Long)
-
-    @Query("UPDATE games SET backgroundOverridePath = :path WHERE id = :gameId")
-    suspend fun setBackgroundOverride(gameId: Long, path: String)
-
-    @Query("UPDATE games SET backgroundOverridePath = NULL WHERE id = :gameId")
-    suspend fun clearBackgroundOverride(gameId: Long)
-
-    @Query("UPDATE games SET logoOverridePath = :path WHERE id = :gameId")
-    suspend fun setLogoOverride(gameId: Long, path: String)
-
-    @Query("UPDATE games SET logoOverridePath = NULL WHERE id = :gameId")
-    suspend fun clearLogoOverride(gameId: Long)
-
-    @Query(
-        "UPDATE games SET logoPath = :logoPath, coverOverridePath = :coverOverridePath, " +
-            "backgroundOverridePath = :backgroundOverridePath, logoOverridePath = :logoOverridePath " +
-            "WHERE id = :gameId"
-    )
-    suspend fun updateRelocatedArtPaths(
-        gameId: Long,
-        logoPath: String?,
-        coverOverridePath: String?,
-        backgroundOverridePath: String?,
-        logoOverridePath: String?
-    )
-
-    @Query("UPDATE games SET gradientColors = :json WHERE id = :gameId")
-    suspend fun updateGradientColors(gameId: Long, json: String)
-
-    @Query("""
-        SELECT id, COALESCE(coverOverridePath, coverPath) AS coverPath FROM games
-        WHERE COALESCE(coverOverridePath, coverPath) LIKE '/%' AND gradientColors IS NULL
-        AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
-        ORDER BY lastPlayed DESC
-    """)
-    suspend fun getLocalGamesNeedingGradients(ownerUserId: Long?): List<GradientExtractionCandidate>
-
-    @Query("SELECT * FROM games WHERE coverPath LIKE 'http%'")
-    suspend fun getGamesWithUncachedCovers(): List<GameEntity>
-
-    @Query("UPDATE games SET boxBackPath = :path WHERE id = :gameId")
-    suspend fun updateBoxBackPath(gameId: Long, path: String)
-
-    /**
-     * How many games can actually be drawn as a box. The renderer needs a front and a spine
-     * together, so a library with covers but no spine art renders every game flat however the
-     * setting is left.
-     */
     @Query(
         """
         SELECT COUNT(*) FROM games
-        WHERE boxSpinePath IS NOT NULL AND boxSpinePath != ''
-          AND COALESCE(coverOverridePath, coverPath) IS NOT NULL
-          AND COALESCE(coverOverridePath, coverPath) != ''
+        WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
+          AND EXISTS (
+            SELECT 1 FROM game_art box WHERE box.gameId = games.id AND box.slot = 'BOX_3D'
+              AND COALESCE(box.overridePath, box.cachedPath) LIKE '/%'
+          )
         """
     )
-    suspend fun countBoxArtCapable(): Int
-
-    @Query("UPDATE games SET boxSpinePath = :path WHERE id = :gameId")
-    suspend fun updateBoxSpinePath(gameId: Long, path: String)
-
-    @Query("UPDATE games SET logoPath = :path WHERE id = :gameId")
-    suspend fun updateLogoPath(gameId: Long, path: String)
+    suspend fun countBox3dCapable(ownerUserId: Long?): Int
 
     @Query(
         """
@@ -970,20 +874,6 @@ interface GameDao {
 
     @Query("UPDATE games SET isGroupVisible = 1 WHERE siblingGroupKey IS NULL AND isGroupVisible = 0")
     suspend fun showUngroupedRows(): Int
-
-    @Query(
-        "SELECT * FROM games WHERE boxBackPath LIKE 'http%' OR boxSpinePath LIKE 'http%' OR logoPath LIKE 'http%'"
-    )
-    suspend fun getGamesWithUncachedBoxFaces(): List<GameEntity>
-
-    @Query("SELECT * FROM games WHERE coverPath IS NULL OR coverPath = ''")
-    suspend fun getGamesWithMissingCovers(): List<GameEntity>
-
-    @Query("SELECT COUNT(*) FROM games WHERE coverPath IS NOT NULL AND rommId IS NOT NULL")
-    suspend fun countGamesWithCovers(): Int
-
-    @Query("SELECT COUNT(*) FROM games WHERE coverPath LIKE '/%' AND rommId IS NOT NULL")
-    suspend fun countGamesWithCachedCovers(): Int
 
     @Query("""
         SELECT DISTINCT regions FROM games
@@ -1051,7 +941,7 @@ interface GameDao {
     fun observeByGameMode(gameMode: String, ownerUserId: Long?): Flow<List<GameEntity>>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -1074,7 +964,7 @@ interface GameDao {
     ): List<GameListItem>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -1097,7 +987,7 @@ interface GameDao {
     ): List<GameListItem>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher, playCount, playTimeMinutes,
                lastPlayed, genre, players, rating, userRating, userDifficulty, releaseYear, addedAt,
@@ -1121,27 +1011,6 @@ interface GameDao {
         ownerUserId: Long?,
         limit: Int
     ): List<GameListItem>
-
-    @Query("SELECT * FROM games WHERE screenshotPaths IS NOT NULL AND cachedScreenshotPaths IS NULL AND rommId IS NOT NULL")
-    suspend fun getGamesWithUncachedScreenshots(): List<GameEntity>
-
-    @Query("SELECT cachedScreenshotPaths FROM games WHERE id = :gameId")
-    suspend fun getCachedScreenshotPaths(gameId: Long): String?
-
-    @Query("SELECT screenshotPaths FROM games WHERE id = :gameId")
-    suspend fun getScreenshotPaths(gameId: Long): String?
-
-    @Query("UPDATE games SET cachedScreenshotPaths = :paths WHERE id = :gameId")
-    suspend fun updateCachedScreenshotPaths(gameId: Long, paths: String)
-
-    @Query("UPDATE games SET cachedScreenshotPaths = NULL WHERE id = :gameId")
-    suspend fun clearCachedScreenshotPaths(gameId: Long)
-
-    @Query("SELECT COUNT(*) FROM games WHERE screenshotPaths IS NOT NULL AND rommId IS NOT NULL")
-    suspend fun countGamesWithScreenshots(): Int
-
-    @Query("SELECT COUNT(*) FROM games WHERE cachedScreenshotPaths IS NOT NULL AND rommId IS NOT NULL")
-    suspend fun countGamesWithCachedScreenshots(): Int
 
     @Query("UPDATE games SET lastPlayedDiscId = :discId WHERE id = :gameId")
     suspend fun updateLastPlayedDisc(gameId: Long, discId: Long)
@@ -1253,9 +1122,6 @@ interface GameDao {
     @Query("SELECT * FROM games")
     suspend fun getAllGames(): List<GameEntity>
 
-    @Query("UPDATE games SET coverPath = :coverPath, backgroundPath = :backgroundPath, cachedScreenshotPaths = :cachedScreenshotPaths, $SOURCE_COVER_DERIVED_RESET WHERE id = :gameId")
-    suspend fun updateImagePaths(gameId: Long, coverPath: String?, backgroundPath: String?, cachedScreenshotPaths: String?)
-
     @Query("""
         SELECT * FROM games
         WHERE NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
@@ -1282,7 +1148,8 @@ interface GameDao {
     ): List<RandomCandidate>
 
     @Query("""
-        SELECT id, genre, players, COALESCE(coverOverridePath, coverPath) AS coverPath FROM games
+        SELECT games.id, genre, players, $RESOLVED_ART_SQL AS coverPath FROM games
+        $COVER_ART_JOIN
         WHERE (
             (:source = 'HIDDEN') = EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         )
@@ -1375,35 +1242,6 @@ interface GameDao {
     """)
     suspend fun getByRaId(raId: Long): GameEntity?
 
-    @Query(
-        """
-        SELECT coverOverridePath FROM games
-        WHERE platformSlug = :platformSlug AND coverOverridePath IS NOT NULL
-        UNION
-        SELECT backgroundOverridePath FROM games
-        WHERE platformSlug = :platformSlug AND backgroundOverridePath IS NOT NULL
-        UNION
-        SELECT logoOverridePath FROM games
-        WHERE platformSlug = :platformSlug AND logoOverridePath IS NOT NULL
-        """
-    )
-    suspend fun getArtOverridePathsForPlatform(platformSlug: String): List<String>
-
-    @Query(
-        """
-        UPDATE games SET coverPath = NULL, backgroundPath = NULL, cachedScreenshotPaths = NULL,
-            $SOURCE_COVER_DERIVED_RESET
-        WHERE platformSlug = :platformSlug
-        """
-    )
-    suspend fun clearCachedArtForPlatform(platformSlug: String)
-
-    @Query("SELECT coverAspectRatio FROM games WHERE id = :gameId")
-    suspend fun getCoverAspectRatio(gameId: Long): Float?
-
-    @Query("UPDATE games SET coverAspectRatio = :ratio WHERE id = :gameId")
-    suspend fun updateCoverAspectRatio(gameId: Long, ratio: Float)
-
     @Query("""
         SELECT id, title, rating FROM games
         WHERE isGroupVisible = 1
@@ -1413,28 +1251,30 @@ interface GameDao {
     suspend fun getSearchCandidates(ownerUserId: Long?): List<SearchCandidate>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher,
                playCount, playTimeMinutes, lastPlayed, genre, players,
                rating, userRating, userDifficulty, releaseYear, addedAt,
                achievementCount, earnedAchievementCount, completion, status, developer, igdbId, timeToBeatMainSec
         FROM games
-        WHERE COALESCE(coverOverridePath, coverPath) LIKE '/%'
+        $COVER_ART_JOIN
+        WHERE $RESOLVED_ART_SQL LIKE '/%'
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         LIMIT 1
     """)
     suspend fun getFirstGameWithCover(ownerUserId: Long?): GameListItem?
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher,
                playCount, playTimeMinutes, lastPlayed, genre, players,
                rating, userRating, userDifficulty, releaseYear, addedAt,
                achievementCount, earnedAchievementCount, completion, status, developer, igdbId, timeToBeatMainSec
         FROM games
-        WHERE COALESCE(coverOverridePath, coverPath) LIKE '/%' AND lastPlayed IS NOT NULL AND localPath IS NOT NULL
+        $COVER_ART_JOIN
+        WHERE $RESOLVED_ART_SQL LIKE '/%' AND lastPlayed IS NOT NULL AND localPath IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY lastPlayed DESC
         LIMIT :limit
@@ -1442,14 +1282,15 @@ interface GameDao {
     suspend fun getRecentlyPlayedWithCovers(ownerUserId: Long?, limit: Int = 10): List<GameListItem>
 
     @Query("""
-        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, COALESCE(coverOverridePath, coverPath) AS coverPath, isFavorite,
+        SELECT id, platformId, platformSlug, title, sortTitle, localPath, source, isFavorite,
                EXISTS(SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId)) AS isHidden,
                isMultiDisc, rommId, steamAppId, packageName, steamLauncher,
                playCount, playTimeMinutes, lastPlayed, genre, players,
                rating, userRating, userDifficulty, releaseYear, addedAt,
                achievementCount, earnedAchievementCount, completion, status, developer, igdbId, timeToBeatMainSec
         FROM games
-        WHERE COALESCE(coverOverridePath, coverPath) LIKE '/%' AND lastPlayed IS NOT NULL
+        $COVER_ART_JOIN
+        WHERE $RESOLVED_ART_SQL LIKE '/%' AND lastPlayed IS NOT NULL
               AND localPath IS NOT NULL AND platformSlug IN (:platformSlugs)
         AND NOT EXISTS (SELECT 1 FROM user_roms_hidden h WHERE h.gameId = games.id AND (h.ownerUserId IS NULL OR h.ownerUserId IS :ownerUserId))
         ORDER BY lastPlayed DESC
@@ -1542,11 +1383,6 @@ data class SearchCandidate(
     val rating: Float?
 )
 
-data class GradientExtractionCandidate(
-    val id: Long,
-    val coverPath: String?
-)
-
 data class GameLocalPathInfo(
     val id: Long,
     val platformId: Long,
@@ -1574,23 +1410,6 @@ data class GameStorageInfo(
     val localPath: String?
 )
 
-data class GameImageCacheInfo(
-    val id: Long,
-    val coverPath: String?,
-    val backgroundPath: String?,
-    val cachedScreenshotPaths: String?,
-    val logoPath: String?,
-    val coverOverridePath: String?,
-    val backgroundOverridePath: String?,
-    val logoOverridePath: String?
-) {
-    fun overridePath(slot: ArtSlot): String? = when (slot) {
-        ArtSlot.COVER -> coverOverridePath
-        ArtSlot.BACKGROUND -> backgroundOverridePath
-        ArtSlot.LOGO -> logoOverridePath
-    }
-}
-
 data class RommIdMapping(
     val id: Long,
     val rommId: Long
@@ -1601,18 +1420,6 @@ data class ServerBackedGameRef(
     val rommId: Long,
     val platformId: Long
 )
-
-suspend fun GameDao.setArtOverride(gameId: Long, slot: ArtSlot, path: String) = when (slot) {
-    ArtSlot.COVER -> setCoverOverride(gameId, path)
-    ArtSlot.BACKGROUND -> setBackgroundOverride(gameId, path)
-    ArtSlot.LOGO -> setLogoOverride(gameId, path)
-}
-
-suspend fun GameDao.clearArtOverride(gameId: Long, slot: ArtSlot) = when (slot) {
-    ArtSlot.COVER -> clearCoverOverride(gameId)
-    ArtSlot.BACKGROUND -> clearBackgroundOverride(gameId)
-    ArtSlot.LOGO -> clearLogoOverride(gameId)
-}
 
 private const val ID_FETCH_BATCH_SIZE = 100
 

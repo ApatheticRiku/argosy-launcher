@@ -213,7 +213,7 @@ private fun GameStorageCard(
             .fillMaxWidth()
             .argosyFocusIndicators(
                 focused = isActive,
-                indicators = FocusIndicators(ring = true),
+                indicators = FocusIndicators.ListRow,
                 tint = theme.focusAccent,
                 shape = shape
             )

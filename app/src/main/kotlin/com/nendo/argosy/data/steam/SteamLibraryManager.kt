@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.StringRes
 import com.nendo.argosy.R
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.cache.recordArtSource
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.repository.SteamRepository
 import com.nendo.argosy.data.repository.SteamResult
@@ -16,6 +17,7 @@ import com.nendo.argosy.data.local.entity.CachedLicenseEntity
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
 import com.nendo.argosy.data.local.entity.SteamLicenseEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import `in`.dragonbra.javasteam.steam.handlers.steamapps.PICSRequest
@@ -80,7 +82,8 @@ class SteamLibraryManager @Inject constructor(
     private val steamContentManager: dagger.Lazy<SteamContentManager>,
     private val preferencesRepository: com.nendo.argosy.data.preferences.UserPreferencesRepository,
     private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
-    private val steamLibraryRepair: dagger.Lazy<SteamLibraryRepair>
+    private val steamLibraryRepair: dagger.Lazy<SteamLibraryRepair>,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val syncMutex = Mutex()
@@ -421,14 +424,7 @@ class SteamLibraryManager @Inject constructor(
             try {
                 val result = steamRepository.get().enrichWithStoreData(steamAppId)
                 if (cacheScreenshots && result is SteamResult.Success) {
-                    val enrichedGame = result.data
-                    val screenshotUrls = enrichedGame.screenshotPaths
-                        ?.split(",")
-                        ?.filter { it.startsWith("http") }
-                        ?: emptyList()
-                    if (screenshotUrls.isNotEmpty()) {
-                        imageCacheManager.queueScreenshotCacheByGameId(enrichedGame.id, screenshotUrls)
-                    }
+                    imageCacheManager.queueScreenshotCacheByGameId(result.data.id)
                 }
                 if (result is SteamResult.Success) {
                     gameDao.updateStoreEnrichStatus(game.id, GameEntity.STORE_SUCCESS)
@@ -471,8 +467,6 @@ class SteamLibraryManager @Inject constructor(
             steamLauncher = "native",
             steamInstallDir = installDir,
             source = GameSource.STEAM,
-            coverPath = libraryCapsuleUrl,
-            backgroundPath = libraryHeroUrl,
             developer = extractAssociation(common, "developer"),
             publisher = extractAssociation(common, "publisher"),
             releaseYear = releaseYear,
@@ -482,8 +476,13 @@ class SteamLibraryManager @Inject constructor(
         )
 
         val insertedId = gameDao.insert(game)
-        imageCacheManager.queueCoverCacheByGameId(libraryCapsuleUrl, insertedId)
+        writeSteamArt(insertedId, appId.toLong(), name, libraryCapsuleUrl, libraryHeroUrl)
         Log.d(TAG, "Added game: $name (appId=$appId, dbId=$insertedId)")
+    }
+
+    private suspend fun writeSteamArt(gameId: Long, appId: Long, title: String, cover: String, hero: String) {
+        recordArtSource(gameArtDao, imageCacheManager, gameId, ArtSlot.COVER, listOf(cover), title, steamAppId = appId)
+        recordArtSource(gameArtDao, imageCacheManager, gameId, ArtSlot.BACKGROUND, listOf(hero), title, steamAppId = appId)
     }
 
     private fun extractAssociation(common: KeyValue, type: String): String? {
@@ -508,11 +507,10 @@ class SteamLibraryManager @Inject constructor(
                 ?.map { STEAM_GENRE_MAP[it] ?: it }
                 ?.joinToString(", ")
 
+            writeSteamArt(existing.id, appId, name, libraryCapsuleUrl, libraryHeroUrl)
             existing.copy(
                 title = name,
                 sortTitle = createSortTitle(name),
-                coverPath = libraryCapsuleUrl,
-                backgroundPath = libraryHeroUrl,
                 developer = extractAssociation(common, "developer") ?: existing.developer,
                 publisher = extractAssociation(common, "publisher") ?: existing.publisher,
                 releaseYear = releaseYear ?: existing.releaseYear,
@@ -521,9 +519,7 @@ class SteamLibraryManager @Inject constructor(
                 steamInstallDir = installDir ?: existing.steamInstallDir,
                 storeEnrichStatus = GameEntity.STORE_NOT_ATTEMPTED,
                 igdbId = null
-            ).also {
-                imageCacheManager.queueCoverCacheByGameId(libraryCapsuleUrl, existing.id)
-            }
+            )
         } else {
             existing.copy(
                 steamLauncher = existing.steamLauncher ?: "native",

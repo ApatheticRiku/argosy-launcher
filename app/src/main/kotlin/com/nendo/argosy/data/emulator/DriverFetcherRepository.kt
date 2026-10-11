@@ -19,6 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import com.nendo.argosy.util.FileNames
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
@@ -221,7 +222,7 @@ class DriverFetcherRepository @Inject constructor(
     fun driversDir(): File =
         File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DRIVERS_SUBDIR)
 
-    private fun resolveTargetFile(fileName: String): File = File(driversDir(), fileName)
+    private fun resolveTargetFile(fileName: String): File = File(driversDir(), FileNames.sanitize(fileName))
 
     companion object {
         private const val TAG = "DriverFetcherRepository"

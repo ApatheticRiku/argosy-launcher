@@ -94,7 +94,7 @@ class SaveUnitResolver @Inject constructor(
         val identity = persisted(platformSlug, game, game?.let { cartFeatureScanner.featuresFor(it) } ?: 0)
         val unit = runCatching {
             val located = Sigil.locateSaves(identity, layout, contentName, listing = listing, options = options)
-            if (hash) Sigil.hashSaves(located, fal.getTransformedFile(root).absolutePath) else located
+            if (hash) Sigil.hashSaves(located, root, FalSigilFileAccess(fal)) else located
         }.getOrElse { return@withContext null }
         Logger.debug(
             TAG,

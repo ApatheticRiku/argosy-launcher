@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.nendo.argosy.util.FileNames
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
@@ -252,7 +253,7 @@ class ManagedInstallerManager @Inject constructor(
     private suspend fun download(installerId: Long, asset: GitHubAsset): File? =
         withContext(Dispatchers.IO) {
             val cacheDir = File(context.cacheDir, CACHE_DIR_NAME).apply { mkdirs() }
-            val apkFile = File(cacheDir, asset.name)
+            val apkFile = File(cacheDir, FileNames.sanitize(asset.name))
             try {
                 val request = Request.Builder()
                     .url(asset.downloadUrl)

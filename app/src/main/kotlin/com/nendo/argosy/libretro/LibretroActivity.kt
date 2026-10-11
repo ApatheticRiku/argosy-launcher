@@ -194,6 +194,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var verifyRAGameIdUseCase: com.nendo.argosy.domain.usecase.achievement.VerifyRAGameIdUseCase
     @Inject lateinit var achievementUpdateBus: AchievementUpdateBus
     @Inject lateinit var saveCacheManager: SaveCacheManager
+    @Inject lateinit var saveScreenshotCapture: com.nendo.argosy.hardware.SaveScreenshotCapture
     @Inject lateinit var saveUnitResolver: com.nendo.argosy.data.sync.SaveUnitResolver
     @Inject lateinit var activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository
     @Inject lateinit var ambientLedManager: AmbientLedManager
@@ -207,6 +208,7 @@ class LibretroActivity : ComponentActivity() {
     @Inject lateinit var configureEmulatorUseCase: com.nendo.argosy.domain.usecase.game.ConfigureEmulatorUseCase
     @Inject lateinit var speedrunRepository: com.nendo.argosy.data.speedrun.SpeedrunRepository
     @Inject lateinit var stateOwnershipTracker: com.nendo.argosy.data.sync.StateOwnershipTracker
+    @Inject lateinit var screenCatalog: com.nendo.argosy.util.ScreenCatalog
     @Inject lateinit var gameRepository: com.nendo.argosy.data.repository.GameRepository
     @Inject lateinit var romMRepository: com.nendo.argosy.data.remote.romm.RomMRepository
     @Inject lateinit var gameDocumentLoader: com.nendo.argosy.data.repository.GameDocumentLoader
@@ -355,6 +357,8 @@ class LibretroActivity : ComponentActivity() {
     private var corePortDevices by mutableStateOf<List<List<com.swordfish.libretrodroid.Controller>>>(emptyList())
     private var gameControllerTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
     private var platformControllerTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
+    private var storedGameControllerTypes: String? = null
+    private var storedPlatformControllerTypes: String? = null
     private var appliedControllerTypes by mutableStateOf<Map<Int, Int>>(emptyMap())
     private var inputDeviceListener: android.hardware.input.InputManager.InputDeviceListener? = null
     private var splitColumn: android.widget.LinearLayout? = null
@@ -1861,8 +1865,12 @@ class LibretroActivity : ComponentActivity() {
                 }
                 g to p
             }
-            gameControllerTypes = ControllerTypeSelection.decode(game)
-            platformControllerTypes = ControllerTypeSelection.decode(platform)
+            val coreId = resolvedCoreId ?: return@launch
+            val legacyApplies = ControllerTypeSelection.legacyApplies(platformSlug)
+            storedGameControllerTypes = game
+            storedPlatformControllerTypes = platform
+            gameControllerTypes = ControllerTypeSelection.decode(game, coreId, legacyApplies)
+            platformControllerTypes = ControllerTypeSelection.decode(platform, coreId, legacyApplies)
             applyControllerTypes()
         }
     }
@@ -1955,8 +1963,12 @@ class LibretroActivity : ComponentActivity() {
     }
 
     private fun persistControllerTypes(perGame: Boolean) {
-        val encodedGame = ControllerTypeSelection.encode(gameControllerTypes)
-        val encodedPlatform = ControllerTypeSelection.encode(platformControllerTypes)
+        val coreId = resolvedCoreId ?: return
+        val legacyApplies = ControllerTypeSelection.legacyApplies(platformSlug)
+        val encodedGame = ControllerTypeSelection.update(storedGameControllerTypes, coreId, legacyApplies, gameControllerTypes)
+        val encodedPlatform =
+            ControllerTypeSelection.update(storedPlatformControllerTypes, coreId, legacyApplies, platformControllerTypes)
+        if (perGame) storedGameControllerTypes = encodedGame else storedPlatformControllerTypes = encodedPlatform
         lifecycleScope.launch(Dispatchers.IO) {
             if (perGame) {
                 configureEmulatorUseCase.setControllerTypesForGame(gameId, encodedGame)
@@ -2463,7 +2475,23 @@ class LibretroActivity : ComponentActivity() {
 
     private fun reportNewlyWrittenSaves() {
         if (coreDestroyed || isGuestJoinedSession) return
-        if (saveStateManager.takeNewlyWrittenSaves()) playSessionTracker.reportSaveWritten()
+        if (saveStateManager.takeNewlyWrittenSaves()) {
+            playSessionTracker.reportSaveWritten()
+            captureSaveScreenshot()
+        }
+    }
+
+    private fun captureSaveScreenshot() {
+        val game = gameId.takeIf { it > 0 } ?: return
+        lifecycleScope.launch {
+            delay(SAVE_SCREENSHOT_DELAY_MS)
+            if (coreDestroyed) return@launch
+            val frame = runCatching { retroView.captureRawFrame() }.getOrNull() ?: return@launch
+            withContext(Dispatchers.IO) {
+                saveScreenshotCapture.store(game, frame)
+                frame.recycle()
+            }
+        }
     }
 
     private fun stopRollingSave() {
@@ -3041,12 +3069,8 @@ class LibretroActivity : ComponentActivity() {
             is InGameControlsAction.SetHudEnabled -> {
                 lifecycleScope.launch { preferencesRepository.setHudEnabled(action.enabled) }
             }
-            is InGameControlsAction.CycleHudCorner -> {
-                val corners = com.nendo.argosy.ui.components.HudCorner.entries
-                val index = com.nendo.argosy.ui.common
-                    .hudCornerFromStored(touchSettingsState.hudCorner).ordinal
-                val next = corners[(if (action.forward) index + 1 else index - 1).mod(corners.size)].name
-                lifecycleScope.launch { preferencesRepository.setHudCorner(next) }
+            is InGameControlsAction.SetHudCorner -> {
+                lifecycleScope.launch { preferencesRepository.setHudCorner(action.corner.name) }
             }
             is InGameControlsAction.SetHudShowBattery -> {
                 lifecycleScope.launch { preferencesRepository.setHudShowBattery(action.enabled) }
@@ -3297,7 +3321,7 @@ class LibretroActivity : ComponentActivity() {
      */
     private fun setUpSecondScreen() {
         val output = DualScreenOutput.forCore(resolvedCoreId)
-            ?.takeIf { isDualScreenMode() && secondScreenDisplay() != null }
+            ?.takeIf { !isDockedDark() && secondScreenDisplay() != null }
         if (output == null) {
             clearScreenSplit()
             return
@@ -3324,26 +3348,11 @@ class LibretroActivity : ComponentActivity() {
         retroView.secondaryAspectRatio = 0f
     }
 
-    /**
-     * Whether the launcher is running as two screens right now, which is the only state a console's
-     * second screen belongs in. A display being attached is not enough: dual screen can be off in
-     * settings, or latched off after the companion failed to come up on this device.
-     */
-    private fun isDualScreenMode(): Boolean =
-        com.nendo.argosy.DualScreenManagerHolder.instance
-            ?.displayAffinityHelper
-            ?.let { it.hasSecondaryDisplay && !it.isDockedDark } == true
+    private fun isDockedDark(): Boolean =
+        com.nendo.argosy.util.DisplayAffinityHelper.dockedExternalDisplayId(this) != null
 
-    private fun secondScreenDisplay(): android.view.Display? {
-        val affinity = com.nendo.argosy.DualScreenManagerHolder.instance?.displayAffinityHelper
-            ?: return null
-        val displayManager = getSystemService(android.content.Context.DISPLAY_SERVICE)
-            as android.hardware.display.DisplayManager
-        val gameDisplayId = windowManager.defaultDisplay.displayId
-        return displayManager.displays.firstOrNull {
-            it.displayId != gameDisplayId && it.isValid && affinity.isPhysicalDisplay(it.displayId)
-        }
-    }
+    private fun secondScreenDisplay(): android.view.Display? =
+        screenCatalog.secondScreenFor(windowManager.defaultDisplay.displayId)
 
     /**
      * Rebuilds the second screen's window. Its surface belongs to the display, not to us, so it is
@@ -3763,6 +3772,7 @@ class LibretroActivity : ComponentActivity() {
         private const val CORE_INPUT_PULSE_MS = 50L
 
         private const val ROLLING_SAVE_INTERVAL_MS = 30_000L
+        private const val SAVE_SCREENSHOT_DELAY_MS = 250L
         private const val SAVE_WRITE_CHECK_INTERVAL_MS = 5_000L
         private const val SAVE_INDICATOR_MERGE_MS = 5_000L
 

@@ -19,6 +19,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
+import com.nendo.argosy.util.FileNames
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -272,7 +273,7 @@ class SaveArchiver @Inject constructor(
                 while (zis.nextEntry.also { entry = it } != null) {
                     val entryFile = File(targetFolder, entry!!.name)
 
-                    if (!entryFile.canonicalPath.startsWith(targetFolder.canonicalPath)) {
+                    if (!FileNames.isWithin(entryFile, targetFolder)) {
                         Logger.error(TAG, "Zip path traversal detected: ${entry!!.name}")
                         return false
                     }
@@ -511,7 +512,7 @@ class SaveArchiver @Inject constructor(
                         continue
                     }
                     val entryFile = File(target, relativePath)
-                    if (!entryFile.canonicalPath.startsWith(target.canonicalPath)) {
+                    if (!FileNames.isWithin(entryFile, target)) {
                         Logger.error(TAG, "[SaveSync] ARCHIVE | Zip path traversal detected | entry=$entryName, target=${target.absolutePath}")
                         return false
                     }
@@ -603,7 +604,7 @@ class SaveArchiver @Inject constructor(
                     if (relativePath.isEmpty()) continue
 
                     val entryFile = File(targetFolder, relativePath)
-                    if (!entryFile.canonicalPath.startsWith(targetFolder.canonicalPath)) {
+                    if (!FileNames.isWithin(entryFile, targetFolder)) {
                         Logger.error(TAG, "[SaveSync] ARCHIVE | Zip path traversal detected | entry=$entryName, target=${targetFolder.absolutePath}")
                         return false
                     }
@@ -769,7 +770,7 @@ class SaveArchiver @Inject constructor(
                     if (excludeFiles.contains(fileName)) continue
 
                     val entryFile = File(targetFolder, relativePath)
-                    if (!entryFile.canonicalPath.startsWith(targetFolder.canonicalPath)) return false
+                    if (!FileNames.isWithin(entryFile, targetFolder)) return false
 
                     if (entry!!.isDirectory) {
                         entryFile.mkdirs()
@@ -848,7 +849,7 @@ class SaveArchiver @Inject constructor(
                     if (excludeFiles.contains(fileName)) continue
 
                     val entryFile = File(targetFolder, entryName)
-                    if (!entryFile.canonicalPath.startsWith(targetFolder.canonicalPath)) return false
+                    if (!FileNames.isWithin(entryFile, targetFolder)) return false
 
                     if (entry!!.isDirectory) {
                         entryFile.mkdirs()

@@ -6,7 +6,11 @@ import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.core.emulator.LibretroSettingDef
+import com.nendo.argosy.ui.screens.settings.libretro.GlobalLibretroSettingsAccessor
+import com.nendo.argosy.ui.screens.settings.libretro.LibretroSettingsAccessor
 import com.nendo.argosy.ui.screens.settings.libretro.PlatformLibretroSettingsAccessor
+import com.nendo.argosy.ui.screens.settings.libretro.isAtSegmentEnd
+import com.nendo.argosy.ui.screens.settings.libretro.isSegmented
 import com.nendo.argosy.ui.screens.settings.libretro.libretroSettingsMaxFocusIndex
 import com.nendo.argosy.ui.screens.settings.sections.builtinVideoItemAtFocusIndex
 
@@ -123,23 +127,22 @@ internal class BuiltinVideoSectionInput(
     ): InputResult = when (setting) {
         LibretroSettingDef.Shader,
         LibretroSettingDef.AspectRatio,
-        LibretroSettingDef.PortraitPosition,
         LibretroSettingDef.Rotation,
         LibretroSettingDef.OverscanCrop,
-        LibretroSettingDef.FastForwardSpeed,
-        LibretroSettingDef.AudioVolume,
-        LibretroSettingDef.RewindSpeed,
-        LibretroSettingDef.RewindBufferDuration -> {
+        LibretroSettingDef.AudioVolume -> {
             viewModel.requestEnumPicker(setting.key)
             InputResult.handled(SoundType.OPEN_MODAL)
         }
+        LibretroSettingDef.PortraitPosition,
+        LibretroSettingDef.FastForwardSpeed,
+        LibretroSettingDef.RewindSpeed,
+        LibretroSettingDef.RewindBufferDuration -> InputResult.handled(SoundType.SILENT)
         LibretroSettingDef.Filter -> {
             if (videoState.shader == "Custom") {
                 viewModel.openShaderChainConfig()
                 InputResult.HANDLED
             } else {
-                viewModel.requestEnumPicker(setting.key)
-                InputResult.handled(SoundType.OPEN_MODAL)
+                InputResult.handled(SoundType.SILENT)
             }
         }
         LibretroSettingDef.FastForwardEnabled -> {
@@ -178,6 +181,10 @@ internal class BuiltinVideoSectionInput(
             viewModel.setBuiltinAutoRestoreState(!videoState.autoRestoreState)
             InputResult.handled(SoundType.TOGGLE)
         }
+        LibretroSettingDef.PreferNewerServerSave -> {
+            viewModel.setBuiltinPreferNewerServerSave(!videoState.preferNewerServerSave)
+            InputResult.handled(SoundType.TOGGLE)
+        }
         LibretroSettingDef.HwCoreSaveStates -> {
             viewModel.setBuiltinHwCoreSaveStates(!videoState.hwCoreSaveStatesEnabled)
             InputResult.handled(SoundType.TOGGLE)
@@ -206,7 +213,9 @@ internal class BuiltinVideoSectionInput(
             return InputResult.HANDLED
         }
         return when (setting.type) {
-            is LibretroSettingDef.SettingType.Cycle -> {
+            is LibretroSettingDef.SettingType.Cycle -> if (setting.isSegmented) {
+                InputResult.handled(SoundType.SILENT)
+            } else {
                 viewModel.requestEnumPicker(setting.key)
                 InputResult.handled(SoundType.OPEN_MODAL)
             }
@@ -255,10 +264,21 @@ internal class BuiltinVideoSectionInput(
         val state = viewModel.uiState.value
         val setting = builtinVideoItemAtFocusIndex(state.focusedIndex, state.builtinVideo) ?: return InputResult.UNHANDLED
         if (setting.type !is LibretroSettingDef.SettingType.Cycle) return InputResult.UNHANDLED
+        if (readerFor(state).isAtSegmentEnd(setting, direction)) return InputResult.handled(SoundType.BOUNDARY)
         if (state.builtinVideo.isGlobalContext) {
             return cycleGlobal(setting, state, direction)
         }
         return cyclePlatform(setting, state, direction)
+    }
+
+    private fun readerFor(state: SettingsUiState): LibretroSettingsAccessor {
+        val videoState = state.builtinVideo
+        if (videoState.isGlobalContext) {
+            return GlobalLibretroSettingsAccessor(videoState, onCycle = { _, _ -> }, onToggle = { _, _ -> })
+        }
+        val platformSettings = videoState.currentPlatformContext
+            ?.let { state.platformLibretro.platformSettings[it.platformId] }
+        return PlatformLibretroSettingsAccessor(platformSettings, videoState, onUpdate = { _, _ -> })
     }
 
     private fun cycleGlobal(

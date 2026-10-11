@@ -65,6 +65,7 @@ data class RomMRom(
     @Json(name = "hltb_metadata") val hltbMetadata: RomMHltbMetadata? = null,
     @Json(name = "launchbox_metadata") val launchboxMetadata: RomMLaunchboxMetadata? = null,
     @Json(name = "ss_metadata") val ssMetadata: RomMSsMetadata? = null,
+    @Json(name = "gamelist_metadata") val gamelistMetadata: RomMGamelistMetadata? = null,
     @Json(name = "merged_ra_metadata") val raMetadata: RomMRAMetadata? = null,
 
     @Json(name = "path_cover_small") val coverSmall: String?,
@@ -145,6 +146,13 @@ data class RomMRom(
                 it.type.startsWith("Box - Front", ignoreCase = true) ||
                     it.type.equals("Fanart - Box - Front", ignoreCase = true)
             }
+            ?.map { it.url }
+            ?.filter { it.startsWith("http://") || it.startsWith("https://") }
+            ?: emptyList()
+
+    val box3dUrls: List<String>
+        get() = launchboxMetadata?.images
+            ?.filter { it.type.equals("Box - 3D", ignoreCase = true) }
             ?.map { it.url }
             ?.filter { it.startsWith("http://") || it.startsWith("https://") }
             ?: emptyList()
@@ -335,12 +343,19 @@ data class RomMHltbMetadata(
 
 @JsonClass(generateAdapter = true)
 data class RomMLaunchboxMetadata(
-    @Json(name = "images") val images: List<RomMLaunchboxImage>? = null
+    @Json(name = "images") val images: List<RomMLaunchboxImage>? = null,
+    @Json(name = "box3d_path") val box3dPath: String? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMGamelistMetadata(
+    @Json(name = "box3d_path") val box3dPath: String? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class RomMSsMetadata(
     @Json(name = "box2d_path") val box2dPath: String? = null,
+    @Json(name = "box3d_path") val box3dPath: String? = null,
     @Json(name = "box2d_back_path") val box2dBackPath: String? = null,
     @Json(name = "box2d_side_path") val box2dSidePath: String? = null,
     @Json(name = "logo_path") val logoPath: String? = null,
@@ -418,10 +433,14 @@ data class RomMRARefreshRequest(
 @JsonClass(generateAdapter = true)
 data class RomMHeartbeatResponse(
     @Json(name = "SYSTEM") val system: RomMSystem? = null,
-    @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null
+    @Json(name = "METADATA_SOURCES") val metadataSources: RomMMetadataSources? = null,
+    @Json(name = "SAVE_SYNC") val saveSync: RomMSaveSyncFeatures? = null
 ) {
     val version: String?
         get() = system?.version
+
+    val snapshotsEnabled: Boolean
+        get() = saveSync?.snapshots == true
 
     val libretroApiEnabled: Boolean?
         get() = metadataSources?.libretroApiEnabled
@@ -458,6 +477,11 @@ data class RomMCoverResource(
 data class RomMSystem(
     @Json(name = "VERSION") val version: String? = null,
     @Json(name = "SHOW_SETUP_WIZARD") val showSetupWizard: Boolean = false
+)
+
+@JsonClass(generateAdapter = true)
+data class RomMSaveSyncFeatures(
+    @Json(name = "SNAPSHOTS") val snapshots: Boolean? = null
 )
 
 @JsonClass(generateAdapter = true)

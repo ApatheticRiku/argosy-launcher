@@ -1,9 +1,12 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.data.preferences.BackdropMotion
+import com.nendo.argosy.data.preferences.BackdropVertexIcon
 import com.nendo.argosy.ui.components.DIRECTION_STEP_FINE_DEGREES
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.ui.screens.settings.SettingsInputHandler
 import com.nendo.argosy.ui.screens.settings.delegates.DisplaySettingsDelegate
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -62,8 +65,18 @@ internal class ThemeBackdropSectionInput(
                 InputResult.HANDLED
             }
             ThemeBackdropItem.EdgeLines -> { viewModel.cycleBackdropEdgeStyle(direction); InputResult.HANDLED }
-            ThemeBackdropItem.CornerIcons -> { viewModel.cycleBackdropVertexIcons(direction); InputResult.HANDLED }
-            ThemeBackdropItem.Motion -> { viewModel.cycleBackdropMotion(direction); InputResult.HANDLED }
+            ThemeBackdropItem.CornerIcons -> stepOption(
+                BackdropVertexIcon.entries,
+                state.display.surfaceBackdrop.vertexIcons,
+                direction,
+                viewModel::setBackdropVertexIcons
+            )
+            ThemeBackdropItem.Motion -> stepOption(
+                BackdropMotion.entries,
+                state.display.surfaceBackdrop.motion,
+                direction,
+                viewModel::setBackdropMotion
+            )
             ThemeBackdropItem.Speed -> {
                 viewModel.adjustBackdropMotionSpeed(direction * DisplaySettingsDelegate.MOTION_SPEED_STEP)
                 InputResult.HANDLED

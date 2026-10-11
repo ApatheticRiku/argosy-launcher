@@ -18,6 +18,7 @@ import com.nendo.argosy.data.sync.SaveArchiver
 import com.nendo.argosy.data.sync.SavePathResolver
 import com.nendo.argosy.data.sync.platform.SaveContext
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.UnitSaveHandler
 import com.nendo.argosy.data.titledb.TitleDbRepository
 import com.nendo.argosy.util.Logger
@@ -149,7 +150,8 @@ class SaveUploader @Inject constructor(
         val isFolderBased = config?.usesFolderBasedSaves == true && isDirectory
         val isGciBundle = config?.usesGciFormat == true
 
-        val handler = client.getHandler(config, game.platformSlug, resolvedEmulatorId)
+        val handler = saveHandlerRegistry.sigil.takeIf { it.route(gameId, resolvedEmulatorId) != null }
+            ?: client.getHandler(config, game.platformSlug, resolvedEmulatorId)
         val saveContext = SaveContext(
             config = config ?: SavePathConfig(
                 emulatorId = resolvedEmulatorId,
@@ -253,6 +255,7 @@ class SaveUploader @Inject constructor(
                         localContentHash = if (unchangedByIdentity) syncEntity.localContentHash else contentHash
                     )
                 )
+                prepared.sigilState?.let { saveHandlerRegistry.sigil.commit(it) }
                 return@withContext SaveSyncResult.Success(noOp = true)
             }
 
@@ -264,7 +267,11 @@ class SaveUploader @Inject constructor(
                 saveArchiver.isZipArchive(fileToUpload)
             val isGciArchive = isGciBundle && saveArchiver.isZipArchive(fileToUpload)
             val uploadFileName = SaveSyncApiClient.computeUploadFileName(
-                localSavePath = if (isUnitBundle || isGciArchive) null else localPath,
+                localSavePath = when {
+                    handler is SigilSaveHandler -> fileToUpload.path
+                    isUnitBundle || isGciArchive -> null
+                    else -> localPath
+                },
                 channelName = channelName,
                 romBaseName = romBaseName
             )
@@ -287,6 +294,7 @@ class SaveUploader @Inject constructor(
                         syncStatus = SaveSyncEntity.STATUS_SYNCED
                     )
                 )
+                prepared.sigilState?.let { saveHandlerRegistry.sigil.commit(it) }
                 return@withContext SaveSyncResult.Success(rommSaveId = latestServerSave.id, noOp = true)
             }
 
@@ -377,6 +385,7 @@ class SaveUploader @Inject constructor(
                     )
                 )
 
+                prepared.sigilState?.let { saveHandlerRegistry.sigil.commit(it) }
                 Logger.debug(TAG, "[SaveSync] UPLOAD gameId=$gameId | wrote lastUploadedHash=${serverSave.contentHash} (server-verified; localHash=$contentHash)")
                 if (serverSave.contentHash != null && serverSave.contentHash != contentHash) {
                     Logger.warn(TAG, "[SaveSync] HASH-MISMATCH gameId=$gameId | localHash=$contentHash serverHash=${serverSave.contentHash} file=${uploadFile.name} size=${uploadFile.length()} - client zip-hash algorithm has drifted from server _compute_zip_hash")

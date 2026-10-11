@@ -44,6 +44,9 @@ sealed class Screen(val route: String) {
     data object GameDetail : Screen("game/{gameId}") {
         fun createRoute(gameId: Long) = "game/$gameId"
     }
+    data object SaveTimeline : Screen("save_timeline/{gameId}") {
+        fun createRoute(gameId: Long) = "save_timeline/$gameId"
+    }
     /**
      * The media grid. [route] stays the bare path so the drawer keeps navigating and identifying by
      * it; [ROUTE_WITH_ARGS] is what the graph declares, and its library argument is optional so a
@@ -81,6 +84,7 @@ sealed class Screen(val route: String) {
         const val ROUTE_SETTINGS = "settings"
         const val ROUTE_DOWNLOADS = "downloads"
         const val ROUTE_SAVE_SYNC = "save_sync"
+        const val ROUTE_SAVE_TIMELINE = "save_timeline"
         const val ROUTE_SYNC_MONITOR = "sync_monitor"
         const val ROUTE_APPS = "apps"
         const val ROUTE_MEDIA_LIBRARY = "media_library"

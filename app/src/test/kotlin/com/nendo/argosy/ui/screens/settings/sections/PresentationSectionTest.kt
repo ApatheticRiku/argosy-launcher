@@ -16,21 +16,16 @@ import org.junit.Test
 class PresentationSectionTest {
 
     @Test
-    fun `the shade and art rows wrap in both directions`() {
-        val style = PresentationStyle(scrim = PresentationScrim.GRADIENT, art = PresentationArt.COVER)
+    fun `the shade and art rows step and stop at both ends`() {
+        val first = PresentationStyle(scrim = PresentationScrim.GRADIENT, art = PresentationArt.COVER)
+        val last = PresentationStyle(scrim = PresentationScrim.NONE, art = PresentationArt.TITLE)
 
-        assertEquals(
-            PresentationScrim.NONE,
-            adjustPresentationItem(style, PresentationItem.Scrim, -1)?.scrim
-        )
-        assertEquals(
-            PresentationArt.TITLE,
-            adjustPresentationItem(style, PresentationItem.Art, -1)?.art
-        )
-        assertEquals(
-            PresentationArt.BOX_3D,
-            adjustPresentationItem(style, PresentationItem.Art, 1)?.art
-        )
+        assertEquals(first, adjustPresentationItem(first, PresentationItem.Scrim, -1))
+        assertEquals(first, adjustPresentationItem(first, PresentationItem.Art, -1))
+        assertEquals(last, adjustPresentationItem(last, PresentationItem.Scrim, 1))
+        assertEquals(last, adjustPresentationItem(last, PresentationItem.Art, 1))
+        assertEquals(PresentationScrim.SOLID, adjustPresentationItem(first, PresentationItem.Scrim, 1)?.scrim)
+        assertEquals(PresentationArt.BOX_3D, adjustPresentationItem(first, PresentationItem.Art, 1)?.art)
     }
 
     @Test
@@ -81,11 +76,13 @@ class PresentationSectionTest {
     }
 
     @Test
-    fun `the layout row wraps in both directions`() {
-        val style = PresentationStyle(layout = PresentationLayout.CINEMATIC)
+    fun `the layout row steps and stops at both ends`() {
+        val first = PresentationStyle(layout = PresentationLayout.CINEMATIC)
+        val last = PresentationStyle(layout = PresentationLayout.LOGO)
 
-        assertEquals(PresentationLayout.LOGO, adjustPresentationItem(style, PresentationItem.Layout, -1)?.layout)
-        assertEquals(PresentationLayout.JOURNAL, adjustPresentationItem(style, PresentationItem.Layout, 1)?.layout)
+        assertEquals(PresentationLayout.CINEMATIC, adjustPresentationItem(first, PresentationItem.Layout, -1)?.layout)
+        assertEquals(PresentationLayout.JOURNAL, adjustPresentationItem(first, PresentationItem.Layout, 1)?.layout)
+        assertEquals(PresentationLayout.LOGO, adjustPresentationItem(last, PresentationItem.Layout, 1)?.layout)
     }
 
     @Test

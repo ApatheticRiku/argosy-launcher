@@ -212,9 +212,11 @@
     <string name="gamedetail_artwork_row_cover">Обложка</string>
     <string name="gamedetail_artwork_row_background">Фон</string>
     <string name="gamedetail_artwork_row_logo">Логотип</string>
+    <string name="gamedetail_artwork_row_box_3d">3D-коробка</string>
     <string name="gamedetail_artwork_row_revert_cover">Вернуть обложку</string>
     <string name="gamedetail_artwork_row_revert_background">Вернуть фон</string>
     <string name="gamedetail_artwork_row_revert_logo">Вернуть логотип</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">Вернуть 3D-коробку</string>
 
     <string name="gamedetail_status_picker_title">ЗАДАТЬ СТАТУС</string>
     <string name="gamedetail_status_picker_footer_navigate">Навигация</string>
@@ -348,6 +350,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">Выберите обложку</string>
     <string name="gamedetail_art_picker_file_browser_title_background">Выберите фон</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">Выберите логотип</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">Выберите 3D-коробку</string>
 
     <string name="gamedetail_speedrun_segments_title">%1$s - Сегменты</string>
     <string name="gamedetail_speedrun_title">Сплиты спидрана</string>

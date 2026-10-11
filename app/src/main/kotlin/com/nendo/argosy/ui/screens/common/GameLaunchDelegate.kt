@@ -2,13 +2,9 @@ package com.nendo.argosy.ui.screens.common
 
 import android.app.Application
 import android.content.Intent
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
 import com.nendo.argosy.data.emulator.DiscOption
 import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.emulator.EmulatorResolver
-import com.nendo.argosy.data.emulator.ActiveSession
 import com.nendo.argosy.data.emulator.GameLauncher
 import com.nendo.argosy.data.emulator.LaunchOrigin
 import com.nendo.argosy.data.emulator.LaunchProgressTracker
@@ -16,7 +12,6 @@ import com.nendo.argosy.data.emulator.LaunchResult
 import com.nendo.argosy.data.emulator.PlaySessionTracker
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.emulator.SessionEndResult
-import com.nendo.argosy.data.emulator.SavePathValidator
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.HardcoreResolutionChoice
@@ -25,6 +20,7 @@ import com.nendo.argosy.data.repository.SaveSyncRepository
 import com.nendo.argosy.data.repository.SaveSyncResult
 import com.nendo.argosy.domain.model.LaunchPromptOption
 import com.nendo.argosy.domain.model.LaunchStep
+import com.nendo.argosy.domain.model.SnapshotConflictChoice
 import com.nendo.argosy.domain.model.SyncProgress
 import com.nendo.argosy.domain.model.SyncState
 import com.nendo.argosy.domain.usecase.game.LaunchGameUseCase
@@ -38,10 +34,10 @@ import com.nendo.argosy.R
 import com.nendo.argosy.core.notification.NotificationManager
 import com.nendo.argosy.core.notification.NotificationText
 import com.nendo.argosy.core.notification.showError
-import kotlinx.coroutines.CoroutineScope
+import com.nendo.argosy.util.RootShell
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -115,7 +111,7 @@ class GameLaunchDelegate @Inject constructor(
     private val soundManager: SoundFeedbackManager,
     private val hapticManager: HapticFeedbackManager,
     private val notificationManager: NotificationManager,
-    private val savePathValidator: SavePathValidator,
+    private val sessionEndCoordinator: SessionEndCoordinator,
     private val saveSyncRepository: SaveSyncRepository,
     private val saveCacheManager: SaveCacheManager,
     private val activeSaveRepository: com.nendo.argosy.data.repository.ActiveSaveRepository,
@@ -123,7 +119,8 @@ class GameLaunchDelegate @Inject constructor(
     private val emulatorSaveConfigRepository: com.nendo.argosy.data.repository.EmulatorSaveConfigRepository,
     private val retroAchievementsRepository: com.nendo.argosy.data.repository.RetroAchievementsRepository,
     private val getUnifiedSavesUseCase: com.nendo.argosy.domain.usecase.save.GetUnifiedSavesUseCase,
-    private val launchProgressTracker: LaunchProgressTracker
+    private val launchProgressTracker: LaunchProgressTracker,
+    private val resolveSnapshotConflict: com.nendo.argosy.domain.usecase.savechannel.ResolveSnapshotConflictUseCase
 ) {
     companion object {
         private const val EMULATOR_KILL_DELAY_MS = 500L
@@ -139,6 +136,12 @@ class GameLaunchDelegate @Inject constructor(
         private val RESTORE_FAILED_OPTIONS = listOf(
             LaunchPromptOption.RESTORE_SERVER,
             LaunchPromptOption.LAUNCH_WITHOUT_SYNC
+        )
+        private val SNAPSHOT_CONFLICT_OPTIONS = listOf(
+            LaunchPromptOption.KEEP_MINE,
+            LaunchPromptOption.TAKE_THEIRS,
+            LaunchPromptOption.BRANCH_LOCAL,
+            LaunchPromptOption.REVERT_LOCAL
         )
     }
 
@@ -176,8 +179,7 @@ class GameLaunchDelegate @Inject constructor(
             preferencesRepository.getBuiltinEmulatorSettings().first().defaultToHardcore == "hardcore" &&
             retroAchievementsRepository.isLoggedIn()
 
-    private val _syncOverlayState = MutableStateFlow<SyncOverlayState?>(null)
-    val syncOverlayState: StateFlow<SyncOverlayState?> = _syncOverlayState.asStateFlow()
+    val syncOverlayState: StateFlow<SyncOverlayState?> = sessionEndCoordinator.syncOverlayState
 
     private val _discPickerState = MutableStateFlow<DiscPickerState?>(null)
     val discPickerState: StateFlow<DiscPickerState?> = _discPickerState.asStateFlow()
@@ -189,21 +191,20 @@ class GameLaunchDelegate @Inject constructor(
     private val _memcardPickerState = MutableStateFlow<MemcardPickerState?>(null)
     val memcardPickerState: StateFlow<MemcardPickerState?> = _memcardPickerState.asStateFlow()
 
-    val isSyncing: Boolean get() = _syncOverlayState.value != null
-
-    private val sessionEndScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    /**
-     * Ends the session off the UI critical path. The emulator is stopped only after the save
-     * sync job completes.
-     */
-    fun endSessionInBackground() {
-        val session = playSessionTracker.activeSession.value
-        val ended = playSessionTracker.endSessionInBackground()
-        session?.let { stopEmulatorAfterSession(it, ended) }
-    }
+    val isSyncing: Boolean get() = syncOverlayState.value != null
 
     private var _onLaunchFailed: (() -> Unit)? = null
+
+    private suspend fun stopEmulatorBeforeLaunch(emulatorPackage: String?, alreadyStopped: String?, noTrackedSession: Boolean) {
+        if (emulatorPackage == null || emulatorPackage == alreadyStopped) return
+        if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE || emulatorPackage == application.packageName) return
+        val requiresKill = noTrackedSession && emulatorResolver.resolveEmulatorId(emulatorPackage)
+            ?.let { EmulatorRegistry.getById(it) }?.launchConfig?.requiresEmulatorKill == true
+        if (!requiresKill && !withContext(Dispatchers.IO) { RootShell.isAvailable }) return
+        android.util.Log.d("GameLaunchDelegate", "Force-stopping $emulatorPackage before launch (requiresKill=$requiresKill)")
+        gameLauncher.forceStopEmulator(emulatorPackage)
+        delay(EMULATOR_KILL_DELAY_MS)
+    }
 
     private suspend fun endSessionAndAwaitConflictAnswer(): SessionEndResult {
         val result = playSessionTracker.endSession()
@@ -257,10 +258,12 @@ class GameLaunchDelegate @Inject constructor(
 
                 val canResume = !sessionRequiresKill && playSessionTracker.canResumeSession(gameId, resolvedVariantId)
 
+                var stoppedPackage: String? = null
                 if (!canResume && activeSession != null && !sessionRequiresKill) {
                     android.util.Log.d("GameLaunchDelegate", "Evicting stale session for game ${activeSession.gameId}, killing ${activeSession.emulatorPackage}")
                     endSessionAndAwaitConflictAnswer()
                     gameLauncher.forceStopEmulator(activeSession.emulatorPackage)
+                    stoppedPackage = activeSession.emulatorPackage
                     delay(EMULATOR_KILL_DELAY_MS)
                 }
 
@@ -272,13 +275,7 @@ class GameLaunchDelegate @Inject constructor(
 
                 val emulatorPackage = emulatorResolver.getEmulatorPackageForGame(gameId, game.platformId, game.platformSlug)
                 val emulatorId = emulatorPackage?.let { emulatorResolver.resolveEmulatorId(it) }
-                if (activeSession == null && emulatorPackage != null && emulatorId != null &&
-                    EmulatorRegistry.getById(emulatorId)?.launchConfig?.requiresEmulatorKill == true
-                ) {
-                    android.util.Log.d("GameLaunchDelegate", "Force-stopping $emulatorPackage before launch (requiresEmulatorKill, no tracked session)")
-                    gameLauncher.forceStopEmulator(emulatorPackage)
-                    delay(EMULATOR_KILL_DELAY_MS)
-                }
+                stopEmulatorBeforeLaunch(emulatorPackage, stoppedPackage, noTrackedSession = activeSession == null)
                 val prefs = preferencesRepository.preferences.first()
                 val canSync = resolvedVariantId == null && emulatorId != null && SavePathRegistry.canSyncWithSettings(
                     emulatorId,
@@ -295,6 +292,7 @@ class GameLaunchDelegate @Inject constructor(
                 var hardcoreConflictChoice: HardcoreConflictChoice? = null
                 var localModifiedInfo: SyncProgress.LocalModified? = null
                 var localModifiedChoice: LocalModifiedChoice? = null
+                var snapshotConflictChoice: SnapshotConflictChoice? = null
 
                 launchWithSyncUseCase.invokeWithProgress(gameId, channelName, skipPreLaunchSync || resolvedVariantId != null).collect { progress ->
                     if (canSync && progress != SyncProgress.Skipped && progress != SyncProgress.Idle) {
@@ -309,7 +307,16 @@ class GameLaunchDelegate @Inject constructor(
                                 }
                                 android.util.Log.d("GameLaunchDelegate", "Hardcore conflict resolved: $hardcoreConflictChoice")
                             }
-                            is SyncProgress.LocalModified -> {
+                            is SyncProgress.LocalModified -> if (progress.snapshotConflict) {
+                                localModifiedInfo = progress
+                                snapshotConflictChoice = when (ticket.ask(progress, SNAPSHOT_CONFLICT_OPTIONS)) {
+                                    LaunchPromptOption.KEEP_MINE -> SnapshotConflictChoice.MINE
+                                    LaunchPromptOption.TAKE_THEIRS -> SnapshotConflictChoice.THEIRS
+                                    LaunchPromptOption.BRANCH_LOCAL -> SnapshotConflictChoice.BRANCH
+                                    LaunchPromptOption.REVERT_LOCAL -> SnapshotConflictChoice.REVERT
+                                    else -> null
+                                }
+                            } else {
                                 localModifiedInfo = progress
                                 val options = if (progress.restoreFailed) RESTORE_FAILED_OPTIONS else LOCAL_MODIFIED_OPTIONS
                                 localModifiedChoice = when (ticket.ask(progress, options)) {
@@ -346,6 +353,11 @@ class GameLaunchDelegate @Inject constructor(
                     }
                     val resolveResult = saveSyncRepository.resolveHardcoreConflict(resolution, repoChoice)
                     android.util.Log.d("GameLaunchDelegate", "Resolution result: $resolveResult")
+                }
+
+                val snapshotChoice = snapshotConflictChoice
+                if (localModifiedInfo != null && snapshotChoice != null && emulatorId != null) {
+                    resolveSnapshotConflict(gameId, emulatorId, localModifiedInfo!!.channelName, snapshotChoice)
                 }
 
                 if (localModifiedInfo != null && localModifiedChoice != null) {
@@ -529,240 +541,6 @@ class GameLaunchDelegate @Inject constructor(
         return intent
     }
 
-    suspend fun stopBackgroundEmulator(packageName: String) = gameLauncher.forceStopEmulator(packageName)
-
-    /**
-     * Whether an external emulator is stopped when its session ends: the emulator requires it, or
-     * the user closes emulators on session end. Never true for the built-in emulator or Argosy.
-     */
-    suspend fun shouldStopAfterSession(emulatorPackage: String): Boolean {
-        if (emulatorPackage == EmulatorRegistry.BUILTIN_PACKAGE) return false
-        if (emulatorPackage == application.packageName) return false
-        val emulator = emulatorResolver.resolveEmulatorId(emulatorPackage)
-            ?.let { EmulatorRegistry.getById(it) }
-            ?: return false
-        return emulator.launchConfig.requiresEmulatorKill ||
-            preferencesRepository.preferences.first().closeEmulatorOnSessionEnd
-    }
-
-    private fun stopEmulatorAfterSession(session: ActiveSession, afterJob: Job? = null) {
-        sessionEndScope.launch {
-            afterJob?.join()
-            val current = playSessionTracker.activeSession.value
-            if (current?.emulatorPackage == session.emulatorPackage) return@launch
-            if (shouldStopAfterSession(session.emulatorPackage)) {
-                gameLauncher.forceStopEmulator(session.emulatorPackage)
-            }
-        }
-    }
-
-    fun handleSessionEnd(
-        scope: CoroutineScope,
-        onSyncComplete: () -> Unit = {}
-    ) {
-        val session = playSessionTracker.activeSession.value
-        if (session == null) {
-            if (isSyncing) {
-                // Prior sync coroutine may have been cancelled (e.g. config change).
-                // Clear stale overlay to avoid permanent stuck state.
-                _syncOverlayState.value = null
-            }
-            playSessionTracker.forceStopService()
-            onSyncComplete()
-            return
-        }
-        val sessionDuration = playSessionTracker.getSessionDuration()
-
-        val sawSave = playSessionTracker.sawSaveActivity()
-        if (sessionDuration != null && sessionDuration.seconds < 30 && !sawSave) {
-            android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: short session (${sessionDuration.seconds}s), cancelling without backup")
-            playSessionTracker.cancelSession()
-            stopEmulatorAfterSession(session)
-            onSyncComplete()
-            return
-        }
-        if (sawSave && sessionDuration != null && sessionDuration.seconds < 30) {
-            android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: short session (${sessionDuration.seconds}s) but the watcher saw a save, keeping it")
-        }
-
-        android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: proceeding with session end for gameId=${session.gameId}")
-
-        val emulatorId = emulatorResolver.resolveEmulatorId(session.emulatorPackage)
-        if (emulatorId == null) {
-            android.util.Log.d("GameLaunchDelegate", "handleSessionEnd: cannot resolve emulatorId, ending session without sync")
-            scope.launch {
-                playSessionTracker.endSession()
-                stopEmulatorAfterSession(session)
-            }
-            onSyncComplete()
-            return
-        }
-
-        scope.launch {
-            try {
-                val prefs = preferencesRepository.preferences.first()
-                if (!SavePathRegistry.canSyncWithSettings(
-                        emulatorId,
-                        prefs.saveSyncEnabled
-                    )
-                ) {
-                    playSessionTracker.endSession()
-                    stopEmulatorAfterSession(session)
-                    onSyncComplete()
-                    return@launch
-                }
-
-                val game = gameRepository.getById(session.gameId)
-                val gameTitle = game?.title ?: "Game"
-                val emulatorName = EmulatorRegistry.getById(emulatorId)?.displayName
-
-                val validationResult = savePathValidator.validateAccess(emulatorId, session.emulatorPackage)
-                when (validationResult) {
-                    is SavePathValidator.Result.PermissionRequired -> {
-                        showBlockedOverlay(
-                            gameTitle = gameTitle,
-                            progress = SyncProgress.BlockedReason.PermissionRequired(emulatorName),
-                            session = session,
-                            scope = scope,
-                            onSyncComplete = onSyncComplete
-                        )
-                        return@launch
-                    }
-                    is SavePathValidator.Result.AccessDenied -> {
-                        showBlockedOverlay(
-                            gameTitle = gameTitle,
-                            progress = SyncProgress.BlockedReason.AccessDenied(
-                                emulatorName,
-                                validationResult.path,
-                                platformSlug = game?.platformSlug
-                            ),
-                            session = session,
-                            scope = scope,
-                            onSyncComplete = onSyncComplete
-                        )
-                        return@launch
-                    }
-                    is SavePathValidator.Result.SavePathNotFound,
-                    is SavePathValidator.Result.Valid,
-                    is SavePathValidator.Result.NotFolderBased,
-                    is SavePathValidator.Result.NoConfig -> {
-                        // Proceed to actual sync
-                    }
-                }
-
-                android.util.Log.d("GameLaunchDelegate", "[DualSync] Starting post-session sync | game=$gameTitle, channel=${session.channelName}, emulator=$emulatorId, sessionStart=${session.startTime}")
-
-                _syncOverlayState.value = SyncOverlayState(
-                    gameTitle,
-                    SyncProgress.PostSession.CheckingSave(session.channelName)
-                )
-
-                val result = playSessionTracker.endSession()
-                android.util.Log.d("GameLaunchDelegate", "[DualSync] endSession result: ${result::class.simpleName}")
-
-                when (result) {
-                    is SessionEndResult.Success -> {
-                        _syncOverlayState.value = SyncOverlayState(gameTitle, SyncProgress.PostSession.Complete)
-                        delay(800)
-                        _syncOverlayState.value = null
-                    }
-                    is SessionEndResult.Duplicate, is SessionEndResult.Skipped -> {
-                        android.util.Log.d("GameLaunchDelegate", "[DualSync] Session end was ${result::class.simpleName}, clearing overlay")
-                        _syncOverlayState.value = null
-                    }
-                    is SessionEndResult.SaveUnreadable -> {
-                        stopEmulatorAfterSession(session)
-                        showBlockedOverlay(
-                            gameTitle = gameTitle,
-                            progress = SyncProgress.BlockedReason.AccessDenied(
-                                EmulatorRegistry.getById(result.emulatorId)?.displayName ?: emulatorName,
-                                result.dirPath,
-                                platformSlug = game?.platformSlug
-                            ),
-                            session = null,
-                            scope = scope,
-                            onSyncComplete = onSyncComplete
-                        )
-                        return@launch
-                    }
-                    is SessionEndResult.Error -> {
-                        android.util.Log.w("GameLaunchDelegate", "[DualSync] Session end error: ${result.message}")
-                        _syncOverlayState.value = SyncOverlayState(gameTitle, SyncProgress.Error(result.message))
-                        delay(1500)
-                        _syncOverlayState.value = null
-                    }
-                }
-
-                stopEmulatorAfterSession(session)
-                onSyncComplete()
-            } catch (e: Exception) {
-                android.util.Log.e("GameLaunchDelegate", "handleSessionEnd failed", e)
-                _syncOverlayState.value = null
-                val ended = playSessionTracker.endSessionInBackground()
-                stopEmulatorAfterSession(session, ended)
-                onSyncComplete()
-            }
-        }
-    }
-
-    private fun showBlockedOverlay(
-        gameTitle: String,
-        progress: SyncProgress.BlockedReason,
-        session: ActiveSession?,
-        scope: CoroutineScope,
-        onSyncComplete: () -> Unit
-    ) {
-        val isSwitchAccessDenied = progress is SyncProgress.BlockedReason.AccessDenied &&
-            progress.platformSlug == "switch"
-
-        _syncOverlayState.value = SyncOverlayState(
-            gameTitle = gameTitle,
-            syncProgress = progress,
-            onGrantPermission = {
-                openAllFilesAccessSettings()
-                dismissBlockedOverlay(session, scope, onSyncComplete)
-            },
-            onOpenSettings = if (isSwitchAccessDenied) {
-                { dismissBlockedOverlay(session, scope, onSyncComplete) }
-            } else null,
-            onDisableSync = {
-                scope.launch {
-                    preferencesRepository.setSaveSyncEnabled(false)
-                }
-                dismissBlockedOverlay(session, scope, onSyncComplete)
-            },
-            onSkip = {
-                dismissBlockedOverlay(session, scope, onSyncComplete)
-            }
-        )
-    }
-
-    private fun dismissBlockedOverlay(
-        session: ActiveSession?,
-        scope: CoroutineScope,
-        onSyncComplete: () -> Unit
-    ) {
-        _syncOverlayState.value = null
-        scope.launch {
-            try {
-                playSessionTracker.endSession()
-                session?.let { stopEmulatorAfterSession(it) }
-            } finally {
-                onSyncComplete()
-            }
-        }
-    }
-
-    private fun openAllFilesAccessSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                data = Uri.parse("package:${application.packageName}")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            }
-            application.startActivity(intent)
-        }
-    }
-
     fun selectDisc(scope: CoroutineScope, discPath: String) {
         val state = _discPickerState.value ?: return
         _discPickerState.value = null
@@ -870,6 +648,13 @@ class GameLaunchDelegate @Inject constructor(
                     endSessionAndAwaitConflictAnswer()
                     gameLauncher.forceStopEmulator(activeSession.emulatorPackage)
                     delay(EMULATOR_KILL_DELAY_MS)
+                }
+                game?.let {
+                    stopEmulatorBeforeLaunch(
+                        emulatorResolver.getEmulatorPackageForGame(it.id, it.platformId, it.platformSlug),
+                        activeSession?.emulatorPackage,
+                        noTrackedSession = activeSession == null
+                    )
                 }
                 val rememberedVariantId = if (variantFileId == null && !allowVariantPrompt) {
                     game?.let { variantResolver.resolveVariant(it)?.id }

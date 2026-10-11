@@ -865,10 +865,52 @@ class StateCacheManager @Inject constructor(
         coreId: String?,
         gameId: Long? = null,
     ): Boolean = withContext(Dispatchers.IO) {
+        val files = autoResumeStateFiles(emulatorId, romPath, platformSlug, coreId, gameId)
+            ?: return@withContext false
+        deleteLiveStates(files, romPath)
+    }
+
+    /**
+     * Deletes the auto-resume states of [romPath] last written before [cutoff], leaving any
+     * written at or after it. True when one was deleted.
+     */
+    suspend fun deleteAutoResumeStatesOlderThan(
+        emulatorId: String,
+        romPath: String,
+        platformSlug: String,
+        coreId: String?,
+        gameId: Long?,
+        cutoff: java.time.Instant,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val files = autoResumeStateFiles(emulatorId, romPath, platformSlug, coreId, gameId)
+            ?: return@withContext false
+        deleteLiveStates(files.filter { it.lastModified() < cutoff.toEpochMilli() }, romPath)
+    }
+
+    private fun deleteLiveStates(files: List<File>, romPath: String): Boolean {
+        var deletedAny = false
+        for (file in files) {
+            if (file.delete()) {
+                File("${file.absolutePath}.png").takeIf { it.exists() }?.delete()
+                Log.d(TAG, "Deleted live state: ${file.absolutePath}")
+                deletedAny = true
+            }
+        }
+        if (!deletedAny) Log.d(TAG, "deleteLiveStates: nothing to delete for ${File(romPath).name}")
+        return deletedAny
+    }
+
+    private suspend fun autoResumeStateFiles(
+        emulatorId: String,
+        romPath: String,
+        platformSlug: String,
+        coreId: String?,
+        gameId: Long?,
+    ): List<File>? {
         val config = StatePathRegistry.getConfig(emulatorId)
         if (config == null) {
-            Log.d(TAG, "deleteAutoResumeStatesFromDisk: No state config for emulator: $emulatorId")
-            return@withContext false
+            Log.d(TAG, "autoResumeStateFiles: No state config for emulator: $emulatorId")
+            return null
         }
 
         val romFile = File(romPath)
@@ -906,21 +948,9 @@ class StateCacheManager @Inject constructor(
             )
         }
 
-        var deletedAny = false
-        for (path in statePaths) {
-            val stateDir = File(path)
-            if (!stateDir.exists()) continue
-            for (name in fileNames) {
-                val file = File(stateDir, name)
-                if (file.exists() && file.delete()) {
-                    File("${file.absolutePath}.png").takeIf { it.exists() }?.delete()
-                    Log.d(TAG, "Deleted live state: ${file.absolutePath}")
-                    deletedAny = true
-                }
-            }
+        return statePaths.map(::File).filter { it.exists() }.flatMap { stateDir ->
+            fileNames.map { File(stateDir, it) }.filter { it.exists() }
         }
-        if (!deletedAny) Log.d(TAG, "deleteAutoResumeStatesFromDisk: nothing to delete for $romBaseNames")
-        deletedAny
     }
 
     /** Deletes all state cache rows AND files; returns false when blocked by an active session. */

@@ -11,7 +11,9 @@ import android.util.Log
 import com.nendo.argosy.data.cache.ImageCacheManager
 import com.nendo.argosy.data.download.DownloadCompletionEvent
 import com.nendo.argosy.data.download.DownloadManager
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,6 +47,7 @@ class ApkInstallManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadManager: DownloadManager,
     private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao,
     private val appInstaller: AppInstaller,
     private val imageCacheManager: ImageCacheManager
 ) {
@@ -149,6 +152,7 @@ class ApkInstallManager @Inject constructor(
                         return@let
                     }
                     if (holder != null) {
+                        gameArtDao.fillMissingFrom(targetGameId = game.id, sourceGameId = holder.id)
                         gameDao.delete(holder.id)
                     }
                     val updatedGame = game.copy(
@@ -159,15 +163,11 @@ class ApkInstallManager @Inject constructor(
                         isFavorite = game.isFavorite || holder?.isFavorite == true,
                         playCount = game.playCount + (holder?.playCount ?: 0),
                         playTimeMinutes = game.playTimeMinutes + (holder?.playTimeMinutes ?: 0),
-                        lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull(),
-                        coverPath = game.coverPath ?: holder?.coverPath,
-                        coverOverridePath = game.coverOverridePath ?: holder?.coverOverridePath,
-                        backgroundOverridePath = game.backgroundOverridePath ?: holder?.backgroundOverridePath,
-                        logoOverridePath = game.logoOverridePath ?: holder?.logoOverridePath
+                        lastPlayed = listOfNotNull(game.lastPlayed, holder?.lastPlayed).maxOrNull()
                     )
                     gameDao.update(updatedGame)
 
-                    if (updatedGame.coverPath.isNullOrBlank()) {
+                    if (gameArtDao.resolved(game.id).coverPath.isNullOrBlank()) {
                         imageCacheManager.queueAppIconCache(pending.gameId, packageName)
                     }
 

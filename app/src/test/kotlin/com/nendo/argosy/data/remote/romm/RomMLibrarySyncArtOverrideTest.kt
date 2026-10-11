@@ -1,10 +1,12 @@
 package com.nendo.argosy.data.remote.romm
 
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.preferences.UserPreferences
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
@@ -13,11 +15,8 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -25,9 +24,14 @@ class RomMLibrarySyncArtOverrideTest {
 
     private val romId = 42L
     private val romName = "Chrono Trigger"
+    private val coverUrl = "https://romm/covers/42.png"
+    private val backgroundUrl = "https://romm/bg/42.jpg"
+    private val logoUrl = "https://romm/logo/42.png"
 
     private lateinit var apiClient: RomMApiClient
     private lateinit var gameDao: GameDao
+    private lateinit var gameArtDao: GameArtDao
+    private lateinit var imageCacheManager: ImageCacheManager
     private lateinit var platformDao: PlatformDao
     private lateinit var overlayWriter: GameUserOverlayWriter
     private lateinit var service: RomMLibrarySyncService
@@ -53,11 +57,7 @@ class RomMLibrarySyncArtOverrideTest {
         sha1Hash = null
     )
 
-    private fun existing(
-        coverOverridePath: String? = "/cache/snes/covers/cover_override_9_a.jpg",
-        backgroundOverridePath: String? = "/cache/snes/backgrounds/bg_override_9_b.jpg",
-        logoOverridePath: String? = "/cache/snes/logos/logo_override_9_c.png"
-    ) = GameEntity(
+    private fun existing() = GameEntity(
         id = 9L,
         platformId = 1L,
         platformSlug = "snes",
@@ -66,39 +66,35 @@ class RomMLibrarySyncArtOverrideTest {
         localPath = null,
         rommId = romId,
         igdbId = null,
-        source = GameSource.ROMM_REMOTE,
-        coverPath = "/cache/snes/covers/cover_42_server.jpg",
-        backgroundPath = "/cache/snes/backgrounds/bg_42_server.jpg",
-        logoPath = "/cache/snes/covers/game_logo_42_server.png",
-        coverOverridePath = coverOverridePath,
-        backgroundOverridePath = backgroundOverridePath,
-        logoOverridePath = logoOverridePath
+        source = GameSource.ROMM_REMOTE
     )
 
     @Before
     fun setup() {
         apiClient = mockk(relaxed = true)
         gameDao = mockk(relaxed = true)
+        gameArtDao = mockk(relaxed = true)
+        imageCacheManager = mockk(relaxed = true)
         platformDao = mockk(relaxed = true)
         overlayWriter = mockk(relaxed = true)
         val connectionManager = mockk<RomMConnectionManager>(relaxed = true)
         val preferencesRepository = mockk<UserPreferencesRepository>(relaxed = true)
         val preferences = mockk<UserPreferences>(relaxed = true)
-        val imageCacheManager = mockk<ImageCacheManager>(relaxed = true)
 
         every { connectionManager.getApi() } returns mockk(relaxed = true)
         every { preferences.boxArtCacheEnabled } returns false
         every { preferencesRepository.preferences } returns flowOf(preferences)
         coEvery { apiClient.getRom(romId) } returns RomMResult.Success(rom())
-        every { apiClient.buildCoverUrls(any()) } returns emptyList()
-        every { apiClient.buildLogoUrls(any()) } returns emptyList()
-        every { apiClient.buildBackgroundUrls(any()) } returns emptyList()
+        every { apiClient.buildCoverUrls(any()) } returns listOf(coverUrl)
+        every { apiClient.buildLogoUrls(any()) } returns listOf(logoUrl)
+        every { apiClient.buildBackgroundUrls(any()) } returns listOf(backgroundUrl)
         every { apiClient.buildMediaUrl(any()) } returns null
         every { apiClient.buildResourceUrl(any()) } returns null
         coEvery { platformDao.getById(1L) } returns mockk<PlatformEntity>(relaxed = true) {
             every { slug } returns "snes"
         }
         coEvery { overlayWriter.activeOwnerId() } returns null
+        coEvery { gameDao.getByRommId(romId) } returns existing()
 
         service = RomMLibrarySyncService(
             apiClient = apiClient,
@@ -137,51 +133,40 @@ class RomMLibrarySyncArtOverrideTest {
             siblingSplitRepair = mockk(relaxed = true),
             siblingConfigCarryOver = mockk(relaxed = true),
             siblingGroupRepository = mockk(relaxed = true),
-            variantFileCleanup = mockk(relaxed = true)
+            variantFileCleanup = mockk(relaxed = true),
+            gameArtDao = gameArtDao,
+            gameScreenshotDao = mockk(relaxed = true)
         )
     }
 
     @Test
-    fun `a sync upsert carries every override from the existing row`() = runTest {
-        val stored = existing()
-        coEvery { gameDao.getByRommId(romId) } returns stored
-        val written = slot<GameEntity>()
-        coEvery { gameDao.insert(capture(written)) } returns stored.id
-
+    fun `a sync writes the first server url of each slot as its source`() = runTest {
         service.syncSingleRom(romId)
 
-        assertEquals(stored.coverOverridePath, written.captured.coverOverridePath)
-        assertEquals(stored.backgroundOverridePath, written.captured.backgroundOverridePath)
-        assertEquals(stored.logoOverridePath, written.captured.logoOverridePath)
+        coVerify(exactly = 1) { gameArtDao.setSourceUrl(9L, ArtSlot.COVER, coverUrl) }
+        coVerify(exactly = 1) { gameArtDao.setSourceUrl(9L, ArtSlot.BACKGROUND, backgroundUrl) }
+        coVerify(exactly = 1) { gameArtDao.setSourceUrl(9L, ArtSlot.LOGO, logoUrl) }
     }
 
     @Test
-    fun `a sync keeps writing the server columns beside an override`() = runTest {
-        val stored = existing()
-        coEvery { gameDao.getByRommId(romId) } returns stored
-        val written = slot<GameEntity>()
-        coEvery { gameDao.insert(capture(written)) } returns stored.id
-
+    fun `a sync hands each slot to the cache to decide whether it is stale`() = runTest {
         service.syncSingleRom(romId)
 
-        assertEquals(stored.coverPath, written.captured.coverPath)
-        assertEquals(stored.backgroundPath, written.captured.backgroundPath)
-        assertEquals(stored.logoPath, written.captured.logoPath)
+        coVerify(exactly = 1) {
+            imageCacheManager.queueArtIfStale(9L, ArtSlot.COVER, listOf(coverUrl), romId, null, romName)
+        }
+        coVerify(exactly = 1) {
+            imageCacheManager.queueArtIfStale(9L, ArtSlot.BACKGROUND, listOf(backgroundUrl), romId, null, romName)
+        }
     }
 
     @Test
-    fun `a row without overrides stays without them`() = runTest {
-        val stored = existing(null, null, null)
-        coEvery { gameDao.getByRommId(romId) } returns stored
-        val written = slot<GameEntity>()
-        coEvery { gameDao.insert(capture(written)) } returns stored.id
-
+    fun `a sync never writes an override or a cached path`() = runTest {
         service.syncSingleRom(romId)
 
-        assertTrue(written.isCaptured)
-        assertEquals(null, written.captured.coverOverridePath)
-        assertEquals(null, written.captured.backgroundOverridePath)
-        assertEquals(null, written.captured.logoOverridePath)
-        coVerify(exactly = 0) { gameDao.clearCoverOverride(any()) }
+        coVerify(exactly = 0) { gameArtDao.setOverride(any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateOverride(any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.setCached(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { gameArtDao.updateCached(any(), any(), any(), any()) }
     }
 }

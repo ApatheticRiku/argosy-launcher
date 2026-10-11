@@ -385,7 +385,7 @@ class QuickMenuViewModel @Inject constructor(
             id = id,
             title = title,
             platformName = platformName,
-            coverPath = displayCoverPath,
+            coverPath = gameRepository.getArt(id).coverPath,
             metadata = metadataProvider(),
             metadataType = metadataType,
             isDownloaded = localPath != null,
@@ -395,13 +395,14 @@ class QuickMenuViewModel @Inject constructor(
 
     private suspend fun GameEntity.toGameCardUi(): GameCardUi {
         val platformName = getPlatformName(platformId)
-        val firstScreenshot = screenshotPaths?.split(",")?.firstOrNull()?.takeIf { it.isNotBlank() }
+        val firstScreenshot = gameRepository.getScreenshots(id).firstOrNull()?.sourceUrl
+        val art = gameRepository.getArt(id)
         return GameCardUi(
             id = id,
             title = title,
             platformName = platformName,
-            coverPath = displayCoverPath,
-            backdropPath = displayBackgroundPath ?: firstScreenshot ?: displayCoverPath,
+            coverPath = art.coverPath,
+            backdropPath = art.backgroundPath ?: firstScreenshot ?: art.coverPath,
             year = releaseYear,
             developer = developer,
             rating = rating,

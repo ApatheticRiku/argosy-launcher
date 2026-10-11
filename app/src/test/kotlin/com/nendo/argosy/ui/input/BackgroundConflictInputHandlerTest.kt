@@ -1,19 +1,18 @@
 package com.nendo.argosy.ui.input
 
-import com.nendo.argosy.data.sync.ConflictResolution
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BackgroundConflictInputHandlerTest {
 
-    private val resolved = mutableListOf<ConflictResolution>()
+    private val resolved = mutableListOf<String>()
     private val moves = mutableListOf<Int>()
 
     private val dialog = BackgroundConflictInputHandler(
         moveFocus = { moves += it },
-        focusedButton = { 1 },
-        resolve = { resolved += it }
+        confirm = { resolved += "confirm" },
+        skip = { resolved += "skip" }
     )
 
     private fun dispatcherUnderDialog(): InputDispatcher =
@@ -72,6 +71,6 @@ class BackgroundConflictInputHandlerTest {
         dispatcher.dispatch(GamepadInput(GamepadEvent.Back))
 
         assertEquals(listOf(1), moves)
-        assertEquals(listOf(ConflictResolution.KEEP_SERVER, ConflictResolution.SKIP), resolved)
+        assertEquals(listOf("confirm", "skip"), resolved)
     }
 }

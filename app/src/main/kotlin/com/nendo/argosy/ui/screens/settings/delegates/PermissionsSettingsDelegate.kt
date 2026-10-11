@@ -9,11 +9,15 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import com.nendo.argosy.data.wallpaper.LockScreenScenes
 import com.nendo.argosy.hardware.FanController
 import com.nendo.argosy.hardware.LEDController
 import com.nendo.argosy.hardware.ScreenCaptureManager
 import com.nendo.argosy.ui.screens.settings.PermissionsState
+import com.nendo.argosy.data.preferences.DisplayPreferencesRepository
 import com.nendo.argosy.util.PermissionHelper
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,10 +31,22 @@ class PermissionsSettingsDelegate @Inject constructor(
     private val permissionHelper: PermissionHelper,
     private val screenCaptureManager: ScreenCaptureManager,
     private val ledController: LEDController,
-    private val fanController: FanController
+    private val fanController: FanController,
+    private val displayPreferences: DisplayPreferencesRepository
 ) {
     private val _state = MutableStateFlow(PermissionsState())
     val state: StateFlow<PermissionsState> = _state.asStateFlow()
+
+    @Volatile private var lockScreenArt = true
+
+    fun observeLockScreenArt(scope: CoroutineScope) {
+        scope.launch {
+            displayPreferences.preferences.map { it.lockScreenArt }.distinctUntilChanged().collect {
+                lockScreenArt = it
+                refreshPermissions()
+            }
+        }
+    }
 
     fun refreshPermissions() {
         val hasStorage = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -62,9 +78,15 @@ class PermissionsSettingsDelegate @Inject constructor(
                 isWriteSettingsRelevant = isDeviceWithFanControl,
                 hasScreenCapture = hasScreenCapture,
                 isScreenCaptureRelevant = isLedAvailable,
-                hasDisplayOverlay = hasDisplayOverlay
+                hasDisplayOverlay = hasDisplayOverlay,
+                hasLiveWallpaper = LockScreenScenes.isLiveActive(application),
+                isLiveWallpaperRelevant = LockScreenScenes.canOffer(application, lockScreenArt)
             )
         }
+    }
+
+    fun openLiveWallpaperPicker() {
+        application.startActivity(LockScreenScenes.pickerIntent(application).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     fun observeScreenCapturePermission(scope: CoroutineScope) {

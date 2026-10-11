@@ -80,6 +80,10 @@ class ActiveSaveRepository @Inject constructor(
         saveCacheDao.clearActive(gameId, ownerUserId)
     }
 
+    suspend fun registerChannel(gameId: Long, channelName: String) {
+        saveChannelDao.registerAndActivate(gameId, channelName, activeOwnerId())
+    }
+
     /**
      * Every slot this device knows of for a game, including ones nothing has been saved into.
      */
@@ -88,14 +92,6 @@ class ActiveSaveRepository @Inject constructor(
 
     suspend fun forgetChannel(gameId: Long, channelName: String) {
         saveChannelDao.delete(gameId, channelName, activeOwnerId())
-    }
-
-    suspend fun activateTimestamp(gameId: Long, timestamp: Long): Boolean {
-        val ownerUserId = activeOwnerId()
-        val cacheId = saveCacheDao.getIdAtTimestampForOwner(gameId, ownerUserId, timestamp)
-            ?: return false
-        saveCacheDao.setActiveRow(gameId, ownerUserId, cacheId)
-        return true
     }
 
     suspend fun clearActive(gameId: Long) {

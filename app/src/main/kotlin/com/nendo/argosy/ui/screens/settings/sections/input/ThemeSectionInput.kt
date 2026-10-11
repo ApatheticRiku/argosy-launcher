@@ -1,8 +1,10 @@
 package com.nendo.argosy.ui.screens.settings.sections.input
 
 import com.nendo.argosy.core.input.SoundType
+import com.nendo.argosy.data.preferences.ThemeMode
 import com.nendo.argosy.ui.input.InputHandler
 import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.ui.screens.settings.SettingsInputHandler
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
 import com.nendo.argosy.ui.screens.settings.sections.ThemeItem
@@ -60,7 +62,8 @@ internal class ThemeSectionInput(
         val state = viewModel.uiState.value
         val hueStep = SettingsInputHandler.HUE_STEP
         when (themeItemAtFocusIndex(state.focusedIndex)) {
-            ThemeItem.Mode -> { viewModel.cycleThemeMode(direction); return InputResult.HANDLED }
+            ThemeItem.Mode ->
+                return stepOption(ThemeMode.entries, state.display.themeMode, direction, viewModel::setThemeMode)
             ThemeItem.AccentColor -> { viewModel.adjustHue(direction * hueStep); return InputResult.HANDLED }
             ThemeItem.SecondaryColor -> { viewModel.adjustSecondaryHue(direction * hueStep); return InputResult.HANDLED }
             ThemeItem.TintBleed -> { viewModel.adjustSurfaceTintBleed(direction * SettingsInputHandler.SLIDER_STEP); return InputResult.HANDLED }

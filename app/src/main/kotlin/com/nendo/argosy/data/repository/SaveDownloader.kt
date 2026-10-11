@@ -22,6 +22,8 @@ import com.nendo.argosy.data.sync.platform.FolderSaveHandler
 import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import com.nendo.argosy.data.sync.platform.SaveContext
+import com.nendo.argosy.data.sync.platform.SigilRestore
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.data.sync.platform.UnitSaveHandler
 import com.nendo.argosy.data.titledb.TitleDbRepository
@@ -58,7 +60,8 @@ class SaveDownloader @Inject constructor(
     private val saveUploader: dagger.Lazy<SaveUploader>,
     private val emulatorSaveConfigRepository: EmulatorSaveConfigRepository,
     private val unitSaveHandler: UnitSaveHandler,
-    private val saveUnitResolver: SaveUnitResolver
+    private val saveUnitResolver: SaveUnitResolver,
+    private val sigilSaveHandler: SigilSaveHandler
 ) {
 
     private suspend fun unitPrimaryTarget(
@@ -119,9 +122,10 @@ class SaveDownloader @Inject constructor(
         emulatorId: String,
         channelName: String? = null,
         skipBackup: Boolean = false,
-        knownServerSaveId: Long? = null
+        knownServerSaveId: Long? = null,
+        fromSnapshot: Boolean = false
     ): SaveSyncResult = downloadMutexes.computeIfAbsent(gameId) { kotlinx.coroutines.sync.Mutex() }.withLock {
-        downloadSaveLocked(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+        downloadSaveLocked(gameId, emulatorId, channelName, skipBackup, knownServerSaveId, fromSnapshot)
     }
 
     private suspend fun downloadSaveLocked(
@@ -129,7 +133,8 @@ class SaveDownloader @Inject constructor(
         emulatorId: String,
         channelName: String?,
         skipBackup: Boolean,
-        knownServerSaveId: Long?
+        knownServerSaveId: Long?,
+        fromSnapshot: Boolean
     ): SaveSyncResult = withContext(Dispatchers.IO) {
         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId emulator=$emulatorId channel=$channelName | Starting download")
         val secureSaves = syncPreferencesRepository.isSecureSaves()
@@ -183,7 +188,7 @@ class SaveDownloader @Inject constructor(
             return@withContext SaveSyncResult.Error("No save tracking found")
         }
 
-        val saveId = syncEntity.rommSaveId
+        val saveId = knownServerSaveId ?: syncEntity.rommSaveId
         if (saveId == null) {
             Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | No server save ID in sync entity")
             return@withContext SaveSyncResult.Error("No server save ID")
@@ -215,14 +220,22 @@ class SaveDownloader @Inject constructor(
         }
 
         val config = SavePathRegistry.getConfigForPlatform(resolvedEmulatorId, game.platformSlug)
-        val isGciFormat = config?.usesGciFormat == true
-        val isFolderBased = config?.usesFolderBasedSaves == true &&
-            serverSave.fileName.endsWith(".zip", ignoreCase = true) && !isGciFormat
-        val isSwitchEmulator = resolvedEmulatorId in SaveSyncApiClient.SWITCH_EMULATOR_IDS
+        val sigilHandler = client.getHandler(config, game.platformSlug, resolvedEmulatorId) as? SigilSaveHandler
+        val sigilRoot = sigilHandler?.route(gameId, resolvedEmulatorId)?.root
+        if (sigilHandler != null && sigilRoot == null) {
+            Logger.warn(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | No save root for $resolvedEmulatorId")
+            return@withContext SaveSyncResult.NoSaveFound
+        }
+        val isGciFormat = sigilRoot == null && config?.usesGciFormat == true
+        val isFolderBased = sigilRoot != null || (config?.usesFolderBasedSaves == true &&
+            serverSave.fileName.endsWith(".zip", ignoreCase = true) && !isGciFormat)
+        val isSwitchEmulator = sigilRoot == null && resolvedEmulatorId in SaveSyncApiClient.SWITCH_EMULATOR_IDS
         Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Save info | fileName=${serverSave.fileName}, isFolderBased=$isFolderBased, isGciFormat=$isGciFormat, isSwitchEmulator=$isSwitchEmulator")
 
         var strandedCardToMigrate: String? = null
-        val preDownloadTargetPath = if (isGciFormat) {
+        val preDownloadTargetPath = if (sigilRoot != null) {
+            sigilRoot
+        } else if (isGciFormat) {
             null.also {
                 Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | GCI format, will download to temp and detect bundle vs single")
             }
@@ -323,6 +336,7 @@ class SaveDownloader @Inject constructor(
 
         if (preDownloadTargetPath != null && serverSave.contentHash != null) {
             val cachedMatch = saveCacheManager.get().findCachedByHash(gameId, serverSave.contentHash)
+                ?.takeIf { SaveSyncApiClient.syncKeyOf(it.channelName) == SaveSyncApiClient.syncKeyOf(channelName) }
                 ?.takeIf { it.isHardcore || !saveCacheManager.get().hasHardcoreSave(gameId) }
             if (cachedMatch != null) {
                 Logger.info(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Cache hit (hash=${serverSave.contentHash}), restoring from cacheId=${cachedMatch.id} instead of fetching content")
@@ -350,7 +364,7 @@ class SaveDownloader @Inject constructor(
                             lastSyncDeviceName = serverSave.originDeviceName() ?: currentDeviceSync?.deviceName ?: syncEntity.lastSyncDeviceName
                         )
                     )
-                    if (serverTimestamp != null && cachedMatch.cachedAt != serverTimestamp) {
+                    if (!fromSnapshot && serverTimestamp != null && cachedMatch.cachedAt != serverTimestamp) {
                         saveCacheDao.updateCachedAt(cachedMatch.id, serverTimestamp)
                     }
                     activeSaveRepository.activateCache(gameId, cachedMatch.id)
@@ -465,7 +479,7 @@ class SaveDownloader @Inject constructor(
                     }
                 }
 
-                val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                 val downloadedHasTrailer = saveArchiver.hasHardcoreTrailer(tempZipFile)
                 Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Hardcore check | localHardcore=$hasLocalHardcore, downloadedTrailer=$downloadedHasTrailer")
                 if (hasLocalHardcore && !downloadedHasTrailer) {
@@ -605,7 +619,7 @@ class SaveDownloader @Inject constructor(
                             emulatorPackage = emulatorPackage,
                             gameId = gameId
                         )
-                    val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                    val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                     val resolutionTarget = if (hasLocalHardcore && !saveArchiver.hasHardcoreTrailer(tempGciFile)) {
                         existingMember ?: savePathResolver.constructSavePath(
                             resolvedEmulatorId, game.title, game.platformSlug, game.localPath, preferredCore,
@@ -670,7 +684,7 @@ class SaveDownloader @Inject constructor(
                     }
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Saved temp file | path=${tempSaveFile!!.absolutePath}, size=${tempSaveFile!!.length()}bytes")
 
-                    val hasLocalHardcore = saveCacheManager.get().hasHardcoreSave(gameId)
+                    val hasLocalHardcore = !fromSnapshot && saveCacheManager.get().hasHardcoreSave(gameId)
                     val downloadedHasTrailer = saveArchiver.hasHardcoreTrailer(tempSaveFile!!)
                     Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Hardcore check | localHardcore=$hasLocalHardcore, downloadedTrailer=$downloadedHasTrailer")
                     if (hasLocalHardcore && !downloadedHasTrailer) {
@@ -693,8 +707,20 @@ class SaveDownloader @Inject constructor(
                         return@withContext SaveSyncResult.Error("Failed to backup existing save before overwrite")
                     }
 
-                    val bundleResult = unitBundleResult(tempSaveFile!!, targetPath, config, game, resolvedEmulatorId, emulatorPackage, preferredCore)
-                    if (bundleResult != null) {
+                    val sigilRestore = sigilSaveHandler.restore(gameId, tempSaveFile!!, resolvedEmulatorId)
+                    val sigilPlaced = sigilRestore is SigilRestore.Restored || sigilRestore is SigilRestore.Refused
+                    val bundleResult = if (sigilPlaced) {
+                        null
+                    } else {
+                        unitBundleResult(tempSaveFile!!, targetPath, config, game, resolvedEmulatorId, emulatorPackage, preferredCore)
+                    }
+                    if (sigilRestore is SigilRestore.Refused) {
+                        Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Sigil refused the restore | reason=${sigilRestore.reason}")
+                        return@withContext SaveSyncResult.Error("Failed to place save: ${sigilRestore.reason}")
+                    } else if (sigilRestore is SigilRestore.Restored) {
+                        targetPath = unitPrimaryTarget(targetPath, game, resolvedEmulatorId, preferredCore) ?: targetPath
+                        Logger.debug(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Restored through Sigil | primary=$targetPath")
+                    } else if (bundleResult != null) {
                         if (!bundleResult.success) {
                             Logger.error(TAG, "[SaveSync] DOWNLOAD gameId=$gameId | Bundle placement failed | error=${bundleResult.error}")
                             return@withContext SaveSyncResult.Error(bundleResult.error ?: "Failed to place save bundle")
@@ -755,7 +781,7 @@ class SaveDownloader @Inject constructor(
                     precomputedContentHash = serverSave.contentHash
                 )
                 if (cacheResult is SaveCacheManager.CacheResult.Created) {
-                    if (serverTimestamp != null && cacheResult.cacheId > 0L) {
+                    if (!fromSnapshot && serverTimestamp != null && cacheResult.cacheId > 0L) {
                         saveCacheDao.updateCachedAt(cacheResult.cacheId, serverTimestamp)
                     }
                     if (cacheResult.cacheId > 0L) {

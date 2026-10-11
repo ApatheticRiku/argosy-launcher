@@ -18,6 +18,7 @@ import com.nendo.argosy.domain.model.PlayerCountBucket
 import com.nendo.argosy.ui.common.labelRes
 import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.MultiSelectPreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
 import com.nendo.argosy.ui.screens.settings.SettingsViewModel
@@ -31,7 +32,8 @@ internal data class LibraryPlatformOption(val id: Long, val name: String)
 
 internal data class LibraryLayoutState(
     val platforms: List<LibraryPlatformOption>,
-    val libraryLayout: LibraryLayout = LibraryLayout.GRID
+    val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val offersBoxArt3d: Boolean = false
 ) {
     companion object {
         fun from(state: SettingsUiState) = LibraryLayoutState(
@@ -39,7 +41,8 @@ internal data class LibraryLayoutState(
                 .filter { it.platform.syncEnabled }
                 .map { LibraryPlatformOption(it.platform.id, it.platform.getDisplayName()) }
                 .sortedBy { it.name },
-            libraryLayout = state.display.libraryLayout
+            libraryLayout = state.display.libraryLayout,
+            offersBoxArt3d = state.display.box3dCapableGames > 0 || state.display.libraryBoxArt3d
         )
     }
 }
@@ -59,6 +62,11 @@ internal sealed class LibraryItem(
         section = "layout",
         visibleWhen = { it.libraryLayout == LibraryLayout.GRID }
     )
+    data object BoxArtItem : LibraryItem(
+        key = "libraryBoxArt",
+        section = "layout",
+        visibleWhen = { it.libraryLayout == LibraryLayout.GRID && it.offersBoxArt3d }
+    )
     data object DefaultSort : LibraryItem("libraryDefaultSort", "defaults")
     data object InstalledFirst : LibraryItem("sortInstalledFirst", "defaults")
     data object FavoritesFirst : LibraryItem("sortFavoritesFirst", "defaults")
@@ -73,6 +81,7 @@ internal sealed class LibraryItem(
                 Header("libraryLayoutHeader", "layout", R.string.settings_library_section_layout),
                 LayoutItem,
                 GridDensityItem,
+                BoxArtItem,
                 Header("libraryDefaultsHeader", "defaults", R.string.settings_library_section_defaults),
                 DefaultSort, InstalledFirst, FavoritesFirst, DefaultPlatform, DefaultSource,
                 DefaultRegion, DefaultPlayers
@@ -165,7 +174,12 @@ private fun regionSummary(selected: Set<String>): String = when (selected.size) 
 fun LibrarySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
     val display = uiState.display
     val context = LocalContext.current
-    val layoutState = remember(uiState.emulators.platforms, display.libraryLayout) {
+    val layoutState = remember(
+        uiState.emulators.platforms,
+        display.libraryLayout,
+        display.box3dCapableGames,
+        display.libraryBoxArt3d
+    ) {
         LibraryLayoutState.from(uiState)
     }
 
@@ -206,30 +220,32 @@ fun LibrarySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                     stringResource(item.titleRes)
                 )
 
-            LibraryItem.LayoutItem -> CyclePreference(
+            LibraryItem.LayoutItem -> SegmentedPreference(
                 title = stringResource(R.string.settings_library_layout_title),
-                value = stringResource(libraryLayoutLabelRes(display.libraryLayout)),
+                options = LibraryLayout.entries.map { l -> stringResource(libraryLayoutLabelRes(l)) },
+                selectedIndex = LibraryLayout.entries.indexOf(display.libraryLayout),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleLibraryLayout(1) },
-                onPrev = { viewModel.cycleLibraryLayout(-1) },
-                options = remember(context) {
-                    LibraryLayout.entries.map { l -> context.getString(libraryLayoutLabelRes(l)) }
-                },
-                onSelect = { viewModel.setLibraryLayout(LibraryLayout.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setLibraryLayout(LibraryLayout.entries[it]) }
             )
 
-            LibraryItem.GridDensityItem -> CyclePreference(
+            LibraryItem.GridDensityItem -> SegmentedPreference(
                 title = stringResource(R.string.settings_library_grid_density_title),
-                value = stringResource(gridDensityLabelRes(display.gridDensity)),
+                options = GridDensity.entries.map { d -> stringResource(gridDensityLabelRes(d)) },
+                selectedIndex = GridDensity.entries.indexOf(display.gridDensity),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleGridDensity(1) },
-                onPrev = { viewModel.cycleGridDensity(-1) },
-                options = remember(context) {
-                    GridDensity.entries.map { d -> context.getString(gridDensityLabelRes(d)) }
-                },
-                onSelect = { viewModel.setGridDensity(GridDensity.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setGridDensity(GridDensity.entries[it]) }
+            )
+
+            LibraryItem.BoxArtItem -> SegmentedPreference(
+                title = stringResource(R.string.settings_library_box_art_title),
+                subtitle = stringResource(R.string.settings_library_box_art_subtitle),
+                options = listOf(
+                    stringResource(R.string.settings_library_box_art_option_2d),
+                    stringResource(R.string.settings_library_box_art_option_3d)
+                ),
+                selectedIndex = if (display.libraryBoxArt3d) 1 else 0,
+                isFocused = isFocused(item),
+                onSelect = { viewModel.setLibraryBoxArt3d(it == 1) }
             )
 
             LibraryItem.DefaultSort -> CyclePreference(
@@ -270,17 +286,12 @@ fun LibrarySection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
                 pickerRequestToken = pickerToken(item)
             )
 
-            LibraryItem.DefaultSource -> CyclePreference(
+            LibraryItem.DefaultSource -> SegmentedPreference(
                 title = stringResource(R.string.settings_library_default_source_title),
-                value = librarySourceOptions(context).getOrElse(sourceIndex) {
-                    stringResource(R.string.source_filter_all)
-                },
-                isFocused = isFocused(item),
-                onClick = { viewModel.cycleLibraryDefaultSource(1) },
-                onPrev = { viewModel.cycleLibraryDefaultSource(-1) },
                 options = remember(context) { librarySourceOptions(context) },
-                onSelect = { viewModel.setLibraryDefaultSource(librarySourceKeys()[it]) },
-                pickerRequestToken = pickerToken(item)
+                selectedIndex = sourceIndex,
+                isFocused = isFocused(item),
+                onSelect = { viewModel.setLibraryDefaultSource(librarySourceKeys()[it]) }
             )
 
             LibraryItem.DefaultRegion -> MultiSelectPreference(

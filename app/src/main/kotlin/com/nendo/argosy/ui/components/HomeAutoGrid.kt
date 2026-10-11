@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.nendo.argosy.domain.model.AutoGridConfig
 import com.nendo.argosy.domain.model.HomeScrollAxis
 import com.nendo.argosy.ui.common.GridDirection
+import com.nendo.argosy.ui.common.rememberGameArtAspectRatio
 import com.nendo.argosy.ui.screens.home.GameDownloadIndicator
 import com.nendo.argosy.ui.theme.Dimens
 import com.nendo.argosy.ui.theme.LocalBoxArtStyle
@@ -115,6 +116,7 @@ fun HomeAutoGrid(
     items: List<CarouselItem>,
     focusedIndex: Int,
     config: AutoGridConfig,
+    useBoxArt: Boolean,
     gridState: LazyGridState,
     entryAnimationKey: Any?,
     onItemTap: (Int) -> Unit,
@@ -158,7 +160,7 @@ fun HomeAutoGrid(
                     isFocused = index == focusedIndex,
                     showTitle = false,
                     showPlatformBadge = showPlatformBadge,
-                    useBoxArt = config.useBoxArt,
+                    useBoxArt = useBoxArt,
                     downloadIndicator = indicator,
                     cellWidth = metrics.cellWidth,
                     onTap = { onItemTap(index) },
@@ -415,7 +417,12 @@ private fun AutoGridCell(
             is CarouselItem.Game -> {
                 val cellRatio = coverAspectRatio
                 val artRatio = if (boxArtStyle.nativeAspectRatio) {
-                    item.game.coverAspectRatio ?: coverAspectRatio
+                    rememberGameArtAspectRatio(
+                        game = item.game,
+                        useBoxArt = useBoxArt,
+                        coverPath = null,
+                        fallback = coverAspectRatio
+                    )
                 } else {
                     coverAspectRatio
                 }

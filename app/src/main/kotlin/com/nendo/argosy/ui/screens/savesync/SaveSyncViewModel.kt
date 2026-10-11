@@ -68,7 +68,8 @@ class SaveSyncViewModel @Inject constructor(
     private val saveSyncRepository: SaveSyncRepository,
     private val saveAccessNotices: SaveAccessNotices,
     private val gameActivityRepository: GameActivityRepository,
-    private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator
+    private val syncCoordinator: com.nendo.argosy.data.sync.SyncCoordinator,
+    private val gameRepository: com.nendo.argosy.data.repository.GameRepository
 ) : ViewModel() {
 
     private val _forceCheckStatus = MutableStateFlow<ForceSaveCheckUiState>(ForceSaveCheckUiState.Idle)
@@ -135,6 +136,7 @@ class SaveSyncViewModel @Inject constructor(
         val gameIds = (saveRows.map { it.gameId } + conflicts.map { it.gameId } + queueState.operations.map { it.gameId })
             .distinct()
         val gameById = if (gameIds.isEmpty()) emptyMap() else gameDao.getByIdsChunked(gameIds).associateBy { it.id }
+        val artById = gameRepository.getArt(gameById.keys)
 
         val isConnected = connection is ConnectionState.Connected
         val serverVersion = (connection as? ConnectionState.Connected)?.version
@@ -202,7 +204,7 @@ class SaveSyncViewModel @Inject constructor(
 
         val attentionRows = conflicts.mapNotNull { conflict ->
             val game = gameById[conflict.gameId] ?: return@mapNotNull null
-            buildAttentionRow(conflict, game, deviceCard.deviceName)
+            buildAttentionRow(conflict, game, artById[game.id]?.coverPath, deviceCard.deviceName)
         }
 
         val attentionGameIds = attentionRows.map { it.gameId }.toSet()
@@ -240,7 +242,7 @@ class SaveSyncViewModel @Inject constructor(
                     gameId = gameId,
                     title = game.title,
                     platformDisplayName = game.platformSlug,
-                    coverPath = game.displayCoverPath,
+                    coverPath = artById[gameId]?.coverPath,
                     slots = entities
                         .map { buildSaveSlotEntry(it, game, prefs.rommDeviceId) }
                         .sortedByDescending { it.lastSyncedAt ?: Instant.MIN }
@@ -494,6 +496,7 @@ class SaveSyncViewModel @Inject constructor(
     private fun buildAttentionRow(
         conflict: PendingConflictEntity,
         game: GameEntity,
+        coverPath: String?,
         thisDeviceName: String?
     ): AttentionRow {
         val isLocalNewer = (conflict.localUpdatedAt ?: Instant.MIN).isAfter(conflict.serverUpdatedAt ?: Instant.MIN)
@@ -502,7 +505,7 @@ class SaveSyncViewModel @Inject constructor(
             gameId = conflict.gameId,
             title = game.title,
             platformDisplayName = game.platformSlug,
-            coverPath = game.displayCoverPath,
+            coverPath = coverPath,
             channelName = conflict.slot,
             channelDisplay = effectiveChannelLabel(conflict.slot, game),
             localTime = conflict.localUpdatedAt,

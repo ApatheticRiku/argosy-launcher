@@ -13,6 +13,9 @@ private const val LANDSCAPE_ROWS = 3
 private const val PORTRAIT_ROWS = 5
 private const val TILE_GAP_FRACTION = 0.02f
 private const val MOSAIC_DIM_ALPHA = 90
+private const val STRIP_EXTRA_TILES = 3
+private const val SECONDS_PER_TILE = 14f
+private val ROW_SPEEDS = listOf(1f, 0.8f, 1.15f, 0.9f, 1.05f)
 
 internal data class MosaicGrid(val rows: Int, val columns: Int, val tileWidth: Int, val tileHeight: Int, val gap: Int) {
     val tileCount: Int get() = rows * columns
@@ -59,6 +62,40 @@ internal object LockScreenArtRenderer {
         }
         canvas.drawColor(Color.argb(MOSAIC_DIM_ALPHA, 0, 0, 0))
         return output
+    }
+
+    fun stripTileCount(width: Int, height: Int): Int {
+        val grid = grid(width, height)
+        return grid.rows * (grid.columns + STRIP_EXTRA_TILES)
+    }
+
+    fun scrollingMosaic(covers: List<Bitmap>, width: Int, height: Int): LockScreenScene.Mosaic? {
+        if (covers.isEmpty()) return null
+        val grid = grid(width, height)
+        val perRow = grid.columns + STRIP_EXTRA_TILES
+        val step = grid.tileWidth + grid.gap
+        val paint = paint()
+        val rows = (0 until grid.rows).map { row ->
+            val strip = Bitmap.createBitmap(perRow * step, grid.tileHeight, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(strip)
+            for (column in 0 until perRow) {
+                val cover = covers[(row * perRow + column) % covers.size]
+                val left = column * step.toFloat()
+                canvas.drawBitmap(
+                    cover,
+                    centerCrop(cover, COVER_ASPECT),
+                    RectF(left, 0f, left + grid.tileWidth, grid.tileHeight.toFloat()),
+                    paint
+                )
+            }
+            MosaicRow(
+                strip = strip,
+                top = grid.gap + row * (grid.tileHeight + grid.gap).toFloat(),
+                period = (perRow * step).toFloat(),
+                pixelsPerSecond = step / SECONDS_PER_TILE * ROW_SPEEDS[row % ROW_SPEEDS.size]
+            )
+        }
+        return LockScreenScene.Mosaic(rows, MOSAIC_DIM_ALPHA)
     }
 
     private fun paint() = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)

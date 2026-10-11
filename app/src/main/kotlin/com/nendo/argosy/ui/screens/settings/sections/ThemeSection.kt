@@ -18,9 +18,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.nendo.argosy.R
 import com.nendo.argosy.data.preferences.ThemeMode
-import com.nendo.argosy.ui.components.CyclePreference
 import com.nendo.argosy.ui.components.HueSliderPreference
 import com.nendo.argosy.ui.components.NavigationPreference
+import com.nendo.argosy.ui.components.SegmentedPreference
 import com.nendo.argosy.ui.components.SliderPreference
 import com.nendo.argosy.ui.components.SwitchPreference
 import com.nendo.argosy.ui.screens.settings.SettingsUiState
@@ -115,9 +115,6 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
         enter()
     }
 
-    fun pickerToken(item: ThemeItem): Int =
-        if (uiState.enumPickerKey == item.key) uiState.enumPickerToken else 0
-
     SectionPaneLayout(
         items = visibleItems,
         sections = sections,
@@ -134,17 +131,12 @@ fun ThemeSection(uiState: SettingsUiState, viewModel: SettingsViewModel) {
             is ThemeItem.Header -> ThemeSectionHeader(stringResource(item.titleRes))
             is ThemeItem.SectionSpacer -> Spacer(modifier = Modifier.height(Dimens.spacingMd))
 
-            ThemeItem.Mode -> CyclePreference(
+            ThemeItem.Mode -> SegmentedPreference(
                 title = stringResource(R.string.settings_theme_mode_title),
-                value = stringResource(themeModeLabelRes(display.themeMode)),
+                options = ThemeMode.entries.map { mode -> stringResource(themeModeLabelRes(mode)) },
+                selectedIndex = ThemeMode.entries.indexOf(display.themeMode),
                 isFocused = isFocused(item),
-                onClick = { viewModel.cycleThemeMode(1) },
-                onPrev = { viewModel.cycleThemeMode(-1) },
-                options = remember(context) {
-                    ThemeMode.entries.map { mode -> context.getString(themeModeLabelRes(mode)) }
-                },
-                onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) },
-                pickerRequestToken = pickerToken(item)
+                onSelect = { viewModel.setThemeMode(ThemeMode.entries[it]) }
             )
 
             ThemeItem.AccentColor -> HueSliderPreference(

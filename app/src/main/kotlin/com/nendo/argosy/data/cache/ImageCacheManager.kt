@@ -14,22 +14,32 @@ import com.nendo.argosy.data.local.dao.AchievementDao
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.storage.StorageVolumeHealth
 import com.nendo.argosy.data.storage.VolumeProbe
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
-import com.nendo.argosy.data.local.dao.GameImageCacheInfo
+import com.nendo.argosy.data.local.dao.GameScreenshotDao
 import com.nendo.argosy.data.local.dao.PlatformDao
-import com.nendo.argosy.data.local.dao.clearArtOverride
-import com.nendo.argosy.data.local.dao.setArtOverride
+import com.nendo.argosy.data.local.dao.clearCached
+import com.nendo.argosy.data.local.dao.clearCachedPathsChunked
+import com.nendo.argosy.data.local.dao.clearOverride
+import com.nendo.argosy.data.local.dao.resolved
+import com.nendo.argosy.data.local.entity.toResolvedArtByGame
 import com.nendo.argosy.data.model.ArtSlot
-import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.ResolvedGameArt
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.nendo.argosy.util.Logger
 import com.nendo.argosy.util.SafeCoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
@@ -61,13 +71,15 @@ data class ImageCacheRequest(
     ) : this(listOf(url), id, type, gameTitle, isSteam, gameId)
 }
 
-enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE, LOGO }
+enum class ImageType { BACKGROUND, SCREENSHOT, COVER, BOX_BACK, BOX_SPINE, LOGO, BOX_3D }
+
+internal val ImageType.isBoxFace: Boolean
+    get() = this == ImageType.BOX_BACK || this == ImageType.BOX_SPINE ||
+        this == ImageType.LOGO || this == ImageType.BOX_3D
 
 data class CachedGameImages(
     val coverPath: String?,
     val backgroundPath: String?,
-    val boxBackPath: String?,
-    val boxSpinePath: String?,
     val logoPath: String?
 )
 
@@ -88,7 +100,6 @@ data class ImageCacheProgress(
 data class ScreenshotCacheRequest(
     val gameId: Long,
     val rommId: Long,
-    val screenshotUrls: List<String>,
     val gameTitle: String = ""
 )
 
@@ -113,9 +124,25 @@ data class CacheValidationResult(
     val clearedPaths: Int
 )
 
-internal enum class CachedArtDecision { KEEP_AND_RENAME, REPLACE, SKIP }
+internal fun artUrlHash(url: String): String {
+    val digest = MessageDigest.getInstance("MD5").digest(url.toByteArray())
+    return digest.joinToString("") { "%02x".format(it) }.take(12)
+}
 
-internal fun cachedArtDecision(cachedModifiedAt: Long, serverModifiedAt: Long?): CachedArtDecision = when {
+internal fun isCachedFileFrom(cachedPath: String, sourceUrl: String): Boolean =
+    File(cachedPath).nameWithoutExtension.endsWith("_${artUrlHash(sourceUrl)}")
+
+internal fun canBackfillCachedFromUrl(cachedPath: String?, cachedFromUrl: String?, sourceUrl: String): Boolean =
+    cachedPath != null && cachedFromUrl == null && isCachedFileFrom(cachedPath, sourceUrl)
+
+internal enum class CachedArtDecision { KEEP_AND_RENAME, REPLACE, SKIP, DROP }
+
+internal fun cachedArtDecision(
+    cachedModifiedAt: Long,
+    serverModifiedAt: Long?,
+    everyCandidateGone: Boolean = false
+): CachedArtDecision = when {
+    everyCandidateGone -> CachedArtDecision.DROP
     serverModifiedAt == null -> CachedArtDecision.SKIP
     serverModifiedAt <= 0L -> CachedArtDecision.REPLACE
     serverModifiedAt > cachedModifiedAt -> CachedArtDecision.REPLACE
@@ -127,13 +154,29 @@ internal fun cachedArtDecision(cachedModifiedAt: Long, serverModifiedAt: Long?):
 class ImageCacheManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val gameDao: GameDao,
+    private val gameArtDao: GameArtDao,
+    private val gameScreenshotDao: GameScreenshotDao,
     private val platformDao: PlatformDao,
     private val achievementDao: AchievementDao,
     private val volumeHealth: StorageVolumeHealth,
     private val fileAccessLayer: FileAccessLayer
 ) {
-    private val _localCoverWritten = MutableSharedFlow<Pair<Long, String>>(extraBufferCapacity = 64)
-    val localCoverWritten: SharedFlow<Pair<Long, String>> = _localCoverWritten.asSharedFlow()
+    private val artModelScope = SafeCoroutineScope(Dispatchers.IO, "GameArtModel")
+
+    val gameArt: StateFlow<Map<Long, ResolvedGameArt>> = gameArtDao.observeRowCount()
+        .conflate()
+        .transform {
+            emit(gameArtDao.getAll().toResolvedArtByGame())
+            delay(ART_MODEL_RELOAD_INTERVAL_MS)
+        }
+        .stateIn(artModelScope, SharingStarted.Lazily, emptyMap())
+
+    fun artFor(gameId: Long): ResolvedGameArt? = gameArt.value[gameId]
+
+    suspend fun loadArt(gameId: Long): ResolvedGameArt = gameArtDao.resolved(gameId)
+
+    fun observeArt(gameId: Long): Flow<ResolvedGameArt?> =
+        gameArt.map { it[gameId] }.distinctUntilChanged()
 
     private val defaultCacheDir: File by lazy {
         File(context.filesDir, "images").also {
@@ -183,12 +226,17 @@ class ImageCacheManager @Inject constructor(
         private const val FALLBACK_PLATFORM = "_misc"
         private const val LOGOS_DIR = "_logos"
         private const val BOX_FACE_MAX_WIDTH = 400
+        private val BOX_FACE_SLOT_NAMES = setOf(ArtSlot.BOX_SPINE.name, ArtSlot.BOX_BACK.name)
         private const val LOGO_MAX_WIDTH = 1000
+        private const val BOX_3D_MAX_WIDTH = 600
         private const val COVER_MAX_WIDTH = 400
         private const val BACKGROUND_MAX_WIDTH = 1280
         private const val BACKGROUND_JPEG_QUALITY = 87
         private val LEGACY_OVERRIDE_FILE_PREFIXES = listOf("cover_manual_", "bg_custom_")
         private const val VALIDATION_MARKER = ".validated"
+        private const val SWEEP_RECENT_FILE_GRACE_MS = 10 * 60 * 1000L
+        private const val ART_PATH_CHUNK = 900
+        private const val ART_MODEL_RELOAD_INTERVAL_MS = 1_000L
     }
 
     private fun ensureNoMedia(dir: File) {
@@ -322,8 +370,8 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun updateProgressFromDb(isProcessing: Boolean) {
-        val total = gameDao.countGamesWithBackgrounds()
-        val cached = gameDao.countGamesWithCachedBackgrounds()
+        val total = gameArtDao.countWithSource(ArtSlot.BACKGROUND.name)
+        val cached = gameArtDao.countCached(ArtSlot.BACKGROUND.name)
         _progress.value = _progress.value.copy(
             isProcessing = isProcessing,
             cachedCount = cached,
@@ -352,13 +400,15 @@ class ImageCacheManager @Inject constructor(
         request.revalidateFrom?.let { cachedPath ->
             revalidateCachedArt(
                 request, File(cachedPath), backgroundDir, prefix,
-                store = { path -> storeReplacedBackground(request, path) },
-                replace = { processRequest(request.copy(revalidateFrom = null), replacing = true) }
+                store = { path -> storeCachedArt(request, ArtSlot.BACKGROUND, path) },
+                replace = { processRequest(request.copy(revalidateFrom = null), replacing = true) },
+                drop = { dropCachedArt(request, ArtSlot.BACKGROUND) }
             )
             return
         }
+        if (!replacing && isCachedFromSource(request, ArtSlot.BACKGROUND)) return
         val commitBackground: suspend (String) -> Unit = { path ->
-            if (replacing) storeReplacedBackground(request, path) else updateGameBackgroundForRequest(request, path)
+            storeCachedArt(request, ArtSlot.BACKGROUND, path)
         }
 
         for ((index, url) in request.urls.withIndex()) {
@@ -367,7 +417,7 @@ class ImageCacheManager @Inject constructor(
             if (cachedFile.exists()) {
                 if (isValidImageFile(cachedFile)) {
                     commitBackground(cachedFile.absolutePath)
-                    pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request) { it.backgroundPath })
+                    pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request, ArtSlot.BACKGROUND))
                     return
                 }
                 cachedFile.delete()
@@ -394,7 +444,7 @@ class ImageCacheManager @Inject constructor(
 
             Log.d(TAG, "Cached background for $idLabel: ${cachedFile.length() / 1024}KB")
             commitBackground(cachedFile.absolutePath)
-            pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request) { it.backgroundPath })
+            pruneReplacedArt(backgroundDir, prefix, cachedFile, storedArtPath(request, ArtSlot.BACKGROUND))
             return
         }
 
@@ -422,26 +472,6 @@ class ImageCacheManager @Inject constructor(
                     "${request.urls.size} tried: ${request.urls.joinToString(", ")}"
             )
         }
-    }
-
-    private suspend fun updateGameBackgroundForRequest(request: ImageCacheRequest, localPath: String) {
-        if (request.gameId != null) {
-            val game = gameDao.getById(request.gameId) ?: return
-            if (game.backgroundPath?.startsWith("/") == true) return
-            gameDao.updateBackgroundPath(request.gameId, localPath)
-        } else {
-            updateGameBackground(request.id, localPath, request.isSteam)
-        }
-    }
-
-    private suspend fun updateGameBackground(id: Long, localPath: String, isSteam: Boolean) {
-        val game = if (isSteam) {
-            gameDao.getBySteamAppId(id)
-        } else {
-            gameDao.getByRommId(id)
-        } ?: return
-        if (game.backgroundPath?.startsWith("/") == true) return
-        gameDao.updateBackgroundPath(game.id, localPath)
     }
 
     /**
@@ -537,21 +567,7 @@ class ImageCacheManager @Inject constructor(
         return sampleSize
     }
 
-    /**
-     * Whether the cached file at [localPath] was downloaded from one of [urls]. Cached art is named
-     * after a hash of its source url, so a server-side change to the art, which changes the url,
-     * reads as not cached.
-     */
-    fun isCachedFromAny(localPath: String, urls: List<String>): Boolean {
-        val name = File(localPath).nameWithoutExtension
-        return urls.any { name.endsWith("_${it.md5Hash()}") }
-    }
-
-    private fun String.md5Hash(): String {
-        val md = MessageDigest.getInstance("MD5")
-        val digest = md.digest(toByteArray())
-        return digest.joinToString("") { "%02x".format(it) }.take(12)
-    }
+    private fun String.md5Hash(): String = artUrlHash(this)
 
     private fun isValidImageFile(file: File, minSizeBytes: Long = 1024): Boolean {
         if (!file.exists() || file.length() < minSizeBytes) return false
@@ -573,11 +589,12 @@ class ImageCacheManager @Inject constructor(
     }
 
     /**
-     * Drops the cached server artwork for one platform and forgets where it was, so the next sync
-     * fetches it again. Artwork overrides and their files are kept. Returns the bytes reclaimed.
+     * Deletes one platform's cached server artwork and clears its cached paths; source urls stay
+     * for the pending pass to fetch again. Artwork overrides and their files are kept. Returns the
+     * bytes reclaimed.
      */
     suspend fun clearPlatformCache(platformSlug: String): Long = withContext(Dispatchers.IO) {
-        val keep = gameDao.getArtOverridePathsForPlatform(platformSlug).toSet()
+        val keep = gameArtDao.getOverridePathsForPlatform(platformSlug).toSet()
         val root = File(cacheDir, platformSlug)
         if (!root.exists()) return@withContext 0L
         var reclaimed = 0L
@@ -592,17 +609,24 @@ class ImageCacheManager @Inject constructor(
                 }
             }
         }
-        gameDao.clearCachedArtForPlatform(platformSlug)
+        gameArtDao.clearCachedForPlatform(platformSlug)
+        gameScreenshotDao.clearCachedForPlatform(platformSlug)
         clearDecodedImageCache()
         reclaimed
     }
 
-    fun clearCache() {
-        cacheDir.listFiles()?.forEach { entry ->
-            if (entry.isDirectory) {
-                entry.deleteRecursively()
-            } else if (entry.name != ".nomedia") {
-                entry.delete()
+    /**
+     * Deletes every cached image file except the artwork overrides games still reference.
+     */
+    suspend fun clearCache() = withContext(Dispatchers.IO) {
+        val keep = gameArtDao.getAllOverridePaths().toSet()
+        cacheDir.walkBottomUp().forEach { entry ->
+            when {
+                entry == cacheDir -> Unit
+                entry.isDirectory -> if (entry.listFiles().isNullOrEmpty()) entry.delete()
+                entry.name == ".nomedia" -> Unit
+                entry.absolutePath in keep -> Unit
+                else -> entry.delete()
             }
         }
     }
@@ -622,7 +646,7 @@ class ImageCacheManager @Inject constructor(
             val slug = resolveRommPlatformSlug(rommId)
             val prefixes = listOf(
                 "cover_${rommId}_", "bg_${rommId}_", "ss_${rommId}_",
-                "box_back_${rommId}_", "box_spine_${rommId}_", "game_logo_${rommId}_"
+                "box_back_${rommId}_", "box_spine_${rommId}_", "game_logo_${rommId}_", "box_3d_${rommId}_"
             )
             val types = listOf("covers", "backgrounds", "screenshots")
             types.forEach { type ->
@@ -636,6 +660,15 @@ class ImageCacheManager @Inject constructor(
             }
         }
         if (clearDecoded) clearDecodedImageCache()
+    }
+
+    suspend fun forgetCachedArt(gameId: Long) {
+        ArtSlot.entries.forEach { forgetCachedArt(gameId, it) }
+        gameScreenshotDao.clearCachedForGame(gameId)
+    }
+
+    suspend fun forgetCachedArt(gameId: Long, slot: ArtSlot) {
+        gameArtDao.clearCached(gameId, slot)
     }
 
     fun getCacheSize(): Long {
@@ -770,35 +803,10 @@ class ImageCacheManager @Inject constructor(
         dir.isDirectory && (dir.listFiles()?.any { it.name != ".nomedia" } == true)
 
     private suspend fun updateDatabasePaths(oldBasePath: String, newBasePath: String) {
-        val infos = gameDao.getAllImageCacheInfo()
         var updated = 0
 
-        infos.forEach { info ->
-            var changed = false
-            var newCoverPath = info.coverPath
-            var newBackgroundPath = info.backgroundPath
-            var newCachedScreenshotPaths = info.cachedScreenshotPaths
-
-            if (info.coverPath?.startsWith(oldBasePath) == true) {
-                newCoverPath = info.coverPath.replace(oldBasePath, newBasePath)
-                changed = true
-            }
-            if (info.backgroundPath?.startsWith(oldBasePath) == true) {
-                newBackgroundPath = info.backgroundPath.replace(oldBasePath, newBasePath)
-                changed = true
-            }
-            if (info.cachedScreenshotPaths?.contains(oldBasePath) == true) {
-                newCachedScreenshotPaths = info.cachedScreenshotPaths.replace(oldBasePath, newBasePath)
-                changed = true
-            }
-
-            if (changed) {
-                gameDao.updateImagePaths(info.id, newCoverPath, newBackgroundPath, newCachedScreenshotPaths)
-            }
-            val artChanged = writeRelocatedArtPaths(info) { path ->
-                if (path.startsWith(oldBasePath)) path.replace(oldBasePath, newBasePath) else path
-            }
-            if (changed || artChanged) updated++
+        updated += relocateArtPaths { path ->
+            if (path.startsWith(oldBasePath)) path.replace(oldBasePath, newBasePath) else path
         }
 
         val platforms = platformDao.getAllPlatforms()
@@ -813,103 +821,206 @@ class ImageCacheManager @Inject constructor(
         Log.d(TAG, "Updated $updated database paths from $oldBasePath to $newBasePath")
     }
 
-    private suspend fun writeRelocatedArtPaths(
-        info: GameImageCacheInfo,
-        relocate: suspend (String) -> String
-    ): Boolean {
-        val logoPath = info.logoPath?.let { relocate(it) }
-        val coverOverride = info.coverOverridePath?.let { relocate(it) }
-        val backgroundOverride = info.backgroundOverridePath?.let { relocate(it) }
-        val logoOverride = info.logoOverridePath?.let { relocate(it) }
-        val unchanged = logoPath == info.logoPath &&
-            coverOverride == info.coverOverridePath &&
-            backgroundOverride == info.backgroundOverridePath &&
-            logoOverride == info.logoOverridePath
-        if (unchanged) return false
-        gameDao.updateRelocatedArtPaths(info.id, logoPath, coverOverride, backgroundOverride, logoOverride)
-        return true
+    private suspend fun relocateArtPaths(relocate: suspend (String) -> String): Int {
+        var updated = 0
+        gameArtDao.getLocalPaths().forEach { row ->
+            row.cachedPath?.let { old ->
+                val moved = relocate(old)
+                if (moved != old) {
+                    gameArtDao.relocateCachedPath(row.gameId, row.slot, old, moved)
+                    updated++
+                }
+            }
+            row.overridePath?.let { old ->
+                val moved = relocate(old)
+                if (moved != old) {
+                    gameArtDao.relocateOverridePath(row.gameId, row.slot, old, moved)
+                    updated++
+                }
+            }
+        }
+        gameScreenshotDao.getCached().forEach { row ->
+            val old = row.cachedPath ?: return@forEach
+            val moved = relocate(old)
+            if (moved != old) {
+                gameScreenshotDao.relocateCachedPath(row.gameId, row.position, old, moved)
+                updated++
+            }
+        }
+        return updated
     }
 
     fun getPendingCount(): Int = queue.isEmpty.let { if (it) 0 else -1 }
 
-    fun resumePendingCache() {
+    /**
+     * Queues every art slot whose cached file does not come from its current source url. Rows
+     * cached before `cachedFromUrl` existed are matched by file name first and only queued when
+     * the name does not carry the source url's hash. Known-missing urls are skipped, and so are
+     * box spine and back scans unless [includeBoxFaces].
+     */
+    fun resumePendingArt(includeBoxFaces: Boolean) {
         scope.launch {
-            val uncached = gameDao.getGamesWithUncachedBackgrounds()
-            if (uncached.isEmpty()) return@launch
-
-            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached backgrounds")
-            uncached.forEach { game ->
-                val url = game.backgroundPath ?: return@forEach
-                when {
-                    game.steamAppId != null -> queueSteamBackgroundCache(url, game.steamAppId, game.title)
-                    game.rommId != null -> queueBackgroundCache(url, game.rommId, game.title)
-                }
+            val pending = gameArtDao.getPending()
+                .filterNot { missingArt.isKnownMissing(it.sourceUrl) }
+                .filter { includeBoxFaces || it.slot !in BOX_FACE_SLOT_NAMES }
+            val (backfill, stale) = pending.partition {
+                canBackfillCachedFromUrl(it.cachedPath, it.cachedFromUrl, it.sourceUrl)
+            }
+            if (backfill.isNotEmpty()) gameArtDao.backfillCachedFromUrls(backfill)
+            stale.forEach { art ->
+                val slot = ArtSlot.entries.firstOrNull { it.name == art.slot } ?: return@forEach
+                queueArt(art.gameId, slot, listOf(art.sourceUrl), art.rommId, art.steamAppId, art.title, art.cachedPath)
+            }
+            val iconless = gameArtDao.getAndroidGamesWithoutCover()
+            iconless.forEach { queueAppIconCache(it.gameId, it.packageName) }
+            if (pending.isNotEmpty() || iconless.isNotEmpty()) {
+                Log.i(
+                    TAG,
+                    "Pending art: ${backfill.size} matched by name, ${stale.size} queued, " +
+                        "${iconless.size} app icons queued"
+                )
             }
         }
     }
 
-    fun queueScreenshotCache(gameId: Long, rommId: Long, screenshotUrls: List<String>, gameTitle: String) {
+    /**
+     * Queues [slot] for [gameId] unless its cached file already comes from the first of [urls],
+     * which is the source url library sync stored. A row with a cached file but no recorded
+     * source is matched by file name before anything is downloaded. A cached file that is
+     * genuinely gone from a readable volume is forgotten and downloaded again.
+     */
+    suspend fun queueArtIfStale(
+        gameId: Long,
+        slot: ArtSlot,
+        urls: List<String>,
+        rommId: Long?,
+        steamAppId: Long?,
+        title: String
+    ) {
+        val source = urls.firstOrNull() ?: return
+        val row = gameArtDao.get(gameId, slot.name)
+        val cachedFrom = row?.cachedFromUrl
+        val cachedPath = row?.cachedPath?.takeUnless { volumeHealth.newProbe().isGenuinelyAbsent(it) }
+        if (cachedPath == null && row?.cachedPath != null) gameArtDao.clearCached(gameId, slot)
+        if (cachedPath != null && cachedFrom == source) return
+        if (cachedPath != null && canBackfillCachedFromUrl(cachedPath, cachedFrom, source)) {
+            gameArtDao.backfillCachedFromUrl(gameId, slot.name, cachedPath, source)
+            return
+        }
+        queueArt(gameId, slot, urls, rommId, steamAppId, title, cachedPath)
+    }
+
+    /**
+     * Downloads [slot] for [gameId] again when its cached file is gone, for a screen that just
+     * failed to draw it. A file that is still on disk, or a slot with no recorded source, is left
+     * alone.
+     */
+    fun repairMissingArt(gameId: Long, slot: ArtSlot) {
         scope.launch {
-            screenshotQueue.send(ScreenshotCacheRequest(gameId, rommId, screenshotUrls, gameTitle))
+            val source = gameArtDao.get(gameId, slot.name)?.sourceUrl ?: return@launch
+            val game = gameDao.getById(gameId) ?: return@launch
+            queueArtIfStale(gameId, slot, listOf(source), game.rommId, game.steamAppId, game.title)
+        }
+    }
+
+    private fun queueArt(
+        gameId: Long,
+        slot: ArtSlot,
+        urls: List<String>,
+        rommId: Long?,
+        steamAppId: Long?,
+        title: String,
+        cachedPath: String?
+    ) {
+        val url = urls.firstOrNull() ?: return
+        when (slot) {
+            ArtSlot.COVER -> when {
+                rommId != null && cachedPath != null -> queueCoverRevalidation(cachedPath, urls, rommId, title)
+                rommId != null -> queueCoverCache(urls, rommId, title)
+                else -> queueCoverCacheByGameId(urls, gameId)
+            }
+            ArtSlot.BACKGROUND -> when {
+                rommId != null && cachedPath != null -> queueBackgroundRevalidation(cachedPath, urls, rommId, title)
+                rommId != null -> queueBackgroundCache(urls, rommId, title)
+                steamAppId != null -> queueSteamBackgroundCache(url, steamAppId, title)
+                else -> queueBackgroundCacheByGameId(url, gameId, title)
+            }
+            ArtSlot.LOGO -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.LOGO)
+            ArtSlot.BOX_3D -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.BOX_3D)
+            ArtSlot.BOX_SPINE -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.SPINE)
+            ArtSlot.BOX_BACK -> if (rommId != null) queueBoxFaceCache(urls, rommId, title, BoxFace.BACK)
+        }
+    }
+
+    fun queueScreenshotCache(gameId: Long, rommId: Long, gameTitle: String) {
+        scope.launch {
+            screenshotQueue.send(ScreenshotCacheRequest(gameId, rommId, gameTitle))
             startScreenshotProcessingIfNeeded()
         }
     }
 
-    fun queueScreenshotCacheByGameId(gameId: Long, screenshotUrls: List<String>) {
+    /**
+     * Caches every screenshot row of [gameId] not yet cached from its source url. When the game
+     * has no cached background, the second cached screenshot, or the only one, becomes it.
+     */
+    fun queueScreenshotCacheByGameId(gameId: Long) {
         scope.launch {
-            val cachedPaths = mutableListOf<String>()
-            val slug = resolveGamePlatformSlug(gameId)
-
-            screenshotUrls.forEachIndexed { index, url ->
-                val fileName = "ss_g${gameId}_${index}_${url.md5Hash()}.jpg"
-                val cachedFile = File(platformDir(slug, "screenshots"), fileName)
-
-                if (cachedFile.exists()) {
-                    if (isValidImageFile(cachedFile)) {
-                        cachedPaths.add(cachedFile.absolutePath)
-                        return@forEachIndexed
-                    } else {
-                        cachedFile.delete()
-                        Log.w(TAG, "Deleted invalid cached screenshot: ${cachedFile.name}")
-                    }
-                }
-
-                val bitmap = downloadAndResize(url, 960) ?: return@forEachIndexed
-
-                try {
-                    FileOutputStream(cachedFile).use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, out)
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to write screenshot cache for gameId $gameId: ${e.message}", e)
-                    cachedFile.delete()
-                    return@forEachIndexed
-                } finally {
-                    bitmap.recycle()
-                }
-
-                if (!isValidImageFile(cachedFile)) {
-                    cachedFile.delete()
-                    Log.w(TAG, "Deleted newly cached invalid screenshot: ${cachedFile.name}")
-                    return@forEachIndexed
-                }
-
-                Log.d(TAG, "Cached screenshot $index for gameId $gameId: ${cachedFile.length() / 1024}KB")
-                cachedPaths.add(cachedFile.absolutePath)
+            val cachedPaths = cacheScreenshotRows(gameId, "ss_g$gameId", maxWidth = 960, quality = 80)
+            if (cachedPaths.isEmpty()) return@launch
+            val background = gameArtDao.get(gameId, ArtSlot.BACKGROUND.name)
+            if (background?.cachedPath == null) {
+                val backgroundPath = cachedPaths.getOrNull(1) ?: cachedPaths.first()
+                gameArtDao.setCached(gameId, ArtSlot.BACKGROUND, backgroundPath, null)
+                Log.d(TAG, "Set screenshot ${if (cachedPaths.size > 1) "2" else "1"} as background for gameId $gameId")
             }
+        }
+    }
 
-            if (cachedPaths.isNotEmpty()) {
-                gameDao.updateCachedScreenshotPaths(gameId, cachedPaths.joinToString(","))
-
-                val game = gameDao.getById(gameId)
-                if (game != null && (game.backgroundPath == null || !game.backgroundPath.startsWith("/"))) {
-                    // Use second screenshot (gameplay) if available, otherwise first
-                    val backgroundPath = cachedPaths.getOrNull(1) ?: cachedPaths.first()
-                    gameDao.updateBackgroundPath(gameId, backgroundPath)
-                    Log.d(TAG, "Set screenshot ${if (cachedPaths.size > 1) "2" else "1"} as background for gameId $gameId")
+    private suspend fun cacheScreenshotRows(gameId: Long, filePrefix: String, maxWidth: Int, quality: Int): List<String> {
+        val dir = platformDir(resolveGamePlatformSlug(gameId), "screenshots")
+        return gameScreenshotDao.getForGame(gameId).mapNotNull { row ->
+            val current = row.cachedPath
+            when {
+                current != null && row.cachedFromUrl == row.sourceUrl -> current
+                current != null && canBackfillCachedFromUrl(current, row.cachedFromUrl, row.sourceUrl) -> {
+                    gameScreenshotDao.backfillCachedFromUrl(gameId, row.position, current, row.sourceUrl)
+                    current
+                }
+                else -> {
+                    val cachedFile = File(dir, "${filePrefix}_${row.position}_${row.sourceUrl.md5Hash()}.jpg")
+                    if (!writeScreenshotFile(cachedFile, row.sourceUrl, maxWidth, quality)) return@mapNotNull null
+                    gameScreenshotDao.setCached(gameId, row.position, cachedFile.absolutePath, row.sourceUrl)
+                    cachedFile.absolutePath
                 }
             }
         }
+    }
+
+    private fun writeScreenshotFile(cachedFile: File, url: String, maxWidth: Int, quality: Int): Boolean {
+        if (cachedFile.exists()) {
+            if (isValidImageFile(cachedFile)) return true
+            cachedFile.delete()
+            Log.w(TAG, "Deleted invalid cached screenshot: ${cachedFile.name}")
+        }
+        val bitmap = downloadAndResize(url, maxWidth) ?: return false
+        try {
+            FileOutputStream(cachedFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to write screenshot cache ${cachedFile.name}: ${e.message}", e)
+            cachedFile.delete()
+            return false
+        } finally {
+            bitmap.recycle()
+        }
+        if (!isValidImageFile(cachedFile)) {
+            cachedFile.delete()
+            Log.w(TAG, "Deleted newly cached invalid screenshot: ${cachedFile.name}")
+            return false
+        }
+        Log.d(TAG, "Cached screenshot ${cachedFile.name}: ${cachedFile.length() / 1024}KB")
+        return true
     }
 
     suspend fun cacheSingleScreenshot(gameId: Long, url: String, index: Int): String? {
@@ -917,17 +1028,16 @@ class ImageCacheManager @Inject constructor(
         val fileName = "ss_g${gameId}_${index}_${url.md5Hash()}.jpg"
         val cachedFile = File(platformDir(slug, "screenshots"), fileName)
 
-        if (cachedFile.exists() && isValidImageFile(cachedFile)) {
-            return cachedFile.absolutePath
+        if (!cachedFile.exists() || !isValidImageFile(cachedFile)) {
+            val bitmap = downloadAndResize(url, 480) ?: return null
+            FileOutputStream(cachedFile).use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, out)
+            }
+            bitmap.recycle()
+            if (!isValidImageFile(cachedFile)) return null
         }
-
-        val bitmap = downloadAndResize(url, 480) ?: return null
-        FileOutputStream(cachedFile).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 75, out)
-        }
-        bitmap.recycle()
-
-        return if (isValidImageFile(cachedFile)) cachedFile.absolutePath else null
+        gameScreenshotDao.setCached(gameId, index, cachedFile.absolutePath, url)
+        return cachedFile.absolutePath
     }
 
     private fun startScreenshotProcessingIfNeeded() {
@@ -964,8 +1074,8 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun updateScreenshotProgressFromDb(isProcessing: Boolean) {
-        val total = gameDao.countGamesWithScreenshots()
-        val cached = gameDao.countGamesWithCachedScreenshots()
+        val total = gameScreenshotDao.countWithSource()
+        val cached = gameScreenshotDao.countCached()
         _screenshotProgress.value = _screenshotProgress.value.copy(
             isProcessing = isProcessing,
             cachedCount = cached,
@@ -974,43 +1084,7 @@ class ImageCacheManager @Inject constructor(
     }
 
     private suspend fun processScreenshotRequest(request: ScreenshotCacheRequest) {
-        val cachedPaths = mutableListOf<String>()
-        val slug = resolveRommPlatformSlug(request.rommId)
-
-        request.screenshotUrls.forEachIndexed { index, url ->
-            val fileName = "ss_${request.rommId}_${index}_${url.md5Hash()}.jpg"
-            val cachedFile = File(platformDir(slug, "screenshots"), fileName)
-
-            if (cachedFile.exists()) {
-                if (isValidImageFile(cachedFile)) {
-                    cachedPaths.add(cachedFile.absolutePath)
-                    return@forEachIndexed
-                } else {
-                    cachedFile.delete()
-                    Log.w(TAG, "Deleted invalid cached screenshot: ${cachedFile.name}")
-                }
-            }
-
-            val bitmap = downloadAndResize(url, 480) ?: return@forEachIndexed
-
-            FileOutputStream(cachedFile).use { out ->
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, out)
-            }
-            bitmap.recycle()
-
-            if (!isValidImageFile(cachedFile)) {
-                cachedFile.delete()
-                Log.w(TAG, "Deleted newly cached invalid screenshot: ${cachedFile.name}")
-                return@forEachIndexed
-            }
-
-            Log.d(TAG, "Cached screenshot $index for rommId ${request.rommId}: ${cachedFile.length() / 1024}KB")
-            cachedPaths.add(cachedFile.absolutePath)
-        }
-
-        if (cachedPaths.isNotEmpty()) {
-            gameDao.updateCachedScreenshotPaths(request.gameId, cachedPaths.joinToString(","))
-        }
+        cacheScreenshotRows(request.gameId, "ss_${request.rommId}", maxWidth = 480, quality = 75)
     }
 
     suspend fun userScreenshotTargetFile(rommId: Long, screenshotId: Long, version: String): File {
@@ -1024,20 +1098,25 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
+    /**
+     * Queues every RomM game holding a screenshot whose cached file does not come from its source
+     * url. Rows cached before `cachedFromUrl` existed are matched by file name first and only
+     * queued when the name does not carry the source url's hash.
+     */
     fun resumePendingScreenshotCache() {
         scope.launch {
-            val uncached = gameDao.getGamesWithUncachedScreenshots()
-            if (uncached.isEmpty()) return@launch
-
-            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached screenshots")
-            uncached.forEach { game ->
-                val urls = game.screenshotPaths?.split(",") ?: return@forEach
-                val rommId = game.rommId ?: return@forEach
-                queueScreenshotCache(game.id, rommId, urls, game.title)
+            val (backfill, stale) = gameScreenshotDao.getPending().partition {
+                canBackfillCachedFromUrl(it.cachedPath, it.cachedFromUrl, it.sourceUrl)
+            }
+            if (backfill.isNotEmpty()) gameScreenshotDao.backfillCachedFromUrls(backfill)
+            val queued = stale.distinctBy { it.gameId }.mapNotNull { row ->
+                row.rommId?.let { rommId -> queueScreenshotCache(row.gameId, rommId, row.title) }
+            }
+            if (backfill.isNotEmpty() || queued.isNotEmpty()) {
+                Log.i(TAG, "Pending screenshots: ${backfill.size} matched by name, ${queued.size} games queued")
             }
         }
     }
-
     fun queuePlatformLogoCache(platformId: Long, logoUrl: String) {
         scope.launch {
             logoQueue.send(PlatformLogoCacheRequest(platformId, logoUrl))
@@ -1162,7 +1241,7 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    enum class BoxFace { BACK, SPINE, LOGO }
+    enum class BoxFace { BACK, SPINE, LOGO, BOX_3D }
 
     fun queueCoverCache(url: String, rommId: Long, gameTitle: String = "") =
         queueCoverCache(listOf(url), rommId, gameTitle)
@@ -1199,9 +1278,6 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    fun queueBoxFaceCache(url: String, rommId: Long, gameTitle: String = "", face: BoxFace) =
-        queueBoxFaceCache(listOf(url), rommId, gameTitle, face)
-
     fun queueBoxFaceCache(urls: List<String>, rommId: Long, gameTitle: String = "", face: BoxFace) {
         if (urls.isEmpty()) return
         scope.launch {
@@ -1215,6 +1291,15 @@ class ImageCacheManager @Inject constructor(
             BoxFace.BACK -> ImageType.BOX_BACK
             BoxFace.SPINE -> ImageType.BOX_SPINE
             BoxFace.LOGO -> ImageType.LOGO
+            BoxFace.BOX_3D -> ImageType.BOX_3D
+        }
+
+    private val ImageType.boxFaceSlot: ArtSlot
+        get() = when (this) {
+            ImageType.LOGO -> ArtSlot.LOGO
+            ImageType.BOX_3D -> ArtSlot.BOX_3D
+            ImageType.BOX_BACK -> ArtSlot.BOX_BACK
+            else -> ArtSlot.BOX_SPINE
         }
 
     fun queueCoverCacheByGameId(url: String, gameId: Long) =
@@ -1244,10 +1329,7 @@ class ImageCacheManager @Inject constructor(
                         currentGameTitle = request.gameTitle,
                         currentType = "cover"
                     )
-                    when (request.type) {
-                        ImageType.BOX_BACK, ImageType.BOX_SPINE, ImageType.LOGO -> processBoxFaceRequest(request)
-                        else -> processCoverRequest(request)
-                    }
+                    if (request.type.isBoxFace) processBoxFaceRequest(request) else processCoverRequest(request)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to process cover for ${request.id}: ${e.message}")
                 }
@@ -1273,15 +1355,13 @@ class ImageCacheManager @Inject constructor(
         request.revalidateFrom?.let { cachedPath ->
             revalidateCachedArt(
                 request, File(cachedPath), coverDir, prefix,
-                store = { path -> storeReplacedCover(request, path) },
-                replace = { processCoverRequest(request.copy(revalidateFrom = null), replacing = true) }
+                store = { path -> storeCachedArt(request, ArtSlot.COVER, path) },
+                replace = { processCoverRequest(request.copy(revalidateFrom = null), replacing = true) },
+                drop = { dropCachedArt(request, ArtSlot.COVER) }
             )
             return
         }
-        val currentDbPath = game?.coverPath
-        if (!replacing && currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
-            return
-        }
+        if (!replacing && isCachedFromSource(request, ArtSlot.COVER)) return
         val idLabel = if (isGameIdRequest) "gameId ${request.gameId}" else "rommId ${request.id}"
 
         for ((index, url) in request.urls.withIndex()) {
@@ -1292,8 +1372,8 @@ class ImageCacheManager @Inject constructor(
 
             if (existingFile != null) {
                 if (isValidImageFile(existingFile)) {
-                    commitCover(request, existingFile.absolutePath, replacing)
-                    pruneReplacedArt(coverDir, prefix, existingFile, storedArtPath(request) { it.coverPath })
+                    storeCachedArt(request, ArtSlot.COVER, existingFile.absolutePath)
+                    pruneReplacedArt(coverDir, prefix, existingFile, storedArtPath(request, ArtSlot.COVER))
                     return
                 }
                 existingFile.delete()
@@ -1314,8 +1394,8 @@ class ImageCacheManager @Inject constructor(
             }
 
             Log.d(TAG, "Cached cover for $idLabel: ${cachedFile.length() / 1024}KB")
-            commitCover(request, cachedFile.absolutePath, replacing)
-            pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request) { it.coverPath })
+            storeCachedArt(request, ArtSlot.COVER, cachedFile.absolutePath)
+            pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request, ArtSlot.COVER))
             return
         }
 
@@ -1327,8 +1407,8 @@ class ImageCacheManager @Inject constructor(
             }
             if (cachedFile != null) {
                 Log.d(TAG, "Cached steam fallback cover for $idLabel: ${cachedFile.length() / 1024}KB")
-                commitCover(request, cachedFile.absolutePath, replacing)
-                pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request) { it.coverPath })
+                storeCachedArt(request, ArtSlot.COVER, cachedFile.absolutePath)
+                pruneReplacedArt(coverDir, prefix, cachedFile, storedArtPath(request, ArtSlot.COVER))
                 return
             }
         }
@@ -1355,19 +1435,17 @@ class ImageCacheManager @Inject constructor(
         return cachedFile
     }
 
-    private suspend fun commitCover(request: ImageCacheRequest, localPath: String, replacing: Boolean) {
-        if (replacing) storeReplacedCover(request, localPath) else applyCachedCover(request, localPath)
+    private suspend fun storeCachedArt(request: ImageCacheRequest, slot: ArtSlot, localPath: String) {
+        val game = storedGame(request) ?: return
+        gameArtDao.setCached(game.id, slot, localPath, request.urls.firstOrNull())
     }
 
-    private suspend fun storeReplacedCover(request: ImageCacheRequest, localPath: String) {
-        val game = storedGame(request) ?: return
-        gameDao.updateCoverPath(game.id, localPath)
-        if (game.coverOverridePath == null) _localCoverWritten.tryEmit(game.id to localPath)
-    }
-
-    private suspend fun storeReplacedBackground(request: ImageCacheRequest, localPath: String) {
-        val game = storedGame(request) ?: return
-        gameDao.updateBackgroundPath(game.id, localPath)
+    private suspend fun isCachedFromSource(request: ImageCacheRequest, slot: ArtSlot): Boolean {
+        val source = request.urls.firstOrNull() ?: return false
+        val game = storedGame(request) ?: return false
+        val row = gameArtDao.get(game.id, slot.name) ?: return false
+        val cachedPath = row.cachedPath ?: return false
+        return row.cachedFromUrl == source && File(cachedPath).exists()
     }
 
     private suspend fun storedGame(request: ImageCacheRequest) = when {
@@ -1382,16 +1460,22 @@ class ImageCacheManager @Inject constructor(
         dir: File,
         prefix: String,
         store: suspend (String) -> Unit,
-        replace: suspend () -> Unit
+        replace: suspend () -> Unit,
+        drop: suspend () -> Unit
     ) {
         if (!cached.exists()) {
             replace()
             return
         }
-        val answer = firstAnsweringCandidate(request.urls)
-        when (cachedArtDecision(cached.lastModified(), answer?.second)) {
+        val check = checkCandidates(request.urls)
+        val answer = check.answer
+        when (cachedArtDecision(cached.lastModified(), answer?.second, check.everyCandidateGone)) {
             CachedArtDecision.SKIP ->
                 Logger.info(TAG, "No art candidate answered for ${request.id}, keeping ${cached.name}")
+            CachedArtDecision.DROP -> {
+                Logger.info(TAG, "Art for ${request.id} is gone from the server, dropping ${cached.name}")
+                drop()
+            }
             CachedArtDecision.REPLACE -> replace()
             CachedArtDecision.KEEP_AND_RENAME -> {
                 val url = answer?.first ?: return
@@ -1403,66 +1487,74 @@ class ImageCacheManager @Inject constructor(
         }
     }
 
-    private fun firstAnsweringCandidate(urls: List<String>): Pair<String, Long>? {
+    private class CandidateCheck(val answer: Pair<String, Long>?, val everyCandidateGone: Boolean)
+
+    private fun checkCandidates(urls: List<String>): CandidateCheck {
+        var everyCandidateGone = urls.isNotEmpty()
         for (url in urls) {
             if (missingArt.isKnownMissing(url)) continue
-            val modified = serverLastModified(url) ?: continue
-            return url to modified
+            when (val head = serverHead(url)) {
+                is ServerHead.Modified -> return CandidateCheck(url to head.at, everyCandidateGone = false)
+                ServerHead.Gone -> Unit
+                ServerHead.Unknown -> everyCandidateGone = false
+            }
         }
-        return null
+        return CandidateCheck(null, everyCandidateGone)
     }
 
-    private fun serverLastModified(url: String): Long? = try {
+    private sealed interface ServerHead {
+        class Modified(val at: Long) : ServerHead
+        data object Gone : ServerHead
+        data object Unknown : ServerHead
+    }
+
+    private fun serverHead(url: String): ServerHead = try {
         val connection = URL(url).openConnection() as java.net.HttpURLConnection
         try {
             connection.requestMethod = "HEAD"
             connection.connectTimeout = 10_000
             connection.readTimeout = 10_000
             when (val status = connection.responseCode) {
-                in 200..299 -> connection.lastModified
+                in 200..299 -> ServerHead.Modified(connection.lastModified)
                 java.net.HttpURLConnection.HTTP_NOT_FOUND, java.net.HttpURLConnection.HTTP_GONE -> {
                     missingArt.markMissing(url)
                     Logger.warn(TAG, "Image not on the server ($status), skipping it for a while: $url")
-                    null
+                    ServerHead.Gone
                 }
-                else -> null
+                else -> ServerHead.Unknown
             }
         } finally {
             connection.disconnect()
         }
     } catch (e: Exception) {
         Logger.warn(TAG, "Could not check cached art against the server: ${e.message}")
-        null
+        ServerHead.Unknown
     }
 
-    private suspend fun applyCachedCover(request: ImageCacheRequest, localPath: String) {
-        if (request.gameId != null) {
-            gameDao.updateCoverPath(request.gameId, localPath)
-            if (gameDao.getById(request.gameId)?.coverOverridePath == null) {
-                _localCoverWritten.tryEmit(request.gameId to localPath)
-            }
-        } else {
-            updateGameCover(request.id, localPath)
-        }
+    private suspend fun dropCachedArt(request: ImageCacheRequest, slot: ArtSlot) {
+        val game = storedGame(request) ?: return
+        gameArtDao.clearCached(game.id, slot)
     }
 
     private suspend fun processBoxFaceRequest(request: ImageCacheRequest) {
-        val game = gameDao.getByRommId(request.id) ?: return
-        val currentDbPath = boxFacePath(game, request.type)
-        if (currentDbPath != null && currentDbPath.startsWith("/") && File(currentDbPath).exists()) {
-            return
-        }
+        if (isCachedFromSource(request, request.type.boxFaceSlot)) return
         val prefix = when (request.type) {
             ImageType.BOX_BACK -> "box_back_${request.id}"
             ImageType.LOGO -> "game_logo_${request.id}"
+            ImageType.BOX_3D -> "box_3d_${request.id}"
             else -> "box_spine_${request.id}"
         }
-        val maxWidth = if (request.type == ImageType.LOGO) LOGO_MAX_WIDTH else BOX_FACE_MAX_WIDTH
+        val maxWidth = when (request.type) {
+            ImageType.LOGO -> LOGO_MAX_WIDTH
+            ImageType.BOX_3D -> BOX_3D_MAX_WIDTH
+            else -> BOX_FACE_MAX_WIDTH
+        }
         val slug = resolveRommPlatformSlug(request.id)
         val coverDir = platformDir(slug, "covers")
         val kind = when (request.type) {
             ImageType.BOX_BACK -> "box back"
             ImageType.LOGO -> "logo"
+            ImageType.BOX_3D -> "3d box"
             else -> "box spine"
         }
         val idLabel = "rommId ${request.id}"
@@ -1475,7 +1567,7 @@ class ImageCacheManager @Inject constructor(
 
             if (existingFile != null) {
                 if (isValidImageFile(existingFile)) {
-                    updateGameBoxFace(request.id, request.type, existingFile.absolutePath)
+                    updateGameBoxFace(request, existingFile.absolutePath)
                     return
                 }
                 existingFile.delete()
@@ -1495,29 +1587,16 @@ class ImageCacheManager @Inject constructor(
             }
 
             Log.d(TAG, "Cached box face ${cachedFile.name} for $idLabel")
-            updateGameBoxFace(request.id, request.type, cachedFile.absolutePath)
+            updateGameBoxFace(request, cachedFile.absolutePath)
             return
         }
 
         logAllCandidatesRejected(kind, idLabel, request)
     }
 
-    private fun boxFacePath(game: com.nendo.argosy.data.local.entity.GameEntity, type: ImageType): String? =
-        when (type) {
-            ImageType.BOX_BACK -> game.boxBackPath
-            ImageType.LOGO -> game.logoPath
-            else -> game.boxSpinePath
-        }
-
-    private suspend fun updateGameBoxFace(rommId: Long, type: ImageType, localPath: String) {
-        val game = gameDao.getByRommId(rommId) ?: return
-        val current = boxFacePath(game, type)
-        if (current?.startsWith("/") == true && File(current).exists()) return
-        when (type) {
-            ImageType.BOX_BACK -> gameDao.updateBoxBackPath(game.id, localPath)
-            ImageType.LOGO -> gameDao.updateLogoPath(game.id, localPath)
-            else -> gameDao.updateBoxSpinePath(game.id, localPath)
-        }
+    private suspend fun updateGameBoxFace(request: ImageCacheRequest, localPath: String) {
+        val game = gameDao.getByRommId(request.id) ?: return
+        gameArtDao.setCached(game.id, request.type.boxFaceSlot, localPath, request.urls.firstOrNull())
     }
 
     /**
@@ -1531,9 +1610,10 @@ class ImageCacheManager @Inject constructor(
         gameTitle: String,
         coverUrls: List<String>,
         backgroundUrls: List<String>,
-        boxBackUrl: String?,
-        boxSpineUrl: String?,
-        logoUrls: List<String> = emptyList()
+        boxBackUrls: List<String> = emptyList(),
+        boxSpineUrls: List<String> = emptyList(),
+        logoUrls: List<String> = emptyList(),
+        box3dUrls: List<String> = emptyList()
     ): CachedGameImages = withContext(Dispatchers.IO) {
         if (coverUrls.isNotEmpty()) {
             processCoverRequest(ImageCacheRequest(coverUrls, rommId, ImageType.COVER, gameTitle, isSteam = false))
@@ -1541,41 +1621,24 @@ class ImageCacheManager @Inject constructor(
         if (backgroundUrls.isNotEmpty()) {
             processRequest(ImageCacheRequest(backgroundUrls, rommId, ImageType.BACKGROUND, gameTitle, isSteam = false))
         }
-        boxBackUrl?.let { processBoxFaceRequest(ImageCacheRequest(it, rommId, ImageType.BOX_BACK, gameTitle, isSteam = false)) }
-        boxSpineUrl?.let { processBoxFaceRequest(ImageCacheRequest(it, rommId, ImageType.BOX_SPINE, gameTitle, isSteam = false)) }
-        if (logoUrls.isNotEmpty()) {
-            processBoxFaceRequest(ImageCacheRequest(logoUrls, rommId, ImageType.LOGO, gameTitle, isSteam = false))
+        listOf(
+            ImageType.BOX_BACK to boxBackUrls,
+            ImageType.BOX_SPINE to boxSpineUrls,
+            ImageType.LOGO to logoUrls,
+            ImageType.BOX_3D to box3dUrls
+        ).forEach { (type, urls) ->
+            if (urls.isNotEmpty()) {
+                processBoxFaceRequest(ImageCacheRequest(urls, rommId, type, gameTitle, isSteam = false))
+            }
         }
 
         val game = gameDao.getByRommId(rommId)
+        val art = game?.let { gameArtDao.getForGame(it.id) }.orEmpty().associateBy { it.slot }
         CachedGameImages(
-            coverPath = game?.coverPath,
-            backgroundPath = game?.backgroundPath,
-            boxBackPath = game?.boxBackPath,
-            boxSpinePath = game?.boxSpinePath,
-            logoPath = game?.logoPath
+            coverPath = art[ArtSlot.COVER.name]?.cachedPath,
+            backgroundPath = art[ArtSlot.BACKGROUND.name]?.cachedPath,
+            logoPath = art[ArtSlot.LOGO.name]?.cachedPath
         )
-    }
-
-    fun resumePendingBoxFaceCache() {
-        scope.launch {
-            val uncached = gameDao.getGamesWithUncachedBoxFaces()
-            if (uncached.isEmpty()) return@launch
-
-            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached box faces")
-            uncached.forEach { game ->
-                val rommId = game.rommId ?: return@forEach
-                game.boxBackPath?.takeIf { it.startsWith("http") }?.let {
-                    queueBoxFaceCache(it, rommId, game.title, BoxFace.BACK)
-                }
-                game.boxSpinePath?.takeIf { it.startsWith("http") }?.let {
-                    queueBoxFaceCache(it, rommId, game.title, BoxFace.SPINE)
-                }
-                game.logoPath?.takeIf { it.startsWith("http") }?.let {
-                    queueBoxFaceCache(it, rommId, game.title, BoxFace.LOGO)
-                }
-            }
-        }
     }
 
     private fun downloadSteamCoverFallback(steamAppId: Long): Bitmap? {
@@ -1611,14 +1674,9 @@ class ImageCacheManager @Inject constructor(
         }
 
     suspend fun clearArtOverride(gameId: Long, slot: ArtSlot): Unit = withContext(Dispatchers.IO) {
-        val game = gameDao.getById(gameId) ?: return@withContext
-        val previous = game.overridePath(slot) ?: return@withContext
-        gameDao.clearArtOverride(gameId, slot)
+        val previous = gameArtDao.get(gameId, slot.name)?.overridePath ?: return@withContext
+        gameArtDao.clearOverride(gameId, slot)
         deleteOverrideFile(previous)
-        val sourceCover = game.coverPath
-        if (slot == ArtSlot.COVER && sourceCover?.startsWith("/") == true) {
-            _localCoverWritten.tryEmit(gameId to sourceCover)
-        }
     }
 
     private suspend fun storeArtOverride(
@@ -1640,7 +1698,8 @@ class ImageCacheManager @Inject constructor(
                 ArtSlot.BACKGROUND -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.jpg"), Bitmap.CompressFormat.JPEG, BACKGROUND_JPEG_QUALITY
                 )
-                ArtSlot.LOGO -> writeValidatedBitmap(
+                ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> writeCoverBitmap(bitmap, dir, baseName)
+                ArtSlot.LOGO, ArtSlot.BOX_3D -> writeValidatedBitmap(
                     bitmap, File(dir, "$baseName.png"), Bitmap.CompressFormat.PNG, 100
                 )
             }
@@ -1650,10 +1709,9 @@ class ImageCacheManager @Inject constructor(
         }
         val file = written ?: return false
 
-        val previous = game.overridePath(slot)
-        gameDao.setArtOverride(gameId, slot, file.absolutePath)
+        val previous = gameArtDao.get(gameId, slot.name)?.overridePath
+        gameArtDao.setOverride(gameId, slot, file.absolutePath)
         if (previous != null && previous != file.absolutePath) deleteOverrideFile(previous)
-        if (slot == ArtSlot.COVER) _localCoverWritten.tryEmit(gameId to file.absolutePath)
         return true
     }
 
@@ -1675,10 +1733,10 @@ class ImageCacheManager @Inject constructor(
         return target
     }
 
-    private suspend fun storedArtPath(
-        request: ImageCacheRequest,
-        path: (com.nendo.argosy.data.local.entity.GameEntity) -> String?
-    ): String? = storedGame(request)?.let(path)
+    private suspend fun storedArtPath(request: ImageCacheRequest, slot: ArtSlot): String? {
+        val game = storedGame(request) ?: return null
+        return gameArtDao.get(game.id, slot.name)?.cachedPath
+    }
 
     private fun pruneReplacedArt(dir: File, prefix: String, kept: File, storedPath: String?) {
         val keep = setOfNotNull(kept.absolutePath, storedPath)
@@ -1705,11 +1763,13 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.COVER -> COVER_MAX_WIDTH
             ArtSlot.BACKGROUND -> BACKGROUND_MAX_WIDTH
             ArtSlot.LOGO -> LOGO_MAX_WIDTH
+            ArtSlot.BOX_3D -> BOX_3D_MAX_WIDTH
+            ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> BOX_FACE_MAX_WIDTH
         }
 
     private val ArtSlot.directoryName: String
         get() = when (this) {
-            ArtSlot.COVER -> "covers"
+            ArtSlot.COVER, ArtSlot.BOX_3D, ArtSlot.BOX_SPINE, ArtSlot.BOX_BACK -> "covers"
             ArtSlot.BACKGROUND -> "backgrounds"
             ArtSlot.LOGO -> "logos"
         }
@@ -1719,63 +1779,10 @@ class ImageCacheManager @Inject constructor(
             ArtSlot.COVER -> "cover_override_"
             ArtSlot.BACKGROUND -> "bg_override_"
             ArtSlot.LOGO -> "logo_override_"
+            ArtSlot.BOX_3D -> "box_3d_override_"
+            ArtSlot.BOX_SPINE -> "box_spine_override_"
+            ArtSlot.BOX_BACK -> "box_back_override_"
         }
-
-    private suspend fun updateGameCover(rommId: Long, localPath: String) {
-        val game = gameDao.getByRommId(rommId) ?: return
-        if (game.coverPath?.startsWith("/") == true && File(game.coverPath).exists()) return
-        gameDao.updateCoverPath(game.id, localPath)
-        if (game.coverOverridePath == null) _localCoverWritten.tryEmit(game.id to localPath)
-    }
-
-    fun resumePendingCoverCache() {
-        scope.launch {
-            val uncached = gameDao.getGamesWithUncachedCovers()
-            if (uncached.isEmpty()) return@launch
-
-            Log.d(TAG, "Resuming cache for ${uncached.size} games with uncached covers")
-            uncached.forEach { game ->
-                val url = game.coverPath ?: return@forEach
-                val rommId = game.rommId
-                if (rommId != null) {
-                    queueCoverCache(url, rommId, game.title)
-                } else {
-                    queueCoverCacheByGameId(url, game.id)
-                }
-            }
-        }
-    }
-
-    /**
-     * Re-derive a source for games left with no cover (e.g. a cover file truncated by an
-     * ungraceful power-off and then nulled by validation). Steam covers rebuild from the app id,
-     * Android from the launcher icon; RomM games self-heal on the next library sync.
-     */
-    fun recoverMissingCovers() {
-        scope.launch {
-            val games = gameDao.getGamesWithMissingCovers()
-            if (games.isEmpty()) return@launch
-
-            var recovered = 0
-            games.forEach { game ->
-                when {
-                    game.steamAppId != null -> {
-                        val url = "https://steamcdn-a.akamaihd.net/steam/apps/${game.steamAppId}/library_600x900.jpg"
-                        gameDao.updateCoverPath(game.id, url)
-                        queueCoverCacheByGameId(url, game.id)
-                        recovered++
-                    }
-                    game.source == GameSource.ANDROID_APP && game.packageName != null -> {
-                        queueAppIconCache(game.id, game.packageName)
-                        recovered++
-                    }
-                }
-            }
-            if (recovered > 0) {
-                Log.i(TAG, "Cover recovery: re-derived source for $recovered games with missing covers")
-            }
-        }
-    }
 
     private val badgeQueue = Channel<AchievementBadgeCacheRequest>(256)
     private var isProcessingBadges = false
@@ -1938,7 +1945,7 @@ class ImageCacheManager @Inject constructor(
 
         if (cachedFile.exists()) {
             if (isValidImageFile(cachedFile, minSizeBytes = 512)) {
-                gameDao.updateCoverPath(request.gameId, cachedFile.absolutePath)
+                gameArtDao.setCached(request.gameId, ArtSlot.COVER, cachedFile.absolutePath, null)
                 return
             } else {
                 cachedFile.delete()
@@ -1970,7 +1977,7 @@ class ImageCacheManager @Inject constructor(
         }
 
         Log.d(TAG, "Cached app icon for ${request.packageName}: ${cachedFile.length() / 1024}KB")
-        gameDao.updateCoverPath(request.gameId, cachedFile.absolutePath)
+        gameArtDao.setCached(request.gameId, ArtSlot.COVER, cachedFile.absolutePath, null)
     }
 
     private fun drawableToBitmap(drawable: Drawable, size: Int): Bitmap {
@@ -2054,19 +2061,22 @@ class ImageCacheManager @Inject constructor(
         val validatedThrough = if (force) 0L else marker.takeIf { it.exists() }?.lastModified() ?: 0L
         val sweepStartedAt = System.currentTimeMillis()
 
-        val files = withContext(Dispatchers.IO) {
+        val listed = withContext(Dispatchers.IO) {
             cacheDir.walk()
                 .filter { it.isFile && it.name != ".nomedia" && it.name != VALIDATION_MARKER }
-                .filter { it.lastModified() >= validatedThrough }
+                .map { ArtCacheFile(it.absolutePath, it.name, it.lastModified()) }
                 .toList()
         }
+        val files = listed.filter { it.lastModified >= validatedThrough }.map { File(it.path) }
         val totalFiles = files.size
         onProgress?.invoke("Checking $totalFiles cached files...", 0, totalFiles)
 
+        val invalid = HashSet<String>()
         withContext(Dispatchers.IO) {
             files.forEachIndexed { index, file ->
                 if (!isValidImageFile(file, minSizeBytes = 512)) {
                     file.delete()
+                    invalid += file.absolutePath
                     deleted++
                     Log.w(TAG, "Validation deleted invalid file: ${file.name}")
                 }
@@ -2080,42 +2090,27 @@ class ImageCacheManager @Inject constructor(
             }
         }
 
-        val infos = withContext(Dispatchers.IO) { gameDao.getAllImageCacheInfo() }
-        val totalGames = infos.size
-        onProgress?.invoke("Validating $totalGames game paths...", 0, totalGames)
-
         withContext(Dispatchers.IO) {
-            infos.forEachIndexed { index, info ->
-                if (info.coverPath != null && shouldClearMissingPath(info.coverPath, probe)) {
-                    gameDao.clearCoverPath(info.id)
-                    cleared++
-                }
-                if (info.backgroundPath != null && shouldClearMissingPath(info.backgroundPath, probe)) {
-                    gameDao.clearBackgroundPath(info.id)
-                    cleared++
-                }
-                for (slot in ArtSlot.entries) {
-                    val override = info.overridePath(slot) ?: continue
-                    if (shouldClearMissingPath(override, probe)) {
-                        gameDao.clearArtOverride(info.id, slot)
-                        cleared++
-                    }
-                }
-                if (info.cachedScreenshotPaths != null) {
-                    val paths = info.cachedScreenshotPaths.split(",")
-                    val validPaths = paths.filter { path -> !shouldClearMissingPath(path, probe) }
-                    if (validPaths.size != paths.size) {
-                        if (validPaths.isEmpty()) {
-                            gameDao.clearCachedScreenshotPaths(info.id)
-                        } else {
-                            gameDao.updateCachedScreenshotPaths(info.id, validPaths.joinToString(","))
-                        }
-                        cleared += paths.size - validPaths.size
-                    }
-                }
-                if (index % 100 == 0) {
-                    onProgress?.invoke("Validating game paths...", index, totalGames)
-                }
+            val screenshotPaths = gameScreenshotDao.getCached().mapNotNull { it.cachedPath }
+            val plan = planArtSweep(
+                listedFiles = listed.filterNot { it.path in invalid },
+                cachedPaths = gameArtDao.getAllCachedPaths() + screenshotPaths,
+                overridePaths = gameArtDao.getAllOverridePaths(),
+                recentCutoff = sweepStartedAt - SWEEP_RECENT_FILE_GRACE_MS
+            )
+            plan.orphanFiles.forEach { path ->
+                if (File(path).delete()) deleted++
+            }
+            val goneCached = plan.missingCachedPaths.filter { shouldClearMissingPath(it, probe) }
+            if (goneCached.isNotEmpty()) {
+                gameArtDao.clearCachedPathsChunked(goneCached)
+                gameScreenshotDao.clearCachedPathsChunked(goneCached)
+            }
+            val goneOverrides = plan.missingOverridePaths.filter { shouldClearMissingPath(it, probe) }
+            goneOverrides.chunked(ART_PATH_CHUNK).forEach { gameArtDao.clearOverridePaths(it) }
+            cleared += goneCached.size + goneOverrides.size
+            if (plan.orphanFiles.isNotEmpty()) {
+                Log.i(TAG, "Art sweep removed ${plan.orphanFiles.size} files no game references")
             }
         }
 
@@ -2165,12 +2160,12 @@ class ImageCacheManager @Inject constructor(
                 val steamAppId = name.removePrefix("cover_").removeSuffix(".jpg").toLongOrNull()
                     ?: return@forEach
                 val game = gameDao.getBySteamAppId(steamAppId) ?: return@forEach
-                if (game.coverPath != file.absolutePath) return@forEach
+                if (gameArtDao.get(game.id, ArtSlot.COVER.name)?.cachedPath != file.absolutePath) return@forEach
 
                 val hash = "legacy-igdb-$steamAppId".md5Hash()
                 val newFile = File(platformDir(game.platformSlug, "covers"), "cover_g${game.id}_$hash.jpg")
                 if (file.renameTo(newFile)) {
-                    gameDao.updateCoverPath(game.id, newFile.absolutePath)
+                    gameArtDao.relocateCachedPath(game.id, ArtSlot.COVER.name, file.absolutePath, newFile.absolutePath)
                     Log.i(TAG, "Migrated legacy IGDB cover for gameId=${game.id}")
                 }
             }
@@ -2296,57 +2291,15 @@ class ImageCacheManager @Inject constructor(
         val cachePath = cacheDir.absolutePath
         var updated = 0
 
-        gameDao.getAllImageCacheInfo().forEach { info ->
-            var changed = false
-            var newCoverPath = info.coverPath
-            var newBackgroundPath = info.backgroundPath
-            var newCachedScreenshotPaths = info.cachedScreenshotPaths
-
-            if (info.coverPath?.startsWith(cachePath) == true && !File(info.coverPath).exists()) {
-                val fileName = File(info.coverPath).name
-                val dest = resolveShardedDestination(fileName)
-                if (dest != null && dest.exists()) {
-                    newCoverPath = dest.absolutePath
-                    changed = true
-                }
+        updated += relocateArtPaths { path ->
+            if (path.startsWith(cachePath) && !File(path).exists()) {
+                resolveShardedDestination(File(path).name)
+                    ?.takeIf { it.exists() }
+                    ?.absolutePath
+                    ?: path
+            } else {
+                path
             }
-            if (info.backgroundPath?.startsWith(cachePath) == true && !File(info.backgroundPath).exists()) {
-                val fileName = File(info.backgroundPath).name
-                val dest = resolveShardedDestination(fileName)
-                if (dest != null && dest.exists()) {
-                    newBackgroundPath = dest.absolutePath
-                    changed = true
-                }
-            }
-            if (info.cachedScreenshotPaths?.contains(cachePath) == true) {
-                val paths = info.cachedScreenshotPaths.split(",")
-                val newPaths = paths.map { path ->
-                    if (path.startsWith(cachePath) && !File(path).exists()) {
-                        val fileName = File(path).name
-                        val dest = resolveShardedDestination(fileName)
-                        if (dest != null && dest.exists()) dest.absolutePath else path
-                    } else path
-                }
-                if (newPaths != paths) {
-                    newCachedScreenshotPaths = newPaths.joinToString(",")
-                    changed = true
-                }
-            }
-
-            if (changed) {
-                gameDao.updateImagePaths(info.id, newCoverPath, newBackgroundPath, newCachedScreenshotPaths)
-            }
-            val artChanged = writeRelocatedArtPaths(info) { path ->
-                if (path.startsWith(cachePath) && !File(path).exists()) {
-                    resolveShardedDestination(File(path).name)
-                        ?.takeIf { it.exists() }
-                        ?.absolutePath
-                        ?: path
-                } else {
-                    path
-                }
-            }
-            if (changed || artChanged) updated++
         }
 
         platformDao.getAllPlatforms().forEach { platform ->

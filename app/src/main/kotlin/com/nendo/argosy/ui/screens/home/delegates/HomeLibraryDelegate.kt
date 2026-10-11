@@ -5,6 +5,7 @@ import com.nendo.argosy.R
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.getDisplayName
 import com.nendo.argosy.data.model.GameSource
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.model.tieredByOwnership
 import com.nendo.argosy.data.emulator.EmulatorDetector
 import com.nendo.argosy.data.platform.LocalPlatformIds
@@ -180,12 +181,12 @@ class HomeLibraryDelegate @Inject constructor(
 
         val playableGames = if (installedOnly) filterPlayable(allCandidates) else allCandidates
         val sortedRecent = sortRecentGamesWithNewPriority(playableGames)
-        val validatedRecent = sortedRecent.take(RECENT_GAMES_LIMIT).map { it.toUi() }
+        val validatedRecent = sortedRecent.take(RECENT_GAMES_LIMIT).toUis()
         recentGamesCache.set(RecentGamesCache(validatedRecent, recentGamesCache.get().version))
 
         val platformUis = platforms.map { it.toHomePlatformUi(emulatorDetector) }
-        val favoriteUis = favorites.map { it.toUi() }
-        val androidGameUis = androidGames.map { it.toUi() }
+        val favoriteUis = favorites.toUis()
+        val androidGameUis = androidGames.toUis()
 
         val startRow = when {
             validatedRecent.isNotEmpty() -> HomeRow.Continue
@@ -242,7 +243,7 @@ class HomeLibraryDelegate @Inject constructor(
 
                 val playableGames = if (installedOnly) filterPlayable(allCandidates) else allCandidates
                 val sorted = sortRecentGamesWithNewPriority(playableGames)
-                val validated = sorted.take(RECENT_GAMES_LIMIT).map { it.toUi() }
+                val validated = sorted.take(RECENT_GAMES_LIMIT).toUis()
 
                 recentGamesCache.set(RecentGamesCache(validated, recentGamesCache.get().version))
                 _state.update { it.copy(recentGames = validated) }
@@ -285,7 +286,7 @@ class HomeLibraryDelegate @Inject constructor(
 
             val playableGames = if (installedOnly) filterPlayable(allCandidates) else allCandidates
             val sorted = sortRecentGamesWithNewPriority(playableGames)
-            val validated = sorted.take(RECENT_GAMES_LIMIT).map { it.toUi() }
+            val validated = sorted.take(RECENT_GAMES_LIMIT).toUis()
 
             recentGamesCache.compareAndSet(
                 RecentGamesCache(null, startVersion),
@@ -306,7 +307,7 @@ class HomeLibraryDelegate @Inject constructor(
         if (installedOnly) {
             games = filterPlayable(games)
         }
-        val gameUis = games.map { it.toUi() }
+        val gameUis = games.toUis()
         _state.update { it.copy(favoriteGames = gameUis) }
     }
 
@@ -324,7 +325,7 @@ class HomeLibraryDelegate @Inject constructor(
 
             applyPenaltiesToDisplayed(displayedGames.map { it.id })
 
-            val gameUis = displayedGames.map { it.toUi() }
+            val gameUis = displayedGames.toUis()
             _state.update { it.copy(recommendedGames = gameUis) }
         }
     }
@@ -342,7 +343,7 @@ class HomeLibraryDelegate @Inject constructor(
 
                 applyPenaltiesToDisplayed(displayedGames.map { it.id })
 
-                val gameUis = displayedGames.map { it.toUi() }
+                val gameUis = displayedGames.toUis()
                 _state.update { it.copy(recommendedGames = gameUis) }
                 notificationManager.showSuccess(
                     NotificationText.Res(R.string.home_notice_recommendations_updated)
@@ -376,7 +377,7 @@ class HomeLibraryDelegate @Inject constructor(
             if (ids.isNotEmpty()) {
                 val games = gameRepository.getByIds(ids)
                 val orderedGames = ids.mapNotNull { id -> games.find { it.id == id } }
-                _state.update { it.copy(recommendedGames = orderedGames.map { g -> g.toUi() }) }
+                _state.update { it.copy(recommendedGames = orderedGames.toUis()) }
             }
         }
     }
@@ -389,7 +390,7 @@ class HomeLibraryDelegate @Inject constructor(
         val platformUis = platforms.map { it.toHomePlatformUi(emulatorDetector) }
         val androidGames = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_ROW_LIMIT)
             .let { if (installedOnly) filterPlayable(it) else it }
-        val androidGameUis = androidGames.map { it.toUi() }
+        val androidGameUis = androidGames.toUis()
         val steamGameUis = loadSteamRow(installedOnly)
         _state.update { state ->
             val sameRows = state.platforms.map { it.id } == platformUis.map { it.id }
@@ -416,7 +417,7 @@ class HomeLibraryDelegate @Inject constructor(
             showsEveryGame = showsEveryGame,
             installedOnly = prefs.installedOnlyHome,
             publishLeadingPage = _state.value.platformItemsFor != platform.id,
-            toUi = { it.toUi() },
+            toUi = { game, art -> game.toUi(art) },
             publish = { games, complete ->
                 publishPlatformItems(platform, games, complete, showsEveryGame, generation)
             }
@@ -457,7 +458,7 @@ class HomeLibraryDelegate @Inject constructor(
         if (installedOnly) {
             games = filterPlayable(games)
         }
-        val gameUis = games.map { it.toUi() }
+        val gameUis = games.toUis()
         _state.update { state ->
             state.copy(
                 pinnedGames = state.pinnedGames + (pinId to gameUis),
@@ -474,7 +475,7 @@ class HomeLibraryDelegate @Inject constructor(
                 if (installedOnly) {
                     games = filterPlayable(games)
                 }
-                val gameUis = games.map { it.toUi() }
+                val gameUis = games.toUis()
                 _state.update { it.copy(favoriteGames = gameUis) }
                 RefreshResult(gameUis.map { it.id }, isEmpty = gameUis.isEmpty())
             }
@@ -488,7 +489,7 @@ class HomeLibraryDelegate @Inject constructor(
 
                 val playableGames = if (installedOnly) filterPlayable(allCandidates) else allCandidates
                 val sorted = sortRecentGamesWithNewPriority(playableGames)
-                val validated = sorted.take(RECENT_GAMES_LIMIT).map { it.toUi() }
+                val validated = sorted.take(RECENT_GAMES_LIMIT).toUis()
 
                 val currentCache = recentGamesCache.get()
                 recentGamesCache.compareAndSet(
@@ -513,7 +514,7 @@ class HomeLibraryDelegate @Inject constructor(
                 val installedOnly = preferencesRepository.userPreferences.first().installedOnlyHome
                 val games = gameRepository.getByPlatformSorted(LocalPlatformIds.ANDROID, limit = PLATFORM_ROW_LIMIT)
                     .let { if (installedOnly) filterPlayable(it) else it }
-                val gameUis = games.map { it.toUi() }
+                val gameUis = games.toUis()
                 _state.update { it.copy(androidGames = gameUis) }
                 RefreshResult(gameUis.map { it.id }, isEmpty = gameUis.isEmpty())
             }
@@ -613,7 +614,7 @@ class HomeLibraryDelegate @Inject constructor(
         if (installedOnly) {
             games = filterPlayable(games)
         }
-        val gameUis = games.map { it.toUi() }
+        val gameUis = games.toUis()
         _state.update { state ->
             state.copy(
                 pinnedGames = state.pinnedGames + (pinned.id to gameUis),
@@ -682,12 +683,14 @@ class HomeLibraryDelegate @Inject constructor(
         val matches = gameRepository
             .searchInstalled(query.trim(), TILE_PICKER_LIMIT)
             .first()
-        return filterPlayable(matches).map { game ->
+        val playable = filterPlayable(matches)
+        val art = gameRepository.getArt(playable.map { it.id })
+        return playable.map { game ->
             com.nendo.argosy.ui.components.TilePickerEntry(
                 target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(game.id),
                 title = game.title,
                 subtitle = cachedPlatformDisplayNames[game.platformId].orEmpty(),
-                coverPath = game.displayCoverPath
+                coverPath = art[game.id]?.coverPath
             )
         }
     }
@@ -697,11 +700,12 @@ class HomeLibraryDelegate @Inject constructor(
      * to the device the way [searchInstalledForTiles] is: progress belongs to the account, not to
      * the file, so the picker offers the whole library with installed games first.
      */
-    suspend fun searchRaCompatibleForTiles(query: String): List<com.nendo.argosy.ui.components.TilePickerEntry> =
-        gameRepository
+    suspend fun searchRaCompatibleForTiles(query: String): List<com.nendo.argosy.ui.components.TilePickerEntry> {
+        val games = gameRepository
             .searchRaCompatible(query.trim(), TILE_PICKER_LIMIT)
             .first()
-            .map { game ->
+        val art = gameRepository.getArt(games.map { it.id })
+        return games.map { game ->
                 com.nendo.argosy.ui.components.TilePickerEntry(
                     target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(game.id),
                     title = game.title,
@@ -711,10 +715,11 @@ class HomeLibraryDelegate @Inject constructor(
                         game.earnedAchievementCount,
                         game.achievementCount
                     ),
-                    coverPath = game.displayCoverPath,
+                    coverPath = art[game.id]?.coverPath,
                     isLocal = game.isDownloaded
                 )
             }
+    }
 
     /**
      * Collections and apps a tile can point at. Both are small enough to list whole, so they are
@@ -811,7 +816,7 @@ class HomeLibraryDelegate @Inject constructor(
             target = com.nendo.argosy.domain.model.HomeTileTargetRef.Game(game.id),
             title = game.title,
             subtitle = cachedPlatformDisplayNames[game.platformId].orEmpty(),
-            coverPath = game.displayCoverPath
+            coverPath = gameRepository.getArt(game.id).coverPath
         )
     }
 
@@ -821,7 +826,7 @@ class HomeLibraryDelegate @Inject constructor(
      */
     suspend fun resolveTileGames(gameIds: List<Long>): Map<Long, HomeGameUi> {
         if (gameIds.isEmpty()) return emptyMap()
-        return gameRepository.getByIds(gameIds).associate { it.id to it.toUi() }
+        return gameRepository.getByIds(gameIds).toUis().associateBy { it.id }
     }
 
     suspend fun platformOptionsForTiles(): List<com.nendo.argosy.ui.components.FeatureSetupOption> =
@@ -836,11 +841,18 @@ class HomeLibraryDelegate @Inject constructor(
             }
             .sortedBy { it.label }
 
-    private suspend fun GameEntity.toUi(): HomeGameUi = toHomeGameUi(
+    private suspend fun GameEntity.toUi(art: ResolvedGameArt?): HomeGameUi = toHomeGameUi(
         downloadStatus = downloadFileStatusRepository,
+        art = art,
+        firstScreenshotUrl = null,
         platformDisplayName = cachedPlatformDisplayNames[platformId],
         gradientColors = gradientExtractionDelegate.getGradient(id)
     )
+
+    private suspend fun List<GameEntity>.toUis(): List<HomeGameUi> {
+        val art = gameRepository.getArt(map { it.id })
+        return map { it.toUi(art[it.id]) }
+    }
 
     private suspend fun loadSteamRow(installedOnly: Boolean): List<HomeGameUi> {
         val candidates = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_ROW_LIMIT)
@@ -848,7 +860,7 @@ class HomeLibraryDelegate @Inject constructor(
             candidates.forEach { steamPathResolver.isGameInstalled(it) }
         }
         val games = gameRepository.getByPlatformSorted(LocalPlatformIds.STEAM, limit = PLATFORM_ROW_LIMIT)
-            .map { it.toUi() }
+            .toUis()
         val shown = if (installedOnly) games.filter { it.isDownloaded } else games
         return tieredByOwnership(shown, HomeGameUiSortProps)
     }

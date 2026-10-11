@@ -4,6 +4,7 @@ import android.content.Context
 import com.nendo.argosy.data.local.dao.GameDao
 import com.nendo.argosy.data.local.dao.PendingSyncQueueDao
 import com.nendo.argosy.data.local.dao.SaveCacheDao
+import com.nendo.argosy.data.local.dao.resolved
 import com.nendo.argosy.data.local.entity.PendingSyncQueueEntity
 import com.nendo.argosy.data.local.entity.SaveCacheEntity
 import com.nendo.argosy.data.local.entity.SaveSyncEntity
@@ -67,7 +68,9 @@ class SyncCoordinator @Inject constructor(
     private val accountSwitchMarkerStore: com.nendo.argosy.data.preferences.AccountSwitchMarkerStore,
     private val syncStatesOnSessionEndUseCase:
         Lazy<com.nendo.argosy.domain.usecase.state.SyncStatesOnSessionEndUseCase>,
-    private val negotiateInventory: NegotiateInventory
+    private val negotiateInventory: NegotiateInventory,
+    private val gameArtDao: com.nendo.argosy.data.local.dao.GameArtDao,
+    private val snapshotRouter: Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     companion object {
         private const val TAG = "SyncCoordinator"
@@ -454,7 +457,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = item.gameId,
                 gameName = game.title,
                 channelName = payload.channelName,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(item.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             )
@@ -726,6 +729,12 @@ class SyncCoordinator @Inject constructor(
         return true
     }
 
+    private suspend fun clearChainDirtyFlags(cache: SaveCacheEntity) {
+        val channel = cache.channelName
+        if (channel == null) saveCacheDao.clearDirtyFlagForNoChannel(cache.gameId, cache.ownerUserId)
+        else saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, channel, excludeId = -1)
+    }
+
     /**
      * The second, cache-driven upload queue. Each dirty cache row is drained under the account
      * that owns it: a row owned by an absent account uploads from its own cached bytes through
@@ -750,8 +759,10 @@ class SyncCoordinator @Inject constructor(
             saveSyncRepository.get().flushPendingDeviceSync(gid)
         }
 
-        val channelCaches = dirtySaves.filter { it.channelName != null }.sortedBy { it.cachedAt }
-        val nonChannelCaches = dirtySaves.filter { it.channelName == null }
+        val snapshotGames = affectedGameIds.filter { snapshotRouter.get().handles(it) }.toSet()
+        val (channelCaches, nonChannelCaches) = dirtySaves
+            .partition { it.channelName != null || it.gameId in snapshotGames }
+            .let { (channel, live) -> channel.sortedBy { it.cachedAt } to live }
 
         val conflicts = mutableMapOf<Long, Pair<SaveCacheEntity, ConflictInfo>>()
         val resolutions = mutableMapOf<Long, ConflictResolution>()
@@ -793,8 +804,11 @@ class SyncCoordinator @Inject constructor(
         }
 
         var synced = 0
+        val conflictedChains = mutableSetOf<Triple<Long, Long?, String?>>()
 
         for (cache in channelCaches) {
+            val chain = Triple(cache.gameId, cache.ownerUserId, cache.channelName)
+            if (chain in conflictedChains) continue
             val game = gameDao.getById(cache.gameId) ?: continue
             if (game.rommId == null) continue
             if (game.localPath == null) {
@@ -823,12 +837,13 @@ class SyncCoordinator @Inject constructor(
                     channelName = cache.channelName
                 )
                 if (conflictInfo != null) {
-                    saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName!!, excludeId = -1)
+                    conflictedChains += chain
+                    clearChainDirtyFlags(cache)
                     val conflictId = pendingConflictDao.record(
                         PendingConflictEntity(
                             gameId = cache.gameId,
                             rommSaveId = conflictInfo.serverSaveId,
-                            fileName = cache.channelName,
+                            fileName = cache.channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
                             slot = cache.channelName,
                             emulator = cache.emulatorId,
                             localUpdatedAt = cache.cachedAt,
@@ -848,7 +863,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = cache.channelName,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(cache.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.IN_PROGRESS
             ))
@@ -857,7 +872,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 rommId = game.rommId,
                 emulatorId = cache.emulatorId,
-                channelName = cache.channelName!!,
+                channelName = cache.channelName ?: SaveSyncApiClient.AUTOSAVE_SLOT_NAME,
                 cacheFile = cacheFile,
                 contentHash = cache.contentHash,
                 uploadedCacheId = cache.id,
@@ -882,7 +897,8 @@ class SyncCoordinator @Inject constructor(
                     Logger.debug(TAG, "processDirtySaveCaches: Synced channel cache id=${cache.id} gameId=${cache.gameId} channel=${cache.channelName} rommSaveId=${result.rommSaveId} noOp=${result.noOp}")
                 }
                 is SaveSyncResult.Conflict -> {
-                    saveCacheDao.clearDirtyFlagForChannel(cache.gameId, cache.ownerUserId, cache.channelName, excludeId = -1)
+                    conflictedChains += chain
+                    clearChainDirtyFlags(cache)
                     if (ownerApi != null) {
                         parkConflictForOwner(cache, game.title, result, ownerApi.rommUserId)
                         Logger.warn(TAG, "processDirtySaveCaches: Parked conflict for absent owner ${ownerApi.rommUserId} | cacheId=${cache.id} gameId=${cache.gameId} channel=${cache.channelName}")
@@ -965,7 +981,7 @@ class SyncCoordinator @Inject constructor(
                 gameId = cache.gameId,
                 gameName = game.title,
                 channelName = null,
-                coverPath = game.displayCoverPath,
+                coverPath = gameArtDao.resolved(cache.gameId).coverPath,
                 direction = SyncDirection.UPLOAD,
                 status = SyncStatus.PENDING
             ))

@@ -3,10 +3,14 @@ package com.nendo.argosy.data.repository
 import android.content.Context
 import android.util.Log
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.cache.recordArtSource
+import com.nendo.argosy.data.local.dao.GameArtDao
 import com.nendo.argosy.data.local.dao.GameDao
+import com.nendo.argosy.data.local.dao.GameScreenshotDao
 import com.nendo.argosy.data.local.dao.PlatformDao
 import com.nendo.argosy.data.local.entity.GameEntity
 import com.nendo.argosy.data.local.entity.PlatformEntity
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.GameSource
 import com.nendo.argosy.data.platform.LocalPlatformIds
 import com.nendo.argosy.data.remote.steam.SteamAppData
@@ -20,8 +24,6 @@ import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.io.File
-import java.io.FileOutputStream
-import java.net.URL
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -42,7 +44,9 @@ class SteamRepository @Inject constructor(
     private val platformDao: PlatformDao,
     private val imageCacheManager: ImageCacheManager,
     private val steamDownloadQueueDao: com.nendo.argosy.data.local.dao.SteamDownloadQueueDao,
-    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
+    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
+    private val gameArtDao: GameArtDao,
+    private val gameScreenshotDao: GameScreenshotDao
 ) {
     private val api: SteamStoreApi by lazy { createApi() }
 
@@ -99,8 +103,6 @@ class SteamRepository @Inject constructor(
             }
 
             val appData = appResponse.data
-            val libraryCapsuleUrl = "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/library_600x900.jpg"
-            val coverPath = cacheCoverImage(steamAppId, libraryCapsuleUrl)
 
             val screenshotUrls = appData.screenshots?.mapNotNull { it.pathFull } ?: emptyList()
             val firstScreenshot = screenshotUrls.firstOrNull()
@@ -119,9 +121,6 @@ class SteamRepository @Inject constructor(
                 steamAppId = steamAppId,
                 steamLauncher = launcherPackage,
                 source = GameSource.STEAM,
-                coverPath = coverPath,
-                backgroundPath = backgroundUrl,
-                screenshotPaths = screenshotUrls.joinToString(","),
                 developer = appData.developers?.firstOrNull(),
                 publisher = appData.publishers?.firstOrNull(),
                 releaseYear = parseReleaseYear(appData.releaseDate?.date),
@@ -134,9 +133,8 @@ class SteamRepository @Inject constructor(
             val insertedId = gameDao.insert(game)
             val savedGame = gameDao.getById(insertedId)
 
-            if (backgroundUrl != null) {
-                imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, appData.name)
-            }
+            writeArtSources(insertedId, steamAppId, appData.name, appData, backgroundUrl)
+            gameScreenshotDao.replaceSources(insertedId, screenshotUrls)
 
             updatePlatformGameCount()
 
@@ -174,22 +172,15 @@ class SteamRepository @Inject constructor(
                 ?.mapNotNull { it.description }
                 ?.joinToString(", ")
 
-            val coverPath = repairCoverIfNeeded(game, steamAppId, appData)
-
             val updatedGame = game.copy(
                 description = appData.shortDescription ?: game.description,
                 genre = if (!storeGenres.isNullOrBlank()) storeGenres else game.genre,
-                coverPath = coverPath ?: game.coverPath,
-                screenshotPaths = if (screenshotUrls.isNotEmpty()) screenshotUrls.joinToString(",") else game.screenshotPaths,
-                backgroundPath = backgroundUrl ?: game.backgroundPath,
                 rating = appData.metacritic?.score?.toFloat() ?: game.rating
             )
 
             gameDao.update(updatedGame)
-
-            if (backgroundUrl != null && game.backgroundPath != backgroundUrl) {
-                imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, game.title)
-            }
+            writeArtSources(game.id, steamAppId, game.title, appData, backgroundUrl)
+            if (screenshotUrls.isNotEmpty()) gameScreenshotDao.replaceSources(game.id, screenshotUrls)
 
             Log.d(TAG, "Enriched ${game.title} with store data")
             SteamResult.Success(updatedGame)
@@ -297,17 +288,10 @@ class SteamRepository @Inject constructor(
                         ?: appData.background
                         ?: appData.backgroundRaw
 
-                    val existingCover = game.coverPath
-                        ?.takeIf { it.startsWith("/") && File(it).exists() }
-                    val coverPath = existingCover ?: resolveSteamCover(steamAppId, appData)
-
                     gameDao.update(
                         game.copy(
                             title = appData.name,
                             sortTitle = createSortTitle(appData.name),
-                            coverPath = coverPath ?: game.coverPath,
-                            backgroundPath = backgroundUrl,
-                            screenshotPaths = screenshotUrls.joinToString(","),
                             developer = appData.developers?.firstOrNull() ?: game.developer,
                             publisher = appData.publishers?.firstOrNull() ?: game.publisher,
                             releaseYear = parseReleaseYear(appData.releaseDate?.date) ?: game.releaseYear,
@@ -316,10 +300,8 @@ class SteamRepository @Inject constructor(
                             rating = appData.metacritic?.score?.toFloat() ?: game.rating
                         )
                     )
-
-                    if (backgroundUrl != null) {
-                        imageCacheManager.queueSteamBackgroundCache(backgroundUrl, steamAppId, appData.name)
-                    }
+                    writeArtSources(game.id, steamAppId, appData.name, appData, backgroundUrl)
+                    gameScreenshotDao.replaceSources(game.id, screenshotUrls)
 
                     refreshedCount++
                     Log.d(TAG, "Refreshed metadata for: ${appData.name}")
@@ -336,69 +318,24 @@ class SteamRepository @Inject constructor(
         }
     }
 
-    private fun repairCoverIfNeeded(
-        game: GameEntity,
+    private suspend fun writeArtSources(
+        gameId: Long,
         steamAppId: Long,
-        appData: SteamAppData
-    ): String? {
-        val cover = game.coverPath
-        val valid = cover != null && cover.startsWith("/") && File(cover).exists()
-        if (valid) return null
-        if (cover != null && cover.startsWith("https://") && !isCoverUrl404(cover)) return null
-        Log.d(TAG, "Re-resolving cover for ${game.title}")
-        return resolveSteamCover(steamAppId, appData)
-    }
-
-    private fun resolveSteamCover(steamAppId: Long, appData: SteamAppData): String? {
-        val file = File(cacheDir, "cover_$steamAppId.jpg")
-        val candidates = listOfNotNull(
+        title: String,
+        appData: SteamAppData,
+        backgroundUrl: String?
+    ) {
+        val covers = listOfNotNull(
             "https://steamcdn-a.akamaihd.net/steam/apps/$steamAppId/library_600x900.jpg",
             appData.headerImage,
             appData.capsuleImage
-        )
-        for (url in candidates) {
-            try {
-                URL(url).openStream().use { input ->
-                    FileOutputStream(file).use { output -> input.copyTo(output) }
-                }
-                if (file.exists() && file.length() > 0) return file.absolutePath
-            } catch (e: Exception) {
-                Log.d(TAG, "Cover candidate unavailable for $steamAppId: $url")
-            }
-        }
-        return null
-    }
-
-    private fun isCoverUrl404(url: String): Boolean = try {
-        val conn = URL(url).openConnection() as java.net.HttpURLConnection
-        conn.requestMethod = "HEAD"
-        conn.connectTimeout = 5000
-        conn.readTimeout = 5000
-        val code = conn.responseCode
-        conn.disconnect()
-        code == 404
-    } catch (e: Exception) {
-        true
-    }
-
-    private suspend fun cacheCoverImage(steamAppId: Long, imageUrl: String?): String? {
-        if (imageUrl.isNullOrBlank()) return null
-
-        return try {
-            val file = File(cacheDir, "cover_$steamAppId.jpg")
-            if (file.exists()) {
-                return file.absolutePath
-            }
-
-            URL(imageUrl).openStream().use { input ->
-                FileOutputStream(file).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            file.absolutePath
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to cache cover image", e)
-            imageUrl
+        ).distinct()
+        recordArtSource(gameArtDao, imageCacheManager, gameId, ArtSlot.COVER, covers, title, steamAppId = steamAppId)
+        if (backgroundUrl != null) {
+            recordArtSource(
+                gameArtDao, imageCacheManager, gameId, ArtSlot.BACKGROUND, listOf(backgroundUrl), title,
+                steamAppId = steamAppId
+            )
         }
     }
 

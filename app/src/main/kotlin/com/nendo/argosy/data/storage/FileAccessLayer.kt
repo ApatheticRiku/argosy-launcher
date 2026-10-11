@@ -58,6 +58,13 @@ interface FileAccessLayer {
     // where per-UID mount views can return incomplete subsets.
     fun listFilesUnion(path: String): List<FileInfo>
 
+    /**
+     * True when some tier can enumerate the directory at [path], including when it is empty.
+     * An empty [listFilesUnion] with this false means the device refused the listing, not that
+     * the folder holds nothing.
+     */
+    fun isListable(path: String): Boolean
+
     // Create
     fun mkdirs(path: String): Boolean
 

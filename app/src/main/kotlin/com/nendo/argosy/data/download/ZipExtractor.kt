@@ -15,7 +15,8 @@ data class ExtractedFolderRom(
     val discFiles: List<File>,
     val m3uFile: File?,
     val gameFolder: File,
-    val allFiles: List<File>
+    val allFiles: List<File>,
+    val romExtensions: Set<String> = emptySet()
 ) {
     val launchPath: String
         get() {
@@ -45,6 +46,7 @@ data class ExtractedFolderRom(
             if (allDiscFiles.isNotEmpty()) return allDiscFiles.first().absolutePath
 
             val realFiles = allFiles.filter { !it.name.startsWith("._") }
+            nestedRomFile(realFiles)?.let { return it.absolutePath }
             realFiles.filter { it.parentFile?.absolutePath == gameFolder.absolutePath }
                 .maxByOrNull { it.length() }
                 ?.let { return it.absolutePath }
@@ -52,7 +54,17 @@ data class ExtractedFolderRom(
 
             return gameFolder.absolutePath
         }
+
+    private fun nestedRomFile(files: List<File>): File? = files
+        .filter { it.extension.lowercase() in romExtensions }
+        .minWithOrNull(
+            compareBy<File> { it.extension.lowercase() in ARCHIVE_ROM_EXTENSIONS }
+                .thenBy { it.relativeTo(gameFolder).path.count { c -> c == File.separatorChar } }
+                .thenBy { it.name }
+        )
 }
+
+private val ARCHIVE_ROM_EXTENSIONS = setOf("zip", "7z")
 
 private val NSW_UPDATE_EXTENSIONS = setOf("nsp")
 private val NSW_PLATFORM_SLUGS = setOf("switch", "nsw")
@@ -640,7 +652,8 @@ object ZipExtractor {
                 discFiles = extractionResult.rootDiscFiles.sortedBy { it.name },
                 m3uFile = null,
                 gameFolder = gameFolder,
-                allFiles = allFiles
+                allFiles = allFiles,
+                romExtensions = validExtensions
             )
         }
 
@@ -652,7 +665,8 @@ object ZipExtractor {
                 .sortedBy { it.name },
             m3uFile = rebase(m3uFile, gameFolder, playlistFolder),
             gameFolder = playlistFolder,
-            allFiles = allFiles.map { rebase(it, gameFolder, playlistFolder) }
+            allFiles = allFiles.map { rebase(it, gameFolder, playlistFolder) },
+            romExtensions = validExtensions
         )
     }
 

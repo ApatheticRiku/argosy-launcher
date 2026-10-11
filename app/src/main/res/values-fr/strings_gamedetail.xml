@@ -235,9 +235,11 @@
     <string name="gamedetail_artwork_row_cover">Jaquette</string>
     <string name="gamedetail_artwork_row_background">Arrière-plan</string>
     <string name="gamedetail_artwork_row_logo">Logo</string>
+    <string name="gamedetail_artwork_row_box_3d">Boîtier 3D</string>
     <string name="gamedetail_artwork_row_revert_cover">Rétablir la jaquette</string>
     <string name="gamedetail_artwork_row_revert_background">Rétablir l\'arrière-plan</string>
     <string name="gamedetail_artwork_row_revert_logo">Rétablir le logo</string>
+    <string name="gamedetail_artwork_row_revert_box_3d">Rétablir le boîtier 3D</string>
 
     <!-- ================================ Status picker ================================= -->
 
@@ -390,6 +392,7 @@
     <string name="gamedetail_art_picker_file_browser_title_cover">Choisir une jaquette</string>
     <string name="gamedetail_art_picker_file_browser_title_background">Choisir un arrière-plan</string>
     <string name="gamedetail_art_picker_file_browser_title_logo">Choisir un logo</string>
+    <string name="gamedetail_art_picker_file_browser_title_box_3d">Choisir un boîtier 3D</string>
 
     <!-- =============================== Speedrun splits ================================= -->
 

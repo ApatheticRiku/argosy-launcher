@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import androidx.compose.ui.graphics.Color
 import com.nendo.argosy.data.cache.GradientPreset
 import com.nendo.argosy.data.cache.ImageCacheManager
+import com.nendo.argosy.data.model.ResolvedGameArt
 import com.nendo.argosy.data.preferences.BoxArtBorderStyle
 import com.nendo.argosy.data.repository.GameRepository
 import com.nendo.argosy.data.repository.MediaRepository
@@ -141,8 +142,16 @@ class GradientExtractionDelegate @Inject constructor(
             }
         }
         scope.launch {
-            imageCacheManager.localCoverWritten.collect { (gameId, coverPath) ->
-                extractForGame(scope, gameId, coverPath, prioritize = false)
+            var previous: Map<Long, ResolvedGameArt> = emptyMap()
+            imageCacheManager.gameArt.collect { current ->
+                val before = previous
+                previous = current
+                if (before.isEmpty()) return@collect
+                for ((gameId, art) in current) {
+                    val cover = art.coverPath ?: continue
+                    if (art.gradientColors != null || before[gameId]?.coverPath == cover) continue
+                    extractForGame(scope, gameId, cover, prioritize = false)
+                }
             }
         }
     }
@@ -207,14 +216,14 @@ class GradientExtractionDelegate @Inject constructor(
         val missing = gameIds.filter { !games.has(it) }
         if (missing.isEmpty()) return
 
-        val entities = gameRepository.getByIds(missing)
+        val art = gameRepository.getArt(missing)
         val loaded = mutableMapOf<Long, Pair<Color, Color>>()
-        for (entity in entities) {
-            val json = entity.gradientColors ?: continue
+        for ((gameId, resolved) in art) {
+            val json = resolved.gradientColors ?: continue
             val allPresets = gradientColorExtractor.deserializeAllPresets(json) ?: continue
-            games.persistedPresets[entity.id] = allPresets
+            games.persistedPresets[gameId] = allPresets
             val colors = allPresets[currentPreset] ?: continue
-            loaded[entity.id] = colors
+            loaded[gameId] = colors
         }
         games.putAll(loaded)
     }
@@ -369,8 +378,7 @@ class GradientExtractionDelegate @Inject constructor(
     }
 
     private suspend fun loadPersistedGradient(gameId: Long) {
-        val entity = gameRepository.getById(gameId) ?: return
-        val json = entity.gradientColors ?: return
+        val json = gameRepository.getArt(gameId).gradientColors ?: return
         val allPresets = gradientColorExtractor.deserializeAllPresets(json) ?: return
         games.persistedPresets[gameId] = allPresets
         val colors = allPresets[currentPreset] ?: return

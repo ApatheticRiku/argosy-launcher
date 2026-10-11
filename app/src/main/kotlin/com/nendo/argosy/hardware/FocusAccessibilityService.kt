@@ -3,9 +3,15 @@ package com.nendo.argosy.hardware
 import android.annotation.SuppressLint
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.graphics.Bitmap
 import android.graphics.Path
+import android.os.Build
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 
 class FocusAccessibilityService : AccessibilityService() {
 
@@ -41,6 +47,33 @@ class FocusAccessibilityService : AccessibilityService() {
             }
         }, null)
         Log.d(TAG, "Focus tap dispatched=$dispatched on display $displayId")
+    }
+
+    /**
+     * A silent capture of [displayId], with no flash, sound or consent prompt, as a software
+     * bitmap; null before Android 11 or when the system refuses, such as within its rate limit.
+     */
+    suspend fun captureDisplay(displayId: Int): Bitmap? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return null
+        return suspendCancellableCoroutine { continuation ->
+            takeScreenshot(displayId, Dispatchers.IO.asExecutor(), object : TakeScreenshotCallback {
+                override fun onSuccess(screenshot: ScreenshotResult) {
+                    val bitmap = runCatching {
+                        screenshot.hardwareBuffer.use { buffer ->
+                            Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)?.let { wrapped ->
+                                wrapped.copy(Bitmap.Config.ARGB_8888, false).also { wrapped.recycle() }
+                            }
+                        }
+                    }.onFailure { Log.w(TAG, "Screenshot of display $displayId unreadable", it) }.getOrNull()
+                    continuation.resume(bitmap) { bitmap?.recycle() }
+                }
+
+                override fun onFailure(errorCode: Int) {
+                    Log.w(TAG, "Screenshot of display $displayId refused: $errorCode")
+                    continuation.resume(null)
+                }
+            })
+        }
     }
 
     companion object {

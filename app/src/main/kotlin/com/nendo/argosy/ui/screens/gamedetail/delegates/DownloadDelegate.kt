@@ -10,6 +10,7 @@ import com.nendo.argosy.data.steam.SteamContentManager
 import com.nendo.argosy.data.steam.SteamDownloadState
 import com.nendo.argosy.data.remote.playstore.PlayStoreService
 import com.nendo.argosy.data.remote.romm.RomMRepository
+import com.nendo.argosy.data.model.ArtSlot
 import com.nendo.argosy.data.model.VariantCategory
 import com.nendo.argosy.data.remote.romm.RomMResult
 import com.nendo.argosy.data.model.FilePickerRow
@@ -75,7 +76,8 @@ class DownloadDelegate @Inject constructor(
     private val gameRepository: com.nendo.argosy.data.repository.GameRepository,
     private val steamContentManager: SteamContentManager,
     private val gameFileDao: com.nendo.argosy.data.local.dao.GameFileDao,
-    private val filePickerFlow: com.nendo.argosy.domain.usecase.download.FilePickerFlowUseCase
+    private val filePickerFlow: com.nendo.argosy.domain.usecase.download.FilePickerFlowUseCase,
+    private val artSourceRecorder: com.nendo.argosy.data.cache.ArtSourceRecorder
 ) {
     private val _state = MutableStateFlow(DownloadUiState())
     val state: StateFlow<DownloadUiState> = _state.asStateFlow()
@@ -306,7 +308,7 @@ class DownloadDelegate @Inject constructor(
             val game = gameRepository.getById(gameId)
             val steamAppId = game?.steamAppId
             if (game != null && steamAppId != null && steamContentManager.activeDownload.value?.appId == steamAppId) {
-                steamContentManager.queueDownloadOptimistic(steamAppId, game.title, game.displayCoverPath)
+                steamContentManager.queueDownloadOptimistic(steamAppId, game.title, gameRepository.getArt(game.id).coverPath)
             } else {
                 downloadManager.resumeDownload(gameId)
             }
@@ -476,20 +478,19 @@ class DownloadDelegate @Inject constructor(
                             description = details.description ?: game.description,
                             developer = details.developer ?: game.developer,
                             genre = details.genre ?: game.genre,
-                            rating = details.ratingPercent ?: game.rating,
-                            screenshotPaths = details.screenshotUrls.takeIf { it.isNotEmpty() }?.joinToString(",") ?: game.screenshotPaths,
-                            backgroundPath = details.screenshotUrls.firstOrNull() ?: game.backgroundPath
+                            rating = details.ratingPercent ?: game.rating
                         )
                         gameRepository.update(updated)
 
                         details.coverUrl?.let { url ->
-                            imageCacheManager.queueCoverCacheByGameId(url, gameId)
+                            artSourceRecorder.record(gameId, ArtSlot.COVER, listOf(url), game.title)
                         }
                         details.screenshotUrls.firstOrNull()?.let { url ->
-                            imageCacheManager.queueBackgroundCacheByGameId(url, gameId, game.title)
+                            artSourceRecorder.record(gameId, ArtSlot.BACKGROUND, listOf(url), game.title)
                         }
                         if (details.screenshotUrls.isNotEmpty()) {
-                            imageCacheManager.queueScreenshotCacheByGameId(gameId, details.screenshotUrls)
+                            gameRepository.replaceScreenshotSources(gameId, details.screenshotUrls)
+                            imageCacheManager.queueScreenshotCacheByGameId(gameId)
                         }
 
                         notificationManager.showSuccess(

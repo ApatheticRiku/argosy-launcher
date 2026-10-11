@@ -7,8 +7,12 @@ import com.nendo.argosy.data.emulator.EmulatorRegistry
 import com.nendo.argosy.data.local.entity.PlatformLibretroSettingsEntity
 import com.nendo.argosy.libretro.LibretroBuildbot
 import com.nendo.argosy.data.platform.PlatformWeightRegistry
+import com.nendo.argosy.libretro.ControllerTypeSelection
+import com.nendo.argosy.libretro.CorePortDeviceCatalog
 import com.nendo.argosy.libretro.LibretroCoreRegistry
 import com.nendo.argosy.libretro.NetplaySupportLevel
+import com.nendo.argosy.ui.input.InputResult
+import com.nendo.argosy.ui.input.stepOption
 import com.nendo.argosy.libretro.shader.ShaderChainConfig
 import com.nendo.argosy.libretro.shader.ShaderChainManager
 import com.nendo.argosy.libretro.shader.ShaderPreviewRenderer
@@ -19,7 +23,6 @@ import com.nendo.argosy.core.notification.showError
 import com.nendo.argosy.core.emulator.LibretroSettingDef
 import com.nendo.argosy.R
 import com.nendo.argosy.ui.screens.settings.sections.BuiltinEmulatorItem
-import com.nendo.argosy.ui.screens.settings.sections.HUD_CORNERS
 import com.nendo.argosy.util.AppPaths
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -49,8 +52,6 @@ internal val ARCHITECTURE_OPTIONS: List<String>
         else add("ARMv7 (32-bit)")
     }
 
-internal const val BUILTIN_ARCHITECTURE_PICKER_KEY = "builtin_architecture"
-
 private fun architectureDisplayToAbi(display: String): String? = when (display) {
     "ARMv7 (32-bit)" -> "armeabi-v7a"
     "ARMv8 (64-bit)" -> "arm64-v8a"
@@ -61,14 +62,6 @@ internal fun architectureAbiToDisplay(abi: String?): String = when (abi) {
     "armeabi-v7a" -> "ARMv7 (32-bit)"
     "arm64-v8a" -> "ARMv8 (64-bit)"
     else -> "Universal"
-}
-
-internal fun routeCycleBuiltinArchitecture(vm: SettingsViewModel, direction: Int) {
-    val options = ARCHITECTURE_OPTIONS
-    val current = vm._uiState.value.emulators.architectureDisplay
-    val currentIndex = options.indexOf(current).coerceAtLeast(0)
-    val nextIndex = (currentIndex + direction + options.size) % options.size
-    routeSetBuiltinArchitecture(vm, options[nextIndex])
 }
 
 internal fun routeSetBuiltinArchitecture(vm: SettingsViewModel, value: String) {
@@ -109,15 +102,6 @@ internal fun routeSetIngameMenuTwoColumn(vm: SettingsViewModel, enabled: Boolean
 internal fun routeSetHudEnabled(vm: SettingsViewModel, enabled: Boolean) {
     vm._uiState.update { it.copy(emulators = it.emulators.copy(hudEnabled = enabled)) }
     vm.viewModelScope.launch { vm.libretroSettingsRepo.setHudEnabled(enabled) }
-}
-
-internal fun routeCycleHudCorner(vm: SettingsViewModel, forward: Boolean) {
-    val corners = com.nendo.argosy.ui.components.HudCorner.entries
-    val index = com.nendo.argosy.ui.common
-        .hudCornerFromStored(vm._uiState.value.emulators.hudCorner).ordinal
-    val next = corners[(if (forward) index + 1 else index - 1).mod(corners.size)].name
-    vm._uiState.update { it.copy(emulators = it.emulators.copy(hudCorner = next)) }
-    vm.viewModelScope.launch { vm.libretroSettingsRepo.setHudCorner(next) }
 }
 
 internal fun routeSetHudCorner(vm: SettingsViewModel, corner: String) {
@@ -232,6 +216,13 @@ internal fun routeSetBuiltinAutoRestoreState(vm: SettingsViewModel, enabled: Boo
     vm.viewModelScope.launch {
         vm.libretroSettingsRepo.setBuiltinAutoRestoreState(enabled)
         vm.libretroSettingsRepo.setBuiltinAutoRestoreStateMode(if (enabled) "restore" else "off")
+    }
+}
+
+internal fun routeSetBuiltinPreferNewerServerSave(vm: SettingsViewModel, enabled: Boolean) {
+    vm._uiState.update { it.copy(builtinVideo = it.builtinVideo.copy(preferNewerServerSave = enabled)) }
+    vm.viewModelScope.launch {
+        vm.libretroSettingsRepo.setBuiltinPreferNewerServerSave(enabled)
     }
 }
 
@@ -770,6 +761,7 @@ internal fun routeUpdatePlatformLibretroSetting(vm: SettingsViewModel, setting: 
             LibretroSettingDef.RewindBufferDuration -> current.copy(rewindBufferDuration = value?.removeSuffix("s")?.toIntOrNull())
             LibretroSettingDef.AutoSaveState -> current.copy(autoSaveState = value?.toBooleanStrictOrNull())
             LibretroSettingDef.AutoRestoreState -> current.copy(autoRestoreState = value?.toBooleanStrictOrNull())
+            LibretroSettingDef.PreferNewerServerSave -> current.copy(preferNewerServerSave = value?.toBooleanStrictOrNull())
             LibretroSettingDef.HwCoreSaveStates -> current.copy(hwCoreSaveStates = value?.toBooleanStrictOrNull())
         }
 
@@ -790,7 +782,7 @@ internal fun routeResetAllPlatformLibretroSettings(vm: SettingsViewModel) {
             overscanCrop = null, frame = null, blackFrameInsertion = null, fastForwardEnabled = null, fastForwardSpeed = null,
             rewindEnabled = null, rewindSpeed = null, rewindBufferDuration = null,
             skipDuplicateFrames = null, lowLatencyAudio = null, audioVolume = null, vsync = null,
-            autoSaveState = null, autoRestoreState = null, hwCoreSaveStates = null
+            autoSaveState = null, autoRestoreState = null, preferNewerServerSave = null, hwCoreSaveStates = null
         )
         if (updated.hasAnyOverrides()) {
             vm.libretroSettingsRepo.upsert(updated)
@@ -1260,7 +1252,7 @@ internal suspend fun routeResolvePreviewBitmap(vm: SettingsViewModel): Bitmap? {
 
 private suspend fun routeResolvePreviewImage(
     vm: SettingsViewModel,
-    game: com.nendo.argosy.data.local.entity.GameListItem
+    game: SettingsPreviewGame
 ): String? {
     val cached = vm.displayDelegate.getFirstCachedScreenshot(game.id)
     if (cached != null) return cached
@@ -1359,6 +1351,79 @@ internal fun routeCyclePlatformContext(vm: SettingsViewModel, direction: Int) {
             ),
             focusedIndex = 0
         )
+    }
+    routeLoadControllerPorts(vm)
+}
+
+internal fun routeLoadControllerPorts(vm: SettingsViewModel) {
+    val platform = vm._uiState.value.builtinVideo.currentPlatformContext
+    val clearPorts = {
+        vm._uiState.update { it.copy(builtinControls = it.builtinControls.copy(controllerPorts = emptyList())) }
+    }
+    if (platform == null) {
+        clearPorts()
+        return
+    }
+    vm.viewModelScope.launch {
+        val coreId = vm.builtinCoreResolver.resolveCoreId(null, platform.platformId, platform.platformSlug)
+        val portDevices = coreId?.let { CorePortDeviceCatalog.portDevices(it, platform.platformSlug) }.orEmpty()
+        if (coreId == null || portDevices.none { it.size > 1 }) {
+            clearPorts()
+            return@launch
+        }
+        val stored = ControllerTypeSelection.decode(
+            vm.configureEmulatorUseCase.getControllerTypesForPlatform(platform.platformId),
+            coreId,
+            ControllerTypeSelection.legacyApplies(platform.platformSlug)
+        )
+        val ports = portDevices.mapIndexedNotNull { port, devices ->
+            if (devices.size < 2) return@mapIndexedNotNull null
+            ControllerPortChoiceUi(
+                port = port,
+                deviceIds = devices.map { it.id },
+                deviceNames = devices.map { it.name },
+                selectedIndex = devices.indexOfFirst { it.id == stored[port] }.coerceAtLeast(0)
+            )
+        }
+        vm._uiState.update { state ->
+            if (state.builtinVideo.currentPlatformContext?.platformId != platform.platformId) return@update state
+            state.copy(builtinControls = state.builtinControls.copy(controllerPorts = ports))
+        }
+    }
+}
+
+internal fun routeSelectControllerType(vm: SettingsViewModel, port: Int, index: Int) {
+    val platform = vm._uiState.value.builtinVideo.currentPlatformContext ?: return
+    val choice = vm._uiState.value.builtinControls.controllerPorts.firstOrNull { it.port == port } ?: return
+    val deviceId = choice.deviceIds.getOrNull(index) ?: return
+    vm._uiState.update { state ->
+        state.copy(
+            builtinControls = state.builtinControls.copy(
+                controllerPorts = state.builtinControls.controllerPorts.map {
+                    if (it.port == port) it.copy(selectedIndex = index) else it
+                }
+            )
+        )
+    }
+    vm.viewModelScope.launch {
+        val coreId = vm.builtinCoreResolver.resolveCoreId(null, platform.platformId, platform.platformSlug)
+            ?: return@launch
+        val legacyApplies = ControllerTypeSelection.legacyApplies(platform.platformSlug)
+        val encoded = vm.configureEmulatorUseCase.getControllerTypesForPlatform(platform.platformId)
+        val stored = ControllerTypeSelection.decode(encoded, coreId, legacyApplies)
+        val updated = if (index == 0) stored - port else stored + (port to deviceId)
+        vm.configureEmulatorUseCase.setControllerTypesForPlatform(
+            platform.platformId,
+            ControllerTypeSelection.update(encoded, coreId, legacyApplies, updated)
+        )
+    }
+}
+
+internal fun routeStepControllerType(vm: SettingsViewModel, port: Int, delta: Int): InputResult {
+    val choice = vm._uiState.value.builtinControls.controllerPorts.firstOrNull { it.port == port }
+        ?: return InputResult.UNHANDLED
+    return stepOption(choice.deviceIds.indices.toList(), choice.selectedIndex, delta) { index ->
+        routeSelectControllerType(vm, port, index)
     }
 }
 

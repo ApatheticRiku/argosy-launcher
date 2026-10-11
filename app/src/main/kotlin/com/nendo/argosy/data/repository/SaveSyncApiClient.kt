@@ -23,6 +23,7 @@ import com.nendo.argosy.data.sync.platform.GciSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandler
 import com.nendo.argosy.data.sync.platform.PlatformSaveHandlerRegistry
 import com.nendo.argosy.data.sync.platform.SaveContext
+import com.nendo.argosy.data.sync.platform.SigilSaveHandler
 import com.nendo.argosy.data.sync.platform.SwitchSaveHandler
 import com.nendo.argosy.data.preferences.UserPreferencesRepository
 import com.nendo.argosy.util.Logger
@@ -53,7 +54,8 @@ class SaveSyncApiClient @Inject constructor(
     private val conflictDetector: ConflictDetector,
     private val saveUploader: dagger.Lazy<SaveUploader>,
     private val saveDownloader: dagger.Lazy<SaveDownloader>,
-    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository
+    private val syncPreferencesRepository: com.nendo.argosy.data.preferences.SyncPreferencesRepository,
+    private val snapshotRouter: dagger.Lazy<com.nendo.argosy.data.sync.snapshot.SnapshotSyncRouter>
 ) {
     private var api: RomMApi? = null
     private var deviceId: String? = null
@@ -317,7 +319,8 @@ class SaveSyncApiClient @Inject constructor(
         forceOverwrite: Boolean = false,
         isHardcore: Boolean = false,
         uploadedCacheId: Long? = null
-    ): SaveSyncResult = saveUploader.get().uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
+    ): SaveSyncResult = snapshotRouter.get().upload(gameId, emulatorId, channelName, forceOverwrite, isHardcore)
+        ?: saveUploader.get().uploadSave(gameId, emulatorId, channelName, forceOverwrite, isHardcore, uploadedCacheId)
 
     suspend fun uploadCacheEntry(
         gameId: Long,
@@ -328,9 +331,17 @@ class SaveSyncApiClient @Inject constructor(
         contentHash: String?,
         overwrite: Boolean = false,
         uploadedCacheId: Long? = null,
-        ownerApi: AccountApi? = null
-    ): SaveSyncResult = saveUploader.get()
-        .uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
+        ownerApi: AccountApi? = null,
+        approveHardcoreDowngrade: Boolean = false
+    ): SaveSyncResult = snapshotRouter.get().takeIf { ownerApi == null }
+        ?.uploadCached(
+            gameId, emulatorId, channelName, cacheFile,
+            onTopOfCurrent = overwrite,
+            cacheId = uploadedCacheId,
+            approveHardcoreDowngrade = approveHardcoreDowngrade
+        )
+        ?: saveUploader.get()
+            .uploadCacheEntry(gameId, rommId, emulatorId, channelName, cacheFile, contentHash, overwrite, uploadedCacheId, ownerApi)
 
     suspend fun downloadSave(
         gameId: Long,
@@ -338,7 +349,8 @@ class SaveSyncApiClient @Inject constructor(
         channelName: String? = null,
         skipBackup: Boolean = false,
         knownServerSaveId: Long? = null
-    ): SaveSyncResult = saveDownloader.get().downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
+    ): SaveSyncResult = snapshotRouter.get().download(gameId, emulatorId, channelName)
+        ?: saveDownloader.get().downloadSave(gameId, emulatorId, channelName, skipBackup, knownServerSaveId)
 
     suspend fun downloadToCache(
         serverSaveId: Long,
@@ -368,6 +380,10 @@ class SaveSyncApiClient @Inject constructor(
 
     suspend fun clearSaveAtPath(targetPath: String): Boolean = withContext(Dispatchers.IO) {
         if (!fal.exists(targetPath)) return@withContext true
+        if (SigilSaveHandler.isProtectedSavePath(targetPath)) {
+            Logger.warn(TAG, "clearSaveAtPath: leaving $targetPath in place; it holds other games' saves and Sigil writes this game's itself")
+            return@withContext true
+        }
         val deleted = if (fal.isDirectory(targetPath)) {
             fal.deleteRecursively(targetPath)
         } else {
@@ -601,7 +617,7 @@ class SaveSyncApiClient @Inject constructor(
         internal val TIMESTAMP_ONLY_PATTERN = Regex("""^\d{4}-\d{2}-\d{2}[_-]\d{2}[_-]\d{2}[_-]\d{2}$""")
         internal val ROMM_TIMESTAMP_TAG = Regex("""^\[\d{4}-\d{2}-\d{2}[ _]\d{2}-\d{2}-\d{2}(-\d+)?\]$""")
         internal val SWITCH_EMULATOR_IDS = setOf(
-            "yuzu", "ryujinx", "citron", "strato", "eden", "sudachi", "skyline"
+            "yuzu", "ryujinx", "citron", "strato", "eden", "lemon", "sudachi", "skyline"
         )
 
         private val DIACRITICS_PATTERN = Regex("\\p{InCombiningDiacriticalMarks}+")

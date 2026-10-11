@@ -56,6 +56,11 @@ internal sealed class BuiltinControlsItem(
 
     data object ControllerOrder : BuiltinControlsItem("controllerOrder", "controllers")
     data object InputMapping : BuiltinControlsItem("inputMapping", "controllers")
+    data class ControllerType(val port: Int) : BuiltinControlsItem(
+        "controllerType$port",
+        "controllers",
+        { state -> state.controllerPorts.any { it.port == port } }
+    )
     data object Rumble : BuiltinControlsItem("rumble", "controllers", { it.showRumble })
     data object AnalogAsDpad : BuiltinControlsItem("analogAsDpad", "sticks", { it.showStickMappings })
     data object DpadAsAnalog : BuiltinControlsItem("dpadAsAnalog", "sticks", { it.showStickMappings && it.showDpadAsAnalog })
@@ -105,6 +110,10 @@ internal sealed class BuiltinControlsItem(
                 ControllersHeader,
                 ControllerOrder,
                 InputMapping,
+                ControllerType(0),
+                ControllerType(1),
+                ControllerType(2),
+                ControllerType(3),
                 Rumble,
                 SticksHeader,
                 AnalogAsDpad,
@@ -267,6 +276,22 @@ fun BuiltinControlsSection(
                     isFocused = isFocused(item),
                     onClick = { viewModel.showInputMappingModal() }
                 )
+
+                is BuiltinControlsItem.ControllerType -> {
+                    val choice = controlsState.controllerPorts.firstOrNull { it.port == item.port }
+                    if (choice != null) {
+                        CyclePreference(
+                            title = stringResource(R.string.settings_builtin_controls_controller_type_title, item.port + 1),
+                            value = choice.deviceNames.getOrElse(choice.selectedIndex) { "" },
+                            subtitle = stringResource(R.string.settings_builtin_controls_controller_type_subtitle),
+                            isFocused = isFocused(item),
+                            onClick = { viewModel.stepControllerType(item.port, 1) },
+                            onPrev = { viewModel.stepControllerType(item.port, -1) },
+                            options = choice.deviceNames,
+                            onSelect = { index -> viewModel.selectControllerType(item.port, index) }
+                        )
+                    }
+                }
 
                 BuiltinControlsItem.AnalogAsDpad -> SwitchPreference(
                     title = stringResource(R.string.settings_builtin_controls_analog_as_dpad_title),

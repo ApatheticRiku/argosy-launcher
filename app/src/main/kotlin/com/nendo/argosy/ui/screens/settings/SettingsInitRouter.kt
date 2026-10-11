@@ -18,8 +18,10 @@ import com.nendo.argosy.ui.screens.settings.delegates.StorageSettingsDelegate
 import com.nendo.argosy.util.AppPaths
 import com.nendo.argosy.R
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -316,20 +318,50 @@ internal fun routeObservePlatformLibretroSettings(vm: SettingsViewModel) {
     }.launchIn(vm.viewModelScope)
 }
 
-internal fun routeLoadAvailablePlatformsForLibretro(vm: SettingsViewModel) {
+internal fun routeObservePlatforms(vm: SettingsViewModel) {
+    vm.syncDelegate.observePlatforms(vm.viewModelScope)
     vm.viewModelScope.launch {
-        try {
-            val platforms = vm.platformRepository.getAllPlatformsOrdered()
-                .filter { it.syncEnabled && LibretroCoreRegistry.isPlatformSupported(it.slug) }
-                .distinctBy { it.slug }
-                .map { PlatformContext(it.id, it.name, it.slug) }
-            vm._uiState.update {
-                it.copy(builtinVideo = it.builtinVideo.copy(availablePlatforms = platforms))
+        vm.platformRepository.observeAllPlatforms()
+            .map { all ->
+                all.filter { it.syncEnabled && LibretroCoreRegistry.isPlatformSupported(it.slug) }
+                    .distinctBy { it.slug }
+                    .map { PlatformContext(it.id, it.name, it.slug) }
             }
-        } catch (e: Exception) {
-            android.util.Log.e("BuiltinSettings", "Failed to load available platforms", e)
-        }
+            .distinctUntilChanged()
+            .collect { platforms ->
+                vm._uiState.update { state ->
+                    val video = state.builtinVideo
+                    val coreOptions = state.coreOptions
+                    state.copy(
+                        builtinVideo = video.copy(
+                            availablePlatforms = platforms,
+                            platformContextIndex = reindexPlatformContext(
+                                video.availablePlatforms, video.platformContextIndex, platforms, firstIsGlobal = true
+                            )
+                        ),
+                        coreOptions = if (coreOptions.availablePlatforms.isEmpty()) coreOptions else coreOptions.copy(
+                            availablePlatforms = platforms,
+                            platformContextIndex = reindexPlatformContext(
+                                coreOptions.availablePlatforms, coreOptions.platformContextIndex, platforms, firstIsGlobal = false
+                            )
+                        )
+                    )
+                }
+                routeLoadControllerPorts(vm)
+            }
     }
+}
+
+internal fun reindexPlatformContext(
+    previous: List<PlatformContext>,
+    previousIndex: Int,
+    current: List<PlatformContext>,
+    firstIsGlobal: Boolean
+): Int {
+    val offset = if (firstIsGlobal) 1 else 0
+    val selectedId = previous.getOrNull(previousIndex - offset)?.platformId ?: return 0
+    val found = current.indexOfFirst { it.platformId == selectedId }
+    return if (found >= 0) found + offset else 0
 }
 
 internal fun routeStartControllerDetectionPolling(vm: SettingsViewModel) {
@@ -452,6 +484,9 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 else -> savePathResolution?.basePath
             }
 
+            val savesBesideRom = savePathConfig != null && retroArchSave == null &&
+                vm.emulatorDelegate.savesBesideRom(savePathConfig, platform.slug)
+
             val extensionOptions = EmulatorRegistry.getExtensionOptionsForPlatform(platform.slug)
             val selectedExtension = vm.emulatorDelegate.getPreferredExtension(platform.id)
 
@@ -469,6 +504,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 effectiveEmulatorPackage = effectiveEmulatorDef?.packageName ?: adHocConfig?.packageName,
                 effectiveEmulatorName = effectiveEmulatorDef?.displayName ?: adHocConfig?.displayName,
                 effectiveSavePath = effectiveSavePath,
+                savesBesideRom = savesBesideRom,
                 isUserSavePathOverride = isUserSavePathOverride,
                 isEvaluatedSavePath = savePathResolution?.isEvaluatedDefault == true,
                 isFallbackSavePath = savePathResolution?.isFallbackDefault == true,
@@ -505,7 +541,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         val downloadedCount = vm.gameRepository.getDownloadedGamesCount()
         val adoptedCount = vm.gameRepository.getAdoptedGamesCount()
         val availableSpace = vm.gameRepository.getAvailableStorageBytes()
-        val boxArtCapableGames = vm.gameRepository.countBoxArtCapableGames()
+        val box3dCapableGames = vm.gameRepository.countBox3dCapableGames()
         val libraryRegionOptions = vm.gameRepository.getDistinctRegions()
 
         vm.displayDelegate.updateState(DisplayState(
@@ -541,7 +577,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             homeBackgroundMode = prefs.homeBackgroundMode,
             homeLayout = prefs.homeLayout,
             presentationStyle = prefs.presentationStyle,
-            boxArtCapableGames = boxArtCapableGames,
+            box3dCapableGames = box3dCapableGames,
+            libraryBoxArt3d = prefs.libraryBoxArt3d,
             useAccentColorFooter = prefs.useAccentColorFooter,
             compactFooter = prefs.compactFooter,
             lockScreenArt = prefs.lockScreenArt,
@@ -671,7 +708,8 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
             hudShowPlaytime = builtinSettings.hudShowPlaytime,
             hudShowFps = builtinSettings.hudShowFps,
             hudShowLastSave = builtinSettings.hudShowLastSave,
-            emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions
+            emulatorUpdateVersions = currentEmulatorState.emulatorUpdateVersions,
+            coreUpdatesAvailable = currentEmulatorState.coreUpdatesAvailable
         ))
         vm.emulatorDelegate.updateCoreCounts()
         anchoredPlatformId?.let { anchorId ->
@@ -682,7 +720,6 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                 }
             }
         }
-        routeLoadAvailablePlatformsForLibretro(vm)
 
         vm.serverDelegate.updateState(ServerState(
             connectionStatus = connectionStatus,
@@ -833,8 +870,6 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
         vm.syncDelegate.updateState(SyncSettingsState(
             syncFilters = prefs.syncFilters,
             regionPriority = prefs.regionPriority,
-            totalPlatforms = platforms.count { it.gameCount > 0 },
-            totalGames = platforms.sumOf { it.gameCount },
             saveSyncEnabled = prefs.saveSyncEnabled,
             secureSaves = prefs.secureSaves,
             stateCacheEnabled = prefs.stateCacheEnabled,
@@ -877,6 +912,7 @@ internal fun routeLoadSettings(vm: SettingsViewModel) {
                     rewindBufferDuration = refreshSettings.rewindBufferDurationDisplay,
                     autoSaveState = refreshSettings.autoSaveState,
                     autoRestoreState = refreshSettings.autoRestoreState,
+                    preferNewerServerSave = refreshSettings.preferNewerServerSave,
                     hwCoreSaveStatesEnabled = refreshSettings.hwCoreSaveStatesEnabled,
                     savePath = refreshSettings.customSavePath
                         ?: AppPaths.libretroSavesDir(vm.context.filesDir).absolutePath,

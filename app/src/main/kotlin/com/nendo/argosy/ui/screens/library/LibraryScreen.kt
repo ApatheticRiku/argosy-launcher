@@ -114,7 +114,6 @@ import com.nendo.argosy.ui.components.InputButton
 import com.nendo.argosy.ui.components.liftedReorderHints
 import com.nendo.argosy.ui.components.DiscPickerModal
 import com.nendo.argosy.ui.components.MemcardPickerModal
-import com.nendo.argosy.ui.components.SyncOverlay
 import com.nendo.argosy.ui.screens.collections.dialogs.CreateCollectionDialog
 import com.nendo.argosy.ui.icons.InputIcons
 import com.nendo.argosy.ui.input.DiscPickerInputHandler
@@ -487,6 +486,7 @@ fun LibraryScreen(
                                                     downloadIndicatorFor = {
                                                         downloadIndicators.value[it] ?: GameDownloadIndicator.NONE
                                                     },
+                                                    useBoxArt = uiState.boxArt3d,
                                                     onClick = { viewModel.handleItemTap(item.gameIndex, onGameSelect) },
                                                     onLongClick = { viewModel.handleItemLongPress(item.gameIndex) },
                                                     modifier = Modifier.zIndex(if (isFocused) 1f else 0f)
@@ -805,14 +805,6 @@ fun LibraryScreen(
             }
         }
 
-        SyncOverlay(
-            syncProgress = uiState.syncOverlayState?.syncProgress,
-            gameTitle = uiState.syncOverlayState?.gameTitle,
-            onGrantPermission = uiState.syncOverlayState?.onGrantPermission,
-            onDisableSync = uiState.syncOverlayState?.onDisableSync,
-            onOpenSettings = uiState.syncOverlayState?.onOpenSettings,
-            onSkip = uiState.syncOverlayState?.onSkip
-        )
 
         LetterOverlay(
             letter = uiState.overlaySectionLabel,
@@ -1173,8 +1165,11 @@ private fun LibraryMasonryGrid(
                     span = StaggeredGridItemSpan.SingleLane
                 ) {
                     val isFocused = gridItem.gameIndex == uiState.focusedIndex
-                    val coverPath = uiState.repairedCoverPaths[gridItem.game.id] ?: gridItem.game.coverPath
-                    val ratio = rememberCoverAspectRatio(coverPath, fallbackAspectRatio)
+                    val coverPath = uiState.repairedCoverPaths[gridItem.game.id]
+                        ?: com.nendo.argosy.ui.common.rememberResolvedCoverPath(gridItem.game.id, gridItem.game.coverPath)
+                    val ratio = gridItem.game.box3dPath?.takeIf { uiState.boxArt3d }
+                        ?.let { rememberCoverAspectRatio(it, fallbackAspectRatio) }
+                        ?: rememberCoverAspectRatio(coverPath, fallbackAspectRatio)
                     LibraryGameCard(
                         game = gridItem.game,
                         isFocused = isFocused,
@@ -1186,6 +1181,7 @@ private fun LibraryMasonryGrid(
                         downloadIndicatorFor = {
                             downloadIndicators.value[it] ?: GameDownloadIndicator.NONE
                         },
+                        useBoxArt = uiState.boxArt3d,
                         onClick = { viewModel.handleItemTap(gridItem.gameIndex, onGameSelect) },
                         onLongClick = { viewModel.handleItemLongPress(gridItem.gameIndex) },
                         modifier = Modifier
@@ -1209,6 +1205,7 @@ private fun LibraryGameCard(
     coverPathOverride: String? = null,
     onCoverLoadFailed: ((Long, String) -> Unit)? = null,
     downloadIndicatorFor: (Long) -> GameDownloadIndicator = { GameDownloadIndicator.NONE },
+    useBoxArt: Boolean = false,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
@@ -1225,6 +1222,8 @@ private fun LibraryGameCard(
             platformSlug = game.platformSlug,
             platformDisplayName = game.platformDisplayName,
             coverPath = game.coverPath,
+            boxSpinePath = game.boxSpinePath,
+            box3dPath = game.box3dPath,
             gradientColors = game.gradientColors,
             backgroundPath = null,
             developer = null,
@@ -1239,6 +1238,7 @@ private fun LibraryGameCard(
         onCoverLoadFailed = onCoverLoadFailed,
         downloadIndicator = downloadIndicator,
         saturationOverride = saturation,
+        useBoxArt = useBoxArt,
         modifier = modifier
             .fillMaxWidth()
             .then(if (cardHeight != null) Modifier.height(cardHeight) else Modifier)

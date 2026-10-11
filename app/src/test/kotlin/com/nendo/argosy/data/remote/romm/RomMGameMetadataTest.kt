@@ -122,16 +122,6 @@ class RomMGameMetadataTest {
     }
 
     @Test
-    fun `image paths are left to the caller`() {
-        val result = existing().withRomMetadata(rom())
-
-        assertNull("cover is resolved to a cached file or a url by the caller", result.coverPath)
-        assertNull("box art is resolved by the caller", result.boxBackPath)
-        assertNull(result.boxSpinePath)
-        assertNull(result.logoPath)
-    }
-
-    @Test
     fun `an achievement count is taken from the rom when it has one`() {
         assertEquals(3, existing().withRomMetadata(rom(achievements = 3)).achievementCount)
     }

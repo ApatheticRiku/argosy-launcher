@@ -349,6 +349,10 @@
     <string name="settings_home_screen_video_muted_subtitle">Couper le son de la vidéo</string>
 
     <string name="settings_home_screen_installed_only_title">Jeux installés uniquement</string>
+    <string name="settings_home_screen_box_art_title">Jaquette</string>
+    <string name="settings_home_screen_box_art_subtitle">Affiche un boîtier 3D pour les jeux qui en ont un</string>
+    <string name="settings_home_screen_box_art_option_2d">Jaquette 2D</string>
+    <string name="settings_home_screen_box_art_option_3d">Boîtier 3D</string>
     <string name="settings_home_screen_installed_only_subtitle">N\'afficher que les jeux téléchargés sur l\'écran d\'accueil</string>
 
     <!-- ===== Section Sauvegardes ===== -->
@@ -559,6 +563,10 @@
     <string name="settings_permissions_screen_capture_description">Permet l\'éclairage LED ambiant en échantillonnant les couleurs de l\'écran pendant le jeu.</string>
     <string name="settings_permissions_display_overlay_title">Affichage par-dessus les autres applications</string>
     <string name="settings_permissions_display_overlay_description">Affiche des notifications de détection de sauvegarde en jouant avec des émulateurs externes.</string>
+    <string name="settings_permissions_live_wallpaper_title">Écran de verrouillage animé</string>
+    <string name="settings_permissions_live_wallpaper_description">Autorisez Argosy à appliquer un écran de verrouillage animé.</string>
+    <string name="settings_lock_screen_wallpaper_label">Bibliothèque Argosy</string>
+    <string name="settings_lock_screen_wallpaper_description">Autorisez Argosy à appliquer un écran de verrouillage animé.</string>
     <string name="settings_permissions_status_footer">État : %1$d/%2$d autorisations accordées</string>
 
     <!-- ===== Section A propos ===== -->
@@ -605,6 +613,10 @@
     <string name="settings_about_log_path_internal">Interne</string>
     <string name="settings_about_log_path_sd_card">Carte SD/%1$s</string>
     <string name="settings_about_log_level_title">Niveau de journalisation</string>
+    <string name="settings_about_log_level_debug">Débogage</string>
+    <string name="settings_about_log_level_info">Info</string>
+    <string name="settings_about_log_level_warn">Alerte</string>
+    <string name="settings_about_log_level_error">Erreur</string>
 
     <string name="settings_about_save_debug_title">Journalisation de débogage des sauvegardes</string>
     <string name="settings_about_save_debug_subtitle_on">Opérations de sauvegarde détaillées consignées</string>
@@ -1385,6 +1397,16 @@
         <item quantity="many">%d mises à jour</item>
         <item quantity="other">%d mises à jour</item>
     </plurals>
+    <plurals name="settings_main_platforms_updates_badge">
+        <item quantity="one">%d mise à jour</item>
+        <item quantity="many">%d mises à jour</item>
+        <item quantity="other">%d mises à jour</item>
+    </plurals>
+    <plurals name="settings_main_builtin_updates_badge">
+        <item quantity="one">%d mise à jour</item>
+        <item quantity="many">%d mises à jour</item>
+        <item quantity="other">%d mises à jour</item>
+    </plurals>
     <string name="settings_builtin_core_options_title">Options du core</string>
     <string name="settings_builtin_core_options_subtitle">Paramètres et remplacements par core</string>
 
@@ -1429,6 +1451,8 @@
     </plurals>
     <string name="settings_builtin_controls_mapping_title">Mappage des entrées</string>
     <string name="settings_builtin_controls_mapping_subtitle">Réattribuer les boutons pour chaque manette</string>
+    <string name="settings_builtin_controls_controller_type_title">Manette du joueur %1$d</string>
+    <string name="settings_builtin_controls_controller_type_subtitle">La manette que voit le jeu. S\'applique au prochain lancement d\'un jeu.</string>
 
     <string name="settings_builtin_controls_analog_as_dpad_title">Stick gauche comme croix directionnelle</string>
     <string name="settings_builtin_controls_analog_as_dpad_subtitle">Associer le stick analogique gauche aux entrées de la croix directionnelle</string>
@@ -1780,6 +1804,10 @@
     <string name="settings_library_layout_title">Disposition</string>
     <string name="settings_library_layout_grid">Grille</string>
     <string name="settings_library_layout_list">Liste</string>
+    <string name="settings_library_box_art_title">Jaquette</string>
+    <string name="settings_library_box_art_subtitle">Affiche un boîtier 3D pour les jeux qui en ont un</string>
+    <string name="settings_library_box_art_option_2d">Jaquette 2D</string>
+    <string name="settings_library_box_art_option_3d">Boîtier 3D</string>
     <string name="settings_library_grid_density_title">Densité de la grille</string>
     <string name="settings_library_grid_density_compact">Compacte</string>
     <string name="settings_library_grid_density_normal">Normale</string>
@@ -2440,6 +2468,8 @@
     <string name="settings_libretro_def_auto_save_state_subtitle">S\'applique uniquement aux jeux en mode Casual</string>
     <string name="settings_libretro_def_auto_restore_state_title">Restaurer l\'état au lancement</string>
     <string name="settings_libretro_def_auto_restore_state_subtitle">S\'applique uniquement aux jeux en mode Casual</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_title">Préférer la sauvegarde serveur plus récente</string>
+    <string name="settings_libretro_def_prefer_newer_server_save_subtitle">Ignorer l\'état de reprise automatique si une sauvegarde plus récente a été téléchargée depuis le serveur</string>
     <string name="settings_libretro_def_hw_core_save_states_title">États de sauvegarde Dolphin et Flycast</string>
     <string name="settings_libretro_def_hw_core_save_states_subtitle">Expérimental ; ces cores peuvent afficher un écran noir ou échouer à reprendre. Prend effet au prochain lancement, jeux en mode Casual uniquement</string>
 

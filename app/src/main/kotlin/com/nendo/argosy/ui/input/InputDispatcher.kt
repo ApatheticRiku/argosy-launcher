@@ -16,6 +16,7 @@ class InputDispatcher(
     private var criticalHandler: InputHandler? = null
     private var drawerHandler: InputHandler? = null
     private var viewHandler: InputHandler? = null
+    private var viewRoute: String? = null
     private var pendingInput: GamepadInput? = null
     private var inputBlockedUntil: Long = 0L
     private var currentRoute: String? = null
@@ -36,7 +37,7 @@ class InputDispatcher(
             }
         }
     }
-    private var pendingViewSubscription: Pair<InputHandler, String>? = null
+    private val pendingViewSubscriptions = LinkedHashMap<String, InputHandler>()
 
     fun setCurrentRoute(route: String?) {
         currentRoute = route
@@ -44,13 +45,15 @@ class InputDispatcher(
     }
 
     private fun processPendingViewSubscription() {
-        val pending = pendingViewSubscription ?: return
-        if (isRouteMatch(pending.second, currentRoute)) {
-            pendingViewSubscription = null
-            clearModals()
-            viewHandler = pending.first
-            processPendingEvent()
-        }
+        val route = pendingViewSubscriptions.keys
+            .filter { isRouteMatch(it, currentRoute) }
+            .maxByOrNull { it.length }
+            ?: return
+        val handler = pendingViewSubscriptions.remove(route) ?: return
+        clearModals()
+        viewHandler = handler
+        viewRoute = route
+        processPendingEvent()
     }
 
     fun pushModal(handler: InputHandler) {
@@ -95,7 +98,7 @@ class InputDispatcher(
      * remain parked indefinitely.
      */
     fun clearPendingViewSubscription() {
-        pendingViewSubscription = null
+        pendingViewSubscriptions.clear()
     }
 
     /**
@@ -134,20 +137,25 @@ class InputDispatcher(
     fun subscribeView(handler: InputHandler) {
         clearModals()
         viewHandler = handler
+        viewRoute = null
         processPendingEvent()
     }
 
     fun subscribeView(handler: InputHandler, forRoute: String): Boolean {
         if (!isRouteMatch(forRoute, currentRoute)) {
-            pendingViewSubscription = handler to forRoute
+            pendingViewSubscriptions[forRoute] = handler
             return false
         }
-        pendingViewSubscription = null
+        pendingViewSubscriptions.remove(forRoute)
         clearModals()
         viewHandler = handler
+        viewRoute = forRoute
         processPendingEvent()
         return true
     }
+
+    private fun viewOwnsCurrentRoute(): Boolean =
+        viewRoute?.let { isRouteMatch(it, currentRoute) } ?: true
 
     private fun isRouteMatch(subscriberRoute: String, activeRoute: String?): Boolean {
         if (activeRoute == null) return false
@@ -185,7 +193,12 @@ class InputDispatcher(
             }
         }
 
-        val handler = criticalHandler ?: modalStack.lastOrNull() ?: drawerHandler ?: viewHandler
+        val overlay = criticalHandler ?: modalStack.lastOrNull() ?: drawerHandler
+        if (overlay == null && viewHandler != null && !viewOwnsCurrentRoute()) {
+            pendingInput = null
+            return InputResult.HANDLED
+        }
+        val handler = overlay ?: viewHandler
         if (handler == null) {
             pendingInput = input
             return InputResult.UNHANDLED

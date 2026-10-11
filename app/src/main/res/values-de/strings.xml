@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="secondary_home_label">Argosy Companion</string>
-    <string name="focus_accessibility_description">Hält den Controller-Fokus während des Spiels mit zwei Bildschirmen auf der Spielanzeige</string>
+    <string name="focus_accessibility_description">Hält den Controller-Fokus während des Spiels mit zwei Bildschirmen auf der Spielanzeige und nimmt beim Schreiben eines Spielstands unbemerkt einen Screenshot des Spiels auf</string>
 </resources>

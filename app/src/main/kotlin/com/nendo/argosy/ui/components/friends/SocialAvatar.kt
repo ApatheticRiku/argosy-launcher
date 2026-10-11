@@ -25,6 +25,7 @@ import androidx.core.graphics.toColorInt
 import com.nendo.argosy.ui.screens.doodle.DecodedDoodle
 import com.nendo.argosy.ui.screens.doodle.DoodlePreview
 import com.nendo.argosy.ui.theme.Dimens
+import com.nendo.argosy.ui.theme.LocalArgosyTheme
 import com.nendo.argosy.ui.theme.generated.ColorTokens
 import com.nendo.argosy.ui.screens.doodle.rememberDecodedDoodle
 
@@ -121,12 +122,16 @@ fun SocialAvatar(
                     modifier = Modifier
                         .size(Dimens.dotSm)
                         .clip(CircleShape)
-                        .background(ColorTokens.Domain.Presence.online)
+                        .background(presenceOnlineColor())
                 )
             }
         }
     }
 }
+
+@Composable
+fun presenceOnlineColor(): Color =
+    if (LocalArgosyTheme.current.isDark) ColorTokens.Domain.Presence.Online.dark else ColorTokens.Domain.Presence.Online.light
 
 private fun decodeAvatarPng(base64: String?): ImageBitmap? {
     if (base64.isNullOrEmpty()) return null

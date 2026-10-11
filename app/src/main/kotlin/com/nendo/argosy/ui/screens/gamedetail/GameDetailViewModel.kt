@@ -145,6 +145,7 @@ class GameDetailViewModel @Inject constructor(
 
     private val companionOwner = com.nendo.argosy.ui.dualscreen.SlotOwner.of("game.detail", this)
     private var isDescribing = false
+    private var heldForTimeline = false
 
     private val sessionStateStore by lazy { com.nendo.argosy.data.preferences.SessionStateStore(context) }
 
@@ -187,9 +188,42 @@ class GameDetailViewModel @Inject constructor(
 
     val saveChannelDelegate get() = saveManagement.saveChannelDelegate
 
+    val snapshotViewActions by lazy {
+        com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotViewActions(
+            saveManagement.saveChannelDelegate.snapshotDelegate,
+            viewModelScope,
+            ::handleSaveStatusChanged,
+            ::openSaveTimeline
+        )
+    }
+
+    private val snapshotInput: InputHandler by lazy {
+        com.nendo.argosy.ui.common.savechannel.snapshot.SnapshotInputHandler(
+            delegate = saveManagement.saveChannelDelegate.snapshotDelegate,
+            saveState = { saveManagement.saveChannelDelegate.state.value },
+            scope = viewModelScope,
+            onSaveStatusChanged = ::handleSaveStatusChanged,
+            onOpenTimeline = ::openSaveTimeline
+        )
+    }
+
+    private fun openSaveTimeline() {
+        val gameId = currentGameId
+        heldForTimeline = true
+        viewModelScope.launch { _launchEvents.emit(LaunchEvent.OpenSaveTimeline(gameId)) }
+    }
+
+    private fun routeSnapshotInput(press: (InputHandler) -> InputResult): InputResult? =
+        if (saveManagement.saveChannelDelegate.state.value.isSnapshotSavesView) {
+            press(snapshotInput).takeIf { it.handled }
+        } else {
+            null
+        }
+
     override fun onCleared() {
         super.onCleared()
-        clearCompanionDetail()
+        isDescribing = false
+        releaseCompanionSlot()
         imageCacheManager.resumeBackgroundCaching()
         gameThemeAudio.exit(currentGameId)
     }
@@ -251,6 +285,9 @@ class GameDetailViewModel @Inject constructor(
             saveManagement.saveChannelDelegate.state.collect { saveState ->
                 _uiState.update { it.copy(saveChannel = saveState) }
             }
+        }
+        viewModelScope.launch {
+            saveManagement.saveChannelDelegate.saveStatusEvents.collect { handleSaveStatusChanged(it) }
         }
         viewModelScope.launch {
             gameLaunchDelegate.syncOverlayState.collect { overlayState ->
@@ -672,6 +709,8 @@ class GameDetailViewModel @Inject constructor(
             downloadDelegate.updateDownloadSize(downloadSizeBytes)
 
             val isHiddenForOwner = gameRepository.isGameHidden(gameId)
+            val art = gameRepository.getArt(gameId)
+            val screenshotRows = gameRepository.getScreenshots(gameId)
 
             val isPrivate = game.igdbId != null &&
                 game.igdbId.toInt() in socialRepository.hiddenGameIds.value
@@ -685,6 +724,8 @@ class GameDetailViewModel @Inject constructor(
             _uiState.update { state ->
                 state.copy(
                     game = game.toGameDetailUi(
+                        art = art,
+                        screenshotRows = screenshotRows,
                         platformName = platform?.name
                             ?: context.getString(R.string.gamedetail_header_platform_unknown),
                         emulatorName = emulatorName,
@@ -1081,11 +1122,6 @@ class GameDetailViewModel @Inject constructor(
     }
 
     // --- Play/Launch ---
-
-    fun onResume() {
-        if (gameLaunchDelegate.isSyncing) return
-        gameLaunchDelegate.handleSessionEnd(viewModelScope)
-    }
 
     fun primaryAction(origin: LaunchOrigin = LaunchOrigin.INTERNAL) {
         val now = System.currentTimeMillis()
@@ -1858,6 +1894,7 @@ class GameDetailViewModel @Inject constructor(
         val picker = pickerModalDelegate.state.value
         if (!picker.showArtPicker || !picker.artPickerCanSearch) return
         val slot = picker.artPickerSlot
+        val artType = RomMCoverArtType.forSlot(slot) ?: return
         val term = query.trim()
         if (term.isEmpty()) {
             showArtCandidates(slot, offlineArtCandidates(slot))
@@ -1866,7 +1903,7 @@ class GameDetailViewModel @Inject constructor(
         pickerModalDelegate.setArtPickerSearching()
         viewModelScope.launch {
             val onServer = offlineArtCandidates(slot)
-            val result = romMRepository.searchCovers(term, RomMCoverArtType.forSlot(slot))
+            val result = romMRepository.searchCovers(term, artType)
             val current = pickerModalDelegate.state.value
             if (!current.showArtPicker || current.artPickerSlot != slot) return@launch
             when (result) {
@@ -1977,7 +2014,7 @@ class GameDetailViewModel @Inject constructor(
                 category = file.category,
                 gameTitle = game.title,
                 platformSlug = game.platformSlug,
-                coverPath = game.displayCoverPath,
+                coverPath = gameRepository.getArt(game.id).coverPath,
                 expectedSizeBytes = file.fileSize,
                 gameFolderName = game.rommFileName
             )
@@ -2136,8 +2173,9 @@ class GameDetailViewModel @Inject constructor(
             val platformNames = related.map { it.platformId }.distinct()
                 .mapNotNull { pid -> platformRepository.getById(pid)?.let { pid to it.name } }
                 .toMap()
+            val art = gameRepository.getArt(related.map { it.id })
             val ui = related.map { item ->
-                val mapped = item.toHomeGameUi(downloadFileStatusRepository, platformNames[item.platformId])
+                val mapped = item.toHomeGameUi(downloadFileStatusRepository, art[item.id], platformNames[item.platformId])
                 gradientExtractionDelegate.getGradient(mapped.id)
                     ?.let { mapped.copy(gradientColors = it) } ?: mapped
             }
@@ -2145,7 +2183,7 @@ class GameDetailViewModel @Inject constructor(
                 _uiState.update { it.copy(relatedGames = ui, relatedFocusIndex = 0) }
             }
             val requests = related.map {
-                com.nendo.argosy.ui.screens.common.GameGradientRequest(it.id, it.coverPath)
+                com.nendo.argosy.ui.screens.common.GameGradientRequest(it.id, art[it.id]?.coverPath)
             }
             gradientExtractionDelegate.extractForVisibleGames(
                 viewModelScope, requests, focusedIndex = 0, buffer = requests.size
@@ -2393,11 +2431,21 @@ class GameDetailViewModel @Inject constructor(
 
     fun republishCompanionDetail() {
         isDescribing = true
+        heldForTimeline = false
         publishCompanionDetail(_uiState.value.game)
     }
 
+    /**
+     * Stops describing the game on the presentation screen. While the save timeline covers this
+     * screen the slot stays published until the timeline returns here or this ViewModel is cleared.
+     */
     fun clearCompanionDetail() {
         isDescribing = false
+        if (heldForTimeline) return
+        releaseCompanionSlot()
+    }
+
+    private fun releaseCompanionSlot() {
         com.nendo.argosy.DualScreenManagerHolder.instance?.releaseSlot(companionOwner)
     }
 
@@ -2440,6 +2488,7 @@ class GameDetailViewModel @Inject constructor(
         onNavigateToGame: (Long) -> Unit = {}
     ): InputHandler = object : InputHandler {
         override fun onUp(): InputResult {
+            routeSnapshotInput { it.onUp() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2473,6 +2522,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onDown(): InputResult {
+            routeSnapshotInput { it.onDown() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2506,6 +2556,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onLeft(): InputResult {
+            routeSnapshotInput { it.onLeft() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2542,6 +2593,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onRight(): InputResult {
+            routeSnapshotInput { it.onRight() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2578,6 +2630,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onPrevSection(): InputResult {
+            routeSnapshotInput { it.onPrevSection() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2599,6 +2652,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onNextSection(): InputResult {
+            routeSnapshotInput { it.onNextSection() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2622,6 +2676,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onConfirm(): InputResult {
+            routeSnapshotInput { it.onConfirm() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2664,6 +2719,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onBack(): InputResult {
+            routeSnapshotInput { it.onBack() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2705,6 +2761,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onMenu(): InputResult {
+            routeSnapshotInput { it.onMenu() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             val pickerState = pickerModalDelegate.state.value
@@ -2732,6 +2789,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onSecondaryAction(): InputResult {
+            routeSnapshotInput { it.onSecondaryAction() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             if (state.reviewEditor != null) { promptReviewDelete(); return InputResult.HANDLED }
@@ -2745,6 +2803,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onContextMenu(): InputResult {
+            routeSnapshotInput { it.onContextMenu() }?.let { return it }
             val state = _uiState.value
             val saveState = state.saveChannel
             if (state.reviewEditor != null) return InputResult.HANDLED
@@ -2762,6 +2821,7 @@ class GameDetailViewModel @Inject constructor(
         }
 
         override fun onSelect(): InputResult {
+            routeSnapshotInput { it.onSelect() }?.let { return it }
             if (_uiState.value.reviewEditor != null) { submitReview(); return InputResult.HANDLED }
             if (hasOpenModal()) { dismissAllModals(); return InputResult.HANDLED }
             if (com.nendo.argosy.ui.dualscreen.selectSwapsRoles()) return InputResult.UNHANDLED
@@ -2772,6 +2832,7 @@ class GameDetailViewModel @Inject constructor(
             if (hasOpenModal()) InputResult.HANDLED else InputResult.UNHANDLED
 
         override fun onLongConfirm(): InputResult {
+            routeSnapshotInput { it.onLongConfirm() }?.let { return it }
             if (hasOpenModal()) return InputResult.handled(SoundType.BOUNDARY)
             toggleMoreOptions()
             return InputResult.HANDLED

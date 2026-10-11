@@ -49,6 +49,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
         val BUILTIN_AUTO_SAVE_STATE = booleanPreferencesKey("builtin_auto_save_state")
         val BUILTIN_AUTO_RESTORE_STATE = booleanPreferencesKey("builtin_auto_restore_state")
         val BUILTIN_AUTO_RESTORE_STATE_MODE = stringPreferencesKey("builtin_auto_restore_state_mode")
+        val BUILTIN_PREFER_NEWER_SERVER_SAVE = booleanPreferencesKey("builtin_prefer_newer_server_save")
         val BUILTIN_HW_CORE_SAVE_STATES = booleanPreferencesKey("builtin_hw_core_save_states")
         val BUILTIN_DEFAULT_TO_HARDCORE = booleanPreferencesKey("builtin_default_to_hardcore")
         val BUILTIN_DEFAULT_TO_HARDCORE_MODE = stringPreferencesKey("builtin_default_to_hardcore_mode")
@@ -115,6 +116,7 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
             autoRestoreState = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE]
                 ?: (prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] != "off"),
             autoRestoreStateMode = prefs[Keys.BUILTIN_AUTO_RESTORE_STATE_MODE] ?: "restore",
+            preferNewerServerSave = prefs[Keys.BUILTIN_PREFER_NEWER_SERVER_SAVE] ?: true,
             hwCoreSaveStatesEnabled = prefs[Keys.BUILTIN_HW_CORE_SAVE_STATES] ?: false,
             defaultToHardcore = when (val saved = prefs[Keys.BUILTIN_DEFAULT_TO_HARDCORE_MODE]) {
                 "Default to Hardcore", "hardcore" -> "hardcore"
@@ -303,6 +305,10 @@ class BuiltinEmulatorPreferencesRepository @Inject constructor(
 
     suspend fun setBuiltinAutoRestoreState(enabled: Boolean) {
         dataStore.edit { it[Keys.BUILTIN_AUTO_RESTORE_STATE] = enabled }
+    }
+
+    suspend fun setBuiltinPreferNewerServerSave(enabled: Boolean) {
+        dataStore.edit { it[Keys.BUILTIN_PREFER_NEWER_SERVER_SAVE] = enabled }
     }
 
     suspend fun setBuiltinHwCoreSaveStates(enabled: Boolean) {

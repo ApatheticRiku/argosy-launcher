@@ -38,7 +38,7 @@ class SettingsInputHandler(
     companion object {
         internal const val SLIDER_STEP = 10
         internal const val FONT_SCALE_STEP = 5
-        internal const val HUE_STEP = 10f
+        internal const val HUE_STEP = com.nendo.argosy.ui.theme.AccentHue.STEP
     }
 
     private val modalRouter = ModalInputRouter(viewModel)

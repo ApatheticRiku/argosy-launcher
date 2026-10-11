@@ -5,6 +5,7 @@ import com.nendo.argosy.data.emulator.SavePathConfig
 import com.nendo.argosy.data.emulator.SavePathRegistry
 import com.nendo.argosy.data.storage.FileAccessLayer
 import com.nendo.argosy.data.sync.SaveArchiver
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -24,6 +25,7 @@ class PlatformSaveHandlerRegistryRoutingTest {
     private val dreamcastHandler = mockk<DreamcastSaveHandler>(relaxed = true)
     private val defaultHandler = mockk<DefaultSaveHandler>(relaxed = true)
     private val unitHandler = mockk<UnitSaveHandler>(relaxed = true)
+    private val sigilHandler = mockk<SigilSaveHandler>(relaxed = true)
 
     private lateinit var registry: PlatformSaveHandlerRegistry
 
@@ -39,6 +41,7 @@ class PlatformSaveHandlerRegistryRoutingTest {
             dreamcastSaveHandler = dreamcastHandler,
             defaultSaveHandler = defaultHandler,
             unitSaveHandler = unitHandler,
+            sigilSaveHandler = sigilHandler,
         )
     }
 
@@ -113,10 +116,64 @@ class PlatformSaveHandlerRegistryRoutingTest {
     }
 
     @Test
-    fun `standalone Switch emulator routes to SwitchSaveHandler`() {
-        val config = SavePathRegistry.getConfigForPlatform("eden", "switch")
-        val handler = registry.getHandler(config, "switch", "eden")
+    fun `standalone card and profile emulators keep their legacy handlers before RomM 5_5`() {
+        every { sigilHandler.routes(any(), any()) } returns false
+        mapOf(
+            ("eden" to "switch") to switchHandler,
+            ("dolphin" to "ngc") to gciHandler,
+            ("nethersx2" to "ps2") to registry.getFolderHandler("ps2"),
+            ("ppsspp" to "psp") to registry.getFolderHandler("psp"),
+            ("vita3k" to "vita") to registry.getFolderHandler("vita"),
+            ("aps3e" to "ps3") to registry.getFolderHandler("ps3"),
+            ("cemu" to "wiiu") to registry.getFolderHandler("wiiu"),
+            ("azahar" to "3ds") to registry.getFolderHandler("3ds")
+        ).forEach { (key, expected) ->
+            val (emulator, platform) = key
+            val config = SavePathRegistry.getConfigForPlatform(emulator, platform)
+            assertSame("$emulator on $platform", expected, registry.getHandler(config, platform, emulator))
+        }
+    }
 
-        assertSame(switchHandler, handler)
+    @Test
+    fun `standalone card and profile emulators route to Sigil`() {
+        every { sigilHandler.routes(any(), any()) } answers {
+            SigilSaveHandler.layoutFor(firstArg(), secondArg()) != null
+        }
+        listOf(
+            "eden" to "switch",
+            "ryujinx" to "switch",
+            "dolphin" to "ngc",
+            "nethersx2" to "ps2",
+            "duckstation" to "psx",
+            "ppsspp" to "psp",
+            "vita3k" to "vita",
+            "aps3e" to "ps3",
+            "cemu" to "wiiu",
+            "azahar" to "3ds"
+        ).forEach { (emulator, platform) ->
+            val config = SavePathRegistry.getConfigForPlatform(emulator, platform)
+            assertSame("$emulator on $platform", sigilHandler, registry.getHandler(config, platform, emulator))
+        }
+    }
+
+    @Test
+    fun `dolphin on wii goes through sigil`() {
+        every { sigilHandler.routes(any(), any()) } answers {
+            SigilSaveHandler.layoutFor(firstArg(), secondArg()) != null
+        }
+        val config = SavePathRegistry.getConfigForPlatform("dolphin", "wii")
+        assertSame(sigilHandler, registry.getHandler(config, "wii", "dolphin"))
+    }
+
+    @Test
+    fun `a dolphin wii save path anchors at the folder holding Wii`() {
+        assertEquals(
+            "/sdcard/Android/data/org.dolphinemu.dolphinemu/files",
+            SigilSaveHandler.rootFor("/sdcard/Android/data/org.dolphinemu.dolphinemu/files/Wii/title/00010000", "dolphin_standalone")
+        )
+        assertEquals(
+            "/sdcard/Android/data/org.dolphinemu.dolphinemu/files",
+            SigilSaveHandler.rootFor("/sdcard/Android/data/org.dolphinemu.dolphinemu/files/GC/USA/Card A", "dolphin_standalone")
+        )
     }
 }

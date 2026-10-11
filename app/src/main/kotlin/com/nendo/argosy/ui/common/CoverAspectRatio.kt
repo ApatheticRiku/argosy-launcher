@@ -22,6 +22,21 @@ import java.util.concurrent.ConcurrentHashMap
  */
 private val aspectRatioCache = ConcurrentHashMap<String, Float>()
 
+@Composable
+fun rememberGameArtAspectRatio(
+    game: com.nendo.argosy.ui.screens.home.HomeGameUi,
+    useBoxArt: Boolean,
+    coverPath: String?,
+    fallback: Float
+): Float {
+    val box3d = game.box3dPath?.takeIf { useBoxArt }
+    return if (box3d != null) {
+        rememberCoverAspectRatio(box3d, fallback)
+    } else {
+        game.coverAspectRatio ?: rememberCoverAspectRatio(coverPath, fallback)
+    }
+}
+
 /**
  * Resolves the real aspect ratio (width / height) of a cover image so that box
  * art can be laid out at its native proportions instead of a forced shape.

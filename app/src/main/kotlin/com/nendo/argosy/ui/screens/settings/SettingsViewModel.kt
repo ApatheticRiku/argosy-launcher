@@ -90,6 +90,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+private const val AMBIENT_LIBRARY_WIDE = -1L
+
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext internal val context: Context,
@@ -159,10 +161,13 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     private var jellyfinSignInJob: Job? = null
-    private var ambientCovers: List<String>? = null
+    private val ambientCovers = java.util.concurrent.ConcurrentHashMap<Long, List<String>>()
 
-    suspend fun ambientShowcaseCovers(): List<String> =
-        ambientCovers ?: gameRepository.showcaseCovers(null, oneEntryPerGroup = false).also { ambientCovers = it }
+    suspend fun ambientShowcaseCovers(platformId: Long?): List<String> {
+        val key = platformId ?: AMBIENT_LIBRARY_WIDE
+        return ambientCovers[key] ?: gameRepository.showcaseCovers(platformId, oneEntryPerGroup = true)
+            .also { ambientCovers[key] = it }
+    }
 
     /**
      * The most recently played game, drawn the way home presents a focused game, so the
@@ -171,8 +176,12 @@ class SettingsViewModel @Inject constructor(
     suspend fun presentationSample(): com.nendo.argosy.ui.dualscreen.CompanionDetail? {
         val game = gameRepository.getRecentlyPlayed(limit = 1).firstOrNull() ?: return null
         val platformName = platformRepository.getById(game.platformId)?.getDisplayName()
-        return game.toHomeGameUi(downloadFileStatusRepository, platformDisplayName = platformName)
-            .toCompanionDetail()
+        return game.toHomeGameUi(
+            downloadFileStatusRepository,
+            gameRepository.getArt(game.id),
+            gameRepository.getScreenshots(game.id).firstOrNull()?.sourceUrl,
+            platformDisplayName = platformName
+        ).toCompanionDetail()
     }
 
     internal val _uiState = MutableStateFlow(SettingsUiState())
@@ -274,17 +283,22 @@ class SettingsViewModel @Inject constructor(
         observeSocialConnectionState()
         observeAvatarPreferences()
         routeObservePlatformLibretroSettings(this)
-        routeLoadAvailablePlatformsForLibretro(this)
+        routeObservePlatforms(this)
         loadSettings()
         driversDelegate.loadGpuInfo()
         raDelegate.initialize(viewModelScope)
         displayDelegate.loadPreviewGame(viewModelScope)
         displayDelegate.observeScreenCapturePermission(viewModelScope)
+        permissionsDelegate.observeLockScreenArt(viewModelScope)
         routeStartControllerDetectionPolling(this)
         installerDelegate.observeJobs(viewModelScope)
     }
 
     fun cyclePlatformContext(direction: Int) = routeCyclePlatformContext(this, direction)
+
+    fun stepControllerType(port: Int, delta: Int) = routeStepControllerType(this, port, delta)
+
+    fun selectControllerType(port: Int, index: Int) = routeSelectControllerType(this, port, index)
 
     internal fun loadSettings() = routeLoadSettings(this)
 
@@ -635,13 +649,12 @@ class SettingsViewModel @Inject constructor(
         deleteCore(coreId)
     }
 
-    fun cycleBuiltinArchitecture(direction: Int) = routeCycleBuiltinArchitecture(this, direction)
+    fun setBuiltinArchitecture(value: String) = routeSetBuiltinArchitecture(this, value)
     fun setBuiltinShader(value: String) = routeSetBuiltinShader(this, value)
     fun setBuiltinFramesEnabled(enabled: Boolean) = routeSetBuiltinFramesEnabled(this, enabled)
     fun setBuiltinLibretroEnabled(enabled: Boolean) = routeSetBuiltinLibretroEnabled(this, enabled)
     fun setIngameMenuTwoColumn(enabled: Boolean) = routeSetIngameMenuTwoColumn(this, enabled)
     fun setHudEnabled(enabled: Boolean) = routeSetHudEnabled(this, enabled)
-    fun cycleHudCorner(forward: Boolean) = routeCycleHudCorner(this, forward)
     fun setHudCorner(corner: String) = routeSetHudCorner(this, corner)
     fun setHudShowBattery(enabled: Boolean) = routeSetHudShowBattery(this, enabled)
     fun setHudShowClock(enabled: Boolean) = routeSetHudShowClock(this, enabled)
@@ -658,6 +671,7 @@ class SettingsViewModel @Inject constructor(
     fun setBuiltinRewindEnabled(enabled: Boolean) = routeSetBuiltinRewindEnabled(this, enabled)
     fun setBuiltinAutoSaveState(enabled: Boolean) = routeSetBuiltinAutoSaveState(this, enabled)
     fun setBuiltinAutoRestoreState(enabled: Boolean) = routeSetBuiltinAutoRestoreState(this, enabled)
+    fun setBuiltinPreferNewerServerSave(enabled: Boolean) = routeSetBuiltinPreferNewerServerSave(this, enabled)
     fun setBuiltinHwCoreSaveStates(enabled: Boolean) = routeSetBuiltinHwCoreSaveStates(this, enabled)
     fun setBuiltinDefaultToHardcore(mode: String) = routeSetBuiltinDefaultToHardcore(this, mode)
     fun cycleRADefaultMode(direction: Int) {
@@ -1051,8 +1065,6 @@ class SettingsViewModel @Inject constructor(
     fun selectFocusedColor() = displayDelegate.selectFocusedColor(viewModelScope)
     fun setThemeMode(mode: com.nendo.argosy.data.preferences.ThemeMode) = displayDelegate.setThemeMode(viewModelScope, mode)
 
-    fun cycleThemeMode(direction: Int = 1) = routeCycleThemeMode(this, direction)
-
     fun setPrimaryColor(color: Int?) = displayDelegate.setPrimaryColor(viewModelScope, color)
     fun adjustHue(delta: Float) = displayDelegate.adjustHue(viewModelScope, delta)
     fun resetToDefaultColor() = displayDelegate.resetToDefaultColor(viewModelScope)
@@ -1075,9 +1087,7 @@ class SettingsViewModel @Inject constructor(
     fun setBackdropEdgeStyle(style: com.nendo.argosy.data.preferences.BackdropEdgeStyle) = displayDelegate.setBackdropEdgeStyle(viewModelScope, style)
     fun cycleBackdropEdgeStyle(direction: Int = 1) = displayDelegate.cycleBackdropEdgeStyle(viewModelScope, direction)
     fun setBackdropVertexIcons(icons: com.nendo.argosy.data.preferences.BackdropVertexIcon) = displayDelegate.setBackdropVertexIcons(viewModelScope, icons)
-    fun cycleBackdropVertexIcons(direction: Int = 1) = displayDelegate.cycleBackdropVertexIcons(viewModelScope, direction)
     fun setBackdropMotion(motion: com.nendo.argosy.data.preferences.BackdropMotion) = displayDelegate.setBackdropMotion(viewModelScope, motion)
-    fun cycleBackdropMotion(direction: Int = 1) = displayDelegate.cycleBackdropMotion(viewModelScope, direction)
     fun adjustBackdropMotionSpeed(delta: Int) = displayDelegate.adjustBackdropMotionSpeed(viewModelScope, delta)
     fun cycleBackdropMotionSpeed() = displayDelegate.cycleBackdropMotionSpeed(viewModelScope)
     fun setBackdropDriftAngle(angle: Float) = displayDelegate.setBackdropDriftAngle(viewModelScope, angle)
@@ -1087,12 +1097,13 @@ class SettingsViewModel @Inject constructor(
     fun cycleFontScale(slot: FontSlot) = displayDelegate.cycleFontScale(viewModelScope, slot)
     fun setGridDensity(density: GridDensity) = displayDelegate.setGridDensity(viewModelScope, density)
 
-    fun cycleGridDensity(direction: Int = 1) = routeCycleGridDensity(this, direction)
-
     fun setLibraryLayout(layout: com.nendo.argosy.data.preferences.LibraryLayout) =
         displayDelegate.setLibraryLayout(viewModelScope, layout)
 
-    fun cycleLibraryLayout(direction: Int = 1) = routeCycleLibraryLayout(this, direction)
+    fun setLibraryBoxArt3d(enabled: Boolean) = displayDelegate.setLibraryBoxArt3d(viewModelScope, enabled)
+
+    fun setHomeBoxArt3d(enabled: Boolean) =
+        setHomeLayout(uiState.value.display.homeLayout.copy(boxArt3d = enabled))
 
     fun setUiScale(scale: Int) = displayDelegate.setUiScale(viewModelScope, scale)
 
@@ -1117,7 +1128,6 @@ class SettingsViewModel @Inject constructor(
         routeAdjustHomeLayoutField(this, field, direction)
     fun setPresentationStyle(style: com.nendo.argosy.domain.model.PresentationStyle) =
         displayDelegate.setPresentationStyle(viewModelScope, style)
-    fun cycleHomeBackgroundMode(direction: Int = 1) = displayDelegate.cycleHomeBackgroundMode(viewModelScope, direction)
     fun setUseAccentColorFooter(use: Boolean) = displayDelegate.setUseAccentColorFooter(viewModelScope, use)
     fun setCompactFooter(enabled: Boolean) = displayDelegate.setCompactFooter(viewModelScope, enabled)
     fun setLockScreenArt(enabled: Boolean) = displayDelegate.setLockScreenArt(viewModelScope, enabled)
@@ -1128,9 +1138,6 @@ class SettingsViewModel @Inject constructor(
 
     fun setGripReserveMode(mode: com.nendo.argosy.data.preferences.GripReserveMode) =
         displayDelegate.setGripReserveMode(viewModelScope, mode)
-
-    fun cycleGripReserveMode(direction: Int) =
-        displayDelegate.cycleGripReserveMode(viewModelScope, direction)
 
     fun addGripAutoController(controllerId: String, controllerName: String) =
         displayDelegate.addGripAutoController(viewModelScope, controllerId, controllerName)
@@ -1317,42 +1324,42 @@ class SettingsViewModel @Inject constructor(
         })
     }
 
-    fun cycleBoxArtShape(direction: Int = 1) = displayDelegate.cycleBoxArtShape(viewModelScope, direction)
+    fun setBoxArtShape(shape: com.nendo.argosy.data.preferences.BoxArtShape) =
+        displayDelegate.setBoxArtShape(viewModelScope, shape)
     fun cycleBoxArtCornerRadius(direction: Int = 1) = displayDelegate.cycleBoxArtCornerRadius(viewModelScope, direction)
-    fun cycleBoxArtBorderThickness(direction: Int = 1) = displayDelegate.cycleBoxArtBorderThickness(viewModelScope, direction)
-    fun cycleBoxArtBorderStyle(direction: Int = 1) = displayDelegate.cycleBoxArtBorderStyle(viewModelScope, direction)
+    fun setBoxArtBorderThickness(thickness: com.nendo.argosy.data.preferences.BoxArtBorderThickness) =
+        displayDelegate.setBoxArtBorderThickness(viewModelScope, thickness)
+    fun setBoxArtBorderStyle(style: com.nendo.argosy.data.preferences.BoxArtBorderStyle) =
+        displayDelegate.setBoxArtBorderStyle(viewModelScope, style)
     fun cycleGlassBorderTint(direction: Int = 1) = displayDelegate.cycleGlassBorderTint(viewModelScope, direction)
 
-    fun cycleGradientPreset(direction: Int = 1) = routeCycleGradientPreset(this, direction)
     fun setGradientPreset(preset: com.nendo.argosy.data.cache.GradientPreset) = routeSetGradientPreset(this, preset)
     fun toggleGradientAdvancedMode() = routeToggleGradientAdvancedMode(this)
 
     fun cycleBoxArtGlowStrength(direction: Int = 1) = displayDelegate.cycleBoxArtGlowStrength(viewModelScope, direction)
-    fun cycleBoxArtOuterEffect(direction: Int = 1) = displayDelegate.cycleBoxArtOuterEffect(viewModelScope, direction)
-    fun cycleBoxArtOuterEffectThickness(direction: Int = 1) = displayDelegate.cycleBoxArtOuterEffectThickness(viewModelScope, direction)
-    /**
-     * Cycle the glow source, refreshing the preview card's sampled colours with it.
-     *
-     * Only the gradient-preset and sampling routes used to trigger extraction, and every control
-     * that reaches them is hidden unless the border style is Gradient. Picking Cover under any
-     * other border style therefore left the card showing whatever was sampled last, or nothing.
-     */
-    fun cycleGlowColorMode(direction: Int = 1) {
-        displayDelegate.cycleGlowColorMode(viewModelScope, direction)
+    fun setBoxArtOuterEffect(effect: com.nendo.argosy.data.preferences.BoxArtOuterEffect) =
+        displayDelegate.setBoxArtOuterEffect(viewModelScope, effect)
+    fun setBoxArtOuterEffectThickness(thickness: com.nendo.argosy.data.preferences.BoxArtOuterEffectThickness) =
+        displayDelegate.setBoxArtOuterEffectThickness(viewModelScope, thickness)
+    fun setGlowColorMode(mode: com.nendo.argosy.data.preferences.GlowColorMode) {
+        displayDelegate.setGlowColorMode(viewModelScope, mode)
         extractGradientForPreview()
     }
     fun cycleSystemIconPosition(direction: Int = 1) = displayDelegate.cycleSystemIconPosition(viewModelScope, direction)
-    fun cycleSystemIconPadding(direction: Int = 1) = displayDelegate.cycleSystemIconPadding(viewModelScope, direction)
-    fun cyclePlatformIndicatorStyle(direction: Int = 1) = displayDelegate.cyclePlatformIndicatorStyle(viewModelScope, direction)
-    fun cyclePlatformIndicatorContent(direction: Int = 1) = displayDelegate.cyclePlatformIndicatorContent(viewModelScope, direction)
+    fun setSystemIconPadding(padding: com.nendo.argosy.data.preferences.SystemIconPadding) =
+        displayDelegate.setSystemIconPadding(viewModelScope, padding)
+    fun setPlatformIndicatorStyle(style: com.nendo.argosy.data.preferences.PlatformIndicatorStyle) =
+        displayDelegate.setPlatformIndicatorStyle(viewModelScope, style)
+    fun setPlatformIndicatorContent(content: com.nendo.argosy.data.preferences.PlatformIndicatorContent) =
+        displayDelegate.setPlatformIndicatorContent(viewModelScope, content)
     fun cycleBoxArtInnerEffect(direction: Int = 1) = displayDelegate.cycleBoxArtInnerEffect(viewModelScope, direction)
-    fun cycleBoxArtInnerEffectThickness(direction: Int = 1) = displayDelegate.cycleBoxArtInnerEffectThickness(viewModelScope, direction)
+    fun setBoxArtInnerEffectThickness(thickness: com.nendo.argosy.data.preferences.BoxArtInnerEffectThickness) =
+        displayDelegate.setBoxArtInnerEffectThickness(viewModelScope, thickness)
     fun setLibraryDefaultSortIndex(index: Int) = displayDelegate.setLibraryDefaultSortIndex(viewModelScope, index)
     fun cycleLibraryDefaultSort(direction: Int) = displayDelegate.cycleLibraryDefaultSort(viewModelScope, direction)
     fun setSortInstalledFirst(enabled: Boolean) = displayDelegate.setSortInstalledFirst(viewModelScope, enabled)
     fun setSortFavoritesFirst(enabled: Boolean) = displayDelegate.setSortFavoritesFirst(viewModelScope, enabled)
     fun setLibraryDefaultSource(source: String) = displayDelegate.setLibraryDefaultSource(viewModelScope, source)
-    fun cycleLibraryDefaultSource(direction: Int) = displayDelegate.cycleLibraryDefaultSource(viewModelScope, direction)
     fun setLibraryDefaultPlatform(platformId: Long?) =
         displayDelegate.setLibraryDefaultPlatform(viewModelScope, platformId)
     fun cycleLibraryDefaultPlatform(direction: Int, tokens: List<Long?>) =
@@ -1458,18 +1465,13 @@ class SettingsViewModel @Inject constructor(
     fun cancelMusicRelocation() = ambientAudioDelegate.cancelMusicRelocation()
     fun setSwapAB(enabled: Boolean) = controlsDelegate.setSwapAB(viewModelScope, enabled)
     fun setSwapXY(enabled: Boolean) = controlsDelegate.setSwapXY(viewModelScope, enabled)
-    fun cycleControllerLayout(direction: Int = 1) = controlsDelegate.cycleControllerLayout(viewModelScope, direction)
     fun setControllerLayout(layout: String) = controlsDelegate.setControllerLayout(viewModelScope, layout)
     fun refreshDetectedLayout() = controlsDelegate.refreshDetectedLayout()
     fun setSwapStartSelect(enabled: Boolean) = controlsDelegate.setSwapStartSelect(viewModelScope, enabled)
     fun setQuickNavigation(enabled: Boolean) = controlsDelegate.setQuickNavigation(viewModelScope, enabled)
-    fun cycleSelectLCombo(direction: Int = 1) = controlsDelegate.cycleSelectLCombo(viewModelScope, direction)
-    fun cycleSelectRCombo(direction: Int = 1) = controlsDelegate.cycleSelectRCombo(viewModelScope, direction)
     fun setSelectLCombo(value: String) = controlsDelegate.setSelectLCombo(viewModelScope, value)
     fun setSelectRCombo(value: String) = controlsDelegate.setSelectRCombo(viewModelScope, value)
-    fun cycleMenuWrapMode(direction: Int = 1) = controlsDelegate.cycleMenuWrapMode(viewModelScope, direction)
     fun setMenuWrapMode(mode: com.nendo.argosy.data.preferences.MenuWrapMode) = controlsDelegate.setMenuWrapMode(viewModelScope, mode)
-    fun cycleSelectSwapMode(direction: Int = 1) = controlsDelegate.cycleSelectSwapMode(viewModelScope, direction)
     fun setSelectSwapMode(mode: com.nendo.argosy.data.preferences.SelectSwapMode) = controlsDelegate.setSelectSwapMode(viewModelScope, mode)
     fun startShortcutCapture(shortcut: com.nendo.argosy.ui.input.UiShortcut) = controlsDelegate.startShortcutCapture(shortcut)
     fun cancelShortcutCapture() = controlsDelegate.cancelShortcutCapture()
@@ -1515,6 +1517,8 @@ class SettingsViewModel @Inject constructor(
     fun openNotificationSettings() = permissionsDelegate.openNotificationSettings()
     fun openWriteSettings() = permissionsDelegate.openWriteSettings()
     fun openDisplayOverlaySettings() = permissionsDelegate.openDisplayOverlaySettings()
+
+    fun openLiveWallpaperPicker() = permissionsDelegate.openLiveWallpaperPicker()
 
     fun requestScreenCapturePermission() = routeRequestScreenCapturePermission(this)
     fun refreshPermissions() = permissionsDelegate.refreshPermissions()
@@ -1868,9 +1872,7 @@ class SettingsViewModel @Inject constructor(
     fun openLogFolderPicker() = routeOpenLogFolderPicker(this)
     fun setFileLoggingPath(path: String) = routeSetFileLoggingPath(this, path)
     fun toggleFileLogging(enabled: Boolean) = routeToggleFileLogging(this, enabled)
-    fun setFileLogLevel(level: LogLevel) = routeSetFileLogLevel(this, level)
-    fun cycleFileLogLevel(direction: Int = 1) = routeCycleFileLogLevel(this, direction)
-    fun setSaveDebugLoggingEnabled(enabled: Boolean) = routeSetSaveDebugLoggingEnabled(this, enabled)
+    fun setFileLogLevel(level: LogLevel) = routeSetFileLogLevel(this, level)    fun setSaveDebugLoggingEnabled(enabled: Boolean) = routeSetSaveDebugLoggingEnabled(this, enabled)
 
     fun setPlatformEmulator(platformId: Long, platformSlug: String, emulator: InstalledEmulator?) =
         routeSetPlatformEmulator(this, platformId, platformSlug, emulator)
@@ -2444,8 +2446,6 @@ class SettingsViewModel @Inject constructor(
         jellyfinDelegate.cycleDownloadQuality(viewModelScope, direction)
     fun setJellyfinDownloadQuality(quality: com.nendo.argosy.data.preferences.MediaDownloadQuality) =
         jellyfinDelegate.setDownloadQuality(viewModelScope, quality)
-    fun cycleJellyfinStreamingQuality(direction: Int) =
-        jellyfinDelegate.cycleStreamingQuality(viewModelScope, direction)
     fun setJellyfinStreamingQuality(quality: com.nendo.argosy.data.preferences.MediaStreamingQuality) =
         jellyfinDelegate.setStreamingQuality(viewModelScope, quality)
     fun cycleJellyfinAudioLanguage(direction: Int) =

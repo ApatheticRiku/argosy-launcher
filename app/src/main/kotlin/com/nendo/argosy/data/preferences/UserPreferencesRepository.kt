@@ -7,9 +7,13 @@ import com.nendo.argosy.ui.theme.generated.ComponentDefaults
 import com.nendo.argosy.core.input.SoundType
 import com.nendo.argosy.domain.model.ScreenLayouts
 import com.nendo.argosy.util.LogLevel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.shareIn
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -33,7 +37,9 @@ class UserPreferencesRepository @Inject constructor(
     private val sessionPrefs: SessionPreferencesRepository,
     private val jellyfinPrefs: JellyfinPreferencesRepository
 ) {
-    val userPreferences: Flow<UserPreferences> = combine(
+    private val shareScope = com.nendo.argosy.util.SafeCoroutineScope(Dispatchers.Default, "UserPreferences")
+
+    private val preferencesSource: Flow<UserPreferences> = combine(
         combine(
             displayPrefs.preferences,
             syncPrefs.preferences,
@@ -134,6 +140,7 @@ class UserPreferencesRepository @Inject constructor(
             folderNameFromRom = storage.folderNameFromRom,
             gridDensity = display.gridDensity,
             libraryLayout = display.libraryLayout,
+            libraryBoxArt3d = display.libraryBoxArt3d,
             libraryDefaultSort = display.libraryDefaultSort,
             libraryDefaultSortDescending = display.libraryDefaultSortDescending,
             sortInstalledFirst = display.sortInstalledFirst,
@@ -183,6 +190,7 @@ class UserPreferencesRepository @Inject constructor(
             ambientAudioVolume = controls.ambientAudioVolume,
             ambientAudioUri = controls.ambientAudioUri,
             ambientAudioShuffle = controls.ambientAudioShuffle,
+            ambientAudioPlayInBackground = controls.ambientAudioPlayInBackground,
             gameDetailThemeEnabled = controls.gameDetailThemeEnabled,
             imageCachePath = sync.imageCachePath,
             screenDimmerEnabled = display.screenDimmerEnabled,
@@ -254,12 +262,29 @@ class UserPreferencesRepository @Inject constructor(
         )
     }
 
+    val userPreferences: Flow<UserPreferences> = preferencesSource
+
     val preferences: Flow<UserPreferences> = userPreferences
+
+    private val hotPreferences: SharedFlow<UserPreferences> =
+        preferencesSource.shareIn(shareScope, SharingStarted.Eagerly, replay = 1)
+
+    /**
+     * The most recent preferences without suspending, or null before the first DataStore read.
+     * A seed for a screen's first frame; reads that must see a write just made use [userPreferences].
+     */
+    val latest: UserPreferences? get() = hotPreferences.replayCache.firstOrNull()
 
     // --- Display delegates ---
 
     suspend fun setThemeMode(mode: ThemeMode) = displayPrefs.setThemeMode(mode)
     suspend fun setCustomColors(primary: Int?, secondary: Int?, tertiary: Int?) = displayPrefs.setCustomColors(primary, secondary, tertiary)
+
+    /**
+     * Sets the accent colour, or the theme default when [color] is null. The secondary and
+     * tertiary colours reset with it.
+     */
+    suspend fun setPrimaryColor(color: Int?) = displayPrefs.setCustomColors(color, null, null)
     suspend fun setSecondaryColor(color: Int?) = displayPrefs.setSecondaryColor(color)
     suspend fun setSurfaceTintBleed(bleed: Int) = displayPrefs.setSurfaceTintBleed(bleed)
     suspend fun setBackdropEnabled(enabled: Boolean) = displayPrefs.setBackdropEnabled(enabled)
@@ -279,6 +304,8 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setFontScale(slot: FontSlot, scale: Int) = displayPrefs.setFontScale(slot, scale)
     suspend fun setGridDensity(density: GridDensity) = displayPrefs.setGridDensity(density)
     suspend fun setLibraryLayout(layout: LibraryLayout) = displayPrefs.setLibraryLayout(layout)
+
+    suspend fun setLibraryBoxArt3d(enabled: Boolean) = displayPrefs.setLibraryBoxArt3d(enabled)
 
     suspend fun setLibraryDefaultSort(option: String, descending: Boolean) =
         displayPrefs.setLibraryDefaultSort(option, descending)
@@ -385,6 +412,9 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun clearRomMCredentials() = syncPrefs.clearRomMCredentials()
     suspend fun setRommDeviceId(deviceId: String, clientVersion: String) = syncPrefs.setRommDeviceId(deviceId, clientVersion)
     suspend fun clearRommDeviceId() = syncPrefs.clearRommDeviceId()
+    suspend fun getRommSnapshotSupport(serverKey: String): Boolean? = syncPrefs.getRommSnapshotSupport(serverKey)
+    suspend fun setRommSnapshotSupport(serverKey: String, supported: Boolean) =
+        syncPrefs.setRommSnapshotSupport(serverKey, supported)
     suspend fun setRACredentials(username: String, token: String) = syncPrefs.setRACredentials(username, token)
     suspend fun clearRACredentials() = syncPrefs.clearRACredentials()
     suspend fun setRAProxy(enabled: Boolean, address: String) = syncPrefs.setRAProxy(enabled, address)
@@ -560,6 +590,7 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setBuiltinAutoSaveState(enabled: Boolean) = builtinPrefs.setBuiltinAutoSaveState(enabled)
     suspend fun setBuiltinAutoRestoreState(enabled: Boolean) = builtinPrefs.setBuiltinAutoRestoreState(enabled)
     suspend fun setBuiltinAutoRestoreStateMode(mode: String) = builtinPrefs.setBuiltinAutoRestoreStateMode(mode)
+    suspend fun setBuiltinPreferNewerServerSave(enabled: Boolean) = builtinPrefs.setBuiltinPreferNewerServerSave(enabled)
     suspend fun setBuiltinCustomSavePath(path: String?) = builtinPrefs.setBuiltinCustomSavePath(path)
     suspend fun setBuiltinCustomStatePath(path: String?) = builtinPrefs.setBuiltinCustomStatePath(path)
     suspend fun setBuiltinMigrationComplete() = builtinPrefs.setBuiltinMigrationComplete()
@@ -648,6 +679,7 @@ data class BuiltinEmulatorSettings(
     val autoSaveState: Boolean = true,
     val autoRestoreState: Boolean = true,
     val autoRestoreStateMode: String = "restore",
+    val preferNewerServerSave: Boolean = true,
     val hwCoreSaveStatesEnabled: Boolean = false,
     val defaultToHardcore: String = "ask",
     val customSavePath: String? = null,
@@ -810,6 +842,7 @@ data class UserPreferences(
     val folderNameFromRom: Boolean = false,
     val gridDensity: GridDensity = GridDensity.NORMAL,
     val libraryLayout: LibraryLayout = LibraryLayout.GRID,
+    val libraryBoxArt3d: Boolean = false,
     val libraryDefaultSort: String = "TITLE",
     val libraryDefaultSortDescending: Boolean? = null,
     val sortInstalledFirst: Boolean = false,
@@ -872,6 +905,7 @@ data class UserPreferences(
     val ambientAudioVolume: Int = 50,
     val ambientAudioUri: String? = null,
     val ambientAudioShuffle: Boolean = false,
+    val ambientAudioPlayInBackground: Boolean = false,
     val gameDetailThemeEnabled: Boolean = false,
     val imageCachePath: String? = null,
     val screenDimmerEnabled: Boolean = true,
